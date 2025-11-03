@@ -340,8 +340,14 @@ const SignatureMacons = () => {
                                     <td className="py-2 px-3 text-foreground">
                                       {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
                                     </td>
-                                    <td className="text-center py-2 px-3 text-foreground font-medium">
-                                      {jour.heures}h
+                                    <td className="text-center py-2 px-3">
+                                      {jour.HNORM === 0 && jour.HI === 0 ? (
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                                          Absent
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-foreground font-medium">{jour.heures}h</span>
+                                      )}
                                     </td>
                                     <td className="text-center py-2 px-3">
                                       {jour.PA ? (
