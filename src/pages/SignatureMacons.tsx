@@ -1,0 +1,439 @@
+import { useState, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle, Circle, FileText, ArrowLeft, Loader2, Clock, Truck } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { SignaturePad } from "@/components/signature/SignaturePad";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMaconsByChantier, type MaconWithFiche } from "@/hooks/useMaconsByChantier";
+import { useSaveSignature } from "@/hooks/useSaveSignature";
+import { useUpdateFicheStatus } from "@/hooks/useFiches";
+import { useTransportByChantier } from "@/hooks/useTransportByChantier";
+import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { getNextWeek } from "@/lib/weekUtils";
+import { useInitializeNextWeekMacons } from "@/hooks/useInitializeNextWeekMacons";
+
+const SignatureMacons = () => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const chantierId = searchParams.get("chantierId");
+  const semaine = searchParams.get("semaine");
+  const chefId = searchParams.get("chefId");
+
+  const { data: maconsData, isLoading } = useMaconsByChantier(chantierId || "", semaine || "", chefId || undefined);
+  const { data: transportData } = useTransportByChantier(chantierId, semaine);
+  const saveSignature = useSaveSignature();
+  const updateStatus = useUpdateFicheStatus();
+  const initializeNextWeek = useInitializeNextWeekMacons();
+
+  const [macons, setMacons] = useState<MaconWithFiche[]>([]);
+  const [selectedMacon, setSelectedMacon] = useState<MaconWithFiche | null>(null);
+
+  // Update local state when data loads and sort: non-temporary workers first, then temporary workers
+  useEffect(() => {
+    if (maconsData) {
+      const sorted = [...maconsData].sort((a, b) => {
+        const aIsInterim = a.role === "interimaire";
+        const bIsInterim = b.role === "interimaire";
+        
+        if (aIsInterim && !bIsInterim) return 1;
+        if (!aIsInterim && bIsInterim) return -1;
+        return 0;
+      });
+      
+      setMacons(sorted);
+    }
+  }, [maconsData]);
+
+  // Auto-select first unsigned mason with loaded data
+  useEffect(() => {
+    if (macons.length > 0 && !selectedMacon) {
+      // Priorité : maçon non-signé avec ficheJours chargées
+      const firstUnsignedWithData = macons.find((m) => 
+        !m.signed && 
+        m.ficheJours && 
+        m.ficheJours.length > 0
+      );
+      
+      // Fallback : premier maçon non-signé même sans données
+      const firstUnsigned = macons.find((m) => !m.signed);
+      
+      setSelectedMacon(firstUnsignedWithData || firstUnsigned || null);
+    }
+  }, [macons, selectedMacon]);
+
+  const handleSaveSignature = async (signatureData: string) => {
+    if (!selectedMacon || !selectedMacon.ficheId) return;
+
+    try {
+      await saveSignature.mutateAsync({
+        ficheId: selectedMacon.ficheId,
+        userId: selectedMacon.id,
+        role: selectedMacon.isChef ? "chef" : undefined,
+        signatureData,
+      });
+
+      // Update local state
+      const updatedMacons = macons.map((m) =>
+        m.id === selectedMacon.id ? { ...m, signed: true } : m
+      );
+      setMacons(updatedMacons);
+
+      // Auto-select next unsigned mason
+      const nextUnsigned = updatedMacons.find((m) => !m.signed);
+      setSelectedMacon(nextUnsigned || null);
+    } catch (error) {
+      console.error("Error saving signature:", error);
+    }
+  };
+
+  const allSigned = macons.every((m) => m.signed);
+  const signedCount = macons.filter((m) => m.signed).length;
+
+  const handleFinish = async () => {
+    if (!chantierId || !semaine || !chefId) return;
+
+    try {
+      // 1. Mettre à jour le statut
+      await updateStatus.mutateAsync({
+        chantierId,
+        semaine,
+        status: "VALIDE_CHEF",
+      });
+
+      // 2. Déclencher la notification automatiquement au conducteur
+      try {
+        const { error: notifError } = await supabase.functions.invoke("notify-conducteur");
+        if (notifError) {
+          console.error("Erreur notification conducteur:", notifError);
+        }
+      } catch (e) {
+        console.error("Exception notification conducteur:", e);
+      }
+
+      // 3. Calculer la semaine suivante
+      const nextWeek = getNextWeek(semaine);
+
+      // 4. Initialiser la semaine suivante avec 39h pour les maçons
+      try {
+        await initializeNextWeek.mutateAsync({
+          chantierId,
+          semaine: nextWeek,
+          chefId,
+        });
+        console.log(`✅ Semaine ${nextWeek} initialisée avec 39h pour l'équipe`);
+      } catch (initError) {
+        console.error("Erreur initialisation semaine suivante:", initError);
+        // Ne pas bloquer la suite même en cas d'erreur
+      }
+
+      // 5. Mettre à jour sessionStorage pour la prochaine page
+      sessionStorage.setItem('timesheet_selectedWeek', nextWeek);
+      sessionStorage.setItem('timesheet_selectedChantier', chantierId);
+      sessionStorage.setItem('timesheet_selectedChef', chefId);
+
+      // 6. Afficher message de confirmation
+      toast({
+        title: "✅ Fiche soumise au conducteur",
+        description: "Bascule automatique vers la semaine suivante dans 3 secondes...",
+        duration: 3000,
+      });
+
+      // 7. Redirection différée vers la page de saisie avec semaine suivante
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
+
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        variant: "destructive",
+        title: "❌ Erreur",
+        description: "Impossible de soumettre la fiche",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!chantierId || !semaine) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center">
+        <Card className="p-6">
+          <p className="text-muted-foreground">Paramètres manquants</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <FileText className="h-6 w-6 text-primary" />
+                Signatures des maçons
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Collecte des signatures avant soumission au conducteur
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="space-y-6">
+          {/* Progress */}
+          <Card className="p-6 shadow-md border-border/50">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Progression des signatures</h2>
+              <Badge
+                variant="outline"
+                className={
+                  allSigned
+                    ? "bg-success/10 text-success border-success/30"
+                    : "bg-warning/10 text-warning border-warning/30"
+                }
+              >
+                {signedCount} / {macons.length} signées
+              </Badge>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3">
+              <div
+                className="bg-primary h-3 rounded-full transition-all duration-500"
+                style={{ width: `${(signedCount / macons.length) * 100}%` }}
+              />
+            </div>
+          </Card>
+
+          {/* Layout 2 colonnes */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Colonne gauche : Liste des maçons */}
+            <div className="lg:col-span-1">
+              <Card className="p-4 shadow-md border-border/50 lg:sticky lg:top-24">
+                <h2 className="text-sm font-semibold text-foreground mb-3">
+                  Maçons ({signedCount}/{macons.length})
+                </h2>
+                <ScrollArea className="h-[500px]">
+                  <div className="space-y-2">
+                    {macons.map((macon) => (
+                      <div
+                        key={macon.id}
+                        className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
+                          selectedMacon?.id === macon.id
+                            ? "bg-primary/10 border-primary ring-2 ring-primary/20"
+                            : macon.signed
+                            ? "bg-success/5 border-success/30 hover:bg-success/10"
+                            : "bg-muted/30 border-border/30 hover:bg-muted/50"
+                        }`}
+                        onClick={() => setSelectedMacon(macon)}
+                      >
+                        {macon.signed ? (
+                          <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          <span className={`text-sm font-medium truncate ${
+                            selectedMacon?.id === macon.id ? "text-primary" : "text-foreground"
+                          }`}>
+                            {macon.prenom} {macon.nom}
+                          </span>
+                          {macon.isChef ? (
+                            <RoleBadge role="chef" size="sm" />
+                          ) : macon.role ? (
+                            <RoleBadge role={macon.role as any} size="sm" />
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </Card>
+            </div>
+
+            {/* Colonne droite : Récapitulatif + SignaturePad */}
+            <div className="lg:col-span-2 space-y-6">
+              {selectedMacon ? (
+                selectedMacon.signed ? (
+                  // Afficher un message "Déjà signé" au lieu du pad
+                  <Card className="p-12 shadow-md border-border/50 flex items-center justify-center min-h-[500px]">
+                    <div className="text-center">
+                      <CheckCircle className="h-16 w-16 mx-auto mb-4 text-success" />
+                      <p className="text-lg font-semibold text-foreground">Signature déjà collectée</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {selectedMacon.prenom} {selectedMacon.nom} a déjà signé cette semaine
+                      </p>
+                    </div>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Récapitulatif de transport (accordéon) */}
+                    {transportData && (
+                      <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="transport" className="border-none">
+                          <Card className="shadow-md border-border/50">
+                            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                              <div className="flex items-center gap-2 text-lg font-semibold">
+                                <Truck className="h-5 w-5 text-primary" />
+                                Récapitulatif Trajet
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-6 pb-4">
+                              <TransportSummaryV2 transportData={transportData} />
+                            </AccordionContent>
+                          </Card>
+                        </AccordionItem>
+                      </Accordion>
+                    )}
+
+                    {/* Récapitulatif des heures */}
+                    {selectedMacon.ficheJours && (
+                      <Card className="shadow-md border-border/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-primary" />
+                            Récapitulatif de vos heures - Semaine {semaine}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Vérifiez vos heures avant de signer
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-border/50">
+                                  <th className="text-left py-2 px-3 font-semibold text-foreground">Date</th>
+                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Heures</th>
+                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Panier</th>
+                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Trajets</th>
+                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Intempérie</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedMacon.ficheJours.map((jour) => (
+                                  <tr key={jour.id} className="border-b border-border/30">
+                                    <td className="py-2 px-3 text-foreground">
+                                      {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
+                                    </td>
+                                    <td className="text-center py-2 px-3 text-foreground font-medium">
+                                      {jour.heures}h
+                                    </td>
+                                    <td className="text-center py-2 px-3">
+                                      {jour.PA ? (
+                                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                                          ✓
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-3">
+                                      {jour.trajet_perso ? (
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                          Perso
+                                        </Badge>
+                                      ) : jour.T > 0 ? (
+                                        <span className="text-foreground">{jour.T}</span>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-3 text-foreground">
+                                      {jour.HI > 0 ? `${jour.HI}h` : "-"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr className="border-t-2 border-border/70 bg-muted/30">
+                                  <td className="py-3 px-3 font-bold text-foreground">Total</td>
+                                  <td className="text-center py-3 px-3 font-bold text-primary">
+                                    {selectedMacon.totalHeures || 0}h
+                                  </td>
+                                  <td className="text-center py-3 px-3 font-bold text-foreground">
+                                    {selectedMacon.paniers || 0}
+                                  </td>
+                                  <td className="text-center py-3 px-3 font-bold text-foreground">
+                                    {selectedMacon.trajets || 0}
+                                  </td>
+                                  <td className="text-center py-3 px-3 font-bold text-foreground">
+                                    {selectedMacon.intemperie || 0}h
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* SignaturePad */}
+                    <SignaturePad
+                      employeeName={`${selectedMacon.prenom} ${selectedMacon.nom}`}
+                      onSave={handleSaveSignature}
+                    />
+                  </>
+                )
+              ) : (
+                <Card className="p-12 shadow-md border-border/50 flex items-center justify-center min-h-[500px]">
+                  <div className="text-center text-muted-foreground">
+                    <Circle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Sélectionnez un maçon pour commencer</p>
+                    <p className="text-sm mt-2">Cliquez sur un nom dans la liste</p>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Finish Button */}
+          {allSigned && (
+            <Card className="p-6 shadow-md border-border/50 bg-success/5 border-success/30">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    Toutes les signatures sont collectées
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Vous pouvez maintenant soumettre la fiche au conducteur de travaux
+                  </p>
+                </div>
+                <Button onClick={handleFinish} className="bg-success hover:bg-success/90">
+                  Soumettre au conducteur
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default SignatureMacons;

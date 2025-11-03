@@ -1,0 +1,34 @@
+project_id = "rxkhtqezcyaqvjlbzzpu"
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.purge-all-test-data]
+verify_jwt = false
+
+[functions.purge-week]
+verify_jwt = false
+
+[functions.purge-transport-week]
+verify_jwt = false
+
+[functions.notify-conducteur]
+verify_jwt = false
+
+[functions.rappel-chefs]
+verify_jwt = false
+
+[functions.rappel-chefs-lundi]
+verify_jwt = false
+
+[functions.rappel-conducteurs]
+verify_jwt = false
+
+[functions.rappel-conducteurs-finisseurs]
+verify_jwt = false
+
+[functions.purge-affectations-finisseurs]
+verify_jwt = false
+
+[functions.purge-orphan-fiches]
+verify_jwt = false
