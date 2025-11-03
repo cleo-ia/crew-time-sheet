@@ -344,6 +344,7 @@ export type Database = {
       }
       fiches_jours: {
         Row: {
+          autres_elements: string | null
           code_chantier_du_jour: string | null
           created_at: string
           date: string
@@ -356,6 +357,7 @@ export type Database = {
           id: string
           PA: boolean | null
           pause_minutes: number
+          regularisation_m1: string | null
           T: number | null
           total_jour: number | null
           trajet_perso: boolean | null
@@ -364,6 +366,7 @@ export type Database = {
           ville_du_jour: string | null
         }
         Insert: {
+          autres_elements?: string | null
           code_chantier_du_jour?: string | null
           created_at?: string
           date: string
@@ -376,6 +379,7 @@ export type Database = {
           id?: string
           PA?: boolean | null
           pause_minutes?: number
+          regularisation_m1?: string | null
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null
@@ -384,6 +388,7 @@ export type Database = {
           ville_du_jour?: string | null
         }
         Update: {
+          autres_elements?: string | null
           code_chantier_du_jour?: string | null
           created_at?: string
           date?: string
@@ -396,6 +401,7 @@ export type Database = {
           id?: string
           PA?: boolean | null
           pause_minutes?: number
+          regularisation_m1?: string | null
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null

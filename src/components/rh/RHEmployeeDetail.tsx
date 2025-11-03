@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
+import { EditableTextCell } from "@/components/rh/EditableTextCell";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
 
 interface RHEmployeeDetailProps {
@@ -136,6 +137,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 <TableHead className="text-center">Panier</TableHead>
                 <TableHead className="text-center">Trajet</TableHead>
                 <TableHead className="text-center">Trajet Perso</TableHead>
+                <TableHead className="font-semibold">Régularisation M-1</TableHead>
+                <TableHead className="font-semibold">Autres éléments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -277,6 +280,32 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           });
                         }
                       }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableTextCell
+                      value={(day as any).regularisationM1 || ""}
+                      onSave={async (newValue) => {
+                        await updateFicheJour.mutateAsync({
+                          ficheJourId: day.ficheJourId,
+                          field: "regularisation_m1",
+                          value: newValue,
+                        });
+                      }}
+                      placeholder="Ajouter une note de régularisation..."
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableTextCell
+                      value={(day as any).autresElements || ""}
+                      onSave={async (newValue) => {
+                        await updateFicheJour.mutateAsync({
+                          ficheJourId: day.ficheJourId,
+                          field: "autres_elements",
+                          value: newValue,
+                        });
+                      }}
+                      placeholder="Ajouter une note..."
                     />
                   </TableCell>
                 </TableRow>

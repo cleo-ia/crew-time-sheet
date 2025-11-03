@@ -368,8 +368,16 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       "", // TOTAL SAISIE
       "", // SAISIE DU MOIS
       "", // COMMENTAIRES
-      "", // REGULARISATION M-1
-      "", // Autres éléments
+      // Concaténer les notes de régularisation M-1 de tous les jours
+      emp.detailJours
+        ?.map(j => j.regularisationM1)
+        .filter(Boolean)
+        .join(" | ") || "",
+      // Concaténer les autres éléments de tous les jours
+      emp.detailJours
+        ?.map(j => j.autresElements)
+        .filter(Boolean)
+        .join(" | ") || "",
     ];
 
     // Garantir la longueur exacte

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 interface UpdateFicheJourParams {
   ficheJourId: string;
-  field: "HNORM" | "HI" | "T" | "PA" | "trajet_perso" | "type_absence";
+  field: "HNORM" | "HI" | "T" | "PA" | "trajet_perso" | "type_absence" | "regularisation_m1" | "autres_elements";
   value: number | boolean | string;
 }
 
