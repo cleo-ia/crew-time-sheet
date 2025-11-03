@@ -596,7 +596,67 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         });
       }
 
-      // 4. 🔥 CORRECTION: Construire le détail jour par jour avec chantier du jour pour finisseurs
+      // 4. 🔥 RÉCUPÉRER LES DONNÉES DE TRANSPORT
+      // Déterminer si le salarié est un finisseur
+      const estFinisseur = salarie.role_metier === "finisseur";
+
+      let transportDataMap = new Map<string, {
+        conducteurMatin?: string;
+        conducteurSoir?: string;
+        immatriculation?: string;
+      }>();
+
+      if (estFinisseur) {
+        // FINISSEURS : Récupérer depuis fiches_transport_finisseurs_jours
+        const { data: transportFinisseur } = await supabase
+          .from("fiches_transport_finisseurs_jours")
+          .select(`
+            date,
+            immatriculation,
+            conducteur_matin:utilisateurs!fiches_transport_finisseurs_jours_conducteur_matin_id_fkey(nom, prenom),
+            conducteur_soir:utilisateurs!fiches_transport_finisseurs_jours_conducteur_soir_id_fkey(nom, prenom),
+            fiche_transport_finisseurs!inner(finisseur_id)
+          `)
+          .eq("fiche_transport_finisseurs.finisseur_id", salarieId);
+
+        transportFinisseur?.forEach(t => {
+          transportDataMap.set(t.date, {
+            conducteurMatin: t.conducteur_matin 
+              ? `${(t.conducteur_matin as any).prenom} ${(t.conducteur_matin as any).nom}`.trim() 
+              : undefined,
+            conducteurSoir: t.conducteur_soir 
+              ? `${(t.conducteur_soir as any).prenom} ${(t.conducteur_soir as any).nom}`.trim() 
+              : undefined,
+            immatriculation: t.immatriculation || undefined,
+          });
+        });
+      } else {
+        // CHEFS/MAÇONS : Récupérer depuis fiches_transport_jours
+        const { data: transportMacons } = await supabase
+          .from("fiches_transport_jours")
+          .select(`
+            date,
+            immatriculation,
+            conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(nom, prenom),
+            conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(nom, prenom),
+            fiches_transport!inner(fiche_id)
+          `)
+          .in("fiches_transport.fiche_id", ficheIds);
+
+        transportMacons?.forEach(t => {
+          transportDataMap.set(t.date, {
+            conducteurMatin: t.conducteur_aller 
+              ? `${(t.conducteur_aller as any).prenom} ${(t.conducteur_aller as any).nom}`.trim() 
+              : undefined,
+            conducteurSoir: t.conducteur_retour 
+              ? `${(t.conducteur_retour as any).prenom} ${(t.conducteur_retour as any).nom}`.trim() 
+              : undefined,
+            immatriculation: t.immatriculation || undefined,
+          });
+        });
+      }
+
+      // 5. 🔥 CORRECTION: Construire le détail jour par jour avec chantier du jour pour finisseurs
       const dailyDetails = (fichesJoursFiltrees?.map(jour => {
         const fiche = filteredFiches.find(f => f.id === jour.fiche_id);
         
@@ -611,6 +671,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           chantierNom = fiche.chantiers.nom;
         }
 
+        // Récupérer les données de transport pour cette date
+        const transport = transportDataMap.get(jour.date);
+
         return {
           date: jour.date,
           ficheJourId: jour.id,
@@ -620,6 +683,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           panier: !!jour.PA,
           trajet: Number(jour.T) || 0,
           trajetPerso: !!(jour as any).trajet_perso,
+          transport,
         };
       }) || [])
         .sort((a, b) => {
