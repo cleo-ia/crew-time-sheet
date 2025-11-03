@@ -42,48 +42,24 @@ export const TransportFinisseurAccordion = ({
   );
 
   // Mémoriser weekDays pour éviter les recalculs inutiles
-  // Filtrer pour exclure les jours d'absence
+  // Inclure TOUS les jours affectés (même les absences)
   const weekDays = useMemo(() => {
     const weekDates = getWeekDates(semaine);
     const allWeekDays = weekDates.slice(0, 5);
     
     return allWeekDays.filter((date) => {
       const dateStr = format(date, "yyyy-MM-dd");
-      // Exclure si absent OU non affecté
-      return affectedDates.includes(dateStr) && !absenceDates.has(dateStr);
+      // Inclure tous les jours affectés (absences comprises)
+      return affectedDates.includes(dateStr);
     });
-  }, [semaine, affectedDates, absenceDates]);
+  }, [semaine, affectedDates]);
 
-  // Calculer le nombre de jours masqués à cause d'absences
-  const maskedAbsenceDays = useMemo(() => {
-    const weekDates = getWeekDates(semaine);
-    const allWeekDays = weekDates.slice(0, 5);
-    
-    return allWeekDays.filter((date) => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      return affectedDates.includes(dateStr) && absenceDates.has(dateStr);
-    }).length;
-  }, [semaine, affectedDates, absenceDates]);
-  
-  // Si aucun jour affecté OU tous les jours sont des absences
+  // Si aucun jour affecté
   if (weekDays.length === 0) {
     return (
       <Card className="p-4 bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
         <div className="text-center text-muted-foreground py-4">
-          {maskedAbsenceDays > 0 ? (
-            <div>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                ⚠️ {maskedAbsenceDays} jour(s) masqué(s)
-              </p>
-              <p className="text-xs mt-1 text-muted-foreground">
-                {finisseurNom} est absent(e) les jours affectés cette semaine.
-                <br />
-                Aucune fiche de trajet n'est requise pour ces jours.
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm">Aucun jour affecté cette semaine pour {finisseurNom}</p>
-          )}
+          <p className="text-sm">Aucun jour affecté cette semaine pour {finisseurNom}</p>
         </div>
       </Card>
     );
@@ -223,17 +199,52 @@ export const TransportFinisseurAccordion = ({
           const dateStr = format(date, "yyyy-MM-dd");
           const isTrajetPerso = trajetPersoByDate.get(dateStr) || false;
           
+          // Détection d'absence
+          const isAbsent = absenceDates.has(dateStr);
+          
           return (
-            <Card key={dateStr} className="p-3 bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800">
+            <Card 
+              key={dateStr} 
+              className={`p-3 border ${
+                isAbsent 
+                  ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800" 
+                  : "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800"
+              }`}
+            >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium capitalize text-blue-900 dark:text-blue-100">
+                  <Label className={`text-sm font-medium capitalize ${
+                    isAbsent 
+                      ? "text-red-900 dark:text-red-100" 
+                      : "text-blue-900 dark:text-blue-100"
+                  }`}>
                     {dayName} {dayDate}
                   </Label>
+                  
+                  {isAbsent && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full border border-red-300 dark:border-red-700">
+                      ⚠️ ABSENT
+                    </span>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
-                  {isTrajetPerso ? (
+                  {isAbsent ? (
+                    // Affichage pour jour d'absence
+                    <div className="p-3 bg-red-100/50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md">
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium">Employé(e) absent(e)</p>
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            Aucun trajet n'est requis pour ce jour
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : isTrajetPerso ? (
                     // Affichage pour trajet personnel
                     <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
                       <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
@@ -264,7 +275,11 @@ export const TransportFinisseurAccordion = ({
                     </div>
                   )}
                   
-                  <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/50 p-2 rounded border border-blue-100 dark:border-blue-900">
+                  <div className={`text-xs p-2 rounded border ${
+                    isAbsent
+                      ? "text-muted-foreground bg-red-50 dark:bg-red-950/50 border-red-100 dark:border-red-900"
+                      : "text-muted-foreground bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-900"
+                  }`}>
                     <span className="font-medium">Conducteur :</span> {finisseurNom}
                   </div>
                 </div>
