@@ -79,8 +79,30 @@ export const useSaveTransportFinisseur = () => {
         .delete()
         .eq("fiche_transport_finisseur_id", transportId);
 
-      // 4. Insérer les nouveaux jours
-      const joursToInsert = days.map((day) => ({
+      // 4. FILET DE SÉCURITÉ : Vérifier les absences avant insertion
+      const { data: fichesJours } = await supabase
+        .from("fiches_jours")
+        .select("date, HNORM, HI")
+        .eq("fiche_id", finalFicheId)
+        .in("date", days.map(d => d.date));
+
+      const absenceDates = new Set(
+        (fichesJours || [])
+          .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
+          .map(fj => fj.date)
+      );
+
+      // Filtrer les jours pour exclure les absences
+      const validDays = days.filter(day => !absenceDates.has(day.date));
+
+      if (validDays.length < days.length) {
+        console.warn(
+          `⚠️ SÉCURITÉ : ${days.length - validDays.length} jour(s) de trajet ignoré(s) car absent(s)`
+        );
+      }
+
+      // 5. Insérer les nouveaux jours (uniquement les jours valides)
+      const joursToInsert = validDays.map((day) => ({
         fiche_transport_finisseur_id: transportId,
         date: day.date,
         conducteur_matin_id: day.conducteurMatinId || null,

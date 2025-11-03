@@ -7,6 +7,7 @@ import { fr } from "date-fns/locale";
 import { TransportFinisseurDay } from "@/types/transport";
 import { getWeekDates } from "@/lib/weekUtils";
 import { Truck } from "lucide-react";
+import { useFichesJoursByFinisseur } from "@/hooks/useFichesJoursByFinisseur";
 
 interface TransportFinisseurAccordionProps {
   finisseurId: string;
@@ -31,23 +32,58 @@ export const TransportFinisseurAccordion = ({
   onUpdate,
   localVehiculeUsage,
 }: TransportFinisseurAccordionProps) => {
+  // Récupérer les jours d'absence du finisseur
+  const { data: fichesJours = [] } = useFichesJoursByFinisseur(finisseurId, semaine);
+
+  // Créer un Set des dates d'absence pour lookup rapide
+  const absenceDates = useMemo(
+    () => new Set(fichesJours.filter(fj => fj.isAbsent).map(fj => fj.date)),
+    [fichesJours]
+  );
+
   // Mémoriser weekDays pour éviter les recalculs inutiles
+  // Filtrer pour exclure les jours d'absence
   const weekDays = useMemo(() => {
     const weekDates = getWeekDates(semaine);
     const allWeekDays = weekDates.slice(0, 5);
     
     return allWeekDays.filter((date) => {
       const dateStr = format(date, "yyyy-MM-dd");
-      return affectedDates.includes(dateStr);
+      // Exclure si absent OU non affecté
+      return affectedDates.includes(dateStr) && !absenceDates.has(dateStr);
     });
-  }, [semaine, affectedDates]);
+  }, [semaine, affectedDates, absenceDates]);
+
+  // Calculer le nombre de jours masqués à cause d'absences
+  const maskedAbsenceDays = useMemo(() => {
+    const weekDates = getWeekDates(semaine);
+    const allWeekDays = weekDates.slice(0, 5);
+    
+    return allWeekDays.filter((date) => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      return affectedDates.includes(dateStr) && absenceDates.has(dateStr);
+    }).length;
+  }, [semaine, affectedDates, absenceDates]);
   
-  // Si aucun jour affecté, afficher un message
+  // Si aucun jour affecté OU tous les jours sont des absences
   if (weekDays.length === 0) {
     return (
       <Card className="p-4 bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
         <div className="text-center text-muted-foreground py-4">
-          <p className="text-sm">Aucun jour affecté cette semaine pour {finisseurNom}</p>
+          {maskedAbsenceDays > 0 ? (
+            <div>
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                ⚠️ {maskedAbsenceDays} jour(s) masqué(s)
+              </p>
+              <p className="text-xs mt-1 text-muted-foreground">
+                {finisseurNom} est absent(e) les jours affectés cette semaine.
+                <br />
+                Aucune fiche de trajet n'est requise pour ces jours.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm">Aucun jour affecté cette semaine pour {finisseurNom}</p>
+          )}
         </div>
       </Card>
     );
