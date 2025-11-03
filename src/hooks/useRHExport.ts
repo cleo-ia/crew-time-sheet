@@ -77,7 +77,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     metier: emp.metier,
     agence_interim: emp.agence_interim,
     heuresNormales: emp.heuresNormales,
-    heuresSupp: emp.intemperies, // HI = intempéries
+    heuresSupp: 0, // Heures supplémentaires réelles (à calculer séparément)
     absences: emp.absences,
     indemnitesRepas: emp.paniers,
     indemnitesTrajet: emp.trajets,
