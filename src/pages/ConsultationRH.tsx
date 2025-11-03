@@ -40,7 +40,7 @@ const ConsultationRH = () => {
         // Déterminer le mois à exporter (toujours le mois complet avec les filtres actifs)
         const mois = filters.periode || format(new Date(), "yyyy-MM");
 
-        console.log(`[Export Excel] Export du mois ${mois} avec filtres actifs:`, filters);
+        console.log(`[Export Excel] Vérification des absences pour ${mois} avec filtres actifs:`, filters);
 
         // Récupérer les données avec les MÊMES filtres que l'écran
         const data = await fetchRHExportData(mois, filters);
@@ -50,7 +50,28 @@ const ConsultationRH = () => {
           return;
         }
 
+        // Vérifier s'il y a des absences non justifiées
+        const employesAvecAbsencesNonQualifiees = data.filter(emp => {
+          return emp.detailJours?.some(
+            jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
+          );
+        });
+
+        if (employesAvecAbsencesNonQualifiees.length > 0) {
+          const nbEmployes = employesAvecAbsencesNonQualifiees.length;
+          const nomsSalaries = employesAvecAbsencesNonQualifiees
+            .map(e => `${e.prenom} ${e.nom}`)
+            .join(", ");
+          
+          toast.error(
+            `Impossible d'exporter : ${nbEmployes} salarié(s) ont des absences non justifiées.\n\nSalariés concernés : ${nomsSalaries}\n\nVeuillez qualifier toutes les absences avant l'export.`,
+            { duration: 8000 }
+          );
+          return;
+        }
+
         // Générer et télécharger le fichier
+        console.log(`[Export Excel] Validation OK, génération de l'export...`);
         const fileName = await generateRHExcel(data, mois);
         toast.success(`Export Excel généré : ${fileName}`);
       } catch (error) {
