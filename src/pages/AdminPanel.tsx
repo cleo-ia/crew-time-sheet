@@ -17,6 +17,7 @@ import { InviteUserDialog } from "@/components/admin/InviteUserDialog";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { RappelsManager } from "@/components/admin/RappelsManager";
 import { TransportDebugManager } from "@/components/admin/TransportDebugManager";
+import { PurgeAllDataManager } from "@/components/admin/PurgeAllDataManager";
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("utilisateurs");
@@ -138,7 +139,8 @@ const AdminPanel = () => {
               <RappelsManager />
             </TabsContent>
 
-          <TabsContent value="debug" className="p-6">
+          <TabsContent value="debug" className="p-6 space-y-6">
+            <PurgeAllDataManager />
             <TransportDebugManager />
           </TabsContent>
           </Tabs>
