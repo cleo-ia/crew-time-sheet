@@ -138,15 +138,15 @@ const ValidationConducteur = () => {
     setIsSubmitting(true);
 
     // Vérifier que tous les finisseurs ont une fiche trajet complète
-    const allFinisseursHaveTransport = await checkAllFinisseursTransportComplete();
+    const { ok, errors } = await checkAllFinisseursTransportComplete();
     
-    if (!allFinisseursHaveTransport) {
+    if (!ok) {
       setIsSubmitting(false);
       toast({
         variant: "destructive",
         title: "❌ Fiches de trajet incomplètes",
-        description: "Tous les finisseurs doivent avoir leur fiche trajet remplie (véhicule + conducteurs pour tous leurs jours affectés).",
-        duration: 5000,
+        description: errors.slice(0, 5).join(" • "),
+        duration: 6000,
       });
       return;
     }
@@ -244,8 +244,10 @@ const ValidationConducteur = () => {
   };
   
   // Vérifier que tous les finisseurs ont une fiche trajet complète
-  const checkAllFinisseursTransportComplete = async (): Promise<boolean> => {
-    if (!conducteurId || !selectedWeek || finisseurs.length === 0) return false;
+  const checkAllFinisseursTransportComplete = async (): Promise<{ ok: boolean; errors: string[] }> => {
+    if (!conducteurId || !selectedWeek || finisseurs.length === 0) return { ok: false, errors: ["Données manquantes"] };
+    
+    const errors: string[] = [];
     
     for (const finisseur of finisseurs) {
       // Récupérer les fiches_jours pour identifier les absences
@@ -283,22 +285,58 @@ const ValidationConducteur = () => {
         );
       }
       
-      // Récupérer la fiche de transport
-      const { data: transport } = await supabase
+      // Étape A : Recherche robuste de la fiche de transport par finisseur_id + semaine
+      const { data: transportByWeek } = await supabase
         .from("fiches_transport_finisseurs")
-        .select("*, fiches_transport_finisseurs_jours(*)")
+        .select("id, finisseur_id, fiche_id, semaine")
         .eq("finisseur_id", finisseur.id)
         .eq("semaine", selectedWeek)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
+
+      let transport = transportByWeek;
+
+      // Étape B : Fallback par fiche_id si pas trouvé (données legacy sans "semaine")
+      if (!transport) {
+        const { data: ficheWeek } = await supabase
+          .from("fiches")
+          .select("id")
+          .eq("salarie_id", finisseur.id)
+          .eq("semaine", selectedWeek)
+          .is("chantier_id", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (ficheWeek) {
+          const { data: transportByFiche } = await supabase
+            .from("fiches_transport_finisseurs")
+            .select("id, finisseur_id, fiche_id, semaine")
+            .eq("fiche_id", ficheWeek.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          transport = transportByFiche;
+        }
+      }
+
+      // Si toujours pas trouvé, enregistrer l'erreur et continuer
+      if (!transport) {
+        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune fiche de trajet trouvée pour ${selectedWeek}`);
+        continue;
+      }
       
-      if (!transport) return false;
-      
-      // Récupérer les jours transport déjà enregistrés
-      const jours = transport.fiches_transport_finisseurs_jours || [];
+      // Récupérer explicitement les jours de transport
+      const { data: jours } = await supabase
+        .from("fiches_transport_finisseurs_jours")
+        .select("date, conducteur_matin_id, conducteur_soir_id, immatriculation")
+        .eq("fiche_transport_finisseur_id", transport.id);
       
       // Construire un index par date pour accès O(1)
       const joursByDate = new Map<string, any>();
-      jours.forEach((j: any) => joursByDate.set(j.date, j));
+      (jours || []).forEach((j: any) => joursByDate.set(j.date, j));
       
       // Construire l'ensemble des dates en trajet perso depuis la fiche d'heures
       const trajetPersoDates = new Set(
@@ -307,31 +345,38 @@ const ValidationConducteur = () => {
           .map((j: any) => j.date)
       );
       
-      // Vérifier chaque jour affecté
+      // Vérifier chaque jour affecté avec accumulation d'erreurs
       const expected = finisseur.affectedDays || [];
-      const allDaysComplete = expected.every(({ date }: any) => {
-        // Si jour d'absence, considérer comme complet
+      for (const { date } of expected) {
+        // Jour d'absence : ignorer
         if (absenceDates.has(date)) {
           console.log(`✅ ${finisseur.prenom} ${finisseur.nom} - ${date} : Absent (ignoré)`);
-          return true;
+          continue;
         }
         
-        // Si trajet perso: considéré comme complet, pas d'immatriculation requise
-        if (trajetPersoDates.has(date)) return true;
+        // Trajet perso : OK
+        if (trajetPersoDates.has(date)) continue;
         
-        // Sinon: exiger une ligne transport complète
+        // Vérifier la ligne de transport
         const jour = joursByDate.get(date);
-        if (!jour) return false;
+        if (!jour) {
+          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: aucune ligne de trajet`);
+          continue;
+        }
         
         const hasDrivers = !!jour.conducteur_matin_id && !!jour.conducteur_soir_id;
         const hasVehicle = !!jour.immatriculation && jour.immatriculation.trim() !== "";
-        return hasDrivers && hasVehicle;
-      });
-      
-      if (!allDaysComplete) return false;
+        
+        if (!hasDrivers) {
+          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: conducteurs manquants`);
+        }
+        if (!hasVehicle) {
+          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: véhicule manquant`);
+        }
+      }
     }
     
-    return true;
+    return { ok: errors.length === 0, errors };
   };
 
   return (
