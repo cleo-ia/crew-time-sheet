@@ -15,6 +15,39 @@ const ABSENCE_TYPE_LABELS: Record<string, string> = {
   "ABS_INJ": "ABS INJ",
 };
 
+// Schéma de couleurs pastel par groupe de colonnes
+const COLOR_SCHEME = {
+  // Données contractuelles (A-M)
+  CONTRACTUAL_HEADER: "D3D3D3",     // Gris clair
+  CONTRACTUAL_EVEN: "F5F5F5",       // Gris très clair
+  CONTRACTUAL_ODD: "ECECEC",        // Gris clair alterné
+  
+  // Absences en heures (N-W)
+  ABSENCES_HEADER: "FED8B1",        // Orange pêche pastel
+  ABSENCES_EVEN: "FEF5E7",          // Orange très clair
+  ABSENCES_ODD: "FDEBD0",           // Orange pêche très clair alterné
+  
+  // Heures supplémentaires (X-Y)
+  OVERTIME_HEADER: "E8DAEF",        // Violet/lavande pastel
+  OVERTIME_EVEN: "F4ECF7",          // Violet très clair
+  OVERTIME_ODD: "EBDEF0",           // Violet clair alterné
+  
+  // Repas (Z)
+  MEALS_HEADER: "D5F4E6",           // Vert menthe pastel
+  MEALS_EVEN: "E8F8F5",             // Vert très clair
+  MEALS_ODD: "D5F4E6",              // Vert menthe clair
+  
+  // Trajets (AA-AU)
+  TRANSPORT_HEADER: "FCE4D6",       // Beige/crème pastel
+  TRANSPORT_EVEN: "FEF9E7",         // Beige très clair
+  TRANSPORT_ODD: "FCF3CF",          // Crème clair alterné
+  
+  // Colonnes administratives (AV+)
+  ADMIN_HEADER: "E8F8F5",           // Bleu aqua très clair
+  ADMIN_EVEN: "EBF5FB",             // Bleu très clair
+  ADMIN_ODD: "D6EAF8",              // Bleu clair alterné
+};
+
 /**
  * Calcule les heures d'absence par type pour un employé
  */
@@ -286,9 +319,18 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
       if (!ws[cellAddress]) continue;
 
+      // Déterminer la couleur selon le groupe de colonnes
+      let bgColor = "E0E0E0";
+      if (col >= 0 && col <= 12) bgColor = COLOR_SCHEME.CONTRACTUAL_HEADER;
+      else if (col >= 13 && col <= 22) bgColor = COLOR_SCHEME.ABSENCES_HEADER;
+      else if (col >= 23 && col <= 24) bgColor = COLOR_SCHEME.OVERTIME_HEADER;
+      else if (col === 25) bgColor = COLOR_SCHEME.MEALS_HEADER;
+      else if (col >= 26 && col <= 46) bgColor = COLOR_SCHEME.TRANSPORT_HEADER;
+      else if (col >= 47) bgColor = COLOR_SCHEME.ADMIN_HEADER;
+
       ws[cellAddress].s = {
-        font: { bold: true, sz: 9 },
-        fill: { fgColor: { rgb: "E0E0E0" } },
+        font: { bold: true, sz: 9, color: { rgb: "000000" } },
+        fill: { fgColor: { rgb: bgColor } },
         alignment: { horizontal: "center", vertical: "center", wrapText: true },
         border: {
           top: { style: "thin", color: { rgb: "000000" } },
@@ -306,11 +348,32 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   for (let row = dataStartRow; row <= dataEndRow; row++) {
     const isEven = (row - dataStartRow) % 2 === 0;
-    const bgColor = isEven ? "FFFFFF" : "F9F9F9";
 
     for (let col = 0; col < totalCols; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
       if (!ws[cellAddress]) continue;
+
+      // Déterminer la couleur selon le groupe de colonnes
+      let bgColor = isEven ? "FFFFFF" : "F9F9F9";
+      if (col >= 0 && col <= 12) {
+        // Données contractuelles : légère teinte grise
+        bgColor = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
+      } else if (col >= 13 && col <= 22) {
+        // Absences : orange pêche très clair
+        bgColor = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD;
+      } else if (col >= 23 && col <= 24) {
+        // Heures supp : violet très clair
+        bgColor = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD;
+      } else if (col === 25) {
+        // Repas : vert très clair
+        bgColor = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD;
+      } else if (col >= 26 && col <= 46) {
+        // Trajets : beige très clair
+        bgColor = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
+      } else if (col >= 47) {
+        // Admin : bleu très clair
+        bgColor = isEven ? COLOR_SCHEME.ADMIN_EVEN : COLOR_SCHEME.ADMIN_ODD;
+      }
 
       ws[cellAddress].s = {
         fill: { fgColor: { rgb: bgColor } },
@@ -346,6 +409,15 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   for (let i = dataStartRow; i <= dataEndRow + 3; i++) {
     if (!ws["!rows"][i]) ws["!rows"][i] = { hpt: 18 };
   }
+
+  // Figer les 3 premières colonnes (Matricule, Nom, Prénom) et les 4 premières lignes (en-têtes)
+  ws["!freeze"] = { 
+    xSplit: 3,  // Figer les 3 premières colonnes (A, B, C)
+    ySplit: 4,  // Figer les 4 premières lignes (titre + vide + 2 lignes d'en-têtes)
+    topLeftCell: "D5",  // La cellule en haut à gauche de la zone scrollable
+    activePane: "bottomRight",
+    state: "frozen"
+  };
 
   // Ajouter la feuille au classeur
   XLSX.utils.book_append_sheet(wb, ws, "Synthèse mensuelle");
