@@ -134,9 +134,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 <TableHead className="text-center">Panier</TableHead>
                 <TableHead className="text-center">Trajet</TableHead>
                 <TableHead className="text-center">Trajet Perso</TableHead>
-                <TableHead className="text-center">🚗 Cond. Matin</TableHead>
-                <TableHead className="text-center">🚗 Cond. Soir</TableHead>
-                <TableHead className="text-center">🚙 Véhicule</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,15 +249,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         }
                       }}
                     />
-                  </TableCell>
-                  <TableCell className="text-center text-sm">
-                    {(day as any).transport?.conducteurMatin || <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className="text-center text-sm">
-                    {(day as any).transport?.conducteurSoir || <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className="text-center text-sm font-mono">
-                    {(day as any).transport?.immatriculation || <span className="text-muted-foreground">-</span>}
                   </TableCell>
                 </TableRow>
               ))}
