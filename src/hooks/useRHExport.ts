@@ -38,6 +38,7 @@ export interface RHExportEmployee {
     panier: boolean;
     trajet: number;
     trajetPerso: boolean;
+    typeAbsence?: string;
   }>;
 }
 
@@ -93,6 +94,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       panier: jour.panier,
       trajet: jour.trajet,
       trajetPerso: jour.trajetPerso,
+      typeAbsence: jour.typeAbsence,
     })),
   }));
 

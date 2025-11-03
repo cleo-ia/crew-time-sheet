@@ -21,6 +21,7 @@ export interface EmployeeDetail {
   panier: boolean;
   trajet: number;
   trajetPerso: boolean;
+  typeAbsence?: string;
 }
 
 export interface EmployeeWithDetails {
@@ -200,7 +201,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les jours de toutes les fiches
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, T, trajet_perso, heures, code_chantier_du_jour, ville_du_jour")
+    .select("fiche_id, date, HNORM, HI, PA, T, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence")
     .in("fiche_id", ficheIds);
 
   if (joursError) throw joursError;
@@ -319,6 +320,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           panier,
           trajet,
           trajetPerso: jour.trajet_perso === true,
+          typeAbsence: (jour as any).type_absence || null,
         });
       }
     }

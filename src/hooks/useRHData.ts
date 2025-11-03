@@ -249,6 +249,7 @@ export interface RHFicheDetailData {
     panier: boolean;
     trajet: number;
     trajetPerso: boolean;
+    typeAbsence?: string;
   }>;
   recapSalaries: Array<{
     id: string;
@@ -352,6 +353,7 @@ export const useRHFicheDetail = (ficheId: string) => {
           panier: jour.PA || false,
           trajet: Number(jour.T) || 0,
           trajetPerso: jour.trajet_perso === true,
+          typeAbsence: (jour as any).type_absence || null,
         };
       }).sort((a, b) => {
         // 1. Trier d'abord par date ISO (ordre chronologique garanti)
@@ -388,6 +390,7 @@ export const useRHFicheDetail = (ficheId: string) => {
         panier: item.panier,
         trajet: item.trajet,
         trajetPerso: item.trajetPerso,
+        typeAbsence: item.typeAbsence,
       })) || [];
 
       // 5. Calculer le récapitulatif par salarié
@@ -620,6 +623,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           panier: !!jour.PA,
           trajet: Number(jour.T) || 0,
           trajetPerso: !!(jour as any).trajet_perso,
+          typeAbsence: (jour as any).type_absence || null,
         };
       }) || [])
         .sort((a, b) => {

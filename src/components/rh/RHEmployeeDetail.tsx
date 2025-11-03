@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { EditableCell } from "@/components/rh/EditableCell";
+import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
 
 interface RHEmployeeDetailProps {
@@ -131,6 +132,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 <TableHead className="font-semibold">Chantier</TableHead>
                 <TableHead className="text-center">H. Normales</TableHead>
                 <TableHead className="text-center">Intempéries</TableHead>
+                <TableHead className="font-semibold">Type d'absence</TableHead>
                 <TableHead className="text-center">Panier</TableHead>
                 <TableHead className="text-center">Trajet</TableHead>
                 <TableHead className="text-center">Trajet Perso</TableHead>
@@ -180,6 +182,19 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <EditableAbsenceTypeCell
+                      value={(day as any).typeAbsence || null}
+                      heuresAbsence={day.heuresIntemperies}
+                      onSave={async (newValue) => {
+                        await updateFicheJour.mutateAsync({
+                          ficheJourId: day.ficheJourId,
+                          field: "type_absence",
+                          value: newValue,
+                        });
+                      }}
+                    />
                   </TableCell>
                   <TableCell className="text-center">
                     <EditableCell

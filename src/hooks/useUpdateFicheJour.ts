@@ -4,8 +4,8 @@ import { toast } from "sonner";
 
 interface UpdateFicheJourParams {
   ficheJourId: string;
-  field: "HNORM" | "HI" | "T" | "PA" | "trajet_perso";
-  value: number | boolean;
+  field: "HNORM" | "HI" | "T" | "PA" | "trajet_perso" | "type_absence";
+  value: number | boolean | string;
 }
 
 export const useUpdateFicheJour = () => {

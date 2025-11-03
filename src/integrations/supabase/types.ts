@@ -359,6 +359,7 @@ export type Database = {
           T: number | null
           total_jour: number | null
           trajet_perso: boolean | null
+          type_absence: Database["public"]["Enums"]["type_absence"] | null
           updated_at: string
           ville_du_jour: string | null
         }
@@ -378,6 +379,7 @@ export type Database = {
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null
+          type_absence?: Database["public"]["Enums"]["type_absence"] | null
           updated_at?: string
           ville_du_jour?: string | null
         }
@@ -397,6 +399,7 @@ export type Database = {
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null
+          type_absence?: Database["public"]["Enums"]["type_absence"] | null
           updated_at?: string
           ville_du_jour?: string | null
         }
@@ -1165,6 +1168,16 @@ export type Database = {
         | "VALIDE_CONDUCTEUR"
         | "ENVOYE_RH"
         | "AUTO_VALIDE"
+      type_absence:
+        | "CP"
+        | "RTT"
+        | "AM"
+        | "MP"
+        | "AT"
+        | "CONGE_PARENTAL"
+        | "HI"
+        | "CPSS"
+        | "ABS_INJ"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1301,6 +1314,17 @@ export const Constants = {
         "VALIDE_CONDUCTEUR",
         "ENVOYE_RH",
         "AUTO_VALIDE",
+      ],
+      type_absence: [
+        "CP",
+        "RTT",
+        "AM",
+        "MP",
+        "AT",
+        "CONGE_PARENTAL",
+        "HI",
+        "CPSS",
+        "ABS_INJ",
       ],
     },
   },

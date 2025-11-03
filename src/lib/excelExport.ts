@@ -3,6 +3,50 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RHExportEmployee } from "@/hooks/useRHExport";
 
+const ABSENCE_TYPE_LABELS: Record<string, string> = {
+  "CP": "Congés payés (CP)",
+  "RTT": "RTT",
+  "AM": "Absence maladie (AM)",
+  "MP": "Maladie professionnelle (MP)",
+  "AT": "Accident du travail (AT)",
+  "CONGE_PARENTAL": "Congé parental",
+  "HI": "Intempéries (HI)",
+  "CPSS": "CPSS",
+  "ABS_INJ": "Absence injustifiée (ABS INJ)",
+};
+
+/**
+ * Retourne le libellé des types d'absence pour un employé
+ * - Si plusieurs types différents, retourne "Multiple"
+ * - Si un seul type, retourne son libellé complet
+ * - Si HI > 0 mais pas de type qualifié, retourne "Intempéries (HI)" par défaut
+ */
+const getAbsenceTypeLabel = (emp: RHExportEmployee): string => {
+  if (!emp.detailJours || emp.detailJours.length === 0) {
+    return emp.intemperies > 0 ? "Intempéries (HI)" : "-";
+  }
+
+  // Collecter tous les types d'absence uniques (jours avec intemperies > 0)
+  const typesUniques = new Set<string>();
+  emp.detailJours.forEach(jour => {
+    if (jour.intemperie > 0 && jour.typeAbsence) {
+      typesUniques.add(jour.typeAbsence);
+    }
+  });
+
+  if (typesUniques.size === 0) {
+    // Pas de type qualifié mais des intempéries
+    return emp.intemperies > 0 ? "Intempéries (HI)" : "-";
+  } else if (typesUniques.size === 1) {
+    // Un seul type d'absence
+    const type = Array.from(typesUniques)[0];
+    return ABSENCE_TYPE_LABELS[type] || type;
+  } else {
+    // Plusieurs types différents
+    return "Multiple";
+  }
+};
+
 /**
  * Génère et télécharge un fichier Excel avec les données RH
  */
@@ -45,7 +89,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     "Indemnités trajet",
     "Indemnités trajet perso",
     "Prime ancienneté",
-    "Intempéries (jours)",
+    "Type d'absence",
     "Total heures",
     "Statut fiche",
   ]);
@@ -83,7 +127,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
       emp.indemnitesTrajet,
       emp.indemnitesTrajetPerso,
       emp.primeAnciennete,
-      emp.intemperies,
+      getAbsenceTypeLabel(emp), // Type d'absence qualifié ou par défaut
       emp.totalHeures,
       emp.statut_fiche,
     ]);
@@ -338,6 +382,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     "Ville",
     "Heures",
     "H. Intempérie",
+    "Type d'absence",
     "Panier",
     "Trajet",
     "Trajet Perso",
@@ -347,6 +392,10 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   data.forEach(emp => {
     if (emp.detailJours && emp.detailJours.length > 0) {
       emp.detailJours.forEach(jour => {
+        const typeAbsence = jour.intemperie > 0 
+          ? (jour.typeAbsence ? ABSENCE_TYPE_LABELS[jour.typeAbsence] || jour.typeAbsence : "À qualifier")
+          : "-";
+        
         detailData.push([
           jour.date,
           emp.nom,
@@ -356,6 +405,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
           jour.chantierVille || "-",
           jour.heures,
           jour.intemperie,
+          typeAbsence,
           jour.panier ? "Oui" : "Non",
           jour.trajet,
           jour.trajetPerso ? "Oui" : "Non",
@@ -377,6 +427,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     { wch: 20 }, // Ville
     { wch: 12 }, // Heures
     { wch: 15 }, // Intempérie
+    { wch: 25 }, // Type d'absence
     { wch: 10 }, // Panier
     { wch: 10 }, // Trajet
     { wch: 12 }, // Trajet Perso
@@ -384,9 +435,9 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Fusionner l'en-tête
   wsDetail["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 10 } },
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } },
   ];
 
   // Styles de l'en-tête
@@ -415,7 +466,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   }
 
   // Style des en-têtes de colonnes (ligne 5)
-  const detailHeaderCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5"];
+  const detailHeaderCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5", "L5"];
   detailHeaderCells.forEach((cell) => {
     if (wsDetail[cell]) {
       wsDetail[cell].s = {
@@ -440,7 +491,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     const isEven = (row - detailDataStartRow) % 2 === 0;
     const bgColor = isEven ? "FFFFFF" : "F5F5F5";
 
-    for (let col = 0; col <= 10; col++) {
+    for (let col = 0; col <= 11; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
       if (!wsDetail[cellAddress]) continue;
 
@@ -459,10 +510,10 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
       if (col === 6 || col === 7) { // Heures, Intempérie
         wsDetail[cellAddress].z = "0.00";
         wsDetail[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      } else if (col === 9) { // Trajet
+      } else if (col === 10) { // Trajet
         wsDetail[cellAddress].z = "0";
         wsDetail[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      } else if (col === 8 || col === 10) { // Panier, Trajet Perso (centrer le texte)
+      } else if (col === 8 || col === 9 || col === 11) { // Type absence, Panier, Trajet Perso (centrer le texte)
         wsDetail[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
       }
     }
@@ -470,7 +521,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Filtres automatiques
   wsDetail["!autofilter"] = {
-    ref: `A5:K${detailDataEndRow + 1}`,
+    ref: `A5:L${detailDataEndRow + 1}`,
   };
 
   // Ajouter la feuille détail au classeur
