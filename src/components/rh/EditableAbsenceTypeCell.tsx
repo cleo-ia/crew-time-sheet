@@ -72,14 +72,12 @@ export const EditableAbsenceTypeCell = ({
               break;
             }
             
-            // Propager uniquement si le jour est "À qualifier"
-            if (!nextDay.typeAbsence || nextDay.typeAbsence === "A_QUALIFIER") {
-              await updateFicheJour.mutateAsync({
-                ficheJourId: nextDay.ficheJourId,
-                field: "type_absence",
-                value: newValue,
-              });
-            }
+            // Propager systématiquement (écraser si nécessaire)
+            await updateFicheJour.mutateAsync({
+              ficheJourId: nextDay.ficheJourId,
+              field: "type_absence",
+              value: newValue,
+            });
           }
         }
       }
