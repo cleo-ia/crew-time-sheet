@@ -326,6 +326,7 @@ const SignatureFinisseurs = () => {
                       <TableHead className="text-center py-2 px-3 font-semibold">Paniers</TableHead>
                       <TableHead className="text-center py-2 px-3 font-semibold">Trajets</TableHead>
                       <TableHead className="text-center py-2 px-3 font-semibold">Trajets perso</TableHead>
+                      <TableHead className="text-center py-2 px-3 font-semibold">Absences</TableHead>
                       <TableHead className="text-center py-2 px-3 font-semibold">Intempéries</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -339,6 +340,12 @@ const SignatureFinisseurs = () => {
                       // Calculer les trajets personnels et d'entreprise
                       const countTrajetPerso = transportData?.days?.filter((day: any) => day.trajet_perso === true).length || 0;
                       const countTrajetsEntreprise = transportData?.days?.filter((day: any) => !day.trajet_perso && day.immatriculation).length || 0;
+                      
+                      // Calculer les absences (jours affectés avec HNORM=0 et pas trajet perso)
+                      const countAbsences = finisseur.ficheJours?.filter(jour => {
+                        const isAffected = finisseur.affectedDays?.some(a => a.date === jour.date);
+                        return isAffected && jour.HNORM === 0 && !jour.trajet_perso;
+                      }).length || 0;
                       
                       return (
                         <Fragment key={finisseur.id}>
@@ -371,6 +378,9 @@ const SignatureFinisseurs = () => {
                               {countTrajetPerso > 0 ? countTrajetPerso : "-"}
                             </TableCell>
                             <TableCell className="text-center py-2 px-3">
+                              {countAbsences > 0 ? countAbsences : "-"}
+                            </TableCell>
+                            <TableCell className="text-center py-2 px-3">
                               {stats.intemperie}h
                             </TableCell>
                           </TableRow>
@@ -378,35 +388,43 @@ const SignatureFinisseurs = () => {
                           {/* Ligne dépliable : détail des trajets */}
                           {isExpanded && (
                             <TableRow className="border-b border-border/30">
-                              <TableCell colSpan={5} className="py-3 px-6 bg-muted/30">
+                              <TableCell colSpan={7} className="py-3 px-6 bg-muted/30">
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-2">
                                     <Truck className="h-4 w-4" />
                                     Détail des trajets
                                   </div>
                                   
-                                  {hasTransportData ? (
+                                  {hasTransportData || finisseur.ficheJours ? (
                                     <div className="grid grid-cols-1 gap-1.5 text-sm">
-                                      {transportData.days.map((day: any) => {
-                                        const isTrajetPerso = day.trajet_perso === true;
-                                        const hasImmat = day.immatriculation && day.immatriculation.trim() !== "";
+                                      {finisseur.affectedDays?.map((affectedDay) => {
+                                        const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectedDay.date);
+                                        const transportDay = transportData?.days?.find((d: any) => d.date === affectedDay.date);
+                                        
+                                        const isAbsent = ficheJour && ficheJour.HNORM === 0 && !ficheJour.trajet_perso;
+                                        const isTrajetPerso = ficheJour?.trajet_perso === true;
+                                        const hasImmat = transportDay?.immatriculation && transportDay.immatriculation.trim() !== "";
                                         
                                         return (
                                           <div 
-                                            key={day.date}
+                                            key={affectedDay.date}
                                             className="flex items-center gap-3 py-1.5 px-3 bg-background rounded border border-border/30"
                                           >
                                             <span className="font-medium capitalize min-w-[100px]">
-                                              {format(new Date(day.date), "EEE dd/MM", { locale: fr })}
+                                              {format(new Date(affectedDay.date), "EEE dd/MM", { locale: fr })}
                                             </span>
                                             
-                                            {isTrajetPerso ? (
+                                            {isAbsent ? (
+                                              <span className="flex items-center gap-1.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-medium">
+                                                🚫 ABSENT
+                                              </span>
+                                            ) : isTrajetPerso ? (
                                               <span className="flex items-center gap-1.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-medium">
                                                 🚗 Véhicule personnel
                                               </span>
                                             ) : hasImmat ? (
                                               <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
-                                                {day.immatriculation}
+                                                {transportDay.immatriculation}
                                               </span>
                                             ) : (
                                               <span className="text-xs text-muted-foreground italic px-2 py-0.5">
@@ -419,7 +437,7 @@ const SignatureFinisseurs = () => {
                                     </div>
                                   ) : (
                                     <p className="text-sm text-muted-foreground italic py-2">
-                                      Aucune fiche de trajet enregistrée
+                                      Aucune donnée disponible
                                     </p>
                                   )}
                                 </div>
