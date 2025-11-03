@@ -11,6 +11,18 @@ export interface Utilisateur {
   role?: string;
   agence_interim?: string | null;
   role_metier?: 'macon' | 'finisseur' | null;
+  
+  // Champs contractuels
+  matricule?: string | null;
+  echelon?: string | null;
+  niveau?: string | null;
+  degre?: string | null;
+  statut?: string | null;
+  type_contrat?: string | null;
+  horaire?: string | null;
+  heures_supp_mensualisees?: number | null;
+  forfait_jours?: boolean | null;
+  salaire?: number | null;
 }
 
 // Get users with a specific role

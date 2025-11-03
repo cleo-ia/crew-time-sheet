@@ -43,6 +43,18 @@ export interface EmployeeWithDetails {
   statut: string;
   anomalies?: string[];
   detailJours: EmployeeDetail[];
+  
+  // Champs contractuels
+  matricule?: string | null;
+  echelon?: string | null;
+  niveau?: string | null;
+  degre?: string | null;
+  statut_employe?: string | null;
+  type_contrat?: string | null;
+  horaire?: string | null;
+  heures_supp_mensualisees?: number | null;
+  forfait_jours?: boolean | null;
+  salaire?: number | null;
 }
 
 /**
@@ -141,7 +153,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   
   const { data: salarieData, error: salarieError } = await supabase
     .from("utilisateurs")
-    .select("id, nom, prenom, agence_interim, role_metier")
+    .select("id, nom, prenom, agence_interim, role_metier, matricule, echelon, niveau, degre, statut, type_contrat, horaire, heures_supp_mensualisees, forfait_jours, salaire")
     .in("id", salarieIds);
 
   if (salarieError) throw salarieError;
@@ -347,6 +359,18 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         totalHeures: Math.round(totalHeures * 100) / 100,
         statut: fiches.every(f => f.statut === "AUTO_VALIDE") ? "Validé" : "Partiel",
         detailJours,
+        
+        // Champs contractuels
+        matricule: salarie.matricule || null,
+        echelon: salarie.echelon || null,
+        niveau: salarie.niveau || null,
+        degre: salarie.degre || null,
+        statut_employe: salarie.statut || null,
+        type_contrat: salarie.type_contrat || null,
+        horaire: salarie.horaire || null,
+        heures_supp_mensualisees: salarie.heures_supp_mensualisees || null,
+        forfait_jours: salarie.forfait_jours || null,
+        salaire: salarie.salaire || null,
       });
     }
   }

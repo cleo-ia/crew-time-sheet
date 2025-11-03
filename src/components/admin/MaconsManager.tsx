@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Mail, Building2, UserCog } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +28,16 @@ export const MaconsManager = () => {
     nom: "",
     prenom: "",
     email: "",
+    matricule: "",
+    echelon: "",
+    niveau: "",
+    degre: "",
+    statut: "",
+    type_contrat: "",
+    horaire: "",
+    heures_supp_mensualisees: 0,
+    forfait_jours: false,
+    salaire: 0,
   });
 
   const { data: macons = [], isLoading } = useUtilisateursByRole("macon");
@@ -52,7 +64,21 @@ export const MaconsManager = () => {
     }
     setShowDialog(false);
     setEditingMacon(null);
-    setFormData({ nom: "", prenom: "", email: "" });
+    setFormData({ 
+      nom: "", 
+      prenom: "", 
+      email: "",
+      matricule: "",
+      echelon: "",
+      niveau: "",
+      degre: "",
+      statut: "",
+      type_contrat: "",
+      horaire: "",
+      heures_supp_mensualisees: 0,
+      forfait_jours: false,
+      salaire: 0,
+    });
   };
 
   const handleEdit = (macon: any) => {
@@ -61,6 +87,16 @@ export const MaconsManager = () => {
       nom: macon.nom,
       prenom: macon.prenom,
       email: macon.email || "",
+      matricule: macon.matricule || "",
+      echelon: macon.echelon || "",
+      niveau: macon.niveau || "",
+      degre: macon.degre || "",
+      statut: macon.statut || "",
+      type_contrat: macon.type_contrat || "",
+      horaire: macon.horaire || "",
+      heures_supp_mensualisees: macon.heures_supp_mensualisees || 0,
+      forfait_jours: macon.forfait_jours || false,
+      salaire: macon.salaire || 0,
     });
     setShowDialog(true);
   };
@@ -220,6 +256,124 @@ export const MaconsManager = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Matricule</Label>
+              <Input
+                placeholder="Ex: M001"
+                value={formData.matricule}
+                onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
+              />
+            </div>
+
+            <Separator className="my-4" />
+            <h3 className="text-sm font-semibold mb-3">Informations contractuelles</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Échelon</Label>
+                <Input
+                  placeholder="Ex: A, B, C..."
+                  value={formData.echelon}
+                  onChange={(e) => setFormData({ ...formData, echelon: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Niveau</Label>
+                <Input
+                  placeholder="Ex: I, II, III..."
+                  value={formData.niveau}
+                  onChange={(e) => setFormData({ ...formData, niveau: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Degré</Label>
+                <Input
+                  placeholder="Ex: 1, 2, 3..."
+                  value={formData.degre}
+                  onChange={(e) => setFormData({ ...formData, degre: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Statut</Label>
+                <Select value={formData.statut} onValueChange={(value) => setFormData({ ...formData, statut: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ETAM">ETAM</SelectItem>
+                    <SelectItem value="Ouvrier">Ouvrier</SelectItem>
+                    <SelectItem value="Cadre">Cadre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+            <h3 className="text-sm font-semibold mb-3">Contrat de travail</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Type de contrat</Label>
+                <Select value={formData.type_contrat} onValueChange={(value) => setFormData({ ...formData, type_contrat: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CDI">CDI</SelectItem>
+                    <SelectItem value="CDD">CDD</SelectItem>
+                    <SelectItem value="Intérim">Intérim</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Horaire</Label>
+                <Select value={formData.horaire} onValueChange={(value) => setFormData({ ...formData, horaire: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Horaire">Horaire</SelectItem>
+                    <SelectItem value="Forfait jours">Forfait jours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Heures supp mensualisées</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.heures_supp_mensualisees}
+                  onChange={(e) => setFormData({ ...formData, heures_supp_mensualisees: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Salaire (€)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.salaire}
+                  onChange={(e) => setFormData({ ...formData, salaire: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="forfait_jours"
+                checked={formData.forfait_jours}
+                onCheckedChange={(checked) => setFormData({ ...formData, forfait_jours: checked === true })}
+              />
+              <Label htmlFor="forfait_jours">Forfait jours</Label>
             </div>
           </div>
 

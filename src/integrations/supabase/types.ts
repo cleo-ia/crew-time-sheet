@@ -915,33 +915,63 @@ export type Database = {
           agence_interim: string | null
           auth_user_id: string | null
           created_at: string
+          degre: string | null
+          echelon: string | null
           email: string | null
+          forfait_jours: boolean | null
+          heures_supp_mensualisees: number | null
+          horaire: string | null
           id: string
+          matricule: string | null
+          niveau: string | null
           nom: string | null
           prenom: string | null
           role_metier: Database["public"]["Enums"]["role_metier_type"] | null
+          salaire: number | null
+          statut: string | null
+          type_contrat: string | null
           updated_at: string
         }
         Insert: {
           agence_interim?: string | null
           auth_user_id?: string | null
           created_at?: string
+          degre?: string | null
+          echelon?: string | null
           email?: string | null
+          forfait_jours?: boolean | null
+          heures_supp_mensualisees?: number | null
+          horaire?: string | null
           id: string
+          matricule?: string | null
+          niveau?: string | null
           nom?: string | null
           prenom?: string | null
           role_metier?: Database["public"]["Enums"]["role_metier_type"] | null
+          salaire?: number | null
+          statut?: string | null
+          type_contrat?: string | null
           updated_at?: string
         }
         Update: {
           agence_interim?: string | null
           auth_user_id?: string | null
           created_at?: string
+          degre?: string | null
+          echelon?: string | null
           email?: string | null
+          forfait_jours?: boolean | null
+          heures_supp_mensualisees?: number | null
+          horaire?: string | null
           id?: string
+          matricule?: string | null
+          niveau?: string | null
           nom?: string | null
           prenom?: string | null
           role_metier?: Database["public"]["Enums"]["role_metier_type"] | null
+          salaire?: number | null
+          statut?: string | null
+          type_contrat?: string | null
           updated_at?: string
         }
         Relationships: []

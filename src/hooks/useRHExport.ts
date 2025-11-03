@@ -1,8 +1,22 @@
 import { buildRHConsolidation, RHFilters } from "./rhShared";
 
 export interface RHExportEmployee {
+  // Données contractuelles
+  matricule: string;
   nom: string;
   prenom: string;
+  libelle_emploi: string;
+  echelon: string;
+  niveau: string;
+  degre: string;
+  statut: string;
+  type_contrat: string;
+  horaire: string;
+  heures_supp_mensualisees: number;
+  forfait_jours: boolean;
+  salaire: number;
+  
+  // Données MDE (existantes)
   metier: string;
   agence_interim: string | null;
   heuresNormales: number;
@@ -14,7 +28,7 @@ export interface RHExportEmployee {
   primeAnciennete: number;
   intemperies: number;
   totalHeures: number;
-  statut: string;
+  statut_fiche: string;
   detailJours?: Array<{
     date: string;
     chantierCode: string;
@@ -42,8 +56,22 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
 
   // Convertir vers le format RHExportEmployee
   const result: RHExportEmployee[] = consolidatedData.map(emp => ({
+    // Données contractuelles
+    matricule: emp.matricule || "",
     nom: emp.nom,
     prenom: emp.prenom,
+    libelle_emploi: emp.metier,
+    echelon: emp.echelon || "",
+    niveau: emp.niveau || "",
+    degre: emp.degre || "",
+    statut: emp.statut_employe || "",
+    type_contrat: emp.type_contrat || "",
+    horaire: emp.horaire || "",
+    heures_supp_mensualisees: emp.heures_supp_mensualisees || 0,
+    forfait_jours: emp.forfait_jours || false,
+    salaire: emp.salaire || 0,
+    
+    // Données MDE
     metier: emp.metier,
     agence_interim: emp.agence_interim,
     heuresNormales: emp.heuresNormales,
@@ -55,7 +83,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     primeAnciennete: 0,
     intemperies: emp.intemperies,
     totalHeures: emp.totalHeures,
-    statut: emp.statut,
+    statut_fiche: emp.statut,
     detailJours: emp.detailJours.map(jour => ({
       date: jour.date,
       chantierCode: jour.chantierCode,

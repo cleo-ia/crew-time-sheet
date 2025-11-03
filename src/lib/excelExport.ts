@@ -25,10 +25,19 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // En-têtes des colonnes (ligne 5)
   worksheetData.push([
+    "Matricule",
     "Nom",
     "Prénom",
-    "Métier",
-    "Agence intérim",
+    "Libellé emploi",
+    "Échelon",
+    "Niveau",
+    "Degré",
+    "Statut",
+    "Type contrat",
+    "Horaire",
+    "H supp mensualisées",
+    "Forfait jours",
+    "Salaire de base",
     "Heures normales",
     "Heures supp.",
     "Absences (jours)",
@@ -38,7 +47,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     "Prime ancienneté",
     "Intempéries (jours)",
     "Total heures",
-    "Statut",
+    "Statut fiche",
   ]);
 
   // Lignes de données
@@ -54,10 +63,19 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   data.forEach((emp) => {
     worksheetData.push([
+      emp.matricule,
       emp.nom,
       emp.prenom,
-      emp.metier,
-      emp.agence_interim || "",
+      emp.libelle_emploi,
+      emp.echelon,
+      emp.niveau,
+      emp.degre,
+      emp.statut,
+      emp.type_contrat,
+      emp.horaire,
+      emp.heures_supp_mensualisees,
+      emp.forfait_jours ? "Oui" : "Non",
+      emp.salaire,
       emp.heuresNormales,
       emp.heuresSupp,
       emp.absences,
@@ -67,7 +85,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
       emp.primeAnciennete,
       emp.intemperies,
       emp.totalHeures,
-      emp.statut,
+      emp.statut_fiche,
     ]);
 
     // Cumul des totaux
@@ -88,6 +106,15 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     "",
     "",
     "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
     Math.round(totalHeuresNormales * 100) / 100,
     Math.round(totalHeuresSupp * 100) / 100,
     totalAbsences,
@@ -105,10 +132,19 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Définir les largeurs des colonnes
   ws["!cols"] = [
+    { wch: 12 }, // Matricule
     { wch: 20 }, // Nom
     { wch: 20 }, // Prénom
-    { wch: 15 }, // Métier
-    { wch: 20 }, // Agence
+    { wch: 15 }, // Libellé emploi
+    { wch: 10 }, // Échelon
+    { wch: 10 }, // Niveau
+    { wch: 10 }, // Degré
+    { wch: 12 }, // Statut
+    { wch: 15 }, // Type contrat
+    { wch: 15 }, // Horaire
+    { wch: 18 }, // H supp mensualisées
+    { wch: 15 }, // Forfait jours
+    { wch: 15 }, // Salaire de base
     { wch: 15 }, // Heures normales
     { wch: 15 }, // Heures supp
     { wch: 18 }, // Absences
@@ -118,16 +154,16 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     { wch: 18 }, // Prime ancienneté
     { wch: 20 }, // Intempéries
     { wch: 15 }, // Total heures
-    { wch: 12 }, // Statut
+    { wch: 12 }, // Statut fiche
   ];
 
   // === STYLES NIVEAU 1 & 2 ===
 
   // Fusionner les cellules de l'en-tête (lignes 1-3)
   ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 13 } }, // Ligne 1
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 13 } }, // Ligne 2
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 13 } }, // Ligne 3
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 22 } }, // Ligne 1
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 22 } }, // Ligne 2
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 22 } }, // Ligne 3
   ];
 
   // Style pour l'en-tête principal (ligne 1)
@@ -159,7 +195,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Style pour les en-têtes de colonnes (ligne 5)
   const headerRow = 4; // Index 4 = ligne 5
-  const headerCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5", "L5", "M5", "N5"];
+  const headerCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5", "L5", "M5", "N5", "O5", "P5", "Q5", "R5", "S5", "T5", "U5", "V5", "W5"];
   headerCells.forEach((cell) => {
     if (ws[cell]) {
       ws[cell].s = {
@@ -179,15 +215,15 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   // Lignes de données (alternées) et colonnes numériques
   const dataStartRow = 5; // Index 5 = ligne 6
   const dataEndRow = worksheetData.length - 2; // Avant la ligne TOTAL
-  const numericCols = [4, 5, 8, 12]; // E, F, I, M (heures normales, supp, trajet, total)
-  const integerCols = [6, 7, 9, 10, 11]; // G, H, J, K, L (absences, repas, trajet perso, prime, intempéries)
-  const statusCol = 13; // Colonne N (Statut)
+  const numericCols = [10, 12, 13, 14, 17, 21]; // K, M, N, O, R, V (H supp mens., Salaire, Heures normales, supp, trajet, total)
+  const integerCols = [15, 16, 18, 19, 20]; // P, Q, S, T, U (absences, repas, trajet perso, prime, intempéries)
+  const statusCol = 22; // Colonne W (Statut fiche)
 
   for (let row = dataStartRow; row <= dataEndRow; row++) {
     const isEven = (row - dataStartRow) % 2 === 0;
     const bgColor = isEven ? "FFFFFF" : "F5F5F5";
 
-    for (let col = 0; col <= 13; col++) {
+    for (let col = 0; col <= 22; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
       if (!ws[cellAddress]) continue;
 
@@ -231,7 +267,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Style pour la ligne TOTAL
   const totalRow = worksheetData.length - 1;
-  for (let col = 0; col <= 13; col++) {
+  for (let col = 0; col <= 22; col++) {
     const cellAddress = XLSX.utils.encode_cell({ r: totalRow, c: col });
     if (!ws[cellAddress]) continue;
 
@@ -239,7 +275,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
       font: { bold: true, sz: 11 },
       fill: { fgColor: { rgb: "FFF9C4" } },
       alignment: {
-        horizontal: col === 0 ? "left" : col >= 4 && col !== 12 ? "right" : "left",
+        horizontal: col === 0 ? "left" : col >= 13 && col !== 21 ? "right" : "left",
         vertical: "center",
       },
       border: {
@@ -260,7 +296,7 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
 
   // Filtres automatiques
   ws["!autofilter"] = {
-    ref: `A5:N${dataEndRow + 1}`,
+    ref: `A5:W${dataEndRow + 1}`,
   };
 
   // Hauteur des lignes
