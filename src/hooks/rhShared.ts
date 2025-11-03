@@ -45,6 +45,7 @@ export interface EmployeeWithDetails {
   statut: string;
   anomalies?: string[];
   detailJours: EmployeeDetail[];
+  hasUnqualifiedAbsences: boolean; // True si au moins 1 absence sans type_absence
   
   // Champs contractuels
   matricule?: string | null;
@@ -347,6 +348,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       // Déterminer le role sans accent pour la UI
       const role = isChef ? "chef" : isFinisseur ? "finisseur" : isInterimaire ? "interimaire" : "macon";
 
+      // Détecter les absences non qualifiées
+      const hasUnqualifiedAbsences = detailJours.some(
+        jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
+      );
+
       employeeMap.set(salarieId, {
         salarieId,
         id: salarieId, // Alias pour UI
@@ -366,6 +372,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         totalHeures: Math.round(totalHeures * 100) / 100,
         statut: fiches.every(f => f.statut === "AUTO_VALIDE") ? "Validé" : "Partiel",
         detailJours,
+        hasUnqualifiedAbsences,
         
         // Champs contractuels
         matricule: salarie.matricule || null,

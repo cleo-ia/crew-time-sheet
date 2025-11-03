@@ -2,10 +2,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { Eye, AlertTriangle } from "lucide-react";
+import { Eye, AlertTriangle, AlertCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRHConsolidated } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RHConsolidatedProps {
   filters: any;
@@ -63,6 +64,25 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                     {emp.nom}
                     {emp.anomalies > 0 && (
                       <AlertTriangle className="h-4 w-4 text-warning" />
+                    )}
+                    {emp.hasUnqualifiedAbsences && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center">
+                              <Badge 
+                                variant="outline" 
+                                className="bg-orange-500/10 text-orange-600 border-orange-500/30 px-1.5 py-0.5 text-xs"
+                              >
+                                <AlertCircle className="h-3 w-3" />
+                              </Badge>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Absence(s) à qualifier</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 </TableCell>

@@ -27,6 +27,7 @@ export interface RHEmployee {
   statut: string;
   anomalies: number;
   chantier_codes: string[];
+  hasUnqualifiedAbsences: boolean;
 }
 
 export interface RHDetail {
@@ -112,6 +113,7 @@ export const useRHConsolidated = (filters: any) => {
         statut: emp.statut,
         anomalies: emp.anomalies?.length || 0,
         chantier_codes: emp.chantier_codes,
+        hasUnqualifiedAbsences: emp.hasUnqualifiedAbsences,
       }));
 
       console.log(`[RH Consolidated] ${result.length} salariés consolidés (source unique)`);
