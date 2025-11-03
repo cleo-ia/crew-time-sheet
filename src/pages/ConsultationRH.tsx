@@ -51,7 +51,7 @@ const ConsultationRH = () => {
         }
 
         // Générer et télécharger le fichier
-        const fileName = generateRHExcel(data, mois);
+        const fileName = await generateRHExcel(data, mois);
         toast.success(`Export Excel généré : ${fileName}`);
       } catch (error) {
         console.error("[Export Excel] Erreur:", error);
