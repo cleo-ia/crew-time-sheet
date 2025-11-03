@@ -4,50 +4,65 @@ import { fr } from "date-fns/locale";
 import { RHExportEmployee } from "@/hooks/useRHExport";
 
 const ABSENCE_TYPE_LABELS: Record<string, string> = {
-  "CP": "Congés payés (CP)",
+  "CP": "CP",
   "RTT": "RTT",
-  "AM": "Absence maladie (AM)",
-  "MP": "Maladie professionnelle (MP)",
-  "AT": "Accident du travail (AT)",
+  "AM": "AM",
+  "MP": "MP",
+  "AT": "AT",
   "CONGE_PARENTAL": "Congé parental",
-  "HI": "Intempéries (HI)",
+  "HI": "Intempéries",
   "CPSS": "CPSS",
-  "ABS_INJ": "Absence injustifiée (ABS INJ)",
+  "ABS_INJ": "ABS INJ",
 };
 
 /**
- * Retourne le libellé des types d'absence pour un employé
- * - Si plusieurs types différents, retourne "Multiple"
- * - Si un seul type, retourne son libellé complet
- * - Si pas de type qualifié mais absence, retourne "À qualifier"
+ * Calcule les heures d'absence par type pour un employé
  */
-const getAbsenceTypeLabel = (emp: RHExportEmployee): string => {
-  if (!emp.detailJours || emp.detailJours.length === 0) {
-    return "-";
+const calculateAbsencesByType = (emp: RHExportEmployee) => {
+  const absences: Record<string, number> = {
+    CP: 0,
+    RTT: 0,
+    AM: 0,
+    MP: 0,
+    AT: 0,
+    CONGE_PARENTAL: 0,
+    HI: 0,
+    CPSS: 0,
+    ABS_INJ: 0,
+  };
+
+  const dateRanges: Record<string, string[]> = {};
+
+  if (emp.detailJours) {
+    emp.detailJours.forEach(jour => {
+      if (jour.isAbsent && jour.typeAbsence) {
+        const type = jour.typeAbsence;
+        // Calculer les heures d'absence (7h par jour par défaut si pas d'heures normales)
+        const heuresAbsence = 7; // Convention : 1 jour absence = 7h
+        absences[type] = (absences[type] || 0) + heuresAbsence;
+        
+        // Collecter les dates pour afficher les plages
+        if (!dateRanges[type]) dateRanges[type] = [];
+        dateRanges[type].push(jour.date);
+      }
+    });
   }
 
-  // Collecter tous les types d'absence uniques (jours avec isAbsent = true)
-  const typesUniques = new Set<string>();
-  emp.detailJours.forEach(jour => {
-    if (jour.isAbsent && jour.typeAbsence) {
-      typesUniques.add(jour.typeAbsence);
+  // Générer le texte DATE (ex: "AM du 20 au 24/10/25")
+  let dateText = "";
+  Object.entries(dateRanges).forEach(([type, dates]) => {
+    if (dates.length > 0) {
+      const firstDate = dates[0];
+      const lastDate = dates[dates.length - 1];
+      if (dates.length === 1) {
+        dateText += `${ABSENCE_TYPE_LABELS[type]} le ${format(new Date(firstDate), "dd/MM/yy", { locale: fr })} `;
+      } else {
+        dateText += `${ABSENCE_TYPE_LABELS[type]} du ${format(new Date(firstDate), "dd/MM/yy", { locale: fr })} au ${format(new Date(lastDate), "dd/MM/yy", { locale: fr })} `;
+      }
     }
   });
 
-  // Vérifier s'il y a des absences non qualifiées
-  const hasAbsenceNonQualifiee = emp.detailJours.some(jour => jour.isAbsent && !jour.typeAbsence);
-
-  if (typesUniques.size === 0) {
-    // Pas de type qualifié
-    return hasAbsenceNonQualifiee ? "À qualifier" : "-";
-  } else if (typesUniques.size === 1 && !hasAbsenceNonQualifiee) {
-    // Un seul type d'absence et tout est qualifié
-    const type = Array.from(typesUniques)[0];
-    return ABSENCE_TYPE_LABELS[type] || type;
-  } else {
-    // Plusieurs types différents ou mix qualifié/non qualifié
-    return "Multiple";
-  }
+  return { absences, dateText: dateText.trim() };
 };
 
 /**
@@ -60,221 +75,243 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   // Préparer les données pour la feuille
   const worksheetData: any[][] = [];
 
-  // En-tête du document (lignes 1-3)
+  // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
   const dateObj = new Date(year, month - 1);
   const moisFormate = format(dateObj, "MMMM yyyy", { locale: fr });
 
-  worksheetData.push(["EXPORT RH - DONNÉES POUR PAIE"]);
-  worksheetData.push([`Période : ${moisFormate.charAt(0).toUpperCase() + moisFormate.slice(1)}`]);
-  worksheetData.push([`Généré le ${format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr })}`]);
-  worksheetData.push([]); // Ligne vide
+  // Ligne 1 : Dossier + DONNEES MDE
+  const headerRow1 = Array(60).fill("");
+  headerRow1[0] = "Dossier C093195 / LIMOGE REVILLON";
+  headerRow1[14] = "DONNEES MDE";
+  worksheetData.push(headerRow1);
+  
+  // Ligne 2 : vide
+  worksheetData.push(Array(60).fill(""));
 
-  // En-têtes des colonnes (ligne 5)
-  worksheetData.push([
-    "Matricule",
-    "Nom",
-    "Prénom",
-    "Libellé emploi",
-    "Échelon",
-    "Niveau",
-    "Degré",
-    "Statut",
-    "Type contrat",
-    "Horaire",
-    "H supp mensualisées",
-    "Forfait jours",
-    "Salaire de base",
-    "Heures normales",
-    "Heures supp.",
-    "Absences (jours)",
-    "Indemnités repas",
-    "Indemnités trajet",
-    "Indemnités trajet perso",
-    "Prime ancienneté",
-    "Type d'absence",
-    "Total heures",
-    "Statut fiche",
-  ]);
+  // Ligne 3 : En-têtes principaux des groupes
+  const headerRow3 = [
+    "Matricule", "Nom", "Prénom", "Echelon", "Niveau", "Degré", "Statut", "Libéllé emploi",
+    "Type\nde contrat", "Horaire\nmensuel", "Heures suppl\nmensualisées", "Forfait jours",
+    "Salaire de base\ny compris heures structurelles",
+    "ABSENCES EN HEURES", "", "", "", "", "", "", "", "", "",
+    "HEURES SUPP", "",
+    "REPAS",
+    "TRAJETS", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+    "Acomptes et prêts", "", "", "", "",
+    "SAISIES SUR SALAIRES", "", "", "", "", "",
+    "REGULARISATION M-1",
+    "Autres éléments"
+  ];
+  worksheetData.push(headerRow3);
+
+  // Ligne 4 : Sous-en-têtes détaillés
+  const headerRow4 = [
+    "", "", "", "", "", "", "", "", "", "", "", "", "",
+    "DATE", "CP", "RTT", "AM", "MP", "AT", "Congé parental", "Intempéries", "CPSS", "ABS INJ",
+    "h supp à 25%", "h supp à 50%",
+    "NB PANIERS",
+    "TOTAL", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12", "T13", "T14", "T15", "T16", "T17", "T31", "T35", "GD",
+    "ACOMPTES", "", "PRETS", "", "COMMENTAIRES", "",
+    "TOTAL SAISIE", "", "SAISIE DU MOIS", "", "COMMENTAIRES", "",
+    "",
+    ""
+  ];
+  worksheetData.push(headerRow4);
 
   // Lignes de données
   let totalHeuresNormales = 0;
-  let totalHeuresSupp = 0;
-  let totalAbsences = 0;
-  let totalRepas = 0;
-  let totalTrajet = 0;
-  let totalTrajetPerso = 0;
-  let totalPrime = 0;
-  let totalIntemperies = 0;
-  let totalHeures = 0;
+  let totalHeuresSupp25 = 0;
+  let totalHeuresSupp50 = 0;
+  let totalPaniers = 0;
+  let totalTrajets = 0;
+  let totalAbsencesCP = 0;
+  let totalAbsencesRTT = 0;
+  let totalAbsencesAM = 0;
+  let totalAbsencesMP = 0;
+  let totalAbsencesAT = 0;
+  let totalAbsencesCongeParental = 0;
+  let totalAbsencesHI = 0;
+  let totalAbsencesCPSS = 0;
+  let totalAbsencesABSINJ = 0;
 
   data.forEach((emp) => {
-    worksheetData.push([
+    const { absences, dateText } = calculateAbsencesByType(emp);
+    
+    // Pour l'instant, on met toutes les heures supp dans la colonne 25%
+    const heuresSupp25 = emp.heuresSupp;
+    const heuresSupp50 = 0;
+
+    const row = [
       emp.matricule,
       emp.nom,
       emp.prenom,
-      emp.libelle_emploi,
       emp.echelon,
       emp.niveau,
       emp.degre,
       emp.statut,
+      emp.libelle_emploi,
       emp.type_contrat,
       emp.horaire,
-      emp.heures_supp_mensualisees,
-      emp.forfait_jours ? "Oui" : "Non",
+      emp.heures_supp_mensualisees || "-",
+      emp.forfait_jours ? "Oui" : "-",
       emp.salaire,
-      emp.heuresNormales,
-      emp.heuresSupp,
-      emp.absences,
+      // ABSENCES EN HEURES
+      dateText || "",
+      absences.CP || 0,
+      absences.RTT || 0,
+      absences.AM || 0,
+      absences.MP || 0,
+      absences.AT || 0,
+      absences.CONGE_PARENTAL || 0,
+      absences.HI || 0,
+      absences.CPSS || 0,
+      absences.ABS_INJ || 0,
+      // HEURES SUPP
+      heuresSupp25,
+      heuresSupp50,
+      // REPAS
       emp.indemnitesRepas,
+      // TRAJETS (pour l'instant, tout dans TOTAL et GD, le reste à 0)
       emp.indemnitesTrajet,
-      emp.indemnitesTrajetPerso,
-      emp.primeAnciennete,
-      getAbsenceTypeLabel(emp), // Type d'absence qualifié ou par défaut
-      emp.totalHeures,
-      emp.statut_fiche,
-    ]);
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // T1-T17, T31, T35
+      emp.indemnitesTrajet, // GD (total)
+      // Colonnes administratives (vides pour l'instant)
+      "", "", "", "", "", "",
+      "", "", "", "", "", "",
+      "",
+      ""
+    ];
+
+    worksheetData.push(row);
 
     // Cumul des totaux
     totalHeuresNormales += emp.heuresNormales;
-    totalHeuresSupp += emp.heuresSupp;
-    totalAbsences += emp.absences;
-    totalRepas += emp.indemnitesRepas;
-    totalTrajet += emp.indemnitesTrajet;
-    totalTrajetPerso += emp.indemnitesTrajetPerso;
-    totalPrime += emp.primeAnciennete;
-    totalIntemperies += emp.intemperies;
-    totalHeures += emp.totalHeures;
+    totalHeuresSupp25 += heuresSupp25;
+    totalHeuresSupp50 += heuresSupp50;
+    totalPaniers += emp.indemnitesRepas;
+    totalTrajets += emp.indemnitesTrajet;
+    totalAbsencesCP += absences.CP;
+    totalAbsencesRTT += absences.RTT;
+    totalAbsencesAM += absences.AM;
+    totalAbsencesMP += absences.MP;
+    totalAbsencesAT += absences.AT;
+    totalAbsencesCongeParental += absences.CONGE_PARENTAL;
+    totalAbsencesHI += absences.HI;
+    totalAbsencesCPSS += absences.CPSS;
+    totalAbsencesABSINJ += absences.ABS_INJ;
   });
 
-  // Ligne de totaux
-  worksheetData.push([
-    "TOTAL",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    Math.round(totalHeuresNormales * 100) / 100,
-    Math.round(totalHeuresSupp * 100) / 100,
-    totalAbsences,
-    totalRepas,
-    Math.round(totalTrajet * 100) / 100,
-    totalTrajetPerso,
-    totalPrime,
-    totalIntemperies,
-    Math.round(totalHeures * 100) / 100,
-    "",
-  ]);
+  // Ligne vide avant les totaux GD
+  worksheetData.push(Array(60).fill(""));
+
+  // Lignes de résumé GD (exemples, à adapter selon vos besoins)
+  const gdRow20 = Array(60).fill("");
+  gdRow20[40] = "20 GD";
+  gdRow20[41] = totalTrajets * 0.5; // Exemple de calcul
+  worksheetData.push(gdRow20);
+
+  const gdRow23 = Array(60).fill("");
+  gdRow23[40] = "23 GD";
+  gdRow23[41] = totalTrajets * 0.5; // Exemple de calcul
+  worksheetData.push(gdRow23);
 
   // Créer la feuille de calcul
   const ws = XLSX.utils.aoa_to_sheet(worksheetData);
 
   // Définir les largeurs des colonnes
-  ws["!cols"] = [
-    { wch: 12 }, // Matricule
-    { wch: 20 }, // Nom
-    { wch: 20 }, // Prénom
-    { wch: 15 }, // Libellé emploi
-    { wch: 10 }, // Échelon
-    { wch: 10 }, // Niveau
-    { wch: 10 }, // Degré
-    { wch: 12 }, // Statut
-    { wch: 15 }, // Type contrat
-    { wch: 15 }, // Horaire
-    { wch: 18 }, // H supp mensualisées
-    { wch: 15 }, // Forfait jours
-    { wch: 15 }, // Salaire de base
-    { wch: 15 }, // Heures normales
-    { wch: 15 }, // Heures supp
-    { wch: 18 }, // Absences
-    { wch: 18 }, // Indemnités repas
-    { wch: 18 }, // Indemnités trajet
-    { wch: 20 }, // Indemnités trajet perso
-    { wch: 18 }, // Prime ancienneté
-    { wch: 20 }, // Intempéries
-    { wch: 15 }, // Total heures
-    { wch: 12 }, // Statut fiche
+  const colWidths = [
+    10, 15, 15, 8, 7, 7, 10, 15, 12, 10, 12, 10, 15, // A-M
+    20, 6, 6, 6, 6, 6, 12, 10, 6, 6, // N-W (absences)
+    10, 10, // X-Y (heures supp)
+    10, // Z (paniers)
+    8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, // AA-AU (trajets)
+    10, 5, 10, 5, 15, 5, // AV-BA (acomptes et prêts)
+    10, 5, 10, 5, 15, 5, // BB-BG (saisies)
+    15, 15 // BH-BI (régularisation et autres)
   ];
+  ws["!cols"] = colWidths.map(wch => ({ wch }));
 
-  // === STYLES NIVEAU 1 & 2 ===
-
-  // Fusionner les cellules de l'en-tête (lignes 1-3)
+  // Fusionner les cellules
   ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 22 } }, // Ligne 1
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 22 } }, // Ligne 2
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 22 } }, // Ligne 3
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 13 } }, // Dossier C093195 / LIMOGE REVILLON
+    { s: { r: 0, c: 14 }, e: { r: 0, c: 60 } }, // DONNEES MDE
+    // En-têtes de groupes (ligne 3)
+    { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } }, // Matricule
+    { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Nom
+    { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } }, // Prénom
+    { s: { r: 2, c: 3 }, e: { r: 3, c: 3 } }, // Echelon
+    { s: { r: 2, c: 4 }, e: { r: 3, c: 4 } }, // Niveau
+    { s: { r: 2, c: 5 }, e: { r: 3, c: 5 } }, // Degré
+    { s: { r: 2, c: 6 }, e: { r: 3, c: 6 } }, // Statut
+    { s: { r: 2, c: 7 }, e: { r: 3, c: 7 } }, // Libellé emploi
+    { s: { r: 2, c: 8 }, e: { r: 3, c: 8 } }, // Type contrat
+    { s: { r: 2, c: 9 }, e: { r: 3, c: 9 } }, // Horaire
+    { s: { r: 2, c: 10 }, e: { r: 3, c: 10 } }, // Heures supp mens
+    { s: { r: 2, c: 11 }, e: { r: 3, c: 11 } }, // Forfait jours
+    { s: { r: 2, c: 12 }, e: { r: 3, c: 12 } }, // Salaire
+    { s: { r: 2, c: 13 }, e: { r: 2, c: 22 } }, // ABSENCES EN HEURES
+    { s: { r: 2, c: 23 }, e: { r: 2, c: 24 } }, // HEURES SUPP
+    { s: { r: 2, c: 25 }, e: { r: 3, c: 25 } }, // REPAS
+    { s: { r: 2, c: 26 }, e: { r: 2, c: 46 } }, // TRAJETS
+    { s: { r: 2, c: 47 }, e: { r: 2, c: 52 } }, // Acomptes et prêts
+    { s: { r: 2, c: 53 }, e: { r: 2, c: 58 } }, // SAISIES
+    { s: { r: 2, c: 59 }, e: { r: 3, c: 59 } }, // REGULARISATION M-1
+    { s: { r: 2, c: 60 }, e: { r: 3, c: 60 } }, // Autres éléments
   ];
 
   // Style pour l'en-tête principal (ligne 1)
   if (ws["A1"]) {
     ws["A1"].s = {
-      font: { bold: true, sz: 14, color: { rgb: "1E40AF" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "DBEAFE" } },
+      font: { bold: true, sz: 12 },
+      alignment: { horizontal: "left", vertical: "center" },
+      fill: { fgColor: { rgb: "FFFFFF" } },
     };
   }
-
-  // Style pour la période (ligne 2)
-  if (ws["A2"]) {
-    ws["A2"].s = {
+  if (ws["O1"]) {
+    ws["O1"].s = {
       font: { bold: true, sz: 12 },
       alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "DBEAFE" } },
+      fill: { fgColor: { rgb: "D3D3D3" } },
     };
   }
 
-  // Style pour la date de génération (ligne 3)
-  if (ws["A3"]) {
-    ws["A3"].s = {
-      font: { italic: true, sz: 10, color: { rgb: "6B7280" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "F3F4F6" } },
-    };
-  }
+  // Style pour les en-têtes de colonnes (lignes 3-4)
+  const headerStartRow = 2;
+  const headerEndRow = 3;
+  const totalCols = 61;
 
-  // Style pour les en-têtes de colonnes (ligne 5)
-  const headerRow = 4; // Index 4 = ligne 5
-  const headerCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5", "L5", "M5", "N5", "O5", "P5", "Q5", "R5", "S5", "T5", "U5", "V5", "W5"];
-  headerCells.forEach((cell) => {
-    if (ws[cell]) {
-      ws[cell].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
-        fill: { fgColor: { rgb: "1E40AF" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thick", color: { rgb: "000000" } },
-          bottom: { style: "thick", color: { rgb: "000000" } },
-          left: { style: "thick", color: { rgb: "000000" } },
-          right: { style: "thick", color: { rgb: "000000" } },
-        },
-      };
-    }
-  });
-
-  // Lignes de données (alternées) et colonnes numériques
-  const dataStartRow = 5; // Index 5 = ligne 6
-  const dataEndRow = worksheetData.length - 2; // Avant la ligne TOTAL
-  const numericCols = [10, 12, 13, 14, 17, 21]; // K, M, N, O, R, V (H supp mens., Salaire, Heures normales, supp, trajet, total)
-  const integerCols = [15, 16, 18, 19, 20]; // P, Q, S, T, U (absences, repas, trajet perso, prime, intempéries)
-  const statusCol = 22; // Colonne W (Statut fiche)
-
-  for (let row = dataStartRow; row <= dataEndRow; row++) {
-    const isEven = (row - dataStartRow) % 2 === 0;
-    const bgColor = isEven ? "FFFFFF" : "F5F5F5";
-
-    for (let col = 0; col <= 22; col++) {
+  for (let row = headerStartRow; row <= headerEndRow; row++) {
+    for (let col = 0; col < totalCols; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
       if (!ws[cellAddress]) continue;
 
-      // Style de base (lignes alternées)
+      ws[cellAddress].s = {
+        font: { bold: true, sz: 9 },
+        fill: { fgColor: { rgb: "E0E0E0" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+    }
+  }
+
+  // Lignes de données (alternées)
+  const dataStartRow = 4;
+  const dataEndRow = 4 + data.length - 1;
+
+  for (let row = dataStartRow; row <= dataEndRow; row++) {
+    const isEven = (row - dataStartRow) % 2 === 0;
+    const bgColor = isEven ? "FFFFFF" : "F9F9F9";
+
+    for (let col = 0; col < totalCols; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+      if (!ws[cellAddress]) continue;
+
       ws[cellAddress].s = {
         fill: { fgColor: { rgb: bgColor } },
         border: {
@@ -283,257 +320,40 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
           left: { style: "thin", color: { rgb: "D3D3D3" } },
           right: { style: "thin", color: { rgb: "D3D3D3" } },
         },
-        alignment: { vertical: "center" },
+        alignment: { vertical: "center", horizontal: col >= 13 ? "right" : "left" },
       };
 
-      // Format numérique avec 2 décimales
-      if (numericCols.includes(col)) {
-        ws[cellAddress].z = "0.00";
-        ws[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      }
-
-      // Format entier sans décimales
-      if (integerCols.includes(col)) {
-        ws[cellAddress].z = "0";
-        ws[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      }
-
-      // Coloration conditionnelle pour le statut
-      if (col === statusCol) {
-        const cellValue = ws[cellAddress].v;
-        if (cellValue === "Partiel" || cellValue === "Signé") {
-          ws[cellAddress].s.font = { bold: true, color: { rgb: "D97706" } };
-          ws[cellAddress].s.fill = { fgColor: { rgb: "FEF3C7" } };
-        } else if (cellValue === "Validé") {
-          ws[cellAddress].s.font = { bold: true, color: { rgb: "059669" } };
-          ws[cellAddress].s.fill = { fgColor: { rgb: "D1FAE5" } };
+      // Format numérique pour les colonnes numériques
+      if (col === 12 || (col >= 14 && col <= 24) || col === 25 || (col >= 26 && col <= 46)) {
+        if (col === 12) {
+          ws[cellAddress].z = "#,##0.00";
+        } else {
+          ws[cellAddress].z = "0";
         }
       }
     }
   }
 
-  // Style pour la ligne TOTAL
-  const totalRow = worksheetData.length - 1;
-  for (let col = 0; col <= 22; col++) {
-    const cellAddress = XLSX.utils.encode_cell({ r: totalRow, c: col });
-    if (!ws[cellAddress]) continue;
-
-    ws[cellAddress].s = {
-      font: { bold: true, sz: 11 },
-      fill: { fgColor: { rgb: "FFF9C4" } },
-      alignment: {
-        horizontal: col === 0 ? "left" : col >= 13 && col !== 21 ? "right" : "left",
-        vertical: "center",
-      },
-      border: {
-        top: { style: "thick", color: { rgb: "000000" } },
-        bottom: { style: "thick", color: { rgb: "000000" } },
-        left: { style: "thin", color: { rgb: "000000" } },
-        right: { style: "thin", color: { rgb: "000000" } },
-      },
-    };
-
-    // Format numérique pour les totaux
-    if (numericCols.includes(col)) {
-      ws[cellAddress].z = "0.00";
-    } else if (integerCols.includes(col)) {
-      ws[cellAddress].z = "0";
-    }
-  }
-
-  // Filtres automatiques
-  ws["!autofilter"] = {
-    ref: `A5:W${dataEndRow + 1}`,
-  };
-
   // Hauteur des lignes
   ws["!rows"] = [
-    { hpt: 24 }, // Ligne 1 (titre)
-    { hpt: 20 }, // Ligne 2 (période)
-    { hpt: 18 }, // Ligne 3 (date)
-    { hpt: 10 }, // Ligne 4 (vide)
-    { hpt: 22 }, // Ligne 5 (en-têtes)
+    { hpt: 20 }, // Ligne 1 (titre)
+    { hpt: 10 }, // Ligne 2 (vide)
+    { hpt: 30 }, // Ligne 3 (en-têtes principaux)
+    { hpt: 30 }, // Ligne 4 (sous-en-têtes)
   ];
 
   // Hauteur standard pour les données
-  for (let i = dataStartRow; i <= dataEndRow; i++) {
-    ws["!rows"][i] = { hpt: 18 };
+  for (let i = dataStartRow; i <= dataEndRow + 3; i++) {
+    if (!ws["!rows"][i]) ws["!rows"][i] = { hpt: 18 };
   }
-
-  // Hauteur de la ligne TOTAL
-  ws["!rows"][totalRow] = { hpt: 22 };
 
   // Ajouter la feuille au classeur
   XLSX.utils.book_append_sheet(wb, ws, "Synthèse mensuelle");
 
-  // === FEUILLE 2: DÉTAIL QUOTIDIEN ===
-  const detailData: any[][] = [];
-
-  // En-têtes de la feuille détail
-  detailData.push(["DÉTAIL QUOTIDIEN PAR JOUR"]);
-  detailData.push([`Période : ${moisFormate.charAt(0).toUpperCase() + moisFormate.slice(1)}`]);
-  detailData.push([`Généré le ${format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr })}`]);
-  detailData.push([]);
-
-  // En-têtes des colonnes
-  detailData.push([
-    "Date",
-    "Nom",
-    "Prénom",
-    "Métier",
-    "Chantier (code)",
-    "Ville",
-    "Heures",
-    "H. Intempérie",
-    "Type d'absence",
-    "Panier",
-    "Trajet",
-    "Trajet Perso",
-  ]);
-
-  // Données quotidiennes
-  data.forEach(emp => {
-    if (emp.detailJours && emp.detailJours.length > 0) {
-      emp.detailJours.forEach(jour => {
-        // Le type d'absence s'affiche uniquement si isAbsent = true (employé absent)
-        const typeAbsence = jour.isAbsent
-          ? (jour.typeAbsence ? ABSENCE_TYPE_LABELS[jour.typeAbsence] || jour.typeAbsence : "À qualifier")
-          : "-";
-        
-        detailData.push([
-          jour.date,
-          emp.nom,
-          emp.prenom,
-          emp.metier,
-          jour.chantierCode || "-",
-          jour.chantierVille || "-",
-          jour.heures,
-          jour.intemperie,
-          typeAbsence,
-          jour.panier ? "Oui" : "Non",
-          jour.trajet,
-          jour.trajetPerso ? "Oui" : "Non",
-        ]);
-      });
-    }
-  });
-
-  // Créer la feuille détail
-  const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-
-  // Largeurs des colonnes
-  wsDetail["!cols"] = [
-    { wch: 12 }, // Date
-    { wch: 20 }, // Nom
-    { wch: 20 }, // Prénom
-    { wch: 15 }, // Métier
-    { wch: 18 }, // Chantier
-    { wch: 20 }, // Ville
-    { wch: 12 }, // Heures
-    { wch: 15 }, // Intempérie
-    { wch: 25 }, // Type d'absence
-    { wch: 10 }, // Panier
-    { wch: 10 }, // Trajet
-    { wch: 12 }, // Trajet Perso
-  ];
-
-  // Fusionner l'en-tête
-  wsDetail["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } },
-  ];
-
-  // Styles de l'en-tête
-  if (wsDetail["A1"]) {
-    wsDetail["A1"].s = {
-      font: { bold: true, sz: 14, color: { rgb: "1E40AF" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "DBEAFE" } },
-    };
-  }
-
-  if (wsDetail["A2"]) {
-    wsDetail["A2"].s = {
-      font: { bold: true, sz: 12 },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "DBEAFE" } },
-    };
-  }
-
-  if (wsDetail["A3"]) {
-    wsDetail["A3"].s = {
-      font: { italic: true, sz: 10, color: { rgb: "6B7280" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "F3F4F6" } },
-    };
-  }
-
-  // Style des en-têtes de colonnes (ligne 5)
-  const detailHeaderCells = ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5", "I5", "J5", "K5", "L5"];
-  detailHeaderCells.forEach((cell) => {
-    if (wsDetail[cell]) {
-      wsDetail[cell].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
-        fill: { fgColor: { rgb: "1E40AF" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thick", color: { rgb: "000000" } },
-          bottom: { style: "thick", color: { rgb: "000000" } },
-          left: { style: "thick", color: { rgb: "000000" } },
-          right: { style: "thick", color: { rgb: "000000" } },
-        },
-      };
-    }
-  });
-
-  // Styles des lignes de données (alternées)
-  const detailDataStartRow = 5;
-  const detailDataEndRow = detailData.length - 1;
-
-  for (let row = detailDataStartRow; row <= detailDataEndRow; row++) {
-    const isEven = (row - detailDataStartRow) % 2 === 0;
-    const bgColor = isEven ? "FFFFFF" : "F5F5F5";
-
-    for (let col = 0; col <= 11; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-      if (!wsDetail[cellAddress]) continue;
-
-      wsDetail[cellAddress].s = {
-        fill: { fgColor: { rgb: bgColor } },
-        border: {
-          top: { style: "thin", color: { rgb: "D3D3D3" } },
-          bottom: { style: "thin", color: { rgb: "D3D3D3" } },
-          left: { style: "thin", color: { rgb: "D3D3D3" } },
-          right: { style: "thin", color: { rgb: "D3D3D3" } },
-        },
-        alignment: { vertical: "center" },
-      };
-
-      // Formats numériques
-      if (col === 6 || col === 7) { // Heures, Intempérie
-        wsDetail[cellAddress].z = "0.00";
-        wsDetail[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      } else if (col === 10) { // Trajet
-        wsDetail[cellAddress].z = "0";
-        wsDetail[cellAddress].s.alignment = { horizontal: "right", vertical: "center" };
-      } else if (col === 8 || col === 9 || col === 11) { // Type absence, Panier, Trajet Perso (centrer le texte)
-        wsDetail[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
-      }
-    }
-  }
-
-  // Filtres automatiques
-  wsDetail["!autofilter"] = {
-    ref: `A5:L${detailDataEndRow + 1}`,
-  };
-
-  // Ajouter la feuille détail au classeur
-  XLSX.utils.book_append_sheet(wb, wsDetail, "Détail quotidien");
-
-  // Générer le fichier et le télécharger
-  const fileName = `export-rh-${mois}.xlsx`;
+  // Télécharger le fichier
+  const fileName = `RH_Export_${mois.replace("-", "_")}_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
   XLSX.writeFile(wb, fileName);
 
+  console.log(`✅ Export Excel généré: ${fileName}`);
   return fileName;
 };
