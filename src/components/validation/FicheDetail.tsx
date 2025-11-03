@@ -405,6 +405,13 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         return heures > 0 && fj.trajet_perso !== true;
       }).length || 0;
       
+      // Absences = jours où HNORM = 0 ET HI = 0 ET trajet_perso = false
+      const totalAbsences = fiche.fiches_jours?.filter((fj: any) => {
+        const heures = Number(fj.HNORM || fj.heures || 0);
+        const intemperie = Number(fj.HI || 0);
+        return heures === 0 && intemperie === 0 && fj.trajet_perso !== true;
+      }).length || 0;
+      
       // Récupérer les codes chantiers journaliers
       let codes = (fiche.fiches_jours
         ?.map((fj: any) => fj.code_chantier_du_jour)
@@ -431,6 +438,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         totalPaniers,
         totalTrajets,
         totalTrajetsPerso,
+        totalAbsences,
         chantiers: uniqueChantiers,
       };
     }).sort((a: any, b: any) => {

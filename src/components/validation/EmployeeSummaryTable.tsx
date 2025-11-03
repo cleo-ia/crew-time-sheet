@@ -10,6 +10,7 @@ interface EmployeeSummary {
   totalPaniers: number;
   totalTrajets: number;
   totalTrajetsPerso?: number;
+  totalAbsences?: number;
   chantiers?: string[];
 }
 
@@ -52,6 +53,9 @@ export const EmployeeSummaryTable = ({ employees }: EmployeeSummaryTableProps) =
             <th className="text-right py-3 px-4 text-sm font-semibold text-foreground">
               Trajets perso
             </th>
+            <th className="text-right py-3 px-4 text-sm font-semibold text-foreground">
+              Absences
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -89,6 +93,9 @@ export const EmployeeSummaryTable = ({ employees }: EmployeeSummaryTableProps) =
               </td>
               <td className="text-right py-3 px-4 text-muted-foreground">
                 {employee.totalTrajetsPerso && employee.totalTrajetsPerso > 0 ? employee.totalTrajetsPerso : '-'}
+              </td>
+              <td className="text-right py-3 px-4 text-muted-foreground">
+                {employee.totalAbsences && employee.totalAbsences > 0 ? employee.totalAbsences : '-'}
               </td>
             </tr>
           ))}
