@@ -250,40 +250,19 @@ const ValidationConducteur = () => {
     const errors: string[] = [];
     
     for (const finisseur of finisseurs) {
-      // Récupérer les fiches_jours pour identifier les absences
-      const { data: fiches, error: fichesError } = await supabase
-        .from("fiches")
-        .select("id")
-        .eq("salarie_id", finisseur.id)
-        .eq("semaine", selectedWeek);
+      // Utiliser ficheJours déjà chargé par le hook pour identifier les absences
+      const absenceDates = new Set(
+        (finisseur.ficheJours || [])
+          .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
+          .map(fj => fj.date)
+      );
       
-      if (fichesError) {
-        console.error("Erreur récupération fiches:", fichesError);
-        continue;
-      }
-      
-      let absenceDates = new Set<string>();
-      
-      if (fiches && fiches.length > 0) {
-        const ficheIds = fiches.map(f => f.id);
-        
-        const { data: fichesJours, error: fichesJoursError } = await supabase
-          .from("fiches_jours")
-          .select("date, HNORM, HI")
-          .in("fiche_id", ficheIds);
-        
-        if (fichesJoursError) {
-          console.error("Erreur récupération fiches_jours:", fichesJoursError);
-          continue;
-        }
-        
-        // Créer un Set des dates d'absence
-        absenceDates = new Set(
-          (fichesJours || [])
-            .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
-            .map(fj => fj.date)
-        );
-      }
+      // Construire l'ensemble des dates en trajet perso
+      const trajetPersoDates = new Set(
+        (finisseur.ficheJours || [])
+          .filter(j => j.trajet_perso === true)
+          .map(j => j.date)
+      );
       
       // Étape A : Recherche robuste de la fiche de transport par finisseur_id + semaine
       const { data: transportByWeek } = await supabase
@@ -338,12 +317,6 @@ const ValidationConducteur = () => {
       const joursByDate = new Map<string, any>();
       (jours || []).forEach((j: any) => joursByDate.set(j.date, j));
       
-      // Construire l'ensemble des dates en trajet perso depuis la fiche d'heures
-      const trajetPersoDates = new Set(
-        (finisseur.ficheJours || [])
-          .filter((j: any) => j.trajet_perso === true)
-          .map((j: any) => j.date)
-      );
       
       // Vérifier chaque jour affecté avec accumulation d'erreurs
       const expected = finisseur.affectedDays || [];
