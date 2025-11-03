@@ -248,6 +248,42 @@ const ValidationConducteur = () => {
     if (!conducteurId || !selectedWeek || finisseurs.length === 0) return false;
     
     for (const finisseur of finisseurs) {
+      // Récupérer les fiches_jours pour identifier les absences
+      const { data: fiches, error: fichesError } = await supabase
+        .from("fiches")
+        .select("id")
+        .eq("salarie_id", finisseur.id)
+        .eq("semaine", selectedWeek);
+      
+      if (fichesError) {
+        console.error("Erreur récupération fiches:", fichesError);
+        continue;
+      }
+      
+      let absenceDates = new Set<string>();
+      
+      if (fiches && fiches.length > 0) {
+        const ficheIds = fiches.map(f => f.id);
+        
+        const { data: fichesJours, error: fichesJoursError } = await supabase
+          .from("fiches_jours")
+          .select("date, HNORM, HI")
+          .in("fiche_id", ficheIds);
+        
+        if (fichesJoursError) {
+          console.error("Erreur récupération fiches_jours:", fichesJoursError);
+          continue;
+        }
+        
+        // Créer un Set des dates d'absence
+        absenceDates = new Set(
+          (fichesJours || [])
+            .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
+            .map(fj => fj.date)
+        );
+      }
+      
+      // Récupérer la fiche de transport
       const { data: transport } = await supabase
         .from("fiches_transport_finisseurs")
         .select("*, fiches_transport_finisseurs_jours(*)")
@@ -274,6 +310,12 @@ const ValidationConducteur = () => {
       // Vérifier chaque jour affecté
       const expected = finisseur.affectedDays || [];
       const allDaysComplete = expected.every(({ date }: any) => {
+        // Si jour d'absence, considérer comme complet
+        if (absenceDates.has(date)) {
+          console.log(`✅ ${finisseur.prenom} ${finisseur.nom} - ${date} : Absent (ignoré)`);
+          return true;
+        }
+        
         // Si trajet perso: considéré comme complet, pas d'immatriculation requise
         if (trajetPersoDates.has(date)) return true;
         
