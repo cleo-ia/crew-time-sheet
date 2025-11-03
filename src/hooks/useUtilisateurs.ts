@@ -124,7 +124,24 @@ export const useCreateUtilisateur = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (user: { nom: string; prenom: string; email: string; role?: string; agence_interim?: string; role_metier?: 'macon' | 'finisseur' }) => {
+    mutationFn: async (user: { 
+      nom: string; 
+      prenom: string; 
+      email: string; 
+      role?: string; 
+      agence_interim?: string; 
+      role_metier?: 'macon' | 'finisseur';
+      matricule?: string;
+      echelon?: string;
+      niveau?: string;
+      degre?: string;
+      statut?: string;
+      type_contrat?: string;
+      horaire?: string;
+      heures_supp_mensualisees?: number;
+      forfait_jours?: boolean;
+      salaire?: number;
+    }) => {
       // First create in utilisateurs
       const { data: utilisateur, error: userError } = await supabase
         .from("utilisateurs")
@@ -134,6 +151,16 @@ export const useCreateUtilisateur = () => {
           email: user.email,
           agence_interim: user.agence_interim || null,
           role_metier: user.role_metier || null,
+          matricule: user.matricule || null,
+          echelon: user.echelon || null,
+          niveau: user.niveau || null,
+          degre: user.degre || null,
+          statut: user.statut || null,
+          type_contrat: user.type_contrat || null,
+          horaire: user.horaire || null,
+          heures_supp_mensualisees: user.heures_supp_mensualisees || null,
+          forfait_jours: user.forfait_jours || false,
+          salaire: user.salaire || null,
           id: crypto.randomUUID(), // Generate UUID for user
         })
         .select()
