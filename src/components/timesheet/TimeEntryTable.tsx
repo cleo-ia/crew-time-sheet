@@ -817,27 +817,36 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         return;
       }
       
-      // Si pas de données transport, c'est incomplet
-      if (!transportData?.days) {
-        map[entry.employeeId] = false;
-        return;
-      }
-      
-      // Construire un Set des dates en "trajet perso" depuis les données d'heures
+      // Construire un Set des dates en "trajet perso" et des dates d'absence
       const monday = parseISOWeek(weekId);
       const trajetPersoDates = new Set<string>();
+      const absenceDates = new Set<string>();
+      
       ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].forEach((dayName, idx) => {
         const dayData = entry.days[dayName];
+        const dateStr = format(addDays(monday, idx), "yyyy-MM-dd");
+        
         if (dayData?.trajetPerso) {
-          const dateStr = format(addDays(monday, idx), "yyyy-MM-dd");
           trajetPersoDates.add(dateStr);
         }
+        if (dayData?.absent) {
+          absenceDates.add(dateStr);
+        }
       });
+      
+      // Si pas de données transport, vérifier si tous les jours affectés sont absents ou trajet perso
+      if (!transportData?.days) {
+        const allOkWithoutTransport = affectedDates.every(d => 
+          absenceDates.has(d) || trajetPersoDates.has(d)
+        );
+        map[entry.employeeId] = allOkWithoutTransport;
+        return;
+      }
 
       // Vérifier que tous les jours affectés ont une fiche complète
       const isComplete = affectedDates.every(dateStr => {
-        // Si trajet perso : considérer comme complet (pas besoin de plaque)
-        if (trajetPersoDates.has(dateStr)) {
+        // Si absent ou trajet perso : considérer comme complet (pas besoin de plaque)
+        if (absenceDates.has(dateStr) || trajetPersoDates.has(dateStr)) {
           return true;
         }
         
@@ -855,7 +864,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     });
     
     return map;
-  }, [isConducteurMode, entries, transportFinisseurData, affectationsJours]);
+  }, [isConducteurMode, entries, transportFinisseurData, affectationsJours, weekId]);
 
   // Handlers pour ajout/suppression
   const handleAddClick = async () => {
