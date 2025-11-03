@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -313,14 +313,6 @@ export const FinisseursManager = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="forfait_jours_finisseur"
-                checked={formData.forfait_jours}
-                onCheckedChange={(checked) => setFormData({ ...formData, forfait_jours: checked === true })}
-              />
-              <Label htmlFor="forfait_jours_finisseur">Forfait jours</Label>
-            </div>
           </div>
 
           <DialogFooter>
