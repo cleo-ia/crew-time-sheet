@@ -397,7 +397,7 @@ const SignatureFinisseurs = () => {
                                   
                                   {hasTransportData || finisseur.ficheJours ? (
                                     <div className="grid grid-cols-1 gap-1.5 text-sm">
-                                      {finisseur.affectedDays?.map((affectedDay) => {
+                                      {finisseur.affectedDays?.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((affectedDay) => {
                                         const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectedDay.date);
                                         const transportDay = transportData?.days?.find((d: any) => d.date === affectedDay.date);
                                         
