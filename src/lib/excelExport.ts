@@ -68,9 +68,21 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
 
   if (emp.detailJours) {
     emp.detailJours.forEach((jour) => {
-      if (jour.isAbsent && jour.typeAbsence) {
+      // PRIORITÉ 1 : Heures d'intempéries numériques (valeurs réelles saisies par le chef)
+      if (jour.intemperie > 0) {
+        absences.HI += jour.intemperie;
+      }
+      
+      // PRIORITÉ 2 : Absence de type "HI" (uniquement si pas d'intemperie numérique pour éviter double comptage)
+      if (jour.isAbsent && jour.typeAbsence === "HI" && !jour.intemperie) {
+        absences.HI += 8; // 1 jour absence intempérie = 8h
+        if (!dateRanges.HI) dateRanges.HI = [];
+        dateRanges.HI.push(jour.date);
+      }
+      
+      // Autres types d'absences (CP, RTT, AM, MP, AT, etc.)
+      if (jour.isAbsent && jour.typeAbsence && jour.typeAbsence !== "HI") {
         const type = jour.typeAbsence;
-        // Calculer les heures d'absence (7h par jour par défaut si pas d'heures normales)
         const heuresAbsence = 7; // Convention : 1 jour absence = 7h
         absences[type] = (absences[type] || 0) + heuresAbsence;
 
