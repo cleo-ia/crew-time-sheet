@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Check } from "lucide-react";
+import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
+
+interface DayData {
+  date: string;
+  ficheJourId: string;
+  heuresNormales: number;
+  heuresIntemperies: number;
+  typeAbsence: string | null;
+}
 
 interface EditableAbsenceTypeCellProps {
   value: string | null;
   onSave: (value: string) => Promise<void>;
   isAbsent: boolean; // true si l'employé est absent (heures=0 et intemperie=0)
+  allDays?: DayData[]; // Tous les jours de la période pour la propagation
+  currentDate?: string; // Date du jour actuel (ISO format)
 }
 
 const ABSENCE_TYPES = [
@@ -23,10 +34,13 @@ const ABSENCE_TYPES = [
 export const EditableAbsenceTypeCell = ({ 
   value, 
   onSave, 
-  isAbsent 
+  isAbsent,
+  allDays,
+  currentDate
 }: EditableAbsenceTypeCellProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const updateFicheJour = useUpdateFicheJour();
 
   // Si pas d'absence (employé présent), afficher "-"
   if (!isAbsent) {
@@ -38,7 +52,37 @@ export const EditableAbsenceTypeCell = ({
 
     setIsSaving(true);
     try {
+      // 1. Sauvegarder le jour actuel
       await onSave(newValue);
+      
+      // 2. Si allDays et currentDate sont fournis, propager aux jours suivants
+      if (allDays && currentDate) {
+        const currentIndex = allDays.findIndex(d => d.date === currentDate);
+        
+        if (currentIndex !== -1) {
+          // Parcourir les jours suivants
+          for (let i = currentIndex + 1; i < allDays.length; i++) {
+            const nextDay = allDays[i];
+            
+            // Vérifier si c'est un jour absent
+            const isNextDayAbsent = nextDay.heuresNormales === 0 && nextDay.heuresIntemperies === 0;
+            
+            // Si le jour n'est pas absent (jour travaillé), arrêter la propagation
+            if (!isNextDayAbsent) {
+              break;
+            }
+            
+            // Propager uniquement si le jour est "À qualifier"
+            if (!nextDay.typeAbsence || nextDay.typeAbsence === "A_QUALIFIER") {
+              await updateFicheJour.mutateAsync({
+                ficheJourId: nextDay.ficheJourId,
+                field: "type_absence",
+                value: newValue,
+              });
+            }
+          }
+        }
+      }
       
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);

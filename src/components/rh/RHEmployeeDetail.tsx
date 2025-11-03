@@ -187,6 +187,14 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
                       isAbsent={day.heuresNormales === 0 && day.heuresIntemperies === 0}
+                      allDays={data.dailyDetails.map(d => ({
+                        date: d.date,
+                        ficheJourId: d.ficheJourId,
+                        heuresNormales: d.heuresNormales,
+                        heuresIntemperies: d.heuresIntemperies,
+                        typeAbsence: (d as any).typeAbsence || null,
+                      }))}
+                      currentDate={day.date}
                       onSave={async (newValue) => {
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,
