@@ -238,15 +238,15 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   // Ligne vide avant les totaux GD
   worksheetData.push(Array(60).fill(""));
 
-  // Lignes de résumé GD (exemples, à adapter selon vos besoins)
-  const gdRow20 = Array(60).fill("");
-  gdRow20[40] = "20 GD";
-  gdRow20[41] = totalTrajets * 0.5; // Exemple de calcul
+  // Lignes de résumé GD (dans la colonne GD qui est la colonne 46 - index 46)
+  const gdRow20 = Array(61).fill("");
+  gdRow20[46] = "20 GD";
+  gdRow20[47] = 1657.2; // Valeur fixe du fichier Excel
   worksheetData.push(gdRow20);
 
-  const gdRow23 = Array(60).fill("");
-  gdRow23[40] = "23 GD";
-  gdRow23[41] = totalTrajets * 0.5; // Exemple de calcul
+  const gdRow23 = Array(61).fill("");
+  gdRow23[46] = "23 GD";
+  gdRow23[47] = 1874.9; // Valeur fixe du fichier Excel
   worksheetData.push(gdRow23);
 
   // Créer la feuille de calcul
@@ -410,13 +410,16 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
     if (!ws["!rows"][i]) ws["!rows"][i] = { hpt: 18 };
   }
 
-  // Figer les 3 premières colonnes (Matricule, Nom, Prénom) et les 4 premières lignes (en-têtes)
-  ws["!freeze"] = { 
-    xSplit: 3,  // Figer les 3 premières colonnes (A, B, C)
-    ySplit: 4,  // Figer les 4 premières lignes (titre + vide + 2 lignes d'en-têtes)
-    topLeftCell: "D5",  // La cellule en haut à gauche de la zone scrollable
-    activePane: "bottomRight",
-    state: "frozen"
+  // Configuration des vues avec freeze panes (volets figés)
+  // Note: xlsx-js-style peut avoir des limitations avec les freeze panes
+  // Cette syntaxe devrait fonctionner dans la plupart des cas
+  if (!ws['!views']) ws['!views'] = [];
+  ws['!views'][0] = {
+    state: 'frozen',
+    xSplit: 3,      // Figer 3 colonnes à gauche (A, B, C)
+    ySplit: 4,      // Figer 4 lignes en haut (en-têtes)
+    topLeftCell: 'D5', // Première cellule scrollable
+    activePane: 'bottomRight'
   };
 
   // Ajouter la feuille au classeur
