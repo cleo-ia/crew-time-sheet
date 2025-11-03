@@ -22,6 +22,7 @@ export interface EmployeeDetail {
   trajet: number;
   trajetPerso: boolean;
   typeAbsence?: string;
+  isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent)
 }
 
 export interface EmployeeWithDetails {
@@ -311,6 +312,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           trajetsPerso += 1; // Compte 1 trajet perso par jour où la case est cochée
         }
 
+        // Déterminer si c'est une absence (employé pas présent)
+        const isAbsent = heuresDuJour === 0 && intemperie === 0;
+
         detailJours.push({
           date: jour.date || "",
           chantierCode: jour.code_chantier_du_jour || "",
@@ -321,6 +325,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           trajet,
           trajetPerso: jour.trajet_perso === true,
           typeAbsence: (jour as any).type_absence || null,
+          isAbsent,
         });
       }
     }

@@ -5,7 +5,7 @@ import { Loader2, Check } from "lucide-react";
 interface EditableAbsenceTypeCellProps {
   value: string | null;
   onSave: (value: string) => Promise<void>;
-  heuresAbsence: number;
+  isAbsent: boolean; // true si l'employé est absent (heures=0 et intemperie=0)
 }
 
 const ABSENCE_TYPES = [
@@ -23,13 +23,13 @@ const ABSENCE_TYPES = [
 export const EditableAbsenceTypeCell = ({ 
   value, 
   onSave, 
-  heuresAbsence 
+  isAbsent 
 }: EditableAbsenceTypeCellProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Si pas d'absence, afficher "-"
-  if (heuresAbsence === 0) {
+  // Si pas d'absence (employé présent), afficher "-"
+  if (!isAbsent) {
     return <div className="text-center text-muted-foreground">-</div>;
   }
 

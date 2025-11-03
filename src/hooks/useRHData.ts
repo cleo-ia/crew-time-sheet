@@ -614,16 +614,21 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           chantierNom = fiche.chantiers.nom;
         }
 
+        const heuresNormales = Number(jour.heures) || Number(jour.HNORM) || 0;
+        const heuresIntemperies = Number(jour.HI) || 0;
+        const isAbsent = heuresNormales === 0 && heuresIntemperies === 0;
+
         return {
           date: jour.date,
           ficheJourId: jour.id,
           chantier: chantierNom,
-          heuresNormales: Number(jour.heures) || Number(jour.HNORM) || 0,
-          heuresIntemperies: Number(jour.HI) || 0,
+          heuresNormales,
+          heuresIntemperies,
           panier: !!jour.PA,
           trajet: Number(jour.T) || 0,
           trajetPerso: !!(jour as any).trajet_perso,
           typeAbsence: (jour as any).type_absence || null,
+          isAbsent,
         };
       }) || [])
         .sort((a, b) => {

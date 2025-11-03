@@ -186,7 +186,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   <TableCell>
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
-                      heuresAbsence={day.heuresIntemperies}
+                      isAbsent={day.heuresNormales === 0 && day.heuresIntemperies === 0}
                       onSave={async (newValue) => {
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,

@@ -19,30 +19,33 @@ const ABSENCE_TYPE_LABELS: Record<string, string> = {
  * Retourne le libellé des types d'absence pour un employé
  * - Si plusieurs types différents, retourne "Multiple"
  * - Si un seul type, retourne son libellé complet
- * - Si HI > 0 mais pas de type qualifié, retourne "Intempéries (HI)" par défaut
+ * - Si pas de type qualifié mais absence, retourne "À qualifier"
  */
 const getAbsenceTypeLabel = (emp: RHExportEmployee): string => {
   if (!emp.detailJours || emp.detailJours.length === 0) {
-    return emp.intemperies > 0 ? "Intempéries (HI)" : "-";
+    return "-";
   }
 
-  // Collecter tous les types d'absence uniques (jours avec intemperies > 0)
+  // Collecter tous les types d'absence uniques (jours avec isAbsent = true)
   const typesUniques = new Set<string>();
   emp.detailJours.forEach(jour => {
-    if (jour.intemperie > 0 && jour.typeAbsence) {
+    if (jour.isAbsent && jour.typeAbsence) {
       typesUniques.add(jour.typeAbsence);
     }
   });
 
+  // Vérifier s'il y a des absences non qualifiées
+  const hasAbsenceNonQualifiee = emp.detailJours.some(jour => jour.isAbsent && !jour.typeAbsence);
+
   if (typesUniques.size === 0) {
-    // Pas de type qualifié mais des intempéries
-    return emp.intemperies > 0 ? "Intempéries (HI)" : "-";
-  } else if (typesUniques.size === 1) {
-    // Un seul type d'absence
+    // Pas de type qualifié
+    return hasAbsenceNonQualifiee ? "À qualifier" : "-";
+  } else if (typesUniques.size === 1 && !hasAbsenceNonQualifiee) {
+    // Un seul type d'absence et tout est qualifié
     const type = Array.from(typesUniques)[0];
     return ABSENCE_TYPE_LABELS[type] || type;
   } else {
-    // Plusieurs types différents
+    // Plusieurs types différents ou mix qualifié/non qualifié
     return "Multiple";
   }
 };
@@ -392,7 +395,8 @@ export const generateRHExcel = (data: RHExportEmployee[], mois: string) => {
   data.forEach(emp => {
     if (emp.detailJours && emp.detailJours.length > 0) {
       emp.detailJours.forEach(jour => {
-        const typeAbsence = jour.intemperie > 0 
+        // Le type d'absence s'affiche uniquement si isAbsent = true (employé absent)
+        const typeAbsence = jour.isAbsent
           ? (jour.typeAbsence ? ABSENCE_TYPE_LABELS[jour.typeAbsence] || jour.typeAbsence : "À qualifier")
           : "-";
         
