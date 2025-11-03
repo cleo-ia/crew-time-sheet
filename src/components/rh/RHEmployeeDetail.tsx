@@ -139,7 +139,10 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.dailyDetails.map((day, idx) => (
+              {data.dailyDetails.map((day, idx) => {
+                const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
+                
+                return (
                 <TableRow key={idx} className="hover:bg-muted/20">
                   <TableCell className="font-medium">
                     {format(new Date(day.date), "EEE dd MMM yyyy", { locale: fr })}
@@ -208,6 +211,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     <EditableCell
                       value={day.panier}
                       type="checkbox"
+                      disabled={isAbsent}
                       onSave={async (newValue) => {
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,
@@ -221,6 +225,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     <EditableCell
                       value={day.trajet > 0}
                       type="checkbox"
+                      disabled={isAbsent}
                       onSave={async (checked) => {
                         if (checked) {
                           // Si on coche "Trajet", on décoche "Trajet Perso"
@@ -249,6 +254,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     <EditableCell
                       value={day.trajetPerso}
                       type="checkbox"
+                      disabled={isAbsent}
                       onSave={async (checked) => {
                         if (checked) {
                           // Si on coche "Trajet Perso", on décoche "Trajet"
@@ -274,7 +280,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     />
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
         </div>

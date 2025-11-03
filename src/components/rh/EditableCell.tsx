@@ -12,6 +12,7 @@ interface EditableCellProps {
   max?: number;
   step?: number;
   unit?: string;
+  disabled?: boolean;
 }
 
 export const EditableCell = ({
@@ -22,6 +23,7 @@ export const EditableCell = ({
   max,
   step = 0.5,
   unit = "h",
+  disabled = false,
 }: EditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
@@ -93,8 +95,11 @@ export const EditableCell = ({
         <Checkbox
           checked={localValue as boolean}
           onCheckedChange={handleCheckboxChange}
-          disabled={isSaving}
-          className="cursor-pointer"
+          disabled={isSaving || disabled}
+          className={cn(
+            "cursor-pointer",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
         />
         {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         {showSuccess && <Check className="h-3 w-3 text-success animate-in fade-in" />}
@@ -120,10 +125,11 @@ export const EditableCell = ({
         />
       ) : (
         <div
-          onClick={() => setIsEditing(true)}
+          onClick={() => !disabled && setIsEditing(true)}
           className={cn(
             "cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors min-w-[3rem] text-right",
-            showSuccess && "bg-success/10"
+            showSuccess && "bg-success/10",
+            disabled && "opacity-50 cursor-not-allowed hover:bg-transparent"
           )}
         >
           {localValue}{unit}
