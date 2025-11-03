@@ -153,7 +153,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
   });
 
-  const totalCols = 54;
+  const totalCols = 55;
 
   // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
@@ -436,6 +436,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     10,
     15, // AY-BA (saisies)
     15,
+    15,
     15, // BB-BC (régularisation et autres)
   ];
   sheet.columns = colWidths.map((w) => ({ width: w }));
@@ -443,10 +444,10 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   // Merges
   // Ligne 1
   sheet.mergeCells(`A1:${colToLetter(14)}1`); // A1:N1
-  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(54)}1`); // O1:BB1
+  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(55)}1`); // O1:BC1
 
   // Lignes 3-4: colonnes individuelles
-  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26, 52, 53, 54];
+  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26, 54, 55];
   singles.forEach((c) => sheet.mergeCells(3, c, 4, c));
 
   // Groupes
@@ -478,7 +479,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       else if (c >= 48 && c <= 50) bg = "A9D08E"; // Vert pour Acomptes et prêts
       else if (c >= 51 && c <= 53) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
       else if (c === 54) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
-      else if (c === 55) bg = COLOR_SCHEME.ADMIN_HEADER;
+      else if (c === 55) bg = "E8DAEF"; // Mauve clair pour Autres éléments
 
       setHeaderFill(cell, bg);
     }
@@ -511,7 +512,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       else if (c >= 48 && c <= 50) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
       else if (c >= 51 && c <= 53) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
       else if (c === 54) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
-      else if (c >= 55) bg = isEven ? COLOR_SCHEME.ADMIN_EVEN : COLOR_SCHEME.ADMIN_ODD;
+      else if (c === 55) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
 
       const cell = sheet.getRow(r).getCell(c);
       const align: "left" | "right" = c >= 14 ? "right" : "left";
