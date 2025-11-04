@@ -93,25 +93,25 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
           <Calendar className="h-5 w-5 text-primary" />
           Résumé global de la période
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/30 border border-border/30">
-            <Clock className="h-6 w-6 text-primary mb-2" />
-            <p className="text-2xl font-bold text-foreground">{data.summary.totalHeures}h</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="flex flex-col items-center justify-center p-5 rounded-lg bg-muted/40 border border-border/40">
+            <Clock className="h-7 w-7 text-primary mb-2" />
+            <p className="text-3xl font-bold text-foreground">{data.summary.totalHeures}h</p>
             <p className="text-xs text-muted-foreground mt-1">Total Heures</p>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/30 border border-border/30">
-            <CloudRain className="h-6 w-6 text-blue-500 mb-2" />
-            <p className="text-2xl font-bold text-foreground">{data.summary.totalIntemperies}h</p>
+          <div className="flex flex-col items-center justify-center p-5 rounded-lg bg-muted/40 border border-border/40">
+            <CloudRain className="h-7 w-7 text-blue-500 mb-2" />
+            <p className="text-3xl font-bold text-foreground">{data.summary.totalIntemperies}h</p>
             <p className="text-xs text-muted-foreground mt-1">Intempéries</p>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/30 border border-border/30">
-            <Coffee className="h-6 w-6 text-orange-500 mb-2" />
-            <p className="text-2xl font-bold text-foreground">{data.summary.totalPaniers}</p>
+          <div className="flex flex-col items-center justify-center p-5 rounded-lg bg-muted/40 border border-border/40">
+            <Coffee className="h-7 w-7 text-orange-500 mb-2" />
+            <p className="text-3xl font-bold text-foreground">{data.summary.totalPaniers}</p>
             <p className="text-xs text-muted-foreground mt-1">Paniers</p>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/30 border border-border/30">
-            <Car className="h-6 w-6 text-green-500 mb-2" />
-            <p className="text-2xl font-bold text-foreground">{data.summary.totalTrajets}</p>
+          <div className="flex flex-col items-center justify-center p-5 rounded-lg bg-muted/40 border border-border/40">
+            <Car className="h-7 w-7 text-green-500 mb-2" />
+            <p className="text-3xl font-bold text-foreground">{data.summary.totalTrajets}</p>
             <p className="text-xs text-muted-foreground mt-1">Trajets</p>
           </div>
         </div>
@@ -128,17 +128,17 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         <div className="overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="font-semibold">Date</TableHead>
-                <TableHead className="font-semibold">Chantier</TableHead>
-                <TableHead className="text-center">H. Normales</TableHead>
-                <TableHead className="text-center">Intempéries</TableHead>
-                <TableHead className="font-semibold">Type d'absence</TableHead>
-                <TableHead className="text-center">Panier</TableHead>
-                <TableHead className="text-center">Trajet</TableHead>
-                <TableHead className="text-center">Trajet Perso</TableHead>
-                <TableHead className="font-semibold">Régularisation M-1</TableHead>
-                <TableHead className="font-semibold">Autres éléments</TableHead>
+              <TableRow className="bg-muted/50 border-b-2">
+                <TableHead className="font-semibold py-3 px-4">Date</TableHead>
+                <TableHead className="font-semibold py-3 px-4">Chantier</TableHead>
+                <TableHead className="text-center py-3 px-4">H. Normales</TableHead>
+                <TableHead className="text-center py-3 px-4">Intempéries</TableHead>
+                <TableHead className="font-semibold py-3 px-4">Type d'absence</TableHead>
+                <TableHead className="text-center py-3 px-4">Panier</TableHead>
+                <TableHead className="text-center py-3 px-4">Trajet</TableHead>
+                <TableHead className="text-center py-3 px-4">Trajet Perso</TableHead>
+                <TableHead className="font-semibold py-3 px-4">Régularisation M-1</TableHead>
+                <TableHead className="font-semibold py-3 px-4">Autres éléments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,13 +148,18 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 return (
                 <TableRow 
                   key={idx} 
-                  className={`hover:bg-muted/20 ${isAbsent ? 'bg-muted/10' : ''}`}
+                  className={`
+                    transition-colors duration-150
+                    hover:bg-muted/30
+                    ${idx % 2 === 0 ? 'bg-muted/5' : ''}
+                    ${isAbsent ? 'bg-red-50/30 dark:bg-red-950/10' : ''}
+                  `}
                 >
-                  <TableCell className="font-medium py-3">
+                  <TableCell className="font-medium py-4 px-4">
                     {format(new Date(day.date), "EEE dd MMM", { locale: fr })}
                   </TableCell>
-                  <TableCell className="py-3">{day.chantier}</TableCell>
-                  <TableCell className="text-center py-3">
+                  <TableCell className="py-4 px-4">{day.chantier}</TableCell>
+                  <TableCell className="text-center py-4 px-4">
                     <EditableCell
                       value={day.heuresNormales}
                       type="number"
@@ -171,7 +176,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center py-3">
+                  <TableCell className="text-center py-4 px-4">
                     {day.heuresIntemperies > 0 || day.ficheJourId ? (
                       <EditableCell
                         value={day.heuresIntemperies}
@@ -192,7 +197,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="py-4 px-4">
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
                       isAbsent={day.heuresNormales === 0 && day.heuresIntemperies === 0}
@@ -213,7 +218,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center py-3">
+                  <TableCell className="text-center py-4 px-4">
                     <EditableCell
                       value={day.panier}
                       type="checkbox"
@@ -227,7 +232,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center py-3">
+                  <TableCell className="text-center py-4 px-4">
                     <EditableCell
                       value={day.trajet > 0}
                       type="checkbox"
@@ -256,7 +261,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center py-3">
+                  <TableCell className="text-center py-4 px-4">
                     <EditableCell
                       value={day.trajetPerso}
                       type="checkbox"
@@ -285,7 +290,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="py-4 px-4">
                     <EditableTextCell
                       value={(day as any).regularisationM1 || ""}
                       onSave={async (newValue) => {
@@ -298,7 +303,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       placeholder="Note de régularisation..."
                     />
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="py-4 px-4">
                     <EditableTextCell
                       value={(day as any).autresElements || ""}
                       onSave={async (newValue) => {
