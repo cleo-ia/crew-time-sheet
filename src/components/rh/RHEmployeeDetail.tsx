@@ -128,17 +128,17 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         <div className="overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50 border-b-2">
-                <TableHead className="font-semibold py-3 px-4">Date</TableHead>
-                <TableHead className="font-semibold py-3 px-4">Chantier</TableHead>
-                <TableHead className="text-center py-3 px-4">H. Normales</TableHead>
-                <TableHead className="text-center py-3 px-4">Intempéries</TableHead>
-                <TableHead className="font-semibold py-3 px-4">Type d'absence</TableHead>
-                <TableHead className="text-center py-3 px-4">Panier</TableHead>
-                <TableHead className="text-center py-3 px-4">Trajet</TableHead>
-                <TableHead className="text-center py-3 px-4">Trajet Perso</TableHead>
-                <TableHead className="font-semibold py-3 px-4">Régularisation M-1</TableHead>
-                <TableHead className="font-semibold py-3 px-4">Autres éléments</TableHead>
+              <TableRow className="border-b-2">
+                <TableHead className="font-semibold py-3 px-4 bg-[#D3D3D3] text-gray-800">Date</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#D3D3D3] text-gray-800">Chantier</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-[#FED8B1] text-gray-800">H. Normales</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-[#FED8B1] text-gray-800">Intempéries</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#FED8B1] text-gray-800">Type d'absence</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-[#D5F4E6] text-gray-800">Panier</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet Perso</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#E8F8F5] text-gray-800">Régularisation M-1</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#E8F8F5] text-gray-800">Autres éléments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
