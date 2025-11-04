@@ -137,8 +137,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 <TableHead className="text-center py-3 px-4 bg-[#D5F4E6] text-gray-800">Panier</TableHead>
                 <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet</TableHead>
                 <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet Perso</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#E8F8F5] text-gray-800">Régularisation M-1</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#E8F8F5] text-gray-800">Autres éléments</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#C9A0DC] text-gray-800">Régularisation M-1</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-[#E8DAEF] text-gray-800">Autres éléments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
