@@ -2,7 +2,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain } from "lucide-react";
+import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, Building2, UserX, CarFront, FileEdit, FileText, CheckCircle2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -128,29 +129,172 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         <div className="overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Date</TableHead>
-                <TableHead className="font-semibold">Chantier</TableHead>
-                <TableHead className="text-center">H. Normales</TableHead>
-                <TableHead className="text-center">Intempéries</TableHead>
-                <TableHead className="font-semibold">Type d'absence</TableHead>
-                <TableHead className="text-center">Panier</TableHead>
-                <TableHead className="text-center">Trajet</TableHead>
-                <TableHead className="text-center">Trajet Perso</TableHead>
-                <TableHead className="font-semibold">Régularisation M-1</TableHead>
-                <TableHead className="font-semibold">Autres éléments</TableHead>
+              <TableRow className="bg-muted/50 border-b-2 border-border">
+                <TableHead className="font-semibold">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-primary" />
+                          <span>Date</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Date du jour</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-primary" />
+                          <span>Chantier</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Chantier affecté</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-2">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span>H. Normales</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Heures normales travaillées</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-2">
+                          <CloudRain className="h-4 w-4 text-blue-500" />
+                          <span>Intempéries</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Heures d'intempéries</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <UserX className="h-4 w-4 text-orange-500" />
+                          <span>Type d'absence</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Type d'absence (CP, Maladie, etc.)</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-2">
+                          <Coffee className="h-4 w-4 text-orange-500" />
+                          <span>Panier</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Indemnité panier repas</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-2">
+                          <Car className="h-4 w-4 text-green-500" />
+                          <span>Trajet</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Trajet entreprise</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-2">
+                          <CarFront className="h-4 w-4 text-purple-500" />
+                          <span>Trajet Perso</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Trajet personnel</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <FileEdit className="h-4 w-4 text-amber-500" />
+                          <span>Régularisation M-1</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Notes de régularisation du mois précédent</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-slate-500" />
+                          <span>Autres éléments</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Notes diverses pour RH</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.dailyDetails.map((day, idx) => {
                 const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
+                const hasRegularisation = (day as any).regularisationM1?.trim();
+                const hasAutresElements = (day as any).autresElements?.trim();
                 
                 return (
-                <TableRow key={idx} className="hover:bg-muted/20">
-                  <TableCell className="font-medium">
-                    {format(new Date(day.date), "EEE dd MMM yyyy", { locale: fr })}
+                <TableRow 
+                  key={idx} 
+                  className={`
+                    hover:bg-muted/30 transition-colors py-4 border-l-4
+                    ${isAbsent 
+                      ? 'border-l-red-500 bg-red-50/30 dark:bg-red-950/10' 
+                      : 'border-l-green-500 bg-green-50/20 dark:bg-green-950/10'
+                    }
+                  `}
+                >
+                  <TableCell className="font-medium py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">
+                        {format(new Date(day.date), "dd MMM yyyy", { locale: fr })}
+                      </span>
+                      <Badge variant="outline" className="w-fit text-xs">
+                        {format(new Date(day.date), "EEEE", { locale: fr })}
+                      </Badge>
+                    </div>
                   </TableCell>
-                  <TableCell>{day.chantier}</TableCell>
+                  <TableCell className="py-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{day.chantier}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-center">
                     <EditableCell
                       value={day.heuresNormales}
@@ -210,103 +354,141 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center">
-                    <EditableCell
-                      value={day.panier}
-                      type="checkbox"
-                      disabled={isAbsent}
-                      onSave={async (newValue) => {
-                        await updateFicheJour.mutateAsync({
-                          ficheJourId: day.ficheJourId,
-                          field: "PA",
-                          value: newValue as boolean,
-                        });
-                      }}
-                    />
+                  <TableCell className="text-center py-4">
+                    {day.panier ? (
+                      <div className="flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-orange-500" />
+                      </div>
+                    ) : (
+                      <EditableCell
+                        value={day.panier}
+                        type="checkbox"
+                        disabled={isAbsent}
+                        onSave={async (newValue) => {
+                          await updateFicheJour.mutateAsync({
+                            ficheJourId: day.ficheJourId,
+                            field: "PA",
+                            value: newValue as boolean,
+                          });
+                        }}
+                      />
+                    )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <EditableCell
-                      value={day.trajet > 0}
-                      type="checkbox"
-                      disabled={isAbsent}
-                      onSave={async (checked) => {
-                        if (checked) {
-                          // Si on coche "Trajet", on décoche "Trajet Perso"
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "T",
-                            value: 1,
-                          });
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "trajet_perso",
-                            value: false,
-                          });
-                        } else {
-                          // Si on décoche "Trajet", on met juste à 0
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "T",
-                            value: 0,
-                          });
-                        }
-                      }}
-                    />
+                  <TableCell className="text-center py-4">
+                    {day.trajet > 0 ? (
+                      <div className="flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      </div>
+                    ) : (
+                      <EditableCell
+                        value={day.trajet > 0}
+                        type="checkbox"
+                        disabled={isAbsent}
+                        onSave={async (checked) => {
+                          if (checked) {
+                            // Si on coche "Trajet", on décoche "Trajet Perso"
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "T",
+                              value: 1,
+                            });
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "trajet_perso",
+                              value: false,
+                            });
+                          } else {
+                            // Si on décoche "Trajet", on met juste à 0
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "T",
+                              value: 0,
+                            });
+                          }
+                        }}
+                      />
+                    )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <EditableCell
-                      value={day.trajetPerso}
-                      type="checkbox"
-                      disabled={isAbsent}
-                      onSave={async (checked) => {
-                        if (checked) {
-                          // Si on coche "Trajet Perso", on décoche "Trajet"
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "trajet_perso",
-                            value: true,
-                          });
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "T",
-                            value: 0,
-                          });
-                        } else {
-                          // Si on décoche "Trajet Perso", on met juste à false
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "trajet_perso",
-                            value: false,
-                          });
-                        }
-                      }}
-                    />
+                  <TableCell className="text-center py-4">
+                    {day.trajetPerso ? (
+                      <div className="flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-purple-500" />
+                      </div>
+                    ) : (
+                      <EditableCell
+                        value={day.trajetPerso}
+                        type="checkbox"
+                        disabled={isAbsent}
+                        onSave={async (checked) => {
+                          if (checked) {
+                            // Si on coche "Trajet Perso", on décoche "Trajet"
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "trajet_perso",
+                              value: true,
+                            });
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "T",
+                              value: 0,
+                            });
+                          } else {
+                            // Si on décoche "Trajet Perso", on met juste à false
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "trajet_perso",
+                              value: false,
+                            });
+                          }
+                        }}
+                      />
+                    )}
                   </TableCell>
-                  <TableCell>
-                    <EditableTextCell
-                      value={(day as any).regularisationM1 || ""}
-                      onSave={async (newValue) => {
-                        await updateFicheJour.mutateAsync({
-                          ficheJourId: day.ficheJourId,
-                          field: "regularisation_m1",
-                          value: newValue,
-                        });
-                      }}
-                      placeholder="Ajouter une note de régularisation..."
-                    />
+                  <TableCell className="py-4">
+                    <div className="flex items-start gap-2">
+                      {hasRegularisation && (
+                        <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300">
+                          <FileEdit className="h-3 w-3 mr-1" />
+                          Note
+                        </Badge>
+                      )}
+                      <div className="flex-1">
+                        <EditableTextCell
+                          value={(day as any).regularisationM1 || ""}
+                          onSave={async (newValue) => {
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "regularisation_m1",
+                              value: newValue,
+                            });
+                          }}
+                          placeholder="Ajouter une note de régularisation..."
+                        />
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <EditableTextCell
-                      value={(day as any).autresElements || ""}
-                      onSave={async (newValue) => {
-                        await updateFicheJour.mutateAsync({
-                          ficheJourId: day.ficheJourId,
-                          field: "autres_elements",
-                          value: newValue,
-                        });
-                      }}
-                      placeholder="Ajouter une note..."
-                    />
+                  <TableCell className="py-4">
+                    <div className="flex items-start gap-2">
+                      {hasAutresElements && (
+                        <Badge variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-300">
+                          <FileText className="h-3 w-3 mr-1" />
+                          Note
+                        </Badge>
+                      )}
+                      <div className="flex-1">
+                        <EditableTextCell
+                          value={(day as any).autresElements || ""}
+                          onSave={async (newValue) => {
+                            await updateFicheJour.mutateAsync({
+                              ficheJourId: day.ficheJourId,
+                              field: "autres_elements",
+                              value: newValue,
+                            });
+                          }}
+                          placeholder="Ajouter une note..."
+                        />
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
