@@ -118,8 +118,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
       </Card>
 
       {/* Daily Details Table */}
-      <Card className="shadow-md border-border/50 overflow-hidden">
-        <div className="p-6 border-b border-border/50 bg-muted/20">
+      <Card className="shadow-md border-border/40 overflow-hidden">
+        <div className="p-6 border-b border-border/40 bg-muted/20">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             Détail jour par jour
@@ -128,7 +128,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         <div className="overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow className="bg-muted/30">
                 <TableHead className="font-semibold">Date</TableHead>
                 <TableHead className="font-semibold">Chantier</TableHead>
                 <TableHead className="text-center">H. Normales</TableHead>
@@ -146,12 +146,15 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
                 
                 return (
-                <TableRow key={idx} className="hover:bg-muted/20">
-                  <TableCell className="font-medium">
-                    {format(new Date(day.date), "EEE dd MMM yyyy", { locale: fr })}
+                <TableRow 
+                  key={idx} 
+                  className={`hover:bg-muted/20 ${isAbsent ? 'bg-muted/10' : ''}`}
+                >
+                  <TableCell className="font-medium py-3">
+                    {format(new Date(day.date), "EEE dd MMM", { locale: fr })}
                   </TableCell>
-                  <TableCell>{day.chantier}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="py-3">{day.chantier}</TableCell>
+                  <TableCell className="text-center py-3">
                     <EditableCell
                       value={day.heuresNormales}
                       type="number"
@@ -168,7 +171,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center py-3">
                     {day.heuresIntemperies > 0 || day.ficheJourId ? (
                       <EditableCell
                         value={day.heuresIntemperies}
@@ -189,7 +192,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
                       isAbsent={day.heuresNormales === 0 && day.heuresIntemperies === 0}
@@ -210,7 +213,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center py-3">
                     <EditableCell
                       value={day.panier}
                       type="checkbox"
@@ -224,7 +227,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center py-3">
                     <EditableCell
                       value={day.trajet > 0}
                       type="checkbox"
@@ -253,7 +256,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center py-3">
                     <EditableCell
                       value={day.trajetPerso}
                       type="checkbox"
@@ -282,7 +285,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                     <EditableTextCell
                       value={(day as any).regularisationM1 || ""}
                       onSave={async (newValue) => {
@@ -292,10 +295,10 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           value: newValue,
                         });
                       }}
-                      placeholder="Ajouter une note de régularisation..."
+                      placeholder="Note de régularisation..."
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                     <EditableTextCell
                       value={(day as any).autresElements || ""}
                       onSave={async (newValue) => {
@@ -305,7 +308,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           value: newValue,
                         });
                       }}
-                      placeholder="Ajouter une note..."
+                      placeholder="Note..."
                     />
                   </TableCell>
                 </TableRow>
