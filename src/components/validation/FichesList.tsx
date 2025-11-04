@@ -82,7 +82,7 @@ export const FichesList = ({ status, filters, onSelectFiche }: FichesListProps) 
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    {fiche.nombre_macons} maçon{fiche.nombre_macons > 1 ? "s" : ""}
+                    {fiche.nombre_macons} employé{fiche.nombre_macons > 1 ? "s" : ""}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />

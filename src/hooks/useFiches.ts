@@ -201,13 +201,18 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
         // En cas d'erreur, on continue avec les données non filtrées
       }
 
-      // Filtrer les fiches pour ne garder que celles avec affectation active
+      // Filtrer les fiches pour ne garder que celles avec affectation active OU qui sont le chef du chantier
       const validFiches = data?.filter(fiche => {
         if (!activeAffectations) return true; // Si pas d'affectations, on garde tout
-        return activeAffectations.some(aff => 
+        
+        // Inclure si c'est un maçon avec affectation active OU si c'est le chef du chantier
+        const hasActiveAffectation = activeAffectations.some(aff => 
           aff.macon_id === fiche.salarie_id && 
           aff.chantier_id === fiche.chantier_id
         );
+        const isChefOfChantier = fiche.chantier?.chef_id === fiche.salarie_id;
+        
+        return hasActiveAffectation || isChefOfChantier;
       }) || [];
 
       // Group by chantier and get salarie info from affectations_view
