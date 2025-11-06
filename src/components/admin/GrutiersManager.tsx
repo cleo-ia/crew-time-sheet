@@ -332,15 +332,12 @@ export const GrutiersManager = () => {
               </div>
               <div className="space-y-2">
                 <Label>Horaire</Label>
-                <Select value={formData.horaire} onValueChange={(value) => setFormData({ ...formData, horaire: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Horaire">Horaire</SelectItem>
-                    <SelectItem value="Forfait jours">Forfait jours</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  type="text"
+                  placeholder="Ex: 35h, 39h, temps partiel..."
+                  value={formData.horaire || ''}
+                  onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
+                />
               </div>
             </div>
 
