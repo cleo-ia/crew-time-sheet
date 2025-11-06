@@ -88,8 +88,22 @@ Deno.serve(async (req) => {
     deletedCounts.fiches_transport = ft?.length || 0;
     console.log(`[purge] ✓ Deleted ${deletedCounts.fiches_transport} fiches_transport`);
 
-    // Étape 6: Supprimer affectations_finisseurs_jours
-    console.log('[purge] Step 6/8: Deleting affectations_finisseurs_jours...');
+    // Étape 6: Supprimer affectations (maçons)
+    console.log('[purge] Step 6/9: Deleting affectations...');
+    const { data: aff, error: affError } = await supabase
+      .from('affectations')
+      .delete()
+      .gte('created_at', '1900-01-01')
+      .select();
+    if (affError) {
+      console.error('[purge] ❌ Error deleting affectations:', affError);
+      throw affError;
+    }
+    deletedCounts.affectations = aff?.length || 0;
+    console.log(`[purge] ✓ Deleted ${deletedCounts.affectations} affectations`);
+
+    // Étape 7: Supprimer affectations_finisseurs_jours
+    console.log('[purge] Step 7/9: Deleting affectations_finisseurs_jours...');
     const { data: afj, error: afjError } = await supabase
       .from('affectations_finisseurs_jours')
       .delete()
@@ -102,8 +116,8 @@ Deno.serve(async (req) => {
     deletedCounts.affectations_finisseurs_jours = afj?.length || 0;
     console.log(`[purge] ✓ Deleted ${deletedCounts.affectations_finisseurs_jours} affectations_finisseurs_jours`);
 
-    // Étape 7: Supprimer fiches_jours
-    console.log('[purge] Step 7/8: Deleting fiches_jours...');
+    // Étape 8: Supprimer fiches_jours
+    console.log('[purge] Step 8/9: Deleting fiches_jours...');
     const { data: fj, error: fjError } = await supabase
       .from('fiches_jours')
       .delete()
@@ -116,8 +130,8 @@ Deno.serve(async (req) => {
     deletedCounts.fiches_jours = fj?.length || 0;
     console.log(`[purge] ✓ Deleted ${deletedCounts.fiches_jours} fiches_jours`);
 
-    // Étape 8: Supprimer fiches
-    console.log('[purge] Step 8/8: Deleting fiches...');
+    // Étape 9: Supprimer fiches
+    console.log('[purge] Step 9/9: Deleting fiches...');
     const { data: fiches, error: fichesError } = await supabase
       .from('fiches')
       .delete()
