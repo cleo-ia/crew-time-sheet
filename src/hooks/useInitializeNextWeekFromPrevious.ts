@@ -119,14 +119,20 @@ export const useInitializeNextWeekFromPrevious = () => {
       let transportCopied = false;
       
       // Trouver la fiche du chef pour récupérer le transport
-      const { data: chefFiche } = await supabase
+      let chefFicheQuery = supabase
         .from("fiches")
         .select("id")
         .eq("semaine", currentWeek)
         .eq("user_id", chefId)
-        .eq("salarie_id", chefId)
-        .eq("chantier_id", chantierId || null)
-        .maybeSingle();
+        .eq("salarie_id", chefId);
+
+      if (chantierId) {
+        chefFicheQuery = chefFicheQuery.eq("chantier_id", chantierId);
+      } else {
+        chefFicheQuery = chefFicheQuery.is("chantier_id", null);
+      }
+
+      const { data: chefFiche } = await chefFicheQuery.maybeSingle();
 
       if (chefFiche) {
         // Récupérer la fiche transport de S
@@ -147,14 +153,20 @@ export const useInitializeNextWeekFromPrevious = () => {
 
         if (transportActuel && transportActuel.fiches_transport_jours) {
           // Trouver la nouvelle fiche du chef pour S+1
-          const { data: newChefFiche } = await supabase
+          let newChefFicheQuery = supabase
             .from("fiches")
             .select("id")
             .eq("semaine", nextWeek)
             .eq("user_id", chefId)
-            .eq("salarie_id", chefId)
-            .eq("chantier_id", chantierId || null)
-            .maybeSingle();
+            .eq("salarie_id", chefId);
+
+          if (chantierId) {
+            newChefFicheQuery = newChefFicheQuery.eq("chantier_id", chantierId);
+          } else {
+            newChefFicheQuery = newChefFicheQuery.is("chantier_id", null);
+          }
+
+          const { data: newChefFiche } = await newChefFicheQuery.maybeSingle();
 
           if (newChefFiche) {
             // Créer la nouvelle fiche transport pour S+1
