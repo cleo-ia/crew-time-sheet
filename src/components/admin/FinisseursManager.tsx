@@ -277,7 +277,7 @@ export const FinisseursManager = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire</Label>
+                <Label>Horaire mensuelle</Label>
                 <Input
                   type="text"
                   placeholder="Ex: 35h, 39h, temps partiel..."
