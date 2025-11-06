@@ -25,7 +25,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   const [showDialog, setShowDialog] = useState(false);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
-  const [maconToRemove, setMaconToRemove] = useState<{id: string, nom: string, prenom: string} | null>(null);
+  const [maconToRemove, setMaconToRemove] = useState<{id: string, nom: string, prenom: string, role: string} | null>(null);
   const [searchValue, setSearchValue] = useState<string>("all");
   const [showCreateInterimaireDialog, setShowCreateInterimaireDialog] = useState(false);
   const { toast } = useToast();
@@ -112,10 +112,24 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   const showInterimairesSection = searchValue === "all" || 
     (searchValue !== "all" && allInterimaires?.some(i => i.id === searchValue));
 
+  // Fonction utilitaire pour obtenir le label du rôle
+  const getRoleLabel = (role: string): string => {
+    switch (role) {
+      case "grutier":
+        return "Grutier";
+      case "interimaire":
+        return "Intérimaire";
+      case "macon":
+      default:
+        return "Maçon";
+    }
+  };
+
   // Ajouter un maçon à l'équipe
-  const handleAddMacon = async (maconId: string, maconNom: string, maconPrenom: string) => {
+  const handleAddMacon = async (maconId: string, maconNom: string, maconPrenom: string, role: string = "macon") => {
     // Vérifier si déjà dans l'équipe
     if (isMaconInTeam(maconId)) {
+      const roleLabel = getRoleLabel(role);
       toast({
         title: "Déjà dans l'équipe",
         description: `${maconPrenom} ${maconNom} fait déjà partie de votre équipe.`,
@@ -161,8 +175,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
         queryClient.invalidateQueries({ queryKey: ["macons-chantier"] })
       ]);
 
+      const roleLabel = getRoleLabel(role);
       toast({
-        title: "Maçon ajouté",
+        title: `${roleLabel} ajouté`,
         description: `${maconPrenom} ${maconNom} a été ajouté à votre équipe.`,
       });
     } catch (error: any) {
@@ -182,7 +197,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   };
 
   // Retirer un maçon de l'équipe
-  const handleRemoveMacon = async (maconId: string, maconNom: string, maconPrenom: string) => {
+  const handleRemoveMacon = async (maconId: string, maconNom: string, maconPrenom: string, role: string = "macon") => {
     // Fermer la dialog de confirmation
     setMaconToRemove(null);
     
@@ -224,8 +239,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
         queryClient.invalidateQueries({ queryKey: ["fiches-by-status"] })
       ]);
 
+      const roleLabel = getRoleLabel(role);
       toast({
-        title: "Maçon retiré",
+        title: `${roleLabel} retiré`,
         description: `${maconPrenom} ${maconNom} a été retiré de votre équipe. Ses fiches en cours ont été supprimées.`,
       });
     } catch (error: any) {
@@ -345,7 +361,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                               size="sm"
                               variant="destructive"
                               disabled={isRemoving}
-                              onClick={() => setMaconToRemove({ id: macon.id, nom: macon.nom || "", prenom: macon.prenom || "" })}
+                              onClick={() => setMaconToRemove({ id: macon.id, nom: macon.nom || "", prenom: macon.prenom || "", role: macon.role || "macon" })}
                               title="Retirer de l'équipe"
                             >
                               {isRemoving ? (
@@ -398,7 +414,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                               }`}
                               onClick={() => {
                                 if (!inTeam && !isAdding) {
-                                  handleAddMacon(macon.id, macon.nom || "", macon.prenom || "");
+                                  handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                 }
                               }}
                             >
@@ -437,7 +453,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                   disabled={inTeam || isAdding}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAddMacon(macon.id, macon.nom || "", macon.prenom || "");
+                                    handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                   }}
                                   title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
                                 >
@@ -487,7 +503,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                               }`}
                               onClick={() => {
                                 if (!inTeam && !isAdding) {
-                                  handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "");
+                                  handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                 }
                               }}
                             >
@@ -526,7 +542,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                   disabled={inTeam || isAdding}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "");
+                                    handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                   }}
                                   title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
                                 >
@@ -589,7 +605,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                               }`}
                               onClick={() => {
                                 if (!inTeam && !isAdding) {
-                                  handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "");
+                                  handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                 }
                               }}
                             >
@@ -628,7 +644,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                   disabled={inTeam || isAdding}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "");
+                                    handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                   }}
                                   title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
                                 >
@@ -683,7 +699,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => maconToRemove && handleRemoveMacon(maconToRemove.id, maconToRemove.nom, maconToRemove.prenom)}
+              onClick={() => maconToRemove && handleRemoveMacon(maconToRemove.id, maconToRemove.nom, maconToRemove.prenom, maconToRemove.role)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Retirer
