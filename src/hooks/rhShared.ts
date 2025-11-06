@@ -237,8 +237,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     // Filtre par type de salarié
     const isChef = chefIds.has(salarieId);
     const isFinisseur = salarie.role_metier === "finisseur";
-    const isInterimaire = !!salarie.agence_interim && !isChef && !isFinisseur;
-    const isMacon = !isChef && !isFinisseur && !isInterimaire;
+    const isGrutier = salarie.role_metier === "grutier";
+    const isInterimaire = !!salarie.agence_interim && !isChef && !isFinisseur && !isGrutier;
+    const isMacon = !isChef && !isFinisseur && !isGrutier && !isInterimaire;
 
     if (filters.typeSalarie && filters.typeSalarie !== "all") {
       if (filters.typeSalarie === "chef" && !isChef) continue;
@@ -257,9 +258,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       ? "Chef" 
       : isFinisseur
         ? "Finisseur"
-        : isInterimaire
-          ? "Intérimaire"
-          : "Maçon";
+        : isGrutier
+          ? "Grutier"
+          : isInterimaire
+            ? "Intérimaire"
+            : "Maçon";
 
     let heuresNormales = 0;
     let intemperies = 0;
@@ -350,7 +353,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       const chantierCodes = [...new Set([...chantierCodesFromJours, ...chantierCodesFromFiches])];
 
       // Déterminer le role sans accent pour la UI
-      const role = isChef ? "chef" : isFinisseur ? "finisseur" : isInterimaire ? "interimaire" : "macon";
+      const role = isChef ? "chef" : isFinisseur ? "finisseur" : isGrutier ? "grutier" : isInterimaire ? "interimaire" : "macon";
 
       // Détecter les absences non qualifiées
       const hasUnqualifiedAbsences = detailJours.some(
@@ -395,7 +398,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   const result = Array.from(employeeMap.values()).sort((a, b) => {
     // Tri par métier puis par nom
-    const metierOrder = { Chef: 0, Maçon: 1, Intérimaire: 2, Finisseur: 3 };
+    const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Intérimaire: 3, Finisseur: 4 };
     const aOrder = metierOrder[a.metier as keyof typeof metierOrder] ?? 4;
     const bOrder = metierOrder[b.metier as keyof typeof metierOrder] ?? 4;
     

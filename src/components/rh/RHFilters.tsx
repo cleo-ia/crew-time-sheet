@@ -130,6 +130,8 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
               <SelectItem value="all">Tous</SelectItem>
               <SelectItem value="chef">Chefs d'équipe</SelectItem>
               <SelectItem value="macon">Maçons</SelectItem>
+              <SelectItem value="grutier">Grutiers</SelectItem>
+              <SelectItem value="finisseur">Finisseurs</SelectItem>
               <SelectItem value="interimaire">Intérimaires</SelectItem>
               <SelectItem value="conducteur">Conducteurs</SelectItem>
             </SelectContent>
