@@ -165,7 +165,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
   });
 
-  const totalCols = 55;
+  const totalCols = 56;
 
   // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
@@ -269,6 +269,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     "h supp à 50%",
     "NB PANIERS",
     "TOTAL",
+    "T Perso",
     "T1",
     "T2",
     "T3",
@@ -339,8 +340,9 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       heuresSupp50,
       // REPAS
       emp.indemnitesRepas,
-      // TRAJETS (TOTAL + GD, le reste à 0)
-      emp.indemnitesTrajet,
+      // TRAJETS (TOTAL + T Perso + T1-T19,T31,T35 + GD)
+      emp.indemnitesTrajet + emp.indemnitesTrajetPerso, // TOTAL
+      emp.indemnitesTrajetPerso, // T Perso
       0,
       0,
       0,
@@ -360,7 +362,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       0,
       0,
       0,
-      emp.indemnitesTrajet, // GD (total)
+      emp.indemnitesTrajet + emp.indemnitesTrajetPerso, // GD (total)
       // Colonnes administratives (vides pour l'instant)
       "", // ACOMPTES
       "", // PRETS
@@ -392,11 +394,11 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
 
   // Lignes de résumé GD (structure uniquement)
   const gdRow20 = Array(totalCols).fill("");
-  gdRow20[46] = "20 GD"; // Colonne 47 (GD)
+  gdRow20[47] = "20 GD"; // Colonne 48 (GD)
   sheet.addRow(gdRow20);
 
   const gdRow23 = Array(totalCols).fill("");
-  gdRow23[46] = "23 GD"; // Colonne 47 (GD)
+  gdRow23[47] = "23 GD"; // Colonne 48 (GD)
   sheet.addRow(gdRow23);
 
   // Largeurs de colonnes
@@ -428,6 +430,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     10, // X-Y (heures supp)
     10, // Z (paniers)
     8,
+    8,
     6,
     6,
     6,
@@ -447,8 +450,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     6,
     6,
     6,
-    6,
-    6, // AA-AU (trajets)
+    6, // AA-AV (trajets)
     10,
     10,
     15, // AV-AX (acomptes et prêts)
@@ -464,18 +466,18 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   // Merges
   // Ligne 1
   sheet.mergeCells(`A1:${colToLetter(14)}1`); // A1:N1
-  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(55)}1`); // O1:BC1
+  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(56)}1`); // O1:BD1
 
   // Lignes 3-4: colonnes individuelles
-  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26, 54, 55];
+  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26, 55, 56];
   singles.forEach((c) => sheet.mergeCells(3, c, 4, c));
 
   // Groupes
   sheet.mergeCells(3, 14, 3, 23); // ABSENCES EN HEURES (N3:W3)
   sheet.mergeCells(3, 24, 3, 25); // HEURES SUPP (X3:Y3)
-  sheet.mergeCells(3, 27, 3, 47); // TRAJETS (AA3:AU3)
-  sheet.mergeCells(3, 48, 3, 50); // Acomptes et prêts (AV3:AX3)
-  sheet.mergeCells(3, 51, 3, 53); // SAISIES (AY3:BA3)
+  sheet.mergeCells(3, 27, 3, 48); // TRAJETS (AA3:AV3)
+  sheet.mergeCells(3, 49, 3, 51); // Acomptes et prêts (AW3:AY3)
+  sheet.mergeCells(3, 52, 3, 54); // SAISIES (AZ3:BB3)
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
@@ -495,11 +497,11 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       else if (c >= 14 && c <= 23) bg = COLOR_SCHEME.ABSENCES_HEADER;
       else if (c >= 24 && c <= 25) bg = COLOR_SCHEME.OVERTIME_HEADER;
       else if (c === 26) bg = COLOR_SCHEME.MEALS_HEADER;
-      else if (c >= 27 && c <= 47) bg = COLOR_SCHEME.TRANSPORT_HEADER;
-      else if (c >= 48 && c <= 50) bg = "A9D08E"; // Vert pour Acomptes et prêts
-      else if (c >= 51 && c <= 53) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
-      else if (c === 54) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
-      else if (c === 55) bg = "E8DAEF"; // Mauve clair pour Autres éléments
+      else if (c >= 27 && c <= 48) bg = COLOR_SCHEME.TRANSPORT_HEADER;
+      else if (c >= 49 && c <= 51) bg = "A9D08E"; // Vert pour Acomptes et prêts
+      else if (c >= 52 && c <= 54) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
+      else if (c === 55) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
+      else if (c === 56) bg = "E8DAEF"; // Mauve clair pour Autres éléments
 
       setHeaderFill(cell, bg);
     }
@@ -528,11 +530,11 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       else if (c >= 14 && c <= 23) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD;
       else if (c >= 24 && c <= 25) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD;
       else if (c === 26) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD;
-      else if (c >= 27 && c <= 47) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
-      else if (c >= 48 && c <= 50) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
-      else if (c >= 51 && c <= 53) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
-      else if (c === 54) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
-      else if (c === 55) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
+      else if (c >= 27 && c <= 48) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
+      else if (c >= 49 && c <= 51) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
+      else if (c >= 52 && c <= 54) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
+      else if (c === 55) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
+      else if (c === 56) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
 
       const cell = sheet.getRow(r).getCell(c);
       const align: "left" | "right" = c >= 14 ? "right" : "left";
@@ -541,7 +543,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       // Formats
       if (c === 13) {
         cell.numFmt = "#,##0.00"; // Salaire
-      } else if ((c >= 15 && c <= 25) || c === 26 || (c >= 27 && c <= 47)) {
+      } else if ((c >= 15 && c <= 25) || c === 26 || (c >= 27 && c <= 48)) {
         cell.numFmt = "0"; // Nombres entiers
       }
     }
