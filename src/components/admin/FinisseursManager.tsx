@@ -25,6 +25,7 @@ export const FinisseursManager = () => {
     niveau: "",
     degre: "",
     statut: "",
+    libelle_emploi: "",
     type_contrat: "",
     horaire: "",
     heures_supp_mensualisees: 0,
@@ -61,6 +62,7 @@ export const FinisseursManager = () => {
       niveau: "",
       degre: "",
       statut: "",
+      libelle_emploi: "",
       type_contrat: "",
       horaire: "",
       heures_supp_mensualisees: 0,
@@ -80,6 +82,7 @@ export const FinisseursManager = () => {
       niveau: finisseur.niveau || "",
       degre: finisseur.degre || "",
       statut: finisseur.statut || "",
+      libelle_emploi: finisseur.libelle_emploi || "",
       type_contrat: finisseur.type_contrat || "",
       horaire: finisseur.horaire || "",
       heures_supp_mensualisees: finisseur.heures_supp_mensualisees || 0,
@@ -257,6 +260,15 @@ export const FinisseursManager = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Libellé emploi</Label>
+              <Input
+                placeholder="Ex: Finisseur, Chef d'équipe..."
+                value={formData.libelle_emploi}
+                onChange={(e) => setFormData({ ...formData, libelle_emploi: e.target.value })}
+              />
             </div>
 
             <Separator className="my-4" />

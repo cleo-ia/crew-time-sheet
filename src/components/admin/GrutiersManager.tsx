@@ -33,6 +33,7 @@ export const GrutiersManager = () => {
     niveau: "",
     degre: "",
     statut: "",
+    libelle_emploi: "",
     type_contrat: "",
     horaire: "",
     heures_supp_mensualisees: 0,
@@ -73,6 +74,7 @@ export const GrutiersManager = () => {
       niveau: "",
       degre: "",
       statut: "",
+      libelle_emploi: "",
       type_contrat: "",
       horaire: "",
       heures_supp_mensualisees: 0,
@@ -92,6 +94,7 @@ export const GrutiersManager = () => {
       niveau: grutier.niveau || "",
       degre: grutier.degre || "",
       statut: grutier.statut || "",
+      libelle_emploi: grutier.libelle_emploi || "",
       type_contrat: grutier.type_contrat || "",
       horaire: grutier.horaire || "",
       heures_supp_mensualisees: grutier.heures_supp_mensualisees || 0,
@@ -311,6 +314,15 @@ export const GrutiersManager = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Libellé emploi</Label>
+              <Input
+                placeholder="Ex: Grutier, Chef de chantier..."
+                value={formData.libelle_emploi}
+                onChange={(e) => setFormData({ ...formData, libelle_emploi: e.target.value })}
+              />
             </div>
 
             <Separator className="my-4" />

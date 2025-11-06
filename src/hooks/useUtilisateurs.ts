@@ -18,6 +18,7 @@ export interface Utilisateur {
   niveau?: string | null;
   degre?: string | null;
   statut?: string | null;
+  libelle_emploi?: string | null;
   type_contrat?: string | null;
   horaire?: string | null;
   heures_supp_mensualisees?: number | null;
@@ -148,6 +149,7 @@ export const useCreateUtilisateur = () => {
       niveau?: string;
       degre?: string;
       statut?: string;
+      libelle_emploi?: string;
       type_contrat?: string;
       horaire?: string;
       heures_supp_mensualisees?: number;
@@ -168,6 +170,7 @@ export const useCreateUtilisateur = () => {
           niveau: user.niveau || null,
           degre: user.degre || null,
           statut: user.statut || null,
+          libelle_emploi: user.libelle_emploi || null,
           type_contrat: user.type_contrat || null,
           horaire: user.horaire || null,
           heures_supp_mensualisees: user.heures_supp_mensualisees || null,

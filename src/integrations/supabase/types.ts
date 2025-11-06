@@ -931,6 +931,7 @@ export type Database = {
           heures_supp_mensualisees: number | null
           horaire: string | null
           id: string
+          libelle_emploi: string | null
           matricule: string | null
           niveau: string | null
           nom: string | null
@@ -952,6 +953,7 @@ export type Database = {
           heures_supp_mensualisees?: number | null
           horaire?: string | null
           id: string
+          libelle_emploi?: string | null
           matricule?: string | null
           niveau?: string | null
           nom?: string | null
@@ -973,6 +975,7 @@ export type Database = {
           heures_supp_mensualisees?: number | null
           horaire?: string | null
           id?: string
+          libelle_emploi?: string | null
           matricule?: string | null
           niveau?: string | null
           nom?: string | null

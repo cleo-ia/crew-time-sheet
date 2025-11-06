@@ -33,6 +33,7 @@ export const MaconsManager = () => {
     niveau: "",
     degre: "",
     statut: "",
+    libelle_emploi: "",
     type_contrat: "",
     horaire: "",
     heures_supp_mensualisees: 0,
@@ -73,6 +74,7 @@ export const MaconsManager = () => {
       niveau: "",
       degre: "",
       statut: "",
+      libelle_emploi: "",
       type_contrat: "",
       horaire: "",
       heures_supp_mensualisees: 0,
@@ -92,6 +94,7 @@ export const MaconsManager = () => {
       niveau: macon.niveau || "",
       degre: macon.degre || "",
       statut: macon.statut || "",
+      libelle_emploi: macon.libelle_emploi || "",
       type_contrat: macon.type_contrat || "",
       horaire: macon.horaire || "",
       heures_supp_mensualisees: macon.heures_supp_mensualisees || 0,
@@ -311,6 +314,15 @@ export const MaconsManager = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Libellé emploi</Label>
+              <Input
+                placeholder="Ex: Maçon, Chef d'équipe..."
+                value={formData.libelle_emploi}
+                onChange={(e) => setFormData({ ...formData, libelle_emploi: e.target.value })}
+              />
             </div>
 
             <Separator className="my-4" />
