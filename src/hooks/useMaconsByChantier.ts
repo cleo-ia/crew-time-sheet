@@ -43,22 +43,14 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
       if (chefId) {
         const { data: chef } = await supabase
           .from("utilisateurs")
-          .select("id, nom, prenom, email, agence_interim")
+          .select("id, nom, prenom, email, agence_interim, role_metier")
           .eq("id", chefId)
           .maybeSingle();
         
-        // Récupérer le rôle du chef séparément
+        // Récupérer le rôle du chef (role_metier pour maçon/grutier/intérimaire)
         let chefRole = "chef";
         if (chef) {
-          const { data: chefRoleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", chef.id)
-            .maybeSingle();
-          
-          if (chefRoleData?.role) {
-            chefRole = chefRoleData.role;
-          }
+          chefRole = chef.role_metier || "chef";
         }
 
         if (chef) {
@@ -146,7 +138,8 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
             nom,
             prenom,
             email,
-            agence_interim
+            agence_interim,
+            role_metier
           )
         `)
         .eq("chantier_id", chantierId)
@@ -217,8 +210,8 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
               signed = !!signature;
             }
 
-            // Déterminer le rôle basé sur agence_interim
-            const role = macon.agence_interim ? "interimaire" : "macon";
+            // Déterminer le rôle basé sur role_metier et agence_interim
+            const role = macon.agence_interim ? "interimaire" : (macon.role_metier || "macon");
 
             return {
               id: macon.id,
