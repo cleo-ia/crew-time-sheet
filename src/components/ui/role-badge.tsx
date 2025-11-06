@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface RoleBadgeProps {
-  role: "admin" | "chef" | "macon" | "finisseur" | "interimaire" | "conducteur" | "rh";
+  role: "admin" | "chef" | "macon" | "finisseur" | "interimaire" | "conducteur" | "rh" | "grutier";
   size?: "sm" | "md";
 }
 
@@ -109,6 +109,21 @@ export const RoleBadge = ({ role, size = "md" }: RoleBadgeProps) => {
         }}
       >
         Maçon
+      </Badge>
+    );
+  }
+  
+  if (role === "grutier") {
+    return (
+      <Badge 
+        variant="default" 
+        className={sizeClass}
+        style={{ 
+          backgroundColor: 'hsl(217 91% 60%)', 
+          color: 'white' 
+        }}
+      >
+        Grutier
       </Badge>
     );
   }
