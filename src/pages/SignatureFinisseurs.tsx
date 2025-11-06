@@ -14,7 +14,7 @@ import { useFinisseursByConducteur, type FinisseurWithFiche } from "@/hooks/useF
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
-import { useInitializeNextWeek } from "@/hooks/useInitializeNextWeek";
+import { useCopyAllDataFinisseurs } from "@/hooks/useCopyAllDataFinisseurs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -77,7 +77,7 @@ const SignatureFinisseurs = () => {
 
   const { data: finisseurs = [] } = useFinisseursByConducteur(conducteurId, semaine);
   const saveSignature = useSaveSignature();
-  const initializeNextWeek = useInitializeNextWeek();
+  const copyAllDataFinisseurs = useCopyAllDataFinisseurs();
 
   // Charger les données de transport pour chaque finisseur
   useEffect(() => {
@@ -210,13 +210,20 @@ const SignatureFinisseurs = () => {
         description: "Transmission automatique au service RH effectuée.",
       });
 
-      // 3. Initialiser la semaine suivante avec 39h par défaut
+      // 3. Copier TOUTES les données vers la semaine suivante
       const nextWeek = getNextWeek(semaine);
       sessionStorage.setItem('conducteur_teamWeek', nextWeek);
       
-      await initializeNextWeek.mutateAsync({ conducteurId, nextWeek });
+      await copyAllDataFinisseurs.mutateAsync({ 
+        conducteurId, 
+        currentWeek: semaine, 
+        nextWeek 
+      });
 
-      // 4. Rediriger vers la semaine suivante
+      // 4. Définir le flag pour afficher le toast sur la page suivante
+      sessionStorage.setItem('fromSignature', 'true');
+
+      // 5. Rediriger vers la semaine suivante
       setTimeout(() => navigate(`/validation-conducteur?tab=mes-heures&semaine=${nextWeek}`), 3000);
     } catch (error) {
       console.error("Erreur:", error);

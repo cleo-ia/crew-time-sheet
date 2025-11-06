@@ -131,6 +131,21 @@ const ValidationConducteur = () => {
     }
   }, [searchParams]);
 
+  // Basculer automatiquement sur la semaine suivante au retour de la signature
+  useEffect(() => {
+    const fromSignature = sessionStorage.getItem('fromSignature');
+    
+    if (fromSignature === 'true' && activeMainTab === 'mes-heures') {
+      sessionStorage.removeItem('fromSignature');
+      
+      const weekNumber = selectedWeek.split('-S')[1];
+      toast({
+        title: "✅ Signatures validées",
+        description: `Les fiches ont été transmises au service RH. Vous pouvez maintenant saisir la semaine ${weekNumber}`,
+      });
+    }
+  }, [activeMainTab, selectedWeek, toast]);
+
   const handleSaveAndSign = async () => {
     if (!selectedWeek || !conducteurId) return;
     
