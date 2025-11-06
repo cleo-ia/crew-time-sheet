@@ -38,7 +38,7 @@ export const MaconsManager = () => {
     horaire: "",
     heures_supp_mensualisees: 0,
     forfait_jours: false,
-    salaire: 0,
+    salaire: undefined as number | undefined,
   });
 
   const { data: macons = [], isLoading } = useUtilisateursByRole("macon");
@@ -79,7 +79,7 @@ export const MaconsManager = () => {
       horaire: "",
       heures_supp_mensualisees: 0,
       forfait_jours: false,
-      salaire: 0,
+      salaire: undefined,
     });
   };
 
@@ -99,7 +99,7 @@ export const MaconsManager = () => {
       horaire: macon.horaire || "",
       heures_supp_mensualisees: macon.heures_supp_mensualisees || 0,
       forfait_jours: macon.forfait_jours || false,
-      salaire: macon.salaire || 0,
+      salaire: macon.salaire || undefined,
     });
     setShowDialog(true);
   };
@@ -369,9 +369,9 @@ export const MaconsManager = () => {
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
-                  value={formData.salaire}
-                  onChange={(e) => setFormData({ ...formData, salaire: parseFloat(e.target.value) || 0 })}
+                  placeholder="Saisir le salaire"
+                  value={formData.salaire ?? ''}
+                  onChange={(e) => setFormData({ ...formData, salaire: e.target.value ? parseFloat(e.target.value) : undefined })}
                 />
               </div>
             </div>
