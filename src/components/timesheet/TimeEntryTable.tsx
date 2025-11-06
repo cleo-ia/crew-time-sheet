@@ -206,8 +206,9 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     isConducteurMode ? weekId : ""
   );
 
-  // Charger tous les maçons et intérimaires pour le combobox d'ajout (mode edit seulement)
+  // Charger tous les maçons, grutiers et intérimaires pour le combobox d'ajout (mode edit seulement)
   const { data: allMacons = [] } = useUtilisateursByRole(mode === "edit" ? "macon" : undefined);
+  const { data: allGrutiers = [] } = useUtilisateursByRole(mode === "edit" ? "grutier" : undefined);
   const { data: allInterimaires = [] } = useUtilisateursByRole(mode === "edit" ? "interimaire" : undefined);
   
   // État pour le combobox d'ajout et suppression
@@ -915,6 +916,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 value={newEmployeeId}
                 onChange={setNewEmployeeId}
                 allMacons={allMacons}
+                allGrutiers={allGrutiers}
                 allInterimaires={allInterimaires}
                 isLoading={false}
                 excludeIds={entries.map(entry => entry.employeeId)}

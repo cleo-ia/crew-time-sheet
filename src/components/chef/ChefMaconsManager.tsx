@@ -31,8 +31,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Récupérer tous les maçons et intérimaires du système
+  // Récupérer tous les maçons, grutiers et intérimaires du système
   const { data: allMacons, isLoading: loadingMacons } = useUtilisateursByRole("macon");
+  const { data: allGrutiers, isLoading: loadingGrutiers } = useUtilisateursByRole("grutier");
   const { data: allInterimaires, isLoading: loadingInterimaires } = useUtilisateursByRole("interimaire");
   
   // Filtre défensif : garantir qu'on n'affiche que des maçons purs (role_metier = 'macon')
@@ -88,10 +89,14 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
     return { type: "available", label: "Disponible" };
   };
 
-  // Filtrer les maçons et intérimaires selon la recherche
+  // Filtrer les maçons, grutiers et intérimaires selon la recherche
   const filteredMacons = searchValue === "all" 
     ? maconsPurs 
     : maconsPurs?.filter(m => m.id === searchValue);
+
+  const filteredGrutiers = searchValue === "all"
+    ? allGrutiers
+    : allGrutiers?.filter(g => g.id === searchValue);
 
   const filteredInterimaires = searchValue === "all"
     ? allInterimaires
@@ -100,6 +105,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   // Déterminer quelles sections afficher
   const showMaconsSection = searchValue === "all" || 
     (searchValue !== "all" && maconsPurs?.some(m => m.id === searchValue));
+
+  const showGrutiersSection = searchValue === "all" ||
+    (searchValue !== "all" && allGrutiers?.some(g => g.id === searchValue));
 
   const showInterimairesSection = searchValue === "all" || 
     (searchValue !== "all" && allInterimaires?.some(i => i.id === searchValue));
@@ -257,8 +265,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                 value={searchValue}
                 onChange={setSearchValue}
                 allMacons={maconsPurs || []}
+                allGrutiers={allGrutiers || []}
                 allInterimaires={allInterimaires || []}
-                isLoading={loadingMacons || loadingInterimaires}
+                isLoading={loadingMacons || loadingGrutiers || loadingInterimaires}
               />
             </div>
           </DialogHeader>
@@ -290,6 +299,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                           <div className="flex items-center gap-3">
                             {macon.role === "interimaire" ? (
                               <span className="text-lg">🔄</span>
+                            ) : macon.role === "grutier" ? (
+                              <span className="text-lg">🏗️</span>
                             ) : !macon.isChef && (
                               <span className="text-lg">👷‍♂️</span>
                             )}
@@ -314,6 +325,13 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
                               >
                                 Intérimaire
+                              </Badge>
+                            ) : macon.role === "grutier" ? (
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                              >
+                                Grutier
                               </Badge>
                             ) : (
                               <Badge 
@@ -348,12 +366,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                 )}
               </div>
 
-              {(showMaconsSection || showInterimairesSection) && (
+              {(showMaconsSection || showGrutiersSection || showInterimairesSection) && (
                 <>
                   <Separator className="my-6" />
 
-                  {/* Grille 2 colonnes pour afficher maçons et intérimaires côte à côte */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Grille 3 colonnes pour afficher maçons, grutiers et intérimaires côte à côte */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
                     {/* Colonne gauche : AJOUTER DES MAÇONS */}
                     {showMaconsSection && (
@@ -439,6 +457,95 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                         ) : (
                           <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-border rounded-lg">
                             Aucun maçon disponible dans le système
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Colonne centrale : AJOUTER DES GRUTIERS */}
+                    {showGrutiersSection && (
+                      <div>
+                        <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                          AJOUTER DES GRUTIERS
+                        </h3>
+                        {loadingGrutiers ? (
+                          <div className="flex items-center justify-center p-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : filteredGrutiers && filteredGrutiers.length > 0 ? (
+                          <div className="space-y-2">
+                            {filteredGrutiers.map((grutier) => {
+                          const inTeam = isMaconInTeam(grutier.id);
+                          const status = getMaconStatus(grutier.id);
+                          const isAdding = addingIds.has(grutier.id);
+
+                          return (
+                            <div 
+                              key={grutier.id}
+                              className={`flex items-center justify-between p-3 border border-border rounded-lg transition-colors ${
+                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                              }`}
+                              onClick={() => {
+                                if (!inTeam && !isAdding) {
+                                  handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <span className="text-lg">🏗️</span>
+                                <div>
+                                  <p className="font-medium">
+                                    {grutier.prenom} {grutier.nom}
+                                  </p>
+                                  {grutier.email && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {grutier.email}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {status && !inTeam && (
+                                  <Badge 
+                                    variant="outline"
+                                    className={
+                                      status.type === "available" 
+                                        ? "bg-success/10 text-success border-success/20" 
+                                        : status.type === "assigned"
+                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                        : "bg-warning/10 text-warning border-warning/20"
+                                    }
+                                  >
+                                    {status.label}
+                                  </Badge>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  disabled={inTeam || isAdding}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "");
+                                  }}
+                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                >
+                                  {isAdding ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : inTeam ? (
+                                    "✓ Ajouté"
+                                  ) : (
+                                    "+ Ajouter"
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-border rounded-lg">
+                            Aucun grutier disponible dans le système
                           </p>
                         )}
                       </div>

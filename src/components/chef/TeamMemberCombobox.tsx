@@ -9,6 +9,7 @@ interface TeamMemberComboboxProps {
   value: string;
   onChange: (value: string) => void;
   allMacons: any[];
+  allGrutiers: any[];
   allInterimaires: any[];
   isLoading: boolean;
   excludeIds?: string[];
@@ -17,7 +18,8 @@ interface TeamMemberComboboxProps {
 export function TeamMemberCombobox({ 
   value, 
   onChange, 
-  allMacons, 
+  allMacons,
+  allGrutiers,
   allInterimaires,
   isLoading,
   excludeIds = []
@@ -26,6 +28,7 @@ export function TeamMemberCombobox({
 
   const allMembers = [
     ...(allMacons || []).map(m => ({ ...m, memberType: 'macon' })),
+    ...(allGrutiers || []).map(g => ({ ...g, memberType: 'grutier' })),
     ...(allInterimaires || []).map(i => ({ ...i, memberType: 'interimaire' }))
   ].filter(member => !excludeIds.includes(member.id));
 
@@ -46,12 +49,14 @@ export function TeamMemberCombobox({
             <span className="flex items-center gap-2">
               {selectedMember.memberType === 'macon' ? (
                 <UserPlus className="h-4 w-4" />
+              ) : selectedMember.memberType === 'grutier' ? (
+                <span className="text-base">🏗️</span>
               ) : (
                 <span className="text-base">🔄</span>
               )}
               {selectedMember.prenom} {selectedMember.nom}
               <span className="text-xs text-muted-foreground">
-                ({selectedMember.memberType === 'macon' ? 'Maçon' : 'Intérimaire'})
+                ({selectedMember.memberType === 'macon' ? 'Maçon' : selectedMember.memberType === 'grutier' ? 'Grutier' : 'Intérimaire'})
               </span>
             </span>
           ) : (
@@ -102,13 +107,15 @@ export function TeamMemberCombobox({
                   />
                   {member.memberType === 'macon' ? (
                     <UserPlus className="mr-2 h-4 w-4" />
+                  ) : member.memberType === 'grutier' ? (
+                    <span className="mr-2 text-base">🏗️</span>
                   ) : (
                     <span className="mr-2 text-base">🔄</span>
                   )}
                   <div className="flex flex-col">
                     <span>{member.prenom} {member.nom}</span>
                     <span className="text-xs text-muted-foreground">
-                      {member.memberType === 'macon' ? 'Maçon' : 'Intérimaire'}
+                      {member.memberType === 'macon' ? 'Maçon' : member.memberType === 'grutier' ? 'Grutier' : 'Intérimaire'}
                       {member.email && ` • ${member.email}`}
                     </span>
                   </div>
