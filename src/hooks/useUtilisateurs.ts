@@ -10,7 +10,7 @@ export interface Utilisateur {
   auth_user_id: string | null;
   role?: string;
   agence_interim?: string | null;
-  role_metier?: 'macon' | 'finisseur' | null;
+  role_metier?: 'macon' | 'finisseur' | 'grutier' | null;
   
   // Champs contractuels
   matricule?: string | null;
@@ -77,6 +77,18 @@ export const useUtilisateursByRole = (role?: string) => {
         return data || [];
       }
 
+      // Handle "grutier" - users with role_metier = 'grutier'
+      if (role === "grutier") {
+        const { data, error } = await supabase
+          .from("utilisateurs")
+          .select("*")
+          .eq("role_metier", "grutier")
+          .order("nom");
+        
+        if (error) throw error;
+        return data || [];
+      }
+
       // Handle valid roles (admin, rh, conducteur, chef)
       // Get user IDs for this role
       const { data: userRoles, error: roleError } = await supabase
@@ -130,7 +142,7 @@ export const useCreateUtilisateur = () => {
       email: string; 
       role?: string; 
       agence_interim?: string; 
-      role_metier?: 'macon' | 'finisseur';
+      role_metier?: 'macon' | 'finisseur' | 'grutier';
       matricule?: string;
       echelon?: string;
       niveau?: string;
@@ -207,7 +219,7 @@ export const useUpdateUtilisateur = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: (Partial<Utilisateur> & { role_metier?: 'macon' | 'finisseur' | null }) & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: (Partial<Utilisateur> & { role_metier?: 'macon' | 'finisseur' | 'grutier' | null }) & { id: string }) => {
       const { data, error } = await supabase
         .from("utilisateurs")
         .update(updates)
