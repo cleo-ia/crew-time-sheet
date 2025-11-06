@@ -1166,7 +1166,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "rh" | "conducteur" | "chef"
-      role_metier_type: "macon" | "finisseur"
+      role_metier_type: "macon" | "finisseur" | "grutier"
       statut_fiche:
         | "BROUILLON"
         | "EN_SIGNATURE"
@@ -1312,7 +1312,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "rh", "conducteur", "chef"],
-      role_metier_type: ["macon", "finisseur"],
+      role_metier_type: ["macon", "finisseur", "grutier"],
       statut_fiche: [
         "BROUILLON",
         "EN_SIGNATURE",

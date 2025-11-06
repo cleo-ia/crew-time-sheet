@@ -8,6 +8,7 @@ import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
 import { ChefsManager } from "@/components/admin/ChefsManager";
 import { MaconsManager } from "@/components/admin/MaconsManager";
+import { GrutiersManager } from "@/components/admin/GrutiersManager";
 import { InterimairesManager } from "@/components/admin/InterimairesManager";
 import { FinisseursManager } from "@/components/admin/FinisseursManager";
 import { VehiculesFinisseursManager } from "@/components/admin/VehiculesFinisseursManager";
@@ -48,7 +49,7 @@ const AdminPanel = () => {
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Card className="shadow-md border-border/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full grid grid-cols-10 rounded-none border-b">
+            <TabsList className="w-full grid grid-cols-11 rounded-none border-b">
               <TabsTrigger value="utilisateurs" className="rounded-none gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Utilisateurs</span>
@@ -68,6 +69,10 @@ const AdminPanel = () => {
               <TabsTrigger value="macons" className="rounded-none gap-2">
                 <HardHat className="h-4 w-4" />
                 <span className="hidden sm:inline">Maçons</span>
+              </TabsTrigger>
+              <TabsTrigger value="grutiers" className="rounded-none gap-2">
+                <HardHat className="h-4 w-4" />
+                <span className="hidden sm:inline">Grutiers</span>
               </TabsTrigger>
               <TabsTrigger value="interimaires" className="rounded-none gap-2">
                 <UserCheck className="h-4 w-4" />
@@ -109,6 +114,10 @@ const AdminPanel = () => {
 
             <TabsContent value="macons" className="p-6">
               <MaconsManager />
+            </TabsContent>
+
+            <TabsContent value="grutiers" className="p-6">
+              <GrutiersManager />
             </TabsContent>
 
             <TabsContent value="interimaires" className="p-6">
