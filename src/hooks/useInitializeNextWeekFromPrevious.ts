@@ -118,98 +118,163 @@ export const useInitializeNextWeekFromPrevious = () => {
       // 3. Copier les données de transport
       let transportCopied = false;
       
-      // Trouver la fiche du chef pour récupérer le transport
-      let chefFicheQuery = supabase
-        .from("fiches")
-        .select("id")
-        .eq("semaine", currentWeek)
-        .eq("user_id", chefId)
-        .eq("salarie_id", chefId);
+      console.log(`[Copy Transport] Début copie transport S=${currentWeek} → S+1=${nextWeek}, chantier=${chantierId || 'null'}`);
+      
+      // Étape 1 : Lire le transport source directement par chantier/semaine
+      let transportSourceQuery = supabase
+        .from("fiches_transport")
+        .select("id, fiche_id, semaine")
+        .eq("semaine", currentWeek);
 
       if (chantierId) {
-        chefFicheQuery = chefFicheQuery.eq("chantier_id", chantierId);
+        transportSourceQuery = transportSourceQuery.eq("chantier_id", chantierId);
       } else {
-        chefFicheQuery = chefFicheQuery.is("chantier_id", null);
+        transportSourceQuery = transportSourceQuery.is("chantier_id", null);
       }
 
-      const { data: chefFiche } = await chefFicheQuery.maybeSingle();
+      const { data: transportSource } = await transportSourceQuery
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (chefFiche) {
-        // Récupérer la fiche transport de S
-        const { data: transportActuel } = await supabase
-          .from("fiches_transport")
-          .select(`
-            id,
-            fiches_transport_jours (
-              date,
-              immatriculation,
-              conducteur_aller_id,
-              conducteur_retour_id,
-              periode
-            )
-          `)
-          .eq("fiche_id", chefFiche.id)
-          .maybeSingle();
+      console.log("[Copy Transport] Transport source:", transportSource ? `trouvé (id=${transportSource.id})` : "non trouvé");
 
-        if (transportActuel && transportActuel.fiches_transport_jours) {
-          // Trouver la nouvelle fiche du chef pour S+1
-          let newChefFicheQuery = supabase
-            .from("fiches")
-            .select("id")
-            .eq("semaine", nextWeek)
-            .eq("user_id", chefId)
-            .eq("salarie_id", chefId);
+      if (!transportSource) {
+        console.log("[Copy Transport] Aucune fiche transport à copier pour ce chantier/semaine");
+        return { copiedFiches: fichesActuelles.length, copiedTransport: false };
+      }
 
-          if (chantierId) {
-            newChefFicheQuery = newChefFicheQuery.eq("chantier_id", chantierId);
-          } else {
-            newChefFicheQuery = newChefFicheQuery.is("chantier_id", null);
-          }
+      // Étape 2 : Lire les jours de transport source
+      const { data: joursTransportSource, error: joursError } = await supabase
+        .from("fiches_transport_jours")
+        .select("date, immatriculation, conducteur_aller_id, conducteur_retour_id, periode")
+        .eq("fiche_transport_id", transportSource.id)
+        .order("date");
 
-          const { data: newChefFiche } = await newChefFicheQuery.maybeSingle();
+      if (joursError || !joursTransportSource || joursTransportSource.length === 0) {
+        console.log("[Copy Transport] Aucun jour de transport à copier");
+        return { copiedFiches: fichesActuelles.length, copiedTransport: false };
+      }
 
-          if (newChefFiche) {
-            // Créer la nouvelle fiche transport pour S+1
-            const { data: newTransport, error: transportError } = await supabase
-              .from("fiches_transport")
-              .insert({
-                fiche_id: newChefFiche.id,
-                semaine: nextWeek,
-                chantier_id: chantierId,
-              })
-              .select("id")
-              .single();
+      console.log(`[Copy Transport] ${joursTransportSource.length} jours de transport trouvés`);
 
-            if (!transportError && newTransport) {
-              // Copier les jours de transport en ajustant les dates
-              const joursTransportToInsert = transportActuel.fiches_transport_jours.map((jour: any) => {
-                const oldDate = new Date(jour.date);
-                const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000);
-                
-                return {
-                  fiche_transport_id: newTransport.id,
-                  date: format(newDate, "yyyy-MM-dd"),
-                  immatriculation: jour.immatriculation,
-                  conducteur_aller_id: jour.conducteur_aller_id,
-                  conducteur_retour_id: jour.conducteur_retour_id,
-                  periode: jour.periode,
-                };
-              });
+      // Étape 3 : Trouver/créer la fiche destination (S+1) - Aligné sur useSaveTransportV2
+      let ficheDestQuery = supabase
+        .from("fiches")
+        .select("id")
+        .eq("semaine", nextWeek)
+        .eq("user_id", chefId);
 
-              const { error: joursTransportError } = await supabase
-                .from("fiches_transport_jours")
-                .insert(joursTransportToInsert);
+      if (chantierId) {
+        ficheDestQuery = ficheDestQuery.eq("chantier_id", chantierId);
+      } else {
+        ficheDestQuery = ficheDestQuery.is("chantier_id", null);
+      }
 
-              if (!joursTransportError) {
-                transportCopied = true;
-                console.log("✅ Transport copié avec succès");
-              } else {
-                console.error("Erreur copie transport jours:", joursTransportError);
-              }
-            }
-          }
+      const { data: ficheDest } = await ficheDestQuery
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let ficheDestId: string;
+
+      if (ficheDest) {
+        ficheDestId = ficheDest.id;
+        console.log("[Copy Transport] Fiche destination trouvée:", ficheDestId);
+      } else {
+        // Créer une nouvelle fiche pour le transport
+        const { data: newFiche, error: ficheError } = await supabase
+          .from("fiches")
+          .insert({
+            semaine: nextWeek,
+            user_id: chefId,
+            chantier_id: chantierId,
+            statut: "BROUILLON",
+            total_heures: 0,
+          })
+          .select("id")
+          .single();
+
+        if (ficheError || !newFiche) {
+          console.error("[Copy Transport] Erreur création fiche destination:", ficheError);
+          return { copiedFiches: fichesActuelles.length, copiedTransport: false };
         }
+
+        ficheDestId = newFiche.id;
+        console.log("[Copy Transport] Fiche destination créée:", ficheDestId);
       }
+
+      // Étape 4 : Créer/réutiliser la fiche transport destination
+      const { data: existingTransportDest } = await supabase
+        .from("fiches_transport")
+        .select("id")
+        .eq("fiche_id", ficheDestId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let transportDestId: string;
+
+      if (existingTransportDest) {
+        transportDestId = existingTransportDest.id;
+        console.log("[Copy Transport] Transport destination trouvé, suppression des anciens jours...");
+        
+        // Supprimer les anciens jours pour éviter les doublons
+        const { error: deleteError } = await supabase
+          .from("fiches_transport_jours")
+          .delete()
+          .eq("fiche_transport_id", transportDestId);
+
+        if (deleteError) {
+          console.error("[Copy Transport] Erreur suppression anciens jours:", deleteError);
+        }
+      } else {
+        // Créer une nouvelle fiche transport
+        const { data: newTransportDest, error: transportError } = await supabase
+          .from("fiches_transport")
+          .insert({
+            fiche_id: ficheDestId,
+            semaine: nextWeek,
+            chantier_id: chantierId,
+          })
+          .select("id")
+          .single();
+
+        if (transportError || !newTransportDest) {
+          console.error("[Copy Transport] Erreur création transport destination:", transportError);
+          return { copiedFiches: fichesActuelles.length, copiedTransport: false };
+        }
+
+        transportDestId = newTransportDest.id;
+        console.log("[Copy Transport] Transport destination créé:", transportDestId);
+      }
+
+      // Étape 5 : Copier les jours avec décalage de dates
+      const joursToInsert = joursTransportSource.map((jour: any) => {
+        const oldDate = new Date(jour.date);
+        const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000);
+        
+        return {
+          fiche_transport_id: transportDestId,
+          date: format(newDate, "yyyy-MM-dd"),
+          immatriculation: jour.immatriculation,
+          conducteur_aller_id: jour.conducteur_aller_id,
+          conducteur_retour_id: jour.conducteur_retour_id,
+          periode: jour.periode,
+        };
+      });
+
+      const { error: insertError } = await supabase
+        .from("fiches_transport_jours")
+        .insert(joursToInsert);
+
+      if (insertError) {
+        console.error("[Copy Transport] Erreur insertion jours:", insertError);
+        return { copiedFiches: fichesActuelles.length, copiedTransport: false };
+      }
+
+      transportCopied = true;
+      console.log(`✅ [Copy Transport] ${joursToInsert.length} jours copiés avec succès vers S+1`);
 
       return {
         copiedFiches: fichesActuelles.length,
