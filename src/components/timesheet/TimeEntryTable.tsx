@@ -945,10 +945,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           
           // Déterminer la priorité de tri
           const getPriority = (macon: typeof maconA) => {
-            if (!macon) return 3; // Inconnu en dernier
+            if (!macon) return 4; // Inconnu en dernier
             if (macon.isChef) return 0; // Chef en premier
-            if (macon.role === "interimaire") return 2; // Intérimaires en dernier
-            return 1; // Maçons au milieu
+            if (macon.role === "macon") return 1; // Maçons en 2ème
+            if (macon.role === "grutier") return 2; // Grutiers en 3ème
+            if (macon.role === "interimaire") return 3; // Intérimaires en dernier
+            return 1; // Par défaut avec les maçons
           };
           
           return getPriority(maconA) - getPriority(maconB);
@@ -960,7 +962,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           const macon = macons.find(m => m.id === entry.employeeId);
           const isChef = macon?.isChef;
           const isInterimaire = macon?.role === "interimaire";
-          const isMacon = macon && !isChef && !isInterimaire;
+          const isGrutier = macon?.role === "grutier";
+          const isMacon = macon && !isChef && !isInterimaire && !isGrutier;
           
           // Récupérer l'état de complétude depuis la map pré-calculée
           const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);
@@ -999,6 +1002,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                     
                     {/* Emoji selon le rôle */}
                     {isInterimaire && <span className="text-xl">🔄</span>}
+                    {isGrutier && <span className="text-xl">🏗️</span>}
                     {isMacon && <span className="text-xl">👷‍♂️</span>}
                     
                     {/* Nom */}
@@ -1014,6 +1018,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                     {isInterimaire && (
                       <Badge variant="secondary" className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20">
                         Intérimaire
+                      </Badge>
+                    )}
+                    {isGrutier && (
+                      <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
+                        Grutier
                       </Badge>
                     )}
                     {isMacon && (
