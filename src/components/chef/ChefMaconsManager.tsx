@@ -679,7 +679,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
       <AlertDialog open={!!maconToRemove} onOpenChange={() => setMaconToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Retirer ce maçon de l'équipe ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {maconToRemove 
+                ? `Retirer ${maconToRemove.role === 'interimaire' ? 'cet' : 'ce'} ${getRoleLabel(maconToRemove.role).toLowerCase()} de l'équipe ?`
+                : 'Retirer de l\'équipe ?'
+              }
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {maconToRemove && (
                 <>
