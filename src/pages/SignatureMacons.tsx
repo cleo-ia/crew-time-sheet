@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
-import { useInitializeNextWeekMacons } from "@/hooks/useInitializeNextWeekMacons";
+import { useInitializeNextWeekFromPrevious } from "@/hooks/useInitializeNextWeekFromPrevious";
 
 const SignatureMacons = () => {
   const { toast } = useToast();
@@ -32,7 +32,7 @@ const SignatureMacons = () => {
   const { data: transportData } = useTransportByChantier(chantierId, semaine);
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
-  const initializeNextWeek = useInitializeNextWeekMacons();
+  const initializeNextWeek = useInitializeNextWeekFromPrevious();
 
   const [macons, setMacons] = useState<MaconWithFiche[]>([]);
   const [selectedMacon, setSelectedMacon] = useState<MaconWithFiche | null>(null);
@@ -122,16 +122,17 @@ const SignatureMacons = () => {
       // 3. Calculer la semaine suivante
       const nextWeek = getNextWeek(semaine);
 
-      // 4. Initialiser la semaine suivante avec 39h pour les maçons
+      // 4. Copier les données de S vers S+1 (heures réelles + transport)
       try {
-        await initializeNextWeek.mutateAsync({
-          chantierId,
-          semaine: nextWeek,
+        const result = await initializeNextWeek.mutateAsync({
+          currentWeek: semaine,
+          nextWeek,
           chefId,
+          chantierId,
         });
-        console.log(`✅ Semaine ${nextWeek} initialisée avec 39h pour l'équipe`);
+        console.log(`✅ Semaine ${nextWeek} initialisée: ${result.copiedFiches} fiches copiées, transport: ${result.copiedTransport ? 'oui' : 'non'}`);
       } catch (initError) {
-        console.error("Erreur initialisation semaine suivante:", initError);
+        console.error("Erreur copie vers semaine suivante:", initError);
         // Ne pas bloquer la suite même en cas d'erreur
       }
 
