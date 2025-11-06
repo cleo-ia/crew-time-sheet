@@ -36,6 +36,7 @@ export const MaconsManager = () => {
     libelle_emploi: "",
     type_contrat: "",
     horaire: "",
+    taux_horaire: undefined as number | undefined,
     heures_supp_mensualisees: 0,
     forfait_jours: false,
     salaire: undefined as number | undefined,
@@ -77,6 +78,7 @@ export const MaconsManager = () => {
       libelle_emploi: "",
       type_contrat: "",
       horaire: "",
+      taux_horaire: undefined,
       heures_supp_mensualisees: 0,
       forfait_jours: false,
       salaire: undefined,
@@ -97,6 +99,7 @@ export const MaconsManager = () => {
       libelle_emploi: macon.libelle_emploi || "",
       type_contrat: macon.type_contrat || "",
       horaire: macon.horaire || "",
+      taux_horaire: macon.taux_horaire || undefined,
       heures_supp_mensualisees: macon.heures_supp_mensualisees || 0,
       forfait_jours: macon.forfait_jours || false,
       salaire: macon.salaire || undefined,
@@ -354,6 +357,16 @@ export const MaconsManager = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Taux horaire (€/h)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Saisir le taux horaire"
+                  value={formData.taux_horaire ?? ''}
+                  onChange={(e) => setFormData({ ...formData, taux_horaire: e.target.value ? parseFloat(e.target.value) : undefined })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Heures supp mensualisées</Label>
                 <Input

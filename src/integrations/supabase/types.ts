@@ -939,6 +939,7 @@ export type Database = {
           role_metier: Database["public"]["Enums"]["role_metier_type"] | null
           salaire: number | null
           statut: string | null
+          taux_horaire: number | null
           type_contrat: string | null
           updated_at: string
         }
@@ -961,6 +962,7 @@ export type Database = {
           role_metier?: Database["public"]["Enums"]["role_metier_type"] | null
           salaire?: number | null
           statut?: string | null
+          taux_horaire?: number | null
           type_contrat?: string | null
           updated_at?: string
         }
@@ -983,6 +985,7 @@ export type Database = {
           role_metier?: Database["public"]["Enums"]["role_metier_type"] | null
           salaire?: number | null
           statut?: string | null
+          taux_horaire?: number | null
           type_contrat?: string | null
           updated_at?: string
         }

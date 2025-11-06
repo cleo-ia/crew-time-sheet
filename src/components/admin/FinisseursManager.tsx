@@ -28,6 +28,7 @@ export const FinisseursManager = () => {
     libelle_emploi: "",
     type_contrat: "",
     horaire: "",
+    taux_horaire: undefined as number | undefined,
     heures_supp_mensualisees: 0,
     forfait_jours: false,
     salaire: undefined as number | undefined,
@@ -65,6 +66,7 @@ export const FinisseursManager = () => {
       libelle_emploi: "",
       type_contrat: "",
       horaire: "",
+      taux_horaire: undefined,
       heures_supp_mensualisees: 0,
       forfait_jours: false,
       salaire: undefined,
@@ -85,6 +87,7 @@ export const FinisseursManager = () => {
       libelle_emploi: finisseur.libelle_emploi || "",
       type_contrat: finisseur.type_contrat || "",
       horaire: finisseur.horaire || "",
+      taux_horaire: finisseur.taux_horaire || undefined,
       heures_supp_mensualisees: finisseur.heures_supp_mensualisees || 0,
       forfait_jours: finisseur.forfait_jours || false,
       salaire: finisseur.salaire || undefined,
@@ -300,6 +303,16 @@ export const FinisseursManager = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Taux horaire (€/h)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Saisir le taux horaire"
+                  value={formData.taux_horaire ?? ''}
+                  onChange={(e) => setFormData({ ...formData, taux_horaire: e.target.value ? parseFloat(e.target.value) : undefined })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Heures supp mensualisées</Label>
                 <Input

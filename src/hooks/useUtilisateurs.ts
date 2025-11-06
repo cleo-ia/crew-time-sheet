@@ -21,6 +21,7 @@ export interface Utilisateur {
   libelle_emploi?: string | null;
   type_contrat?: string | null;
   horaire?: string | null;
+  taux_horaire?: number | null;
   heures_supp_mensualisees?: number | null;
   forfait_jours?: boolean | null;
   salaire?: number | null;
@@ -152,6 +153,7 @@ export const useCreateUtilisateur = () => {
       libelle_emploi?: string;
       type_contrat?: string;
       horaire?: string;
+      taux_horaire?: number;
       heures_supp_mensualisees?: number;
       forfait_jours?: boolean;
       salaire?: number;
@@ -173,6 +175,7 @@ export const useCreateUtilisateur = () => {
           libelle_emploi: user.libelle_emploi || null,
           type_contrat: user.type_contrat || null,
           horaire: user.horaire || null,
+          taux_horaire: user.taux_horaire || null,
           heures_supp_mensualisees: user.heures_supp_mensualisees || null,
           forfait_jours: user.forfait_jours || false,
           salaire: user.salaire || null,
