@@ -70,8 +70,8 @@ export const useInitialWeek = (
       // Toutes les fiches sont transmises → passer à la semaine suivante
       return getNextWeek(currentWeek);
     },
-    // Toujours exécuter la requête, même si certains params sont null
-    enabled: true,
+    // Exécuter quand l'user est connu ou si l'URL force une semaine
+    enabled: !!urlParamWeek || !!userId,
     staleTime: 0, // Toujours vérifier au chargement
     gcTime: 0, // Ne pas garder en cache
   });

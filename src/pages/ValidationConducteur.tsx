@@ -45,7 +45,7 @@ const ValidationConducteur = () => {
   // États pour l'onglet "Mes heures"
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [conducteurId, setConducteurId] = useState<string>("");
+  const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
   
   // Hook intelligent qui détermine la bonne semaine (courante ou suivante si transmise)
@@ -96,7 +96,7 @@ const ValidationConducteur = () => {
   }, [allFinisseurs]);
 
   // Source serveur directe pour affectations
-  const { data: affByCond = [] } = useAffectationsByConducteur(conducteurId, selectedWeek);
+  const { data: affByCond = [] } = useAffectationsByConducteur(conducteurId || "", selectedWeek);
   
   // Construire la liste des affectations: priorité à la source locale, sinon serveur
   const affectationsFromHook = useMemo(() => 
