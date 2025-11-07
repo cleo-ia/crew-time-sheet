@@ -1,4 +1,4 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,7 +65,13 @@ Deno.serve(async (req) => {
         .single();
       
       conducteur = conducteurData;
-      console.log(`✅ Conducteur: ${conducteur.prenom} ${conducteur.nom} (${conducteur.id})`);
+      if (conducteur) {
+        console.log(`✅ Conducteur: ${conducteur.prenom} ${conducteur.nom} (${conducteur.id})`);
+      }
+    }
+
+    if (!conducteur) {
+      throw new Error("Impossible de créer ou récupérer un conducteur");
     }
 
     // 2. Récupérer ou créer des finisseurs
@@ -276,7 +282,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
