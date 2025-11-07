@@ -3,8 +3,7 @@ import { format, addDays } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion } from "@/components/ui/accordion";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { TransportDayV2 } from "@/types/transport";
 import { TransportDayAccordion } from "./TransportDayAccordion";
 import { useSaveTransportV2 } from "@/hooks/useSaveTransportV2";
@@ -42,7 +41,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const [openDay, setOpenDay] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [initialDataSource, setInitialDataSource] = useState<'existing' | 'copied' | null>(null);
-  const [multipleChantiers, setMultipleChantiers] = useState<{code: string, ville: string}[]>([]);
+  
   const [hasCopied, setHasCopied] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   
@@ -154,46 +153,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     setIsInitialized(false);
   }, [selectedWeekString]);
 
-  // Détecter les multiples chantiers dans la semaine
-  useEffect(() => {
-    const detectMultipleChantiers = async () => {
-      if (!selectedWeekString || !chefId) return;
-
-      const { data: fiches } = await supabase
-        .from("fiches")
-        .select(`
-          id,
-          fiches_jours (
-            code_chantier_du_jour,
-            ville_du_jour
-          )
-        `)
-        .eq("semaine", selectedWeekString)
-        .eq("user_id", chefId);
-
-      if (!fiches || fiches.length === 0) return;
-
-      // Extraire les chantiers uniques
-      const chantiersSet = new Map<string, string>();
-      fiches.forEach(fiche => {
-        fiche.fiches_jours?.forEach((jour: any) => {
-          if (jour.code_chantier_du_jour && jour.ville_du_jour) {
-            chantiersSet.set(jour.code_chantier_du_jour, jour.ville_du_jour);
-          }
-        });
-      });
-
-      const uniqueChantiers = Array.from(chantiersSet.entries()).map(([code, ville]) => ({ code, ville }));
-      
-      if (uniqueChantiers.length > 1) {
-        setMultipleChantiers(uniqueChantiers);
-      } else {
-        setMultipleChantiers([]);
-      }
-    };
-
-    detectMultipleChantiers();
-  }, [selectedWeekString, chefId]);
 
   // Initialiser les 5 jours et fusionner avec les données existantes
   useEffect(() => {
@@ -433,19 +392,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
         </div>
       )}
 
-      {multipleChantiers.length > 1 && (
-        <Alert className="mb-4 border-amber-500/50 bg-amber-50 dark:bg-amber-950/30">
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <AlertTitle className="text-amber-800 dark:text-amber-200">Attention - Plusieurs chantiers</AlertTitle>
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Cette équipe travaille sur plusieurs chantiers cette semaine :{" "}
-            <span className="font-medium">
-              {multipleChantiers.map(c => `${c.code} (${c.ville})`).join(", ")}
-            </span>. 
-            Le transport est géré globalement pour toute la semaine.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Accordion type="single" collapsible value={openDay} onValueChange={(val) => setOpenDay(val || "")}>
         {transportDays.map((day) => (
