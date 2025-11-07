@@ -34,7 +34,17 @@ export const useInitializeNextWeekMacons = () => {
         format(addDays(monday, offset), "yyyy-MM-dd")
       );
 
-      // 3. Pour chaque maçon, créer ou vérifier la fiche
+      // 3. Récupérer les infos du chantier
+      const { data: chantierData } = await supabase
+        .from("chantiers")
+        .select("code_chantier, ville")
+        .eq("id", chantierId)
+        .single();
+
+      const chantierCode = chantierData?.code_chantier || null;
+      const chantierVille = chantierData?.ville || null;
+
+      // 4. Pour chaque maçon, créer ou vérifier la fiche
       for (const maconId of maconIds) {
         // Vérifier si la fiche existe déjà
         const { data: existingFiche } = await supabase
@@ -73,7 +83,7 @@ export const useInitializeNextWeekMacons = () => {
           console.log(`✅ Created fiche for macon ${maconId}`);
         }
 
-        // 4. Créer les jours avec 39h réparties (7.8h × 5 jours)
+        // 5. Créer les jours avec 39h réparties (7.8h × 5 jours)
         const { data: existingJours } = await supabase
           .from("fiches_jours")
           .select("id, date")
@@ -97,6 +107,8 @@ export const useInitializeNextWeekMacons = () => {
               PA: true,
               trajet_perso: false,
               pause_minutes: 0,
+              code_chantier_du_jour: chantierCode,
+              ville_du_jour: chantierVille,
             };
           });
 
