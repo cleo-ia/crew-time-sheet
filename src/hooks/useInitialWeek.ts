@@ -23,7 +23,7 @@ export const useInitialWeek = (
     queryFn: async () => {
       // Déterminer quelle semaine vérifier : URL ou courante
       const weekToCheck = urlParamWeek || getCurrentWeek();
-      console.log('[useInitialWeek] weekToCheck', { urlParamWeek, userId, chantierId, weekToCheck });
+      
       // Si pas d'utilisateur, retourner la semaine à vérifier
       if (!userId) {
         return weekToCheck;
@@ -59,9 +59,7 @@ export const useInitialWeek = (
 
         // Sinon, vérifier si au moins une fiche est en brouillon
         const hasAnyBrouillon = fiches.some((f) => f.statut === "BROUILLON");
-        const decision = hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
-        console.log('[useInitialWeek][chef]', { weekToCheck, count: fiches.length, allTransmitted, hasAnyBrouillon, decision });
-        return decision;
+        return hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
       }
 
       // Cas conducteur: prendre les fiches finisseurs qu'il a créées (chantier_id IS NULL)
@@ -96,9 +94,7 @@ export const useInitialWeek = (
 
       // Sinon, vérifier si au moins une fiche est en brouillon
       const hasAnyBrouillon = finisseurFiches.some((f) => f.statut === "BROUILLON");
-      const decision = hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
-      console.log('[useInitialWeek][conducteur]', { weekToCheck, count: finisseurFiches.length, allTransmitted, hasAnyBrouillon, decision });
-      return decision;
+      return hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
     },
     // Exécuter quand l'user est connu ou si l'URL force une semaine
     enabled: !!urlParamWeek || !!userId,
