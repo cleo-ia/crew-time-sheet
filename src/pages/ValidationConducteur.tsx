@@ -63,6 +63,15 @@ const ValidationConducteur = () => {
       setSelectedWeek(initialWeek);
     }
   }, [initialWeek]);
+
+  // Synchroniser l'URL avec la semaine et l'onglet actif
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", activeMainTab);
+    params.set("semaine", selectedWeek);
+    navigate(`/validation-conducteur?${params.toString()}`, { replace: true });
+  }, [selectedWeek, activeMainTab]);
   
   // États pour l'onglet "Validation"
   const [selectedFiche, setSelectedFiche] = useState<string | null>(null);

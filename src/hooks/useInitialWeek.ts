@@ -33,42 +33,50 @@ export const useInitialWeek = (
         return currentWeek;
       }
 
-      // Construire la requête selon qu'on a un chantier ou non
-      let query = supabase
-        .from("fiches")
-        .select("statut")
-        .eq("semaine", currentWeek);
-
-      // Pour les chefs : vérifier user_id + chantier_id
-      // Pour les conducteurs/finisseurs : vérifier salarie_id uniquement
+      // Cas chef (chantierId fourni) : vérifier user_id + chantier_id
       if (chantierId) {
-        query = query.eq("user_id", userId).eq("chantier_id", chantierId);
-      } else {
-        query = query.eq("salarie_id", userId);
+        const { data: fiches, error } = await supabase
+          .from("fiches")
+          .select("statut")
+          .eq("semaine", currentWeek)
+          .eq("user_id", userId)
+          .eq("chantier_id", chantierId);
+
+        if (error) {
+          console.error("Erreur lors de la vérification des fiches (chef):", error);
+          return currentWeek;
+        }
+
+        if (!fiches || fiches.length === 0) {
+          return currentWeek;
+        }
+
+        const hasAnyBrouillon = fiches.some((f) => f.statut === "BROUILLON");
+        return hasAnyBrouillon ? currentWeek : getNextWeek(currentWeek);
       }
 
-      const { data: fiches, error } = await query;
+      // Cas conducteur: prendre les fiches finisseurs qu'il a créées (chantier_id IS NULL)
+      const { data: fichesByUser, error: errUser } = await supabase
+        .from("fiches")
+        .select("statut, salarie_id")
+        .eq("semaine", currentWeek)
+        .eq("user_id", userId)
+        .is("chantier_id", null);
 
-      // En cas d'erreur, fallback vers semaine courante
-      if (error) {
-        console.error("Erreur lors de la vérification des fiches:", error);
+      if (errUser) {
+        console.error("Erreur lors de la vérification des fiches (conducteur):", errUser);
         return currentWeek;
       }
 
-      // Si pas de fiche → semaine courante
-      if (!fiches || fiches.length === 0) {
+      // Exclure la fiche personnelle du conducteur, on ne considère que celles des finisseurs
+      const finisseurFiches = (fichesByUser || []).filter((f) => f.salarie_id && f.salarie_id !== userId);
+
+      if (finisseurFiches.length === 0) {
         return currentWeek;
       }
 
-      // Si toutes les fiches sont transmises (aucune en BROUILLON) → semaine suivante
-      const hasAnyBrouillon = fiches.some(f => f.statut === "BROUILLON");
-      
-      if (hasAnyBrouillon) {
-        return currentWeek;
-      }
-
-      // Toutes les fiches sont transmises → passer à la semaine suivante
-      return getNextWeek(currentWeek);
+      const hasAnyBrouillon = finisseurFiches.some((f) => f.statut === "BROUILLON");
+      return hasAnyBrouillon ? currentWeek : getNextWeek(currentWeek);
     },
     // Exécuter quand l'user est connu ou si l'URL force une semaine
     enabled: !!urlParamWeek || !!userId,
