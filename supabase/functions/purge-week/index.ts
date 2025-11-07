@@ -31,10 +31,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Security: Only allow purging S43, S44 and S45 for now
-    if (semaine !== '2025-S44' && semaine !== '2025-S43' && semaine !== '2025-S45') {
+    // Security: Only allow purging S43, S44, S45 and S46 for now
+    if (semaine !== '2025-S44' && semaine !== '2025-S43' && semaine !== '2025-S45' && semaine !== '2025-S46') {
       return new Response(
-        JSON.stringify({ error: 'Cette fonction ne peut purger que les semaines 2025-S43, 2025-S44 et 2025-S45' }),
+        JSON.stringify({ error: 'Cette fonction ne peut purger que les semaines 2025-S43, 2025-S44, 2025-S45 et 2025-S46' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
