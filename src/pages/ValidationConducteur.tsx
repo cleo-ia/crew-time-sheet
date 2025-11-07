@@ -136,8 +136,11 @@ const ValidationConducteur = () => {
     } else if (tabQP === "mes-heures") {
       // Redirection explicite vers l'onglet mes heures (depuis signature finisseurs)
       setActiveMainTab("mes-heures");
-      if (semaineQP) {
-        setSelectedWeek(decodeURIComponent(semaineQP).trim());
+      const semaineFromUrl = semaineQP ? decodeURIComponent(semaineQP).trim() : null;
+      if (semaineFromUrl && (!initialWeek || semaineFromUrl === initialWeek)) {
+        setSelectedWeek(semaineFromUrl);
+      } else if (initialWeek) {
+        setSelectedWeek(initialWeek);
       }
     } else if (chantierQP || semaineQP) {
       // Compatibilité avec les anciens liens sans "tab" -> ouvrir validation par défaut
@@ -148,7 +151,7 @@ const ValidationConducteur = () => {
         ...(semaineQP && { semaine: decodeURIComponent(semaineQP).trim() })
       }));
     }
-  }, [searchParams]);
+  }, [searchParams, initialWeek]);
 
   // Basculer automatiquement sur la semaine suivante au retour de la signature
   useEffect(() => {
