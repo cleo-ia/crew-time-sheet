@@ -269,6 +269,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     let absences = 0;
     let paniers = 0;
     let trajets = 0;
+    let compteurJoursTrajets = 0;
     let trajetsPerso = 0;
     let totalHeures = 0;
     const detailJours: EmployeeDetail[] = [];
@@ -310,6 +311,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         
         if (panier) {
           paniers++;
+        }
+        
+        // Compter les jours avec trajet (indemnisé OU perso)
+        if (isTrajetPerso || trajet > 0) {
+          compteurJoursTrajets += 1;
         }
         
         trajets += trajet;
@@ -374,7 +380,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         intemperies: Math.round(intemperies * 100) / 100,
         absences,
         paniers,
-        trajets: Math.round(trajets * 100) / 100,
+        trajets: compteurJoursTrajets,
         trajetsPerso: Math.round(trajetsPerso * 100) / 100,
         totalHeures: Math.round(totalHeures * 100) / 100,
         statut: fiches.every(f => f.statut === "AUTO_VALIDE") ? "Validé" : "Partiel",

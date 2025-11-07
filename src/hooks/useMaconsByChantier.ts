@@ -92,7 +92,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
               }));
               
               paniersChef = jours.filter(j => j.PA).length;
-              trajetsChef = jours.reduce((sum, j) => sum + Number(j.T || 0), 0);
+              trajetsChef = jours.filter(j => j.trajet_perso || (j.T && Number(j.T) > 0)).length;
               intemperieChef = jours.reduce((sum, j) => sum + Number(j.HI || 0), 0);
             }
           }
@@ -192,7 +192,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
                 }));
                 
                 paniers = jours.filter(j => j.PA).length;
-                trajets = jours.reduce((sum, j) => sum + Number(j.T || 0), 0);
+                trajets = jours.filter(j => j.trajet_perso || (j.T && Number(j.T) > 0)).length;
                 intemperie = jours.reduce((sum, j) => sum + Number(j.HI || 0), 0);
               }
             }
