@@ -71,24 +71,31 @@ export const useSaveFicheJours = () => {
             .maybeSingle();
           
           if (existingJour) {
-            // Mise à jour du fiche_jour existant
-            // Fallback pour le code chantier
-            const code = dayData.chantierCode 
-              ?? chantierCodeById.get(dayData.chantierId || "") 
-              ?? null;
-            
-            const { error: updateError } = await supabase
-            .from("fiches_jours")
-            .update({
+            // Mise à jour du fiche_jour existant - PATCH conditionnel pour éviter d'écraser par NULL
+            const updatePayload: any = {
               heures: dayData.hours,
               HNORM: dayData.hours,
               HI: dayData.heuresIntemperie,
               PA: dayData.panierRepas,
               T: dayData.trajet ? 1 : 0,
               trajet_perso: dayData.trajetPerso,
-              code_chantier_du_jour: code,
-              ville_du_jour: dayData.chantierVille || null,
-            })
+            };
+            
+            // N'inclure code_chantier_du_jour QUE si on a une valeur valide
+            const code = dayData.chantierCode 
+              ?? chantierCodeById.get(dayData.chantierId || "");
+            if (code) {
+              updatePayload.code_chantier_du_jour = code;
+            }
+            
+            // N'inclure ville_du_jour QUE si fournie par l'UI
+            if (dayData.chantierVille) {
+              updatePayload.ville_du_jour = dayData.chantierVille;
+            }
+            
+            const { error: updateError } = await supabase
+            .from("fiches_jours")
+            .update(updatePayload)
             .eq("id", existingJour.id);
             
             if (updateError) {

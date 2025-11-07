@@ -208,13 +208,8 @@ export const useAutoSaveFiche = () => {
           const dayData = normalizedDays[dayName];
           const defaultHour = standardHours[dayName]; // 8h pour Lundi-Jeudi, 7h pour Vendredi
           
-          // Fallback pour le code chantier
-          const code = dayData?.chantierCode
-            ?? chantierCodeById.get(dayData?.chantierId || "")
-            ?? chantierCodeById.get(chantierId || "")
-            ?? null;
-          
-          return {
+          // Base payload sans écrasement de chantier
+          const baseEntry: any = {
             fiche_id: ficheId,
             date: dates[dayName],
             heures: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
@@ -224,9 +219,22 @@ export const useAutoSaveFiche = () => {
             trajet_perso: !!dayData?.trajetPerso,
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
-            code_chantier_du_jour: code,
-            ville_du_jour: dayData?.chantierVille || null,
           };
+          
+          // N'ajouter code_chantier_du_jour QUE si on a une valeur valide
+          const code = dayData?.chantierCode
+            ?? chantierCodeById.get(dayData?.chantierId || "")
+            ?? chantierCodeById.get(chantierId || "");
+          if (code) {
+            baseEntry.code_chantier_du_jour = code;
+          }
+          
+          // N'ajouter ville_du_jour QUE si fournie
+          if (dayData?.chantierVille) {
+            baseEntry.ville_du_jour = dayData.chantierVille;
+          }
+          
+          return baseEntry;
         });
         if (jourEntries.length > 0) {
           const { error: joursError } = await supabase

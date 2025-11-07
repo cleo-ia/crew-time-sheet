@@ -41,7 +41,7 @@ export const useFicheDetailForEdit = (chantierId: string, semaine: string) => {
 
           const { data: utilisateur } = await supabase
             .from("utilisateurs")
-            .select("id, nom, prenom, email, agence_interim")
+            .select("id, nom, prenom, email, agence_interim, role_metier")
             .eq("id", fiche.salarie_id)
             .maybeSingle();
 
@@ -52,6 +52,7 @@ export const useFicheDetailForEdit = (chantierId: string, semaine: string) => {
               prenom: utilisateur.prenom,
               email: utilisateur.email,
               agence_interim: utilisateur.agence_interim,
+              role_metier: utilisateur.role_metier,
             };
           } else {
             // Fallback vers affectations_view si utilisateur non trouvé
