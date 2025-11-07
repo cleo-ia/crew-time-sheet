@@ -38,6 +38,26 @@ export const useAutoSaveFiche = () => {
     mutationFn: async (params: SaveFicheParams) => {
       const { timeEntries, weekId, chantierId, chefId, forceNormalize = false } = params;
 
+      // Collecter tous les chantierId utilisés
+      const allChantierIds = new Set<string>();
+      if (chantierId) allChantierIds.add(chantierId);
+      timeEntries.forEach(entry => {
+        Object.values(entry.days).forEach(day => {
+          if (day.chantierId) allChantierIds.add(day.chantierId);
+        });
+      });
+
+      // Requête unique pour récupérer tous les codes
+      const chantierCodeById = new Map<string, string>();
+      if (allChantierIds.size > 0) {
+        const { data: chantiers } = await supabase
+          .from("chantiers")
+          .select("id, code_chantier")
+          .in("id", Array.from(allChantierIds));
+        
+        chantiers?.forEach(c => chantierCodeById.set(c.id, c.code_chantier));
+      }
+
       // Calculer les dates de la semaine ISO (Lundi à Vendredi) en UTC pour éviter les décalages de fuseau
       const [yearStr, weekStr] = weekId.split(/-(?:W|S)/);
       const year = parseInt(yearStr, 10);
@@ -188,6 +208,12 @@ export const useAutoSaveFiche = () => {
           const dayData = normalizedDays[dayName];
           const defaultHour = standardHours[dayName]; // 8h pour Lundi-Jeudi, 7h pour Vendredi
           
+          // Fallback pour le code chantier
+          const code = dayData?.chantierCode
+            ?? chantierCodeById.get(dayData?.chantierId || "")
+            ?? chantierCodeById.get(chantierId || "")
+            ?? null;
+          
           return {
             fiche_id: ficheId,
             date: dates[dayName],
@@ -198,7 +224,7 @@ export const useAutoSaveFiche = () => {
             trajet_perso: !!dayData?.trajetPerso,
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
-            code_chantier_du_jour: dayData?.chantierCode || null,
+            code_chantier_du_jour: code,
             ville_du_jour: dayData?.chantierVille || null,
           };
         });

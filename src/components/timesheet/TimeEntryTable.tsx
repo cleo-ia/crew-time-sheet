@@ -399,13 +399,18 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
       
       const newEntries: TimeEntry[] = macons.map((macon) => {
+        // Récupérer le chantier sélectionné
+        const selectedChantier = chantierId 
+          ? chantiers.find(c => c.id === chantierId) 
+          : null;
+        
         // Valeurs par défaut (39h) - UNIQUEMENT Lundi à Vendredi
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: null, chantierVille: null, chantierNom: null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: null, chantierVille: null, chantierNom: null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: null, chantierVille: null, chantierNom: null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: null, chantierVille: null, chantierNom: null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: null, chantierVille: null, chantierNom: null },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique

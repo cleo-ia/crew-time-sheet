@@ -33,6 +33,25 @@ export const useSaveFicheJours = () => {
     mutationFn: async ({ entries, weekId }: { entries: TimeEntry[]; weekId: string }) => {
       console.log("💾 Saving fiche jours...", entries);
       
+      // Collecter les chantierId
+      const allChantierIds = new Set<string>();
+      entries.forEach(entry => {
+        Object.values(entry.days).forEach(day => {
+          if (day.chantierId) allChantierIds.add(day.chantierId);
+        });
+      });
+
+      // Requête unique
+      const chantierCodeById = new Map<string, string>();
+      if (allChantierIds.size > 0) {
+        const { data: chantiers } = await supabase
+          .from("chantiers")
+          .select("id, code_chantier")
+          .in("id", Array.from(allChantierIds));
+        
+        chantiers?.forEach(c => chantierCodeById.set(c.id, c.code_chantier));
+      }
+      
       for (const entry of entries) {
         if (!entry.ficheId) {
           console.warn("No ficheId for entry:", entry);
@@ -53,7 +72,12 @@ export const useSaveFicheJours = () => {
           
           if (existingJour) {
             // Mise à jour du fiche_jour existant
-          const { error: updateError } = await supabase
+            // Fallback pour le code chantier
+            const code = dayData.chantierCode 
+              ?? chantierCodeById.get(dayData.chantierId || "") 
+              ?? null;
+            
+            const { error: updateError } = await supabase
             .from("fiches_jours")
             .update({
               heures: dayData.hours,
@@ -62,7 +86,7 @@ export const useSaveFicheJours = () => {
               PA: dayData.panierRepas,
               T: dayData.trajet ? 1 : 0,
               trajet_perso: dayData.trajetPerso,
-              code_chantier_du_jour: dayData.chantierCode || null,
+              code_chantier_du_jour: code,
               ville_du_jour: dayData.chantierVille || null,
             })
             .eq("id", existingJour.id);

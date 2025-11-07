@@ -63,6 +63,15 @@ export const useTransportByChantier = (chantierId: string | null, semaine: strin
 
         console.log("[useTransportByChantier] Days", { count: Array.isArray(jours) ? jours.length : 0 });
 
+        // Récupérer le code chantier principal comme fallback
+        const { data: chantier } = await supabase
+          .from("chantiers")
+          .select("code_chantier")
+          .eq("id", found.chantier_id)
+          .maybeSingle();
+
+        const defaultCode = chantier?.code_chantier || "-";
+
         // Récupérer les codes chantier depuis fiches_jours
         const { data: fichesJours, error: fichesJoursError } = await supabase
           .from("fiches_jours")
@@ -96,7 +105,7 @@ export const useTransportByChantier = (chantierId: string | null, semaine: strin
               ? `${jour.conducteur_retour.prenom} ${jour.conducteur_retour.nom}` 
               : "",
             immatriculation: jour.immatriculation || "",
-            codeChantierDuJour: chantierByDate.get(jour.date) || "",
+            codeChantierDuJour: chantierByDate.get(jour.date) || defaultCode,
           })),
         };
       } catch (error) {
