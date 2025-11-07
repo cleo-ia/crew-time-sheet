@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.purge-orphan-fiches]
 verify_jwt = false
+
+[functions.create-test-data-s45]
+verify_jwt = false
