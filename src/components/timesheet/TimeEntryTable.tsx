@@ -1161,7 +1161,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">Chantier</label>
                               <ChantierSelector
-                                value={dayData.chantierId ?? chantierId ?? undefined}
+                                value={
+                                  dayData.chantierCode
+                                    ? (chantiers.find(c => c.code_chantier === dayData.chantierCode)?.id
+                                        ?? dayData.chantierId
+                                        ?? chantierId
+                                        ?? undefined)
+                                    : (dayData.chantierId ?? chantierId ?? undefined)
+                                }
                                 onChange={async (newChantierId) => {
                                   if (isReadOnly) return;
                                   
