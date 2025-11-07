@@ -90,6 +90,7 @@ export const useSaveFiche = () => {
             .update({
               statut,
               total_heures: employee.dailyHours.reduce((sum, day) => sum + day.heures, 0),
+              user_id: userId, // 🔒 Garantir que user_id est toujours renseigné
             })
             .eq("id", existingFiche.id)
             .select()

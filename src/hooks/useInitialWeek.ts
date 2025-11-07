@@ -35,7 +35,7 @@ export const useInitialWeek = (
           .from("fiches")
           .select("statut")
           .eq("semaine", weekToCheck)
-          .eq("user_id", userId)
+          .or(`user_id.eq.${userId},user_id.is.null`)
           .eq("chantier_id", chantierId);
 
         if (error) {
@@ -67,7 +67,7 @@ export const useInitialWeek = (
         .from("fiches")
         .select("statut, salarie_id")
         .eq("semaine", weekToCheck)
-        .eq("user_id", userId)
+        .or(`user_id.eq.${userId},user_id.is.null`)
         .is("chantier_id", null);
 
       if (errUser) {
