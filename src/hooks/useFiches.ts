@@ -471,7 +471,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
                 // Récupérer depuis utilisateurs si c'est le chef
                 const { data: utilisateur } = await supabase
                   .from("utilisateurs")
-                  .select("id, nom, prenom, email, agence_interim")
+                  .select("id, nom, prenom, email, agence_interim, role_metier")
                   .eq("id", fiche.salarie_id)
                   .maybeSingle();
                 
@@ -482,13 +482,14 @@ export const useFicheDetailWithJours = (ficheId: string) => {
                     prenom: utilisateur.prenom,
                     email: utilisateur.email,
                     agence_interim: utilisateur.agence_interim,
+                    role_metier: utilisateur.role_metier,
                   };
                 }
               } else {
                 // D'abord essayer de récupérer depuis utilisateurs (source de vérité)
                 const { data: utilisateur } = await supabase
                   .from("utilisateurs")
-                  .select("id, nom, prenom, email, agence_interim")
+                  .select("id, nom, prenom, email, agence_interim, role_metier")
                   .eq("id", fiche.salarie_id)
                   .maybeSingle();
                 
@@ -499,6 +500,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
                     prenom: utilisateur.prenom,
                     email: utilisateur.email,
                     agence_interim: utilisateur.agence_interim,
+                    role_metier: utilisateur.role_metier,
                   };
                 } else {
                   // Fallback vers affectations_view si utilisateur non trouvé
@@ -587,7 +589,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
           // Récupérer depuis utilisateurs si c'est le chef
           const { data: utilisateur } = await supabase
             .from("utilisateurs")
-            .select("id, nom, prenom, email, agence_interim")
+            .select("id, nom, prenom, email, agence_interim, role_metier")
             .eq("id", fiche.salarie_id)
             .maybeSingle();
           
@@ -598,13 +600,14 @@ export const useFicheDetailWithJours = (ficheId: string) => {
               prenom: utilisateur.prenom,
               email: utilisateur.email,
               agence_interim: utilisateur.agence_interim,
+              role_metier: utilisateur.role_metier,
             };
           }
         } else {
           // D'abord essayer de récupérer depuis utilisateurs (source de vérité)
           const { data: utilisateur } = await supabase
             .from("utilisateurs")
-            .select("id, nom, prenom, email, agence_interim")
+            .select("id, nom, prenom, email, agence_interim, role_metier")
             .eq("id", fiche.salarie_id)
             .maybeSingle();
           
@@ -615,6 +618,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
               prenom: utilisateur.prenom,
               email: utilisateur.email,
               agence_interim: utilisateur.agence_interim,
+              role_metier: utilisateur.role_metier,
             };
           } else {
             // Fallback vers affectations_view si utilisateur non trouvé
@@ -636,6 +640,11 @@ export const useFicheDetailWithJours = (ficheId: string) => {
           }
         }
 
+        const { data: signatures } = await supabase
+          .from("signatures")
+          .select("id, signed_by, signed_at, role, signature_data")
+          .eq("fiche_id", fiche.id);
+
         // Get fiches_jours to calculate paniers, trajets, intemperie
         const { data: ficheJours } = await supabase
           .from("fiches_jours")
@@ -650,10 +659,15 @@ export const useFicheDetailWithJours = (ficheId: string) => {
           ...fiche,
           chef: chantier?.chef || null,
           salarie: salarieInfo,
+          signatures: signatures || [],
           fiches_jours: ficheJours || [],
+          paniers,
+          trajets,
+          intemperie,
           all_fiches: [{
             ...fiche,
             salarie: salarieInfo,
+            signatures: signatures || [],
             fiches_jours: ficheJours || [],
             paniers,
             trajets,

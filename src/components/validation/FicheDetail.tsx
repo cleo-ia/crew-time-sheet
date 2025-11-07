@@ -428,11 +428,12 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         employeeId: fiche.salarie_id,
         employeeName: fiche.salarie ? `${fiche.salarie.prenom} ${fiche.salarie.nom}` : "Inconnu",
         isChef: fiche.salarie?.id === ficheData.chef?.id,
+        // Priorité : chef > intérimaire > role_metier (grutier, finisseur, macon) > user_roles (admin, conducteur, rh) > macon par défaut
         role: (fiche.salarie?.id === ficheData.chef?.id)
           ? "chef"
           : (fiche.salarie?.agence_interim
               ? "interimaire"
-              : ((rolesMap?.get(fiche.salarie_id) as any) || "macon")),
+              : ((fiche.salarie?.role_metier as any) || (rolesMap?.get(fiche.salarie_id) as any) || "macon")),
         totalHours,
         totalIntemperie,
         totalPaniers,
