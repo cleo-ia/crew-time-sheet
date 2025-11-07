@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,30 +27,27 @@ import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useFicheModifiable } from "@/hooks/useFicheModifiable";
+import { useInitialWeek } from "@/hooks/useInitialWeek";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
-  // Toujours démarrer sur la semaine courante, sauf si un paramètre URL est fourni
-  const getInitialWeek = () => {
-    // 1) Priorité absolue au paramètre URL
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("semaine");
-    if (fromUrl) return fromUrl;
-
-    // 2) Toujours retourner la semaine courante (ignorer sessionStorage pour l'init)
-    const today = new Date();
-    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1, locale: fr });
-    return format(currentWeekStart, "RRRR-'S'II");
-  };
-  
-  const [selectedWeek, setSelectedWeek] = useState<string>(getInitialWeek());
   const [selectedChantier, setSelectedChantier] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChantier') || ""
   );
   const [selectedChef, setSelectedChef] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChef') || ""
   );
+  
+  // Hook intelligent qui détermine la bonne semaine (courante ou suivante si transmise)
+  const { data: initialWeek, isLoading: isLoadingWeek } = useInitialWeek(
+    searchParams.get("semaine"),
+    selectedChef || null,
+    selectedChantier || null
+  );
+  
+  const [selectedWeek, setSelectedWeek] = useState<string>(initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II"));
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [previousChef, setPreviousChef] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChef') || ""
@@ -61,6 +58,13 @@ const Index = () => {
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
   const queryClient = useQueryClient();
+
+  // Mettre à jour selectedWeek quand initialWeek change
+  useEffect(() => {
+    if (initialWeek) {
+      setSelectedWeek(initialWeek);
+    }
+  }, [initialWeek]);
 
   // Auto-sélection du chef connecté au chargement
   useEffect(() => {
