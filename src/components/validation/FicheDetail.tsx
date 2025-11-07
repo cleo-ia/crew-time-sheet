@@ -280,6 +280,10 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         const dateStr = dayNameToDate(ficheData.semaine, dayName as any);
         const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
         
+        // ✅ Si le jour a un code_chantier_du_jour, on ne pré-remplit PAS chantierId avec le chantier global
+        // Il sera résolu par la normalisation dans TimeEntryTable
+        const hasCodeChantier = !!jourData?.code_chantier_du_jour;
+        
         days[dayName] = {
           hours: jourData?.heures || 0,
           overtime: 0,
@@ -288,9 +292,9 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
           trajet: (jourData?.T || 0) > 0,
           trajetPerso: jourData?.trajet_perso === true,
           heuresIntemperie: jourData?.HI || 0,
-          chantierCode: jourData?.code_chantier_du_jour || "",
-          chantierVille: jourData?.ville_du_jour || "",
-          chantierId: fiche.chantier_id || "",
+          chantierCode: hasCodeChantier ? jourData.code_chantier_du_jour : "",
+          chantierVille: hasCodeChantier ? (jourData.ville_du_jour || "") : "",
+          chantierId: hasCodeChantier ? null : (fiche.chantier_id || ""),
         };
       });
       

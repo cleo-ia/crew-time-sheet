@@ -314,10 +314,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         Object.keys(normalizedDays).forEach(dayName => {
           const day = normalizedDays[dayName as keyof typeof normalizedDays];
           
-          // Si on a un chantierCode mais pas de chantierId, le résoudre
-          if (day.chantierCode && !day.chantierId) {
+          // ✅ Si on a un chantierCode, résoudre SYSTÉMATIQUEMENT le chantierId (même s'il est déjà rempli)
+          // Cela fait prévaloir le code_chantier_du_jour de fiches_jours sur le chantier global
+          if (day.chantierCode) {
             const chantier = chantiers.find(c => c.code_chantier === day.chantierCode);
-            if (chantier) {
+            if (chantier && day.chantierId !== chantier.id) {
+              console.debug(`🔧 [Normalisation] ${dayName}: chantierId ${day.chantierId} → ${chantier.id} (code: ${day.chantierCode})`);
               normalizedDays[dayName as keyof typeof normalizedDays] = {
                 ...day,
                 chantierId: chantier.id,
