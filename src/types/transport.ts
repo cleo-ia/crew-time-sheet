@@ -5,6 +5,7 @@ export interface TransportDay {
   conducteurRetourId: string;
   conducteurRetourNom: string;
   immatriculation: string;
+  codeChantierDuJour?: string;
 }
 
 export interface TransportSheet {

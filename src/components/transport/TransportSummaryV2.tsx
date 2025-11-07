@@ -28,21 +28,27 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
   // Détecter le format des données
   const isV2Format = transportData.days?.[0]?.vehicules !== undefined;
 
-  // Grouper les données par date
-  const groupedByDate = new Map<string, any[]>();
+  // Grouper les données par date avec code chantier
+  const groupedByDate = new Map<string, { codeChantier: string; vehicules: any[] }>();
 
   if (isV2Format) {
     // Format V2 : { days: [{date, vehicules: []}] }
     transportData.days.forEach((day: any) => {
-      groupedByDate.set(day.date, day.vehicules || []);
+      groupedByDate.set(day.date, {
+        codeChantier: "-",
+        vehicules: day.vehicules || []
+      });
     });
   } else {
     // Format V1 : { days: [{date, conducteurAllerId, ...}] }
     transportData.days.forEach((day: any) => {
       if (!groupedByDate.has(day.date)) {
-        groupedByDate.set(day.date, []);
+        groupedByDate.set(day.date, {
+          codeChantier: day.codeChantierDuJour || "-",
+          vehicules: []
+        });
       }
-      groupedByDate.get(day.date)!.push({
+      groupedByDate.get(day.date)!.vehicules.push({
         immatriculation: day.immatriculation,
         conducteurMatinNom: day.conducteurAllerNom,
         conducteurSoirNom: day.conducteurRetourNom,
@@ -63,18 +69,22 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
           <TableHeader>
             <TableRow>
               <TableHead className="w-[120px]">Date</TableHead>
+              <TableHead>Code Chantier</TableHead>
               <TableHead>Véhicule</TableHead>
               <TableHead>Conducteur Matin</TableHead>
               <TableHead>Conducteur Soir</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from(groupedByDate.entries()).map(([date, vehicules]) => {
-              if (vehicules.length === 0) {
+            {Array.from(groupedByDate.entries()).map(([date, dayData]) => {
+              if (dayData.vehicules.length === 0) {
                 return (
                   <TableRow key={date}>
                     <TableCell className="font-medium capitalize">
                       {format(new Date(date), "EEE dd/MM", { locale: fr })}
+                    </TableCell>
+                    <TableCell className="font-medium text-sm">
+                      {dayData.codeChantier}
                     </TableCell>
                     <TableCell colSpan={3} className="text-muted-foreground italic">
                       Aucun véhicule
@@ -84,7 +94,7 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
               }
 
               // Consolider les véhicules par immatriculation (fusionner matin et soir)
-              const consolidatedVehicules = vehicules.reduce((acc: any[], vehicule: any) => {
+              const consolidatedVehicules = dayData.vehicules.reduce((acc: any[], vehicule: any) => {
                 const existing = acc.find(v => v.immatriculation === vehicule.immatriculation);
                 if (existing) {
                   // Fusionner les infos matin et soir
@@ -103,12 +113,20 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
               return consolidatedVehicules.map((vehicule, index) => (
                 <TableRow key={`${date}-${index}`}>
                   {index === 0 && (
-                    <TableCell
-                      className="font-medium capitalize"
-                      rowSpan={consolidatedVehicules.length}
-                    >
-                      {format(new Date(date), "EEE dd/MM", { locale: fr })}
-                    </TableCell>
+                    <>
+                      <TableCell
+                        className="font-medium capitalize"
+                        rowSpan={consolidatedVehicules.length}
+                      >
+                        {format(new Date(date), "EEE dd/MM", { locale: fr })}
+                      </TableCell>
+                      <TableCell
+                        className="font-medium text-sm"
+                        rowSpan={consolidatedVehicules.length}
+                      >
+                        {dayData.codeChantier}
+                      </TableCell>
+                    </>
                   )}
                   <TableCell className="font-mono text-sm">
                     {vehicule.immatriculation || "-"}

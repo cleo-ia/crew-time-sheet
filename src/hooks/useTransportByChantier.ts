@@ -63,6 +63,23 @@ export const useTransportByChantier = (chantierId: string | null, semaine: strin
 
         console.log("[useTransportByChantier] Days", { count: Array.isArray(jours) ? jours.length : 0 });
 
+        // Récupérer les codes chantier depuis fiches_jours
+        const { data: fichesJours, error: fichesJoursError } = await supabase
+          .from("fiches_jours")
+          .select("date, code_chantier_du_jour")
+          .eq("fiche_id", found.fiche_id);
+
+        if (fichesJoursError) {
+          console.warn("[useTransportByChantier] Erreur chargement codes chantier:", fichesJoursError);
+        }
+
+        // Créer une map pour accès rapide par date
+        const chantierByDate = new Map(
+          (fichesJours || []).map((fj: any) => [fj.date, fj.code_chantier_du_jour])
+        );
+
+        console.log("[useTransportByChantier] Codes chantier par date:", Object.fromEntries(chantierByDate));
+
         return {
           id: found.id,
           ficheId: found.fiche_id,
@@ -79,6 +96,7 @@ export const useTransportByChantier = (chantierId: string | null, semaine: strin
               ? `${jour.conducteur_retour.prenom} ${jour.conducteur_retour.nom}` 
               : "",
             immatriculation: jour.immatriculation || "",
+            codeChantierDuJour: chantierByDate.get(jour.date) || "",
           })),
         };
       } catch (error) {
