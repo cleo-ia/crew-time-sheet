@@ -102,27 +102,17 @@ const SignatureMacons = () => {
     if (!chantierId || !semaine || !chefId) return;
 
     try {
-      // 1. Mettre à jour le statut
+      // 1. Mettre à jour le statut → VALIDE_CHEF
       await updateStatus.mutateAsync({
         chantierId,
         semaine,
         status: "VALIDE_CHEF",
       });
 
-      // 2. Déclencher la notification automatiquement au conducteur
-      try {
-        const { error: notifError } = await supabase.functions.invoke("notify-conducteur");
-        if (notifError) {
-          console.error("Erreur notification conducteur:", notifError);
-        }
-      } catch (e) {
-        console.error("Exception notification conducteur:", e);
-      }
-
-      // 3. Calculer la semaine suivante
+      // 2. Calculer la semaine suivante
       const nextWeek = getNextWeek(semaine);
 
-      // 4. Copier les données de S vers S+1 (heures réelles + transport)
+      // 3. Copier les données de S vers S+1 (heures réelles + transport)
       try {
         const result = await initializeNextWeek.mutateAsync({
           currentWeek: semaine,
@@ -134,6 +124,16 @@ const SignatureMacons = () => {
       } catch (initError) {
         console.error("Erreur copie vers semaine suivante:", initError);
         // Ne pas bloquer la suite même en cas d'erreur
+      }
+
+      // 4. Notification au conducteur (APRÈS la copie S→S+1)
+      try {
+        const { error: notifError } = await supabase.functions.invoke("notify-conducteur");
+        if (notifError) {
+          console.error("Erreur notification conducteur:", notifError);
+        }
+      } catch (e) {
+        console.error("Exception notification conducteur:", e);
       }
 
       // 5. Mettre à jour sessionStorage pour la prochaine page

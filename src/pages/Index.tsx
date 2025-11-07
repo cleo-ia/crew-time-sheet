@@ -167,21 +167,6 @@ const Index = () => {
     setPreviousChef(selectedChef);
   }, [selectedChef, previousChef]);
 
-  // Basculer automatiquement sur la semaine suivante au retour de la signature
-  useEffect(() => {
-    const fromSignature = sessionStorage.getItem('fromSignature');
-    
-    if (fromSignature === 'true') {
-      const nextWeek = getNextWeek(selectedWeek);
-      setSelectedWeek(nextWeek);
-      sessionStorage.removeItem('fromSignature');
-      
-      toast({
-        title: "✅ Fiche validée",
-        description: `Vous pouvez maintenant saisir la semaine ${nextWeek.split('-S')[1]}`,
-      });
-    }
-  }, []);
 
   const handleSaveAndSign = async () => {
     if (!selectedChantier || !selectedWeek || !selectedChef) return;
@@ -292,10 +277,7 @@ const Index = () => {
       // 3. Délai de sécurité pour laisser les triggers DB s'exécuter
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // 4. Marquer le retour depuis signature pour basculer automatiquement sur S+1
-      sessionStorage.setItem('fromSignature', 'true');
-
-      // 5. Redirection avec les données fraîches garanties
+      // 4. Redirection avec les données fraîches garanties
       navigate(`/signature-macons?chantierId=${selectedChantier}&semaine=${selectedWeek}&chefId=${selectedChef}`);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
