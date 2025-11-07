@@ -21,16 +21,12 @@ export const useInitialWeek = (
   return useQuery({
     queryKey: ["initial-week", urlParamWeek, userId, chantierId],
     queryFn: async () => {
-      // Priorité 1 : Si paramètre URL existe, le respecter
-      if (urlParamWeek) {
-        return urlParamWeek;
-      }
+      // Déterminer quelle semaine vérifier : URL ou courante
+      const weekToCheck = urlParamWeek || getCurrentWeek();
 
-      const currentWeek = getCurrentWeek();
-
-      // Si pas d'utilisateur, retourner semaine courante
+      // Si pas d'utilisateur, retourner la semaine à vérifier
       if (!userId) {
-        return currentWeek;
+        return weekToCheck;
       }
 
       // Cas chef (chantierId fourni) : vérifier user_id + chantier_id
@@ -38,45 +34,67 @@ export const useInitialWeek = (
         const { data: fiches, error } = await supabase
           .from("fiches")
           .select("statut")
-          .eq("semaine", currentWeek)
+          .eq("semaine", weekToCheck)
           .eq("user_id", userId)
           .eq("chantier_id", chantierId);
 
         if (error) {
           console.error("Erreur lors de la vérification des fiches (chef):", error);
-          return currentWeek;
+          return weekToCheck;
         }
 
         if (!fiches || fiches.length === 0) {
-          return currentWeek;
+          return weekToCheck;
         }
 
+        // Vérifier si TOUTES les fiches sont transmises (statut final)
+        const allTransmitted = fiches.every((f) => 
+          f.statut === "VALIDE_CHEF" || f.statut === "VALIDE_CONDUCTEUR" || f.statut === "AUTO_VALIDE"
+        );
+        
+        if (allTransmitted) {
+          // Tout est transmis → passer à la semaine suivante
+          return getNextWeek(weekToCheck);
+        }
+
+        // Sinon, vérifier si au moins une fiche est en brouillon
         const hasAnyBrouillon = fiches.some((f) => f.statut === "BROUILLON");
-        return hasAnyBrouillon ? currentWeek : getNextWeek(currentWeek);
+        return hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
       }
 
       // Cas conducteur: prendre les fiches finisseurs qu'il a créées (chantier_id IS NULL)
       const { data: fichesByUser, error: errUser } = await supabase
         .from("fiches")
         .select("statut, salarie_id")
-        .eq("semaine", currentWeek)
+        .eq("semaine", weekToCheck)
         .eq("user_id", userId)
         .is("chantier_id", null);
 
       if (errUser) {
         console.error("Erreur lors de la vérification des fiches (conducteur):", errUser);
-        return currentWeek;
+        return weekToCheck;
       }
 
       // Exclure la fiche personnelle du conducteur, on ne considère que celles des finisseurs
       const finisseurFiches = (fichesByUser || []).filter((f) => f.salarie_id && f.salarie_id !== userId);
 
       if (finisseurFiches.length === 0) {
-        return currentWeek;
+        return weekToCheck;
       }
 
+      // Vérifier si TOUTES les fiches sont transmises (statut final)
+      const allTransmitted = finisseurFiches.every((f) => 
+        f.statut === "VALIDE_CHEF" || f.statut === "VALIDE_CONDUCTEUR" || f.statut === "AUTO_VALIDE"
+      );
+      
+      if (allTransmitted) {
+        // Tout est transmis → passer à la semaine suivante
+        return getNextWeek(weekToCheck);
+      }
+
+      // Sinon, vérifier si au moins une fiche est en brouillon
       const hasAnyBrouillon = finisseurFiches.some((f) => f.statut === "BROUILLON");
-      return hasAnyBrouillon ? currentWeek : getNextWeek(currentWeek);
+      return hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
     },
     // Exécuter quand l'user est connu ou si l'URL force une semaine
     enabled: !!urlParamWeek || !!userId,
