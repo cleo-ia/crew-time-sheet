@@ -150,7 +150,7 @@ const SignatureMacons = () => {
 
       // 7. Redirection différée vers la page de saisie avec semaine suivante
       setTimeout(() => {
-        navigate("/");
+        navigate(`/?semaine=${nextWeek}`);
       }, 3000);
 
     } catch (error) {
