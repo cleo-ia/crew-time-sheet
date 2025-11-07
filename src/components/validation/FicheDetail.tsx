@@ -417,7 +417,18 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         ?.map((fj: any) => fj.code_chantier_du_jour)
         .filter(Boolean) || []) as string[];
       
-      // Si aucun code journalier, utiliser le chantier global comme fallback
+      // Détecter si des jours travaillés ont un code NULL (données legacy)
+      const hasWorkedDaysWithNullCode = fiche.fiches_jours?.some((fj: any) => {
+        const heures = Number(fj.HNORM || fj.heures || 0);
+        return heures > 0 && fj.trajet_perso !== true && !fj.code_chantier_du_jour;
+      });
+      
+      // Si oui, ajouter le chantier global de la fiche
+      if (hasWorkedDaysWithNullCode && ficheData?.chantier?.code_chantier) {
+        codes.push(ficheData.chantier.code_chantier);
+      }
+      
+      // Si aucun code du tout, utiliser le chantier global comme fallback
       if (codes.length === 0 && ficheData?.chantier?.code_chantier) {
         codes = [ficheData.chantier.code_chantier];
       }
