@@ -299,10 +299,44 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
   const [hasUserEdits, setHasUserEdits] = useState(false);
 
+  // Normalisation de initialData : résoudre chantierId depuis chantierCode (mode edit uniquement)
+  useEffect(() => {
+    if (!initialData || initialData.length === 0 || chantiers.length === 0) return;
+    if (mode !== "edit") return; // Seulement en mode edit
+    
+    setEntries(prev => {
+      // Ne normaliser que si on vient de charger initialData (pas de modifications utilisateur)
+      if (hasUserEdits) return prev;
+      
+      return prev.map(entry => {
+        const normalizedDays = { ...entry.days };
+        
+        Object.keys(normalizedDays).forEach(dayName => {
+          const day = normalizedDays[dayName as keyof typeof normalizedDays];
+          
+          // Si on a un chantierCode mais pas de chantierId, le résoudre
+          if (day.chantierCode && !day.chantierId) {
+            const chantier = chantiers.find(c => c.code_chantier === day.chantierCode);
+            if (chantier) {
+              normalizedDays[dayName as keyof typeof normalizedDays] = {
+                ...day,
+                chantierId: chantier.id,
+                chantierVille: day.chantierVille || chantier.ville,
+                chantierNom: chantier.nom,
+              };
+            }
+          }
+        });
+        
+        return { ...entry, days: normalizedDays };
+      });
+    });
+  }, [initialData, chantiers, mode, hasUserEdits]);
+
   // Mettre à jour les entrées quand les maçons sont chargés OU quand initialData est fourni
   useEffect(() => {
     let cancelled = false;
-
+    
     // 1️⃣ Mode édition : charger initialData UNIQUEMENT si pas de modifications utilisateur
     if (initialData && initialData.length > 0 && !hasUserEdits) {
       setEntries(initialData);
@@ -342,6 +376,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               const rawT = j.T;
               const trajet = rawT === null || rawT === undefined ? true : Boolean(rawT);
               
+              // Trouver le chantier par code si présent
+              const chantierDuJour = j.code_chantier_du_jour 
+                ? chantiers.find(c => c.code_chantier === j.code_chantier_du_jour)
+                : null;
+              
               daysFromDb[dayLabel] = {
                 ...daysFromDb[dayLabel],
                 hours,
@@ -351,6 +390,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 trajetPerso: !!j.trajet_perso,
                 heuresIntemperie: HI,
                 absent: hours === 0 && !PA && HI === 0,
+                // ✅ Mapper le chantier du jour depuis ficheJours (priorité sur affectations)
+                chantierCode: j.code_chantier_du_jour || null,
+                chantierVille: j.ville_du_jour || null,
+                chantierId: chantierDuJour?.id || null,
+                chantierNom: chantierDuJour?.nom || null,
               };
             }
           });
@@ -367,16 +411,20 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
             const dayLabel = dayNames[dayOfWeek] as keyof typeof daysFromDb;
             
             if (daysFromDb[dayLabel]) {
-              // Récupérer les infos du chantier
-              const chantierInfo = chantiers.find(c => c.id === affectation.chantier_id);
+              const currentDay = daysFromDb[dayLabel];
               
-              daysFromDb[dayLabel] = {
-                ...daysFromDb[dayLabel],
-                chantierId: affectation.chantier_id,
-                chantierCode: chantierInfo?.code_chantier || null,
-                chantierVille: chantierInfo?.ville || null,
-                chantierNom: chantierInfo?.nom || null,
-              };
+              // ✅ Ne remplir que si le jour n'a pas déjà de chantier (priorité à ficheJours)
+              if (!currentDay.chantierId && !currentDay.chantierCode) {
+                const chantierInfo = chantiers.find(c => c.id === affectation.chantier_id);
+                
+                daysFromDb[dayLabel] = {
+                  ...currentDay,
+                  chantierId: affectation.chantier_id,
+                  chantierCode: chantierInfo?.code_chantier || null,
+                  chantierVille: chantierInfo?.ville || null,
+                  chantierNom: chantierInfo?.nom || null,
+                };
+              }
             }
           }
         }

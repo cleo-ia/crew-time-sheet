@@ -8,6 +8,8 @@ export interface FicheJour {
   T: number;
   PA: boolean;
   trajet_perso?: boolean;
+  code_chantier_du_jour?: string | null;
+  ville_du_jour?: string | null;
 }
 
 export interface FinisseurWithFiche {
@@ -102,7 +104,7 @@ export const useFinisseursByConducteur = (
           // Récupérer les jours
           const { data: jours } = await supabase
             .from("fiches_jours")
-            .select("date, HNORM, HI, T, PA, trajet_perso")
+            .select("date, HNORM, HI, T, PA, trajet_perso, code_chantier_du_jour, ville_du_jour")
             .eq("fiche_id", fiche.id)
             .order("date");
 
