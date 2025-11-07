@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
@@ -42,17 +43,26 @@ const ValidationConducteur = () => {
   const [activeMainTab, setActiveMainTab] = useState(initialTabFromUrl);
   
   // États pour l'onglet "Mes heures"
-  // Priorité UNIQUE au paramètre URL, sinon WeekSelector auto-sélectionne la semaine courante
-  const getInitialWeek = () => {
-    const fromUrl = searchParams.get("semaine");
-    return fromUrl || "";
-  };
-
-  const [selectedWeek, setSelectedWeek] = useState<string>(getInitialWeek());
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conducteurId, setConducteurId] = useState<string>("");
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
+  
+  // Hook intelligent qui détermine la bonne semaine (courante ou suivante si transmise)
+  const { data: initialWeek, isLoading: isLoadingWeek } = useInitialWeek(
+    searchParams.get("semaine"),
+    conducteurId || null,
+    null // null car conducteur n'a pas de chantier fixe
+  );
+  
+  const [selectedWeek, setSelectedWeek] = useState<string>(initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II"));
+  
+  // Mettre à jour selectedWeek quand initialWeek change
+  useEffect(() => {
+    if (initialWeek) {
+      setSelectedWeek(initialWeek);
+    }
+  }, [initialWeek]);
   
   // États pour l'onglet "Validation"
   const [selectedFiche, setSelectedFiche] = useState<string | null>(null);
