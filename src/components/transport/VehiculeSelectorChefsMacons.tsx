@@ -42,7 +42,7 @@ export const VehiculeSelectorChefsMacons = ({ value, onChange, otherVehiculesPla
       <SelectTrigger>
         <SelectValue placeholder="Sélectionner une plaque" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="z-[200] bg-popover">
         {vehicules.map((vehicule) => {
           const isUsedInSameDay = otherVehiculesPlates?.includes(vehicule.immatriculation) ?? false;
           
