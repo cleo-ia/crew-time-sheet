@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useTransportDataV2 } from "./useTransportDataV2";
-import { useFichesJoursByEmployee } from "./useFichesJoursByEmployee";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -52,11 +51,42 @@ export const useTransportValidationWithAbsences = (
     enabled: uniqueDriverIds.length > 0,
   });
 
-  // Récupérer les fiches_jours pour chaque conducteur
-  const driversAbsences = uniqueDriverIds.map(driverId => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { data: fichesJours } = useFichesJoursByEmployee(driverId, semaine);
-    return { driverId, fichesJours: fichesJours || [] };
+  // Récupérer TOUTES les fiches_jours pour TOUS les conducteurs en UNE SEULE requête
+  const { data: allFichesJours } = useQuery({
+    queryKey: ["fiches-jours-all-drivers", uniqueDriverIds, semaine],
+    queryFn: async () => {
+      if (uniqueDriverIds.length === 0 || !semaine) return [];
+
+      // 1. Récupérer toutes les fiches pour ces employés pour cette semaine
+      const { data: fiches, error: fichesError } = await supabase
+        .from("fiches")
+        .select("id, salarie_id")
+        .in("salarie_id", uniqueDriverIds)
+        .eq("semaine", semaine);
+
+      if (fichesError) throw fichesError;
+      if (!fiches || fiches.length === 0) return [];
+
+      const ficheIds = fiches.map(f => f.id);
+
+      // 2. Récupérer tous les fiches_jours pour ces fiches
+      const { data: fichesJours, error: fjError } = await supabase
+        .from("fiches_jours")
+        .select("id, date, heures, fiche_id")
+        .in("fiche_id", ficheIds);
+
+      if (fjError) throw fjError;
+
+      // 3. Mapper les fiches_jours avec leur salarie_id
+      return (fichesJours || []).map(fj => {
+        const fiche = fiches.find(f => f.id === fj.fiche_id);
+        return {
+          ...fj,
+          salarie_id: fiche?.salarie_id || null,
+        };
+      });
+    },
+    enabled: uniqueDriverIds.length > 0 && !!semaine,
   });
 
   const isTransportComplete = useMemo(() => {
@@ -91,8 +121,9 @@ export const useTransportValidationWithAbsences = (
       day.vehicules.forEach((vehicule) => {
         // Vérifier conducteur matin
         if (vehicule.conducteurMatinId) {
-          const driverAbsence = driversAbsences.find(d => d.driverId === vehicule.conducteurMatinId);
-          const ficheJour = driverAbsence?.fichesJours.find(fj => fj.date === day.date);
+          const ficheJour = allFichesJours?.find(
+            fj => fj.salarie_id === vehicule.conducteurMatinId && fj.date === day.date
+          );
           
           // Si heures === 0, le conducteur est considéré comme absent
           if (ficheJour && ficheJour.heures === 0) {
@@ -114,8 +145,9 @@ export const useTransportValidationWithAbsences = (
 
         // Vérifier conducteur soir
         if (vehicule.conducteurSoirId) {
-          const driverAbsence = driversAbsences.find(d => d.driverId === vehicule.conducteurSoirId);
-          const ficheJour = driverAbsence?.fichesJours.find(fj => fj.date === day.date);
+          const ficheJour = allFichesJours?.find(
+            fj => fj.salarie_id === vehicule.conducteurSoirId && fj.date === day.date
+          );
           
           if (ficheJour && ficheJour.heures === 0) {
             const driverInfo = conducteursData?.find(c => c.id === vehicule.conducteurSoirId);
@@ -140,7 +172,7 @@ export const useTransportValidationWithAbsences = (
       hasInconsistencies: details.length > 0,
       inconsistencyDetails: details,
     };
-  }, [transportData, driversAbsences, conducteursData]);
+  }, [transportData, allFichesJours, conducteursData]);
 
   return { 
     isTransportComplete, 
