@@ -483,14 +483,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
               </SelectContent>
             </Select>
 
-            <Button
-              variant="outline"
-              onClick={() => copyMutation.mutate({ conducteurId, currentWeek: semaine })}
-              disabled={copyMutation.isPending}
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Copier S-1
-            </Button>
           </div>
 
           {/* Réinitialiser filtres */}
@@ -624,28 +616,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                           </Tooltip>
                         </TooltipProvider>
 
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  copyMutation.mutate({
-                                    conducteurId,
-                                    currentWeek: semaine,
-                                    finisseurId: finisseur.id,
-                                  })
-                                }
-                                disabled={copyMutation.isPending}
-                              >
-                                <Copy className="h-4 w-4 mr-1" />
-                                Copier S-1
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Copier les affectations de la semaine dernière pour ce finisseur</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
 
                         <TooltipProvider>
                           <Tooltip>
