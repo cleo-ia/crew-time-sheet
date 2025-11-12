@@ -32,6 +32,7 @@ const SignatureFinisseurs = () => {
   const [conducteurData, setConducteurData] = useState<FinisseurWithFiche | null>(null);
   const [transportFinisseursData, setTransportFinisseursData] = useState<Record<string, any>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [chantiersMap, setChantiersMap] = useState<Map<string, string>>(new Map());
 
   const toggleRow = (finisseurId: string) => {
     setExpandedRows(prev => {
@@ -76,6 +77,43 @@ const SignatureFinisseurs = () => {
   }, [conducteurId]);
 
   const { data: finisseurs = [] } = useFinisseursByConducteur(conducteurId, semaine);
+
+  // Charger les codes chantier
+  useEffect(() => {
+    const loadChantiers = async () => {
+      if (finisseurs.length === 0) return;
+      
+      // Extraire tous les chantier_id uniques des affectations
+      const chantierIds = new Set<string>();
+      finisseurs.forEach(f => {
+        f.affectedDays?.forEach(day => {
+          if (day.chantier_id) {
+            chantierIds.add(day.chantier_id);
+          }
+        });
+      });
+      
+      if (chantierIds.size === 0) return;
+      
+      // Charger les chantiers correspondants
+      const { data: chantiers } = await supabase
+        .from("chantiers")
+        .select("id, code_chantier")
+        .in("id", Array.from(chantierIds));
+      
+      if (chantiers) {
+        const map = new Map<string, string>();
+        chantiers.forEach(ch => {
+          if (ch.code_chantier) {
+            map.set(ch.id, ch.code_chantier);
+          }
+        });
+        setChantiersMap(map);
+      }
+    };
+    
+    loadChantiers();
+  }, [finisseurs]);
   const saveSignature = useSaveSignature();
   const copyAllDataFinisseurs = useCopyAllDataFinisseurs();
 
@@ -403,10 +441,13 @@ const SignatureFinisseurs = () => {
                                   </div>
                                   
                                   {hasTransportData || finisseur.ficheJours ? (
-                                    <div className="grid grid-cols-1 gap-1.5 text-sm">
+                                     <div className="grid grid-cols-1 gap-1.5 text-sm">
                                       {finisseur.affectedDays?.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((affectedDay) => {
                                         const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectedDay.date);
                                         const transportDay = transportData?.days?.find((d: any) => d.date === affectedDay.date);
+                                        
+                                        // Récupérer le code chantier
+                                        const codeChantier = ficheJour?.code_chantier_du_jour || chantiersMap.get(affectedDay.chantier_id) || null;
                                         
                                         const isAbsent = ficheJour && ficheJour.HNORM === 0 && !ficheJour.trajet_perso;
                                         const isTrajetPerso = ficheJour?.trajet_perso === true;
@@ -420,6 +461,13 @@ const SignatureFinisseurs = () => {
                                             <span className="font-medium capitalize min-w-[100px]">
                                               {format(new Date(affectedDay.date), "EEE dd/MM", { locale: fr })}
                                             </span>
+                                            
+                                            {/* Badge code chantier */}
+                                            {codeChantier && (
+                                              <span className="font-mono text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-medium">
+                                                {codeChantier}
+                                              </span>
+                                            )}
                                             
                                             {isAbsent ? (
                                               <span className="flex items-center gap-1.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-medium">
