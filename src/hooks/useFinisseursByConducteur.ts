@@ -24,7 +24,7 @@ export interface FinisseurWithFiche {
   hasSigned: boolean;
   ficheJours?: FicheJour[];
   isConducteur?: boolean;
-  affectedDays?: Array<{ date: string; chantier_id: string }>; // Dates ISO + ID chantier des jours affectés
+  affectedDays?: Array<{ date: string; chantier_id: string; code_chantier?: string }>; // Dates ISO + ID chantier + code chantier des jours affectés
 }
 
 export const useFinisseursByConducteur = (
@@ -39,7 +39,7 @@ export const useFinisseursByConducteur = (
       // 1. PRIORITÉ : Récupérer TOUS les finisseurs affectés depuis affectations_finisseurs_jours
       const { data: affectations, error: affError } = await supabase
         .from("affectations_finisseurs_jours")
-        .select("finisseur_id, date, chantier_id")
+        .select("finisseur_id, date, chantier_id, chantiers!inner(code_chantier)")
         .eq("conducteur_id", conducteurId)
         .eq("semaine", semaine);
 
@@ -51,14 +51,15 @@ export const useFinisseursByConducteur = (
       if (finisseurIds.length === 0) return [];
 
       // 3. Construire la map d'affectations par finisseur
-      const finisseurAffectationsMap = new Map<string, Array<{ date: string; chantier_id: string }>>();
-      (affectations || []).forEach(a => {
+      const finisseurAffectationsMap = new Map<string, Array<{ date: string; chantier_id: string; code_chantier?: string }>>();
+      (affectations || []).forEach((a: any) => {
         if (!finisseurAffectationsMap.has(a.finisseur_id)) {
           finisseurAffectationsMap.set(a.finisseur_id, []);
         }
         finisseurAffectationsMap.get(a.finisseur_id)!.push({ 
           date: a.date, 
-          chantier_id: a.chantier_id 
+          chantier_id: a.chantier_id,
+          code_chantier: a.chantiers?.code_chantier || ""
         });
       });
 
