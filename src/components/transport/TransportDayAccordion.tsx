@@ -116,11 +116,21 @@ export const TransportDayAccordion = ({
     (v) => v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
   ).length;
 
+  // Vérifier si ce jour a des incohérences
+  const dayHasInconsistencies = inconsistencyDetails.some(
+    inc => inc.day === day.date
+  );
+
   return (
     <AccordionItem value={day.date} className="border rounded-lg mb-2">
       <AccordionTrigger className="hover:no-underline px-4 py-3">
         <div className="flex items-center justify-between w-full pr-4">
-          <span className="font-medium capitalize">{dayLabel}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium capitalize">{dayLabel}</span>
+            {dayHasInconsistencies && (
+              <AlertCircle className="h-4 w-4 text-destructive" />
+            )}
+          </div>
           <span className="text-sm text-muted-foreground">
             {vehiculeCount === 0 
               ? "Aucun véhicule" 
