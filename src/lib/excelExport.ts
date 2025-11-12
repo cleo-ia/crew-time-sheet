@@ -49,6 +49,19 @@ const COLOR_SCHEME = {
 };
 
 /**
+ * Calcule les heures d'absence en fonction du jour de la semaine
+ * @param dateString Date au format ISO (YYYY-MM-DD)
+ * @returns 7h si vendredi, 8h pour les autres jours de semaine
+ */
+const getAbsenceHoursByDay = (dateString: string): number => {
+  const date = new Date(dateString);
+  const dayOfWeek = date.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi, 6=Samedi
+  
+  // Vendredi = 7h, tous les autres jours = 8h
+  return dayOfWeek === 5 ? 7 : 8;
+};
+
+/**
  * Calcule les heures d'absence par type pour un employé
  */
 const calculateAbsencesByType = (emp: RHExportEmployee) => {
@@ -75,7 +88,7 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
       
       // PRIORITÉ 2 : Absence de type "HI" (uniquement si pas d'intemperie numérique pour éviter double comptage)
       if (jour.isAbsent && jour.typeAbsence === "HI" && !jour.intemperie) {
-        absences.HI += 8; // 1 jour absence intempérie = 8h
+        absences.HI += getAbsenceHoursByDay(jour.date);
         if (!dateRanges.HI) dateRanges.HI = [];
         dateRanges.HI.push(jour.date);
       }
@@ -83,7 +96,7 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
       // Autres types d'absences (CP, RTT, AM, MP, AT, etc.)
       if (jour.isAbsent && jour.typeAbsence && jour.typeAbsence !== "HI") {
         const type = jour.typeAbsence;
-        const heuresAbsence = 7; // Convention : 1 jour absence = 7h
+        const heuresAbsence = getAbsenceHoursByDay(jour.date);
         absences[type] = (absences[type] || 0) + heuresAbsence;
 
         // Collecter les dates pour afficher les plages
