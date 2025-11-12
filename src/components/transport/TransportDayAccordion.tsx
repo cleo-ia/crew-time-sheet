@@ -125,7 +125,7 @@ export const TransportDayAccordion = ({
     <AccordionItem value={day.date} className="border rounded-lg mb-2">
       <AccordionTrigger 
         className="hover:no-underline px-4 py-3"
-        onClick={(e) => e.stopPropagation()}
+        
       >
         <div className="flex items-center justify-between w-full pr-4">
           <div className="flex items-center gap-2">
