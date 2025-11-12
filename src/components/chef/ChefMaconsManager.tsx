@@ -409,7 +409,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                           return (
                             <div 
                               key={macon.id}
-                              className={`flex items-center justify-between p-3 border border-border rounded-lg transition-colors ${
+                              className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
                                 !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
@@ -418,31 +418,31 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 }
                               }}
                             >
-                              <div className="flex items-center gap-3 flex-1">
-                                <span className="text-lg">👷‍♂️</span>
-                                <div>
-                                  <p className="font-medium">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-lg flex-shrink-0">👷‍♂️</span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">
                                     {macon.prenom} {macon.nom}
                                   </p>
                                   {macon.email && (
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground truncate">
                                       {macon.email}
                                     </p>
                                   )}
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                 {status && !inTeam && (
                                   <Badge 
                                     variant="outline"
-                                    className={
+                                    className={`whitespace-nowrap ${
                                       status.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
                                         : status.type === "assigned"
                                         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                         : "bg-warning/10 text-warning border-warning/20"
-                                    }
+                                    }`}
                                   >
                                     {status.label}
                                   </Badge>
@@ -451,6 +451,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 <Button
                                   size="sm"
                                   disabled={inTeam || isAdding}
+                                  className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
