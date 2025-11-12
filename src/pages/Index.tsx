@@ -22,7 +22,7 @@ import { TransportSheetV2 } from "@/components/transport/TransportSheetV2";
 import { useFicheId } from "@/hooks/useFicheId";
 import { parseISOWeek, getNextWeek } from "@/lib/weekUtils";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { useTransportValidation } from "@/hooks/useTransportValidation";
+import { useTransportValidationWithAbsences } from "@/hooks/useTransportValidationWithAbsences";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,8 +136,12 @@ const Index = () => {
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
 
-  // Validation de la fiche transport
-  const { isTransportComplete } = useTransportValidation(ficheId);
+  // Validation de la fiche transport avec détection d'incohérences
+  const { isTransportComplete, hasInconsistencies, inconsistencyDetails } = useTransportValidationWithAbsences(
+    ficheId,
+    selectedChef,
+    selectedWeek
+  );
   const { toast } = useToast();
 
   // Vérifier si la fiche est modifiable (pas encore transmise au conducteur ou RH)
@@ -178,6 +182,18 @@ const Index = () => {
     // 🔥 Protection contre les double-clics
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // Vérification PRIORITAIRE : Incohérences dans la fiche transport
+    if (hasInconsistencies) {
+      setIsSubmitting(false);
+      toast({
+        variant: "destructive",
+        title: "❌ Incohérence détectée",
+        description: "La fiche de trajet contient des incohérences : un ou plusieurs conducteurs sont absents mais assignés à un véhicule. Veuillez corriger avant de continuer.",
+        duration: 6000,
+      });
+      return;
+    }
 
     // Vérification obligatoire : Fiche transport complète
     if (!isTransportComplete) {
@@ -435,6 +451,7 @@ const Index = () => {
               chefId={selectedChef}
               ficheId={ficheId}
               isReadOnly={!isFicheModifiable}
+              inconsistencyDetails={inconsistencyDetails}
             />
                     </CollapsibleContent>
                   </Collapsible>
@@ -448,7 +465,7 @@ const Index = () => {
                     size="lg"
                     className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
                     onClick={handleSaveAndSign}
-                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable}
+                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || hasInconsistencies || !isFicheModifiable}
                   >
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                     Enregistrer et collecter les signatures

@@ -13,6 +13,15 @@ import { useCopyPreviousWeekTransport } from "@/hooks/useCopyPreviousWeekTranspo
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
+interface InconsistencyDetail {
+  day: string;
+  vehicleId: string;
+  driverName: string;
+  driverId: string;
+  periode: "matin" | "soir";
+  reason: string;
+}
+
 interface TransportSheetV2Props {
   selectedWeek: Date;
   selectedWeekString: string;
@@ -21,6 +30,7 @@ interface TransportSheetV2Props {
   ficheId?: string | null;
   conducteurId?: string;
   isReadOnly?: boolean;
+  inconsistencyDetails?: InconsistencyDetail[];
 }
 
 export interface TransportSheetV2Ref {
@@ -35,6 +45,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   ficheId,
   conducteurId,
   isReadOnly = false,
+  inconsistencyDetails = [],
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -404,6 +415,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             conducteurId={conducteurId}
             onUpdate={(updatedDay) => updateDay(day.date, updatedDay)}
             isReadOnly={isReadOnly}
+            inconsistencyDetails={inconsistencyDetails}
           />
         ))}
       </Accordion>

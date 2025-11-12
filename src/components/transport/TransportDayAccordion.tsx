@@ -1,4 +1,4 @@
-import { Plus, Trash2, User } from "lucide-react";
+import { Plus, Trash2, User, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback } from "react";
@@ -16,6 +16,15 @@ import { TransportVehicle, TransportDayV2 } from "@/types/transport";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface InconsistencyDetail {
+  day: string;
+  vehicleId: string;
+  driverName: string;
+  driverId: string;
+  periode: "matin" | "soir";
+  reason: string;
+}
+
 interface TransportDayAccordionProps {
   day: TransportDayV2;
   chantierId: string | null;
@@ -24,6 +33,7 @@ interface TransportDayAccordionProps {
   conducteurId?: string;
   onUpdate: (updatedDay: TransportDayV2) => void;
   isReadOnly?: boolean;
+  inconsistencyDetails?: InconsistencyDetail[];
 }
 
 export const TransportDayAccordion = ({
@@ -34,6 +44,7 @@ export const TransportDayAccordion = ({
   conducteurId,
   onUpdate,
   isReadOnly = false,
+  inconsistencyDetails = [],
 }: TransportDayAccordionProps) => {
   
   // Récupérer le nom du conducteur connecté
@@ -125,20 +136,43 @@ export const TransportDayAccordion = ({
               Aucun véhicule ajouté pour ce jour
             </p>
           ) : (
-            day.vehicules.map((vehicule, index) => (
-              <Card key={vehicule.id} className="p-4 bg-muted/30">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-sm">Véhicule {index + 1}</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeVehicule(vehicule.id)}
-                    className="h-8 w-8 p-0"
-                    disabled={isReadOnly}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
+            day.vehicules.map((vehicule, index) => {
+              // Vérifier si ce véhicule a des incohérences
+              const vehiculeInconsistencies = inconsistencyDetails.filter(
+                inc => inc.day === day.date && inc.vehicleId === vehicule.id
+              );
+              const hasInconsistency = vehiculeInconsistencies.length > 0;
+
+              return (
+                <Card key={vehicule.id} className="p-4 bg-muted/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-sm">Véhicule {index + 1}</h4>
+                      {hasInconsistency && (
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeVehicule(vehicule.id)}
+                      className="h-8 w-8 p-0"
+                      disabled={isReadOnly}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+
+                  {/* Afficher les messages d'incohérence */}
+                  {hasInconsistency && (
+                    <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                      {vehiculeInconsistencies.map((inc, idx) => (
+                        <p key={idx} className="text-xs text-destructive">
+                          ⚠️ {inc.driverName} est absent le {format(new Date(inc.day), "EEEE d MMMM", { locale: fr })} ({inc.periode})
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 
                 <div className="space-y-3">
                   <div>
@@ -217,7 +251,8 @@ export const TransportDayAccordion = ({
                   )}
                 </div>
               </Card>
-            ))
+              );
+            })
           )}
           
           <Button
