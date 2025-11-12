@@ -38,14 +38,11 @@ export const VehiculeSelectorChefsMacons = ({ value, onChange, otherVehiculesPla
   }
 
   return (
-    <Select value={value || ""} onValueChange={onChange} disabled={disabled}>
+    <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger>
         <SelectValue placeholder="Sélectionner une plaque" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="">
-          <span className="text-muted-foreground">Sélectionner une plaque</span>
-        </SelectItem>
         {vehicules.map((vehicule) => {
           const isUsedInSameDay = otherVehiculesPlates?.includes(vehicule.immatriculation) ?? false;
           
