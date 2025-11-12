@@ -418,14 +418,14 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 }
                               }}
                             >
-                              <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <span className="text-lg">👷‍♂️</span>
-                                <div>
-                                  <p className="font-medium">
+                                <div className="min-w-0 overflow-hidden">
+                                  <p className="font-medium truncate">
                                     {macon.prenom} {macon.nom}
                                   </p>
                                   {macon.email && (
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground truncate">
                                       {macon.email}
                                     </p>
                                   )}
@@ -507,14 +507,14 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 }
                               }}
                             >
-                              <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <span className="text-lg">🏗️</span>
-                                <div>
-                                  <p className="font-medium">
+                                <div className="min-w-0 overflow-hidden">
+                                  <p className="font-medium truncate">
                                     {grutier.prenom} {grutier.nom}
                                   </p>
                                   {grutier.email && (
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground truncate">
                                       {grutier.email}
                                     </p>
                                   )}
@@ -609,14 +609,14 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 }
                               }}
                             >
-                              <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <span className="text-lg">🔄</span>
-                                <div>
-                                  <p className="font-medium">
+                                <div className="min-w-0 overflow-hidden">
+                                  <p className="font-medium truncate">
                                     {interimaire.prenom} {interimaire.nom}
                                   </p>
                                   {interimaire.email && (
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground truncate">
                                       {interimaire.email}
                                     </p>
                                   )}
