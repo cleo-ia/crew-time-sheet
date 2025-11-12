@@ -232,7 +232,15 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     if (checked) {
       // Vérifier si déjà affecté ailleurs
       if (isFinisseurAffectedElsewhere(finisseurId, date)) {
-        alert("Ce finisseur est déjà affecté à un autre conducteur pour ce jour.");
+        const finisseur = finisseurs.find(f => f.id === finisseurId);
+        const dateLabel = format(new Date(date), "EEEE d MMMM", { locale: fr });
+        
+        toast({
+          variant: "destructive",
+          title: "❌ Affectation impossible",
+          description: `${finisseur?.prenom} ${finisseur?.nom} est déjà affecté(e) à un autre conducteur pour ${dateLabel}.`,
+          duration: 5000,
+        });
         return;
       }
     }

@@ -122,10 +122,17 @@ export const useUpsertAffectationJour = () => {
       });
     },
     onError: (error: any) => {
+      let errorMessage = error.message;
+      
+      // Détecter une erreur de contrainte UNIQUE (finisseur déjà affecté ailleurs pour ce jour)
+      if (error.code === '23505') {
+        errorMessage = "Ce finisseur est déjà affecté à un autre conducteur pour ce jour.";
+      }
+      
       toast({
         variant: "destructive",
         title: "❌ Erreur",
-        description: error.message,
+        description: errorMessage || "Une erreur est survenue lors de l'enregistrement.",
       });
     },
   });
