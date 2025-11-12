@@ -20,6 +20,7 @@ interface TimeEntry {
       chantierCode?: string | null;
       chantierVille?: string | null;
       chantierNom?: string | null;
+      commentaire?: string;
     };
   };
 }
@@ -79,6 +80,7 @@ export const useSaveFicheJours = () => {
               PA: dayData.panierRepas,
               T: dayData.trajet ? 1 : 0,
               trajet_perso: dayData.trajetPerso,
+              autres_elements: dayData.commentaire || null,
             };
             
             // N'inclure code_chantier_du_jour QUE si on a une valeur valide
