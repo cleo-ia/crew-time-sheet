@@ -289,10 +289,11 @@ export const FinisseursManager = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire mensuelle</Label>
+                <Label>Horaire mensuel</Label>
                 <Input
-                  type="text"
-                  placeholder="Ex: 35h, 39h, temps partiel..."
+                  type="number"
+                  step="0.01"
+                  placeholder="151.67"
                   value={formData.horaire || ''}
                   onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
                 />

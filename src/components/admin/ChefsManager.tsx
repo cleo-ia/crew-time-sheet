@@ -332,16 +332,14 @@ export const ChefsManager = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire</Label>
-                <Select value={formData.horaire} onValueChange={(value) => setFormData({ ...formData, horaire: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Horaire">Horaire</SelectItem>
-                    <SelectItem value="Forfait jours">Forfait jours</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Horaire mensuel</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="151.67"
+                  value={formData.horaire || ''}
+                  onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
+                />
               </div>
             </div>
 
