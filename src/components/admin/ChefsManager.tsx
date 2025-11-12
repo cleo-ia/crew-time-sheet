@@ -31,7 +31,6 @@ export const ChefsManager = () => {
     type_contrat: "",
     horaire: "",
     taux_horaire: undefined as number | undefined,
-    heures_supp_mensualisees: 0,
     forfait_jours: false,
     salaire: undefined as number | undefined,
   });
@@ -71,7 +70,6 @@ export const ChefsManager = () => {
       type_contrat: "",
       horaire: "",
       taux_horaire: undefined,
-      heures_supp_mensualisees: 0,
       forfait_jours: false,
       salaire: undefined,
     });
@@ -92,7 +90,6 @@ export const ChefsManager = () => {
       type_contrat: chef.type_contrat || "",
       horaire: chef.horaire || "",
       taux_horaire: chef.taux_horaire || undefined,
-      heures_supp_mensualisees: chef.heures_supp_mensualisees || 0,
       forfait_jours: chef.forfait_jours || false,
       salaire: chef.salaire || undefined,
     });
@@ -357,16 +354,6 @@ export const ChefsManager = () => {
                   placeholder="Saisir le taux horaire"
                   value={formData.taux_horaire ?? ''}
                   onChange={(e) => setFormData({ ...formData, taux_horaire: e.target.value ? parseFloat(e.target.value) : undefined })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Heures supp mensualisées</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0"
-                  value={formData.heures_supp_mensualisees}
-                  onChange={(e) => setFormData({ ...formData, heures_supp_mensualisees: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div className="space-y-2">
