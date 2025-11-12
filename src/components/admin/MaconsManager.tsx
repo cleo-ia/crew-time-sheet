@@ -342,6 +342,7 @@ export const MaconsManager = () => {
                     <SelectItem value="CDI">CDI</SelectItem>
                     <SelectItem value="CDD">CDD</SelectItem>
                     <SelectItem value="Intérim">Intérim</SelectItem>
+                    <SelectItem value="Autres">Autres</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
