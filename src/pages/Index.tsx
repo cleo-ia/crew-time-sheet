@@ -449,7 +449,7 @@ const Index = () => {
                       />
                     </CollapsibleTrigger>
                     
-                    <CollapsibleContent className="pt-4" onPointerDownCapture={(e) => e.stopPropagation()}>
+                    <CollapsibleContent className="pt-4">
                 <TransportSheetV2
                   selectedWeek={parseISOWeek(selectedWeek)}
                   selectedWeekString={selectedWeek}
