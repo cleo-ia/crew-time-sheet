@@ -163,16 +163,6 @@ export const TransportDayAccordion = ({
                     </Button>
                   </div>
 
-                  {/* Afficher les messages d'incohérence */}
-                  {hasInconsistency && (
-                    <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-                      {vehiculeInconsistencies.map((inc, idx) => (
-                        <p key={idx} className="text-xs text-destructive">
-                          ⚠️ {inc.driverName} est absent le {format(new Date(inc.day), "EEEE d MMMM", { locale: fr })} ({inc.periode})
-                        </p>
-                      ))}
-                    </div>
-                  )}
                 
                 <div className="space-y-3">
                   <div>
