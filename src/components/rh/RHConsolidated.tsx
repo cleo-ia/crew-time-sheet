@@ -69,17 +69,17 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center">
+                            <div className="flex items-center animate-pulse">
                               <Badge 
                                 variant="outline" 
-                                className="bg-orange-500/10 text-orange-600 border-orange-500/30 px-1.5 py-0.5 text-xs"
+                                className="bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/50 px-2 py-1 text-sm font-semibold shadow-sm"
                               >
-                                <AlertCircle className="h-3 w-3" />
+                                <AlertCircle className="h-5 w-5" />
                               </Badge>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Absence(s) à qualifier</p>
+                            <p className="font-semibold">⚠️ Absence(s) à qualifier</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
