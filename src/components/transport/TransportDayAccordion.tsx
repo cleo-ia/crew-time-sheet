@@ -178,7 +178,7 @@ export const TransportDayAccordion = ({
 
                 
                 <div className="space-y-3">
-                  <div>
+                  <div onPointerDownCapture={(e) => e.stopPropagation()}>
                     <Label className="text-xs">Immatriculation *</Label>
                     <VehiculeSelectorChefsMacons
                       value={vehicule.immatriculation}
@@ -213,7 +213,7 @@ export const TransportDayAccordion = ({
                     </>
                   ) : (
                     <>
-                      <div>
+                      <div onPointerDownCapture={(e) => e.stopPropagation()}>
                         <Label className="text-xs">Conducteur Matin *</Label>
                         <ConducteurCombobox
                           chantierId={chantierId}
@@ -232,7 +232,7 @@ export const TransportDayAccordion = ({
                         />
                       </div>
                       
-                      <div>
+                      <div onPointerDownCapture={(e) => e.stopPropagation()}>
                         <Label className="text-xs">Conducteur Soir *</Label>
                         <ConducteurCombobox
                           chantierId={chantierId}
