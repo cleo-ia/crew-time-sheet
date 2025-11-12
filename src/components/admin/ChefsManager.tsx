@@ -360,16 +360,6 @@ export const ChefsManager = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Heures supp mensualisées</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0"
-                  value={formData.heures_supp_mensualisees}
-                  onChange={(e) => setFormData({ ...formData, heures_supp_mensualisees: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Salaire (€)</Label>
                 <Input
                   type="number"
