@@ -49,7 +49,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -81,7 +81,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 z-[500] bg-popover" align="start" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent className="w-full p-0" align="start" onPointerDown={(e) => e.stopPropagation()}>
         <Command>
           <CommandInput placeholder="Rechercher un conducteur..." />
           <CommandList>

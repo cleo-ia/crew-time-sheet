@@ -31,6 +31,7 @@ export const ChefsManager = () => {
     type_contrat: "",
     horaire: "",
     taux_horaire: undefined as number | undefined,
+    heures_supp_mensualisees: 0,
     forfait_jours: false,
     salaire: undefined as number | undefined,
   });
@@ -70,6 +71,7 @@ export const ChefsManager = () => {
       type_contrat: "",
       horaire: "",
       taux_horaire: undefined,
+      heures_supp_mensualisees: 0,
       forfait_jours: false,
       salaire: undefined,
     });
@@ -90,6 +92,7 @@ export const ChefsManager = () => {
       type_contrat: chef.type_contrat || "",
       horaire: chef.horaire || "",
       taux_horaire: chef.taux_horaire || undefined,
+      heures_supp_mensualisees: chef.heures_supp_mensualisees || 0,
       forfait_jours: chef.forfait_jours || false,
       salaire: chef.salaire || undefined,
     });
@@ -332,14 +335,16 @@ export const ChefsManager = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire mensuel</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="151.67"
-                  value={formData.horaire || ''}
-                  onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
-                />
+                <Label>Horaire</Label>
+                <Select value={formData.horaire} onValueChange={(value) => setFormData({ ...formData, horaire: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Horaire">Horaire</SelectItem>
+                    <SelectItem value="Forfait jours">Forfait jours</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -355,7 +360,17 @@ export const ChefsManager = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Salaire de base</Label>
+                <Label>Heures supp mensualisées</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.heures_supp_mensualisees}
+                  onChange={(e) => setFormData({ ...formData, heures_supp_mensualisees: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Salaire (€)</Label>
                 <Input
                   type="number"
                   step="0.01"

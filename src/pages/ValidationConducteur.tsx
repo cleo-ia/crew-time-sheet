@@ -5,7 +5,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock } from "lucide-react";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { FichesFilters } from "@/components/validation/FichesFilters";
@@ -55,16 +55,14 @@ const ValidationConducteur = () => {
     null // null car conducteur n'a pas de chantier fixe
   );
   
-  const [selectedWeek, setSelectedWeek] = useState<string>(
-    initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II")
-  );
+  const [selectedWeek, setSelectedWeek] = useState<string>(initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II"));
   
-  // Mettre à jour selectedWeek quand initialWeek change (UNIQUEMENT si chargement terminé)
+  // Mettre à jour selectedWeek quand initialWeek change
   useEffect(() => {
-    if (initialWeek && !isLoadingWeek) {
+    if (initialWeek) {
       setSelectedWeek(initialWeek);
     }
-  }, [initialWeek, isLoadingWeek]);
+  }, [initialWeek]);
 
   // Synchroniser l'URL avec la semaine et l'onglet actif
   useEffect(() => {
@@ -123,11 +121,6 @@ const ValidationConducteur = () => {
 
   // Lecture des query params pour lien profond (emails n8n) et gestion des redirections
   useEffect(() => {
-    // ⚠️ NE RIEN FAIRE si la query initialWeek est en cours
-    if (isLoadingWeek) {
-      return;
-    }
-
     const chantierQP = searchParams.get("chantier");
     const semaineQP = searchParams.get("semaine");
     const tabQP = searchParams.get("tab");
@@ -143,11 +136,8 @@ const ValidationConducteur = () => {
     } else if (tabQP === "mes-heures") {
       // Redirection explicite vers l'onglet mes heures (depuis signature finisseurs)
       setActiveMainTab("mes-heures");
-      const semaineFromUrl = semaineQP ? decodeURIComponent(semaineQP).trim() : null;
-      if (semaineFromUrl && (!initialWeek || semaineFromUrl === initialWeek)) {
-        setSelectedWeek(semaineFromUrl);
-      } else if (initialWeek) {
-        setSelectedWeek(initialWeek);
+      if (semaineQP) {
+        setSelectedWeek(decodeURIComponent(semaineQP).trim());
       }
     } else if (chantierQP || semaineQP) {
       // Compatibilité avec les anciens liens sans "tab" -> ouvrir validation par défaut
@@ -158,7 +148,7 @@ const ValidationConducteur = () => {
         ...(semaineQP && { semaine: decodeURIComponent(semaineQP).trim() })
       }));
     }
-  }, [searchParams, initialWeek, isLoadingWeek]);
+  }, [searchParams]);
 
   // Basculer automatiquement sur la semaine suivante au retour de la signature
   useEffect(() => {
@@ -451,111 +441,100 @@ const ValidationConducteur = () => {
                 </TabsList>
 
                 <TabsContent value="saisie" className="space-y-6">
-                  {isLoadingWeek ? (
-                    <Card className="p-12 shadow-md border-border/50">
-                      <div className="flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                        <p className="text-lg font-medium">Chargement de la semaine...</p>
+                  <Card className="p-6 shadow-md border-border/50">
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-primary" />
+                          Semaine sélectionnée
+                        </label>
+                        <WeekSelector value={selectedWeek} onChange={setSelectedWeek} />
                       </div>
-                    </Card>
-                  ) : (
-                    <>
-                      <Card className="p-6 shadow-md border-border/50">
-                        <div className="flex flex-col gap-4">
-                          <div>
-                            <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-primary" />
-                              Semaine sélectionnée
-                            </label>
-                            <WeekSelector value={selectedWeek} onChange={setSelectedWeek} />
-                          </div>
 
-                          {selectedWeek && conducteurId && (
-                            <div className="pt-4 border-t border-border/30">
-                              <FinisseursDispatchWeekly 
-                                conducteurId={conducteurId}
-                                semaine={selectedWeek}
-                                onAffectationsChange={setAffectationsLocal}
-                              />
-                            </div>
-                          )}
-
-                          {selectedWeek && (
-                            <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                              <p className="text-sm text-foreground">
-                                <span className="font-medium">📝 Processus de validation :</span>
-                                <br />
-                                1. Saisissez les heures de votre équipe de finisseurs
-                                <br />
-                                2. Remplissez la fiche de trajet de chaque finisseur (dans leur accordéon)
-                                <br />
-                                3. Collectez les signatures (finisseurs + vous)
-                                <br />
-                                4. Transmission automatique au service RH
-                              </p>
-                            </div>
-                          )}
+                      {selectedWeek && conducteurId && (
+                        <div className="pt-4 border-t border-border/30">
+                          <FinisseursDispatchWeekly 
+                            conducteurId={conducteurId}
+                            semaine={selectedWeek}
+                            onAffectationsChange={setAffectationsLocal}
+                          />
                         </div>
-                      </Card>
+                      )}
 
-                      {selectedWeek && conducteurId ? (
-                        finisseurs.length > 0 ? (
-                          <>
-                            <TimeEntryTable 
-                              chantierId={null}
-                              weekId={selectedWeek}
-                              chefId={conducteurId}
-                              onEntriesChange={setTimeEntries}
-                              mode="conducteur"
-                              affectationsJours={affectationsJours}
-                            />
+                      {selectedWeek && (
+                        <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                          <p className="text-sm text-foreground">
+                            <span className="font-medium">📝 Processus de validation :</span>
+                            <br />
+                            1. Saisissez les heures de votre équipe de finisseurs
+                            <br />
+                            2. Remplissez la fiche de trajet de chaque finisseur (dans leur accordéon)
+                            <br />
+                            3. Collectez les signatures (finisseurs + vous)
+                            <br />
+                            4. Transmission automatique au service RH
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
 
-                            <Card className="p-6 shadow-md border-border/50">
-                              <div className="flex flex-col gap-3">
-                                <Button 
-                                  size="lg"
-                                  className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
-                                  onClick={handleSaveAndSign}
-                                  disabled={saveFiche.isPending || isSubmitting || timeEntries.length === 0}
-                                >
-                                  <CheckCircle2 className="h-5 w-5 mr-2" />
-                                  Collecter les signatures
-                                </Button>
-                                <p className="text-xs text-muted-foreground text-center">
-                                  Collectez les signatures des finisseurs et la vôtre avant la transmission au RH
-                                </p>
-                                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
-                                  <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
-                                    ℹ️ Vérifiez que chaque finisseur a rempli sa fiche trajet dans son accordéon avant de collecter les signatures
-                                  </p>
-                                </div>
-                              </div>
-                            </Card>
-                          </>
-                        ) : (
-                          <Card className="p-12 shadow-md border-border/50">
-                            <div className="text-center text-muted-foreground">
-                              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                              <p className="text-lg font-medium">Aucun finisseur affecté cette semaine</p>
-                              <p className="text-sm mt-2">
-                                Cliquez sur <strong className="text-primary">"Copier S-1"</strong> dans la section <strong>"Gérer mon équipe"</strong> ci-dessus pour reprendre les affectations de la semaine précédente.
-                              </p>
-                              <p className="text-xs mt-2 text-muted-foreground/70">
-                                Ou utilisez la section "Planifier la semaine" pour gérer manuellement vos affectations.
+                  {selectedWeek && conducteurId ? (
+                    finisseurs.length > 0 ? (
+                      <>
+                        <TimeEntryTable 
+                          chantierId={null}
+                          weekId={selectedWeek}
+                          chefId={conducteurId}
+                          onEntriesChange={setTimeEntries}
+                          mode="conducteur"
+                          affectationsJours={affectationsJours}
+                        />
+
+                        <Card className="p-6 shadow-md border-border/50">
+                          <div className="flex flex-col gap-3">
+                            <Button 
+                              size="lg"
+                              className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
+                              onClick={handleSaveAndSign}
+                              disabled={saveFiche.isPending || isSubmitting || timeEntries.length === 0}
+                            >
+                              <CheckCircle2 className="h-5 w-5 mr-2" />
+                              Collecter les signatures
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                              Collectez les signatures des finisseurs et la vôtre avant la transmission au RH
+                            </p>
+                            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
+                              <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
+                                ℹ️ Vérifiez que chaque finisseur a rempli sa fiche trajet dans son accordéon avant de collecter les signatures
                               </p>
                             </div>
-                          </Card>
-                        )
-                      ) : (
-                        <Card className="p-12 shadow-md border-border/50">
-                          <div className="text-center text-muted-foreground">
-                            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p className="text-lg font-medium">Sélectionnez une semaine</p>
-                            <p className="text-sm mt-2">Pour commencer la saisie des heures de votre équipe</p>
                           </div>
                         </Card>
-                      )}
-                    </>
+                      </>
+                    ) : (
+                      <Card className="p-12 shadow-md border-border/50">
+                        <div className="text-center text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p className="text-lg font-medium">Aucun finisseur affecté cette semaine</p>
+                          <p className="text-sm mt-2">
+                            Cliquez sur <strong className="text-primary">"Copier S-1"</strong> dans la section <strong>"Gérer mon équipe"</strong> ci-dessus pour reprendre les affectations de la semaine précédente.
+                          </p>
+                          <p className="text-xs mt-2 text-muted-foreground/70">
+                            Ou utilisez la section "Planifier la semaine" pour gérer manuellement vos affectations.
+                          </p>
+                        </div>
+                      </Card>
+                    )
+                  ) : (
+                    <Card className="p-12 shadow-md border-border/50">
+                      <div className="text-center text-muted-foreground">
+                        <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg font-medium">Sélectionnez une semaine</p>
+                        <p className="text-sm mt-2">Pour commencer la saisie des heures de votre équipe</p>
+                      </div>
+                    </Card>
                   )}
                 </TabsContent>
 

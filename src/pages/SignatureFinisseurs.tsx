@@ -425,28 +425,18 @@ const SignatureFinisseurs = () => {
                                               <span className="flex items-center gap-1.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-medium">
                                                 🚫 ABSENT
                                               </span>
+                                            ) : isTrajetPerso ? (
+                                              <span className="flex items-center gap-1.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-medium">
+                                                🚗 Véhicule personnel
+                                              </span>
+                                            ) : hasImmat ? (
+                                              <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
+                                                {transportDay.immatriculation}
+                                              </span>
                                             ) : (
-                                              <>
-                                                {affectedDay.code_chantier && (
-                                                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
-                                                    {affectedDay.code_chantier}
-                                                  </span>
-                                                )}
-                                                
-                                                {isTrajetPerso ? (
-                                                  <span className="flex items-center gap-1.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-medium">
-                                                    🚗 Véhicule personnel
-                                                  </span>
-                                                ) : hasImmat ? (
-                                                  <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
-                                                    {transportDay.immatriculation}
-                                                  </span>
-                                                ) : (
-                                                  <span className="text-xs text-muted-foreground italic px-2 py-0.5">
-                                                    Non renseigné
-                                                  </span>
-                                                )}
-                                              </>
+                                              <span className="text-xs text-muted-foreground italic px-2 py-0.5">
+                                                Non renseigné
+                                              </span>
                                             )}
                                           </div>
                                         );

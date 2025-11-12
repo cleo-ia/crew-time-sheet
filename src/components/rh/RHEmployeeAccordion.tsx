@@ -1,6 +1,7 @@
 import { AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RoleBadge } from "@/components/ui/role-badge";
+import { Crown } from "lucide-react";
 
 interface RHEmployeeAccordionProps {
   employee: {
@@ -39,7 +40,37 @@ export const RHEmployeeAccordion = ({ employee, joursSalarie }: RHEmployeeAccord
             <span className="font-medium text-foreground">
               {employee.nom}
             </span>
-            <RoleBadge role={employee.isChef ? "chef" : (employee.role as any)} size="sm" />
+            {/* Badge rôle coloré selon le type */}
+            {employee.isChef ? (
+              <Badge 
+                variant="default" 
+                className="bg-primary/10 text-primary border-primary/20"
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Chef d'équipe
+              </Badge>
+            ) : employee.role === "interimaire" ? (
+              <Badge 
+                variant="secondary" 
+                className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+              >
+                Intérimaire
+              </Badge>
+            ) : employee.role === "finisseur" ? (
+              <Badge 
+                variant="secondary" 
+                className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+              >
+                Finisseur
+              </Badge>
+            ) : (
+              <Badge 
+                variant="secondary" 
+                className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+              >
+                Maçon
+              </Badge>
+            )}
           </div>
           
           {/* Partie droite : Total heures uniquement */}

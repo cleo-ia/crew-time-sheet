@@ -37,6 +37,7 @@ export const MaconsManager = () => {
     type_contrat: "",
     horaire: "",
     taux_horaire: undefined as number | undefined,
+    heures_supp_mensualisees: 0,
     forfait_jours: false,
     salaire: undefined as number | undefined,
   });
@@ -78,6 +79,7 @@ export const MaconsManager = () => {
       type_contrat: "",
       horaire: "",
       taux_horaire: undefined,
+      heures_supp_mensualisees: 0,
       forfait_jours: false,
       salaire: undefined,
     });
@@ -98,6 +100,7 @@ export const MaconsManager = () => {
       type_contrat: macon.type_contrat || "",
       horaire: macon.horaire || "",
       taux_horaire: macon.taux_horaire || undefined,
+      heures_supp_mensualisees: macon.heures_supp_mensualisees || 0,
       forfait_jours: macon.forfait_jours || false,
       salaire: macon.salaire || undefined,
     });
@@ -339,16 +342,14 @@ export const MaconsManager = () => {
                     <SelectItem value="CDI">CDI</SelectItem>
                     <SelectItem value="CDD">CDD</SelectItem>
                     <SelectItem value="Intérim">Intérim</SelectItem>
-                    <SelectItem value="Autres">Autres</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire mensuel</Label>
+                <Label>Horaire mensuelle</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="151.67"
+                  type="text"
+                  placeholder="Ex: 35h, 39h, temps partiel..."
                   value={formData.horaire || ''}
                   onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
                 />
@@ -367,7 +368,17 @@ export const MaconsManager = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Salaire de base</Label>
+                <Label>Heures supp mensualisées</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.heures_supp_mensualisees}
+                  onChange={(e) => setFormData({ ...formData, heures_supp_mensualisees: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Salaire (€)</Label>
                 <Input
                   type="number"
                   step="0.01"

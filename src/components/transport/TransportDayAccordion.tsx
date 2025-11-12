@@ -1,4 +1,4 @@
-import { Plus, Trash2, User, AlertCircle } from "lucide-react";
+import { Plus, Trash2, User } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback } from "react";
@@ -16,15 +16,6 @@ import { TransportVehicle, TransportDayV2 } from "@/types/transport";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-interface InconsistencyDetail {
-  day: string;
-  vehicleId: string;
-  driverName: string;
-  driverId: string;
-  periode: "matin" | "soir";
-  reason: string;
-}
-
 interface TransportDayAccordionProps {
   day: TransportDayV2;
   chantierId: string | null;
@@ -33,7 +24,6 @@ interface TransportDayAccordionProps {
   conducteurId?: string;
   onUpdate: (updatedDay: TransportDayV2) => void;
   isReadOnly?: boolean;
-  inconsistencyDetails?: InconsistencyDetail[];
 }
 
 export const TransportDayAccordion = ({
@@ -44,7 +34,6 @@ export const TransportDayAccordion = ({
   conducteurId,
   onUpdate,
   isReadOnly = false,
-  inconsistencyDetails = [],
 }: TransportDayAccordionProps) => {
   
   // Récupérer le nom du conducteur connecté
@@ -116,24 +105,11 @@ export const TransportDayAccordion = ({
     (v) => v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
   ).length;
 
-  // Vérifier si ce jour a des incohérences
-  const dayHasInconsistencies = inconsistencyDetails.some(
-    inc => inc.day === day.date
-  );
-
   return (
     <AccordionItem value={day.date} className="border rounded-lg mb-2">
-      <AccordionTrigger 
-        className="hover:no-underline px-4 py-3"
-        
-      >
+      <AccordionTrigger className="hover:no-underline px-4 py-3">
         <div className="flex items-center justify-between w-full pr-4">
-          <div className="flex items-center gap-2">
-            <span className="font-medium capitalize">{dayLabel}</span>
-            {dayHasInconsistencies && (
-              <AlertCircle className="h-4 w-4 text-destructive" />
-            )}
-          </div>
+          <span className="font-medium capitalize">{dayLabel}</span>
           <span className="text-sm text-muted-foreground">
             {vehiculeCount === 0 
               ? "Aucun véhicule" 
@@ -149,36 +125,23 @@ export const TransportDayAccordion = ({
               Aucun véhicule ajouté pour ce jour
             </p>
           ) : (
-            day.vehicules.map((vehicule, index) => {
-              // Vérifier si ce véhicule a des incohérences
-              const vehiculeInconsistencies = inconsistencyDetails.filter(
-                inc => inc.day === day.date && inc.vehicleId === vehicule.id
-              );
-              const hasInconsistency = vehiculeInconsistencies.length > 0;
-
-              return (
-                <Card key={vehicule.id} className="p-4 bg-muted/30">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium text-sm">Véhicule {index + 1}</h4>
-                      {hasInconsistency && (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeVehicule(vehicule.id)}
-                      className="h-8 w-8 p-0"
-                      disabled={isReadOnly}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
+            day.vehicules.map((vehicule, index) => (
+              <Card key={vehicule.id} className="p-4 bg-muted/30">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-sm">Véhicule {index + 1}</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeVehicule(vehicule.id)}
+                    className="h-8 w-8 p-0"
+                    disabled={isReadOnly}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
                 
                 <div className="space-y-3">
-                  <div onClickCapture={(e) => e.stopPropagation()}>
+                  <div>
                     <Label className="text-xs">Immatriculation *</Label>
                     <VehiculeSelectorChefsMacons
                       value={vehicule.immatriculation}
@@ -213,7 +176,7 @@ export const TransportDayAccordion = ({
                     </>
                   ) : (
                     <>
-                       <div onClickCapture={(e) => e.stopPropagation()}>
+                      <div>
                         <Label className="text-xs">Conducteur Matin *</Label>
                         <ConducteurCombobox
                           chantierId={chantierId}
@@ -232,7 +195,7 @@ export const TransportDayAccordion = ({
                         />
                       </div>
                       
-                      <div onClickCapture={(e) => e.stopPropagation()}>
+                      <div>
                         <Label className="text-xs">Conducteur Soir *</Label>
                         <ConducteurCombobox
                           chantierId={chantierId}
@@ -254,8 +217,7 @@ export const TransportDayAccordion = ({
                   )}
                 </div>
               </Card>
-              );
-            })
+            ))
           )}
           
           <Button

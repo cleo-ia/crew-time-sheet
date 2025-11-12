@@ -12,16 +12,6 @@ import { useAutoSaveTransportV2 } from "@/hooks/useAutoSaveTransportV2";
 import { useCopyPreviousWeekTransport } from "@/hooks/useCopyPreviousWeekTransport";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { TransportSheetV2 as TransportSheetV2Type } from "@/types/transport";
-
-interface InconsistencyDetail {
-  day: string;
-  vehicleId: string;
-  driverName: string;
-  driverId: string;
-  periode: "matin" | "soir";
-  reason: string;
-}
 
 interface TransportSheetV2Props {
   selectedWeek: Date;
@@ -31,8 +21,6 @@ interface TransportSheetV2Props {
   ficheId?: string | null;
   conducteurId?: string;
   isReadOnly?: boolean;
-  inconsistencyDetails?: InconsistencyDetail[];
-  onTransportDataChange?: (data: TransportSheetV2Type | null) => void;
 }
 
 export interface TransportSheetV2Ref {
@@ -47,8 +35,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   ficheId,
   conducteurId,
   isReadOnly = false,
-  inconsistencyDetails = [],
-  onTransportDataChange,
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -167,18 +153,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     setIsInitialized(false);
   }, [selectedWeekString]);
 
-  // Remonter les données locales au parent pour détection d'incohérences en temps réel
-  useEffect(() => {
-    if (onTransportDataChange && hasLoadedData && transportDays.length > 0) {
-      onTransportDataChange({
-        id: ficheId || "",
-        ficheId: ficheId || "",
-        semaine: selectedWeekString,
-        chantierId: chantierId || null,
-        days: transportDays,
-      });
-    }
-  }, [transportDays, hasLoadedData, onTransportDataChange, ficheId, selectedWeekString, chantierId]);
 
   // Initialiser les 5 jours et fusionner avec les données existantes
   useEffect(() => {
@@ -430,7 +404,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             conducteurId={conducteurId}
             onUpdate={(updatedDay) => updateDay(day.date, updatedDay)}
             isReadOnly={isReadOnly}
-            inconsistencyDetails={inconsistencyDetails}
           />
         ))}
       </Accordion>

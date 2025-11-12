@@ -49,19 +49,6 @@ const COLOR_SCHEME = {
 };
 
 /**
- * Calcule les heures d'absence en fonction du jour de la semaine
- * @param dateString Date au format ISO (YYYY-MM-DD)
- * @returns 7h si vendredi, 8h pour les autres jours de semaine
- */
-const getAbsenceHoursByDay = (dateString: string): number => {
-  const date = new Date(dateString);
-  const dayOfWeek = date.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi, 6=Samedi
-  
-  // Vendredi = 7h, tous les autres jours = 8h
-  return dayOfWeek === 5 ? 7 : 8;
-};
-
-/**
  * Calcule les heures d'absence par type pour un employé
  */
 const calculateAbsencesByType = (emp: RHExportEmployee) => {
@@ -88,7 +75,7 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
       
       // PRIORITÉ 2 : Absence de type "HI" (uniquement si pas d'intemperie numérique pour éviter double comptage)
       if (jour.isAbsent && jour.typeAbsence === "HI" && !jour.intemperie) {
-        absences.HI += getAbsenceHoursByDay(jour.date);
+        absences.HI += 8; // 1 jour absence intempérie = 8h
         if (!dateRanges.HI) dateRanges.HI = [];
         dateRanges.HI.push(jour.date);
       }
@@ -96,7 +83,7 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
       // Autres types d'absences (CP, RTT, AM, MP, AT, etc.)
       if (jour.isAbsent && jour.typeAbsence && jour.typeAbsence !== "HI") {
         const type = jour.typeAbsence;
-        const heuresAbsence = getAbsenceHoursByDay(jour.date);
+        const heuresAbsence = 7; // Convention : 1 jour absence = 7h
         absences[type] = (absences[type] || 0) + heuresAbsence;
 
         // Collecter les dates pour afficher les plages
@@ -178,7 +165,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
   });
 
-  const totalCols = 57;
+  const totalCols = 56;
 
   // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
@@ -208,7 +195,6 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     "Heures suppl\nmensualisées",
     "Forfait jours",
     "Salaire de base\ny compris heures structurelles",
-    "Heures réelles\neffectuées",
     "ABSENCES EN HEURES",
     "",
     "",
@@ -256,7 +242,6 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
 
   // Ligne 4 : Sous-en-têtes détaillés
   const headerRow4 = [
-    "",
     "",
     "",
     "",
@@ -339,7 +324,6 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       emp.heures_supp_mensualisees || "-",
       emp.forfait_jours ? "Oui" : "-",
       emp.salaire,
-      emp.heuresNormales,
       // ABSENCES EN HEURES
       dateText || "",
       absences.CP || 0,
@@ -432,7 +416,6 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     12,
     10,
     15, // A-M
-    10, // N (Heures réelles effectuées)
     20,
     6,
     6,
@@ -483,18 +466,18 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   // Merges
   // Ligne 1
   sheet.mergeCells(`A1:${colToLetter(14)}1`); // A1:N1
-  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(57)}1`); // O1:BE1
+  sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(56)}1`); // O1:BD1
 
   // Lignes 3-4: colonnes individuelles
-  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 27, 56, 57];
+  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26, 55, 56];
   singles.forEach((c) => sheet.mergeCells(3, c, 4, c));
 
   // Groupes
-  sheet.mergeCells(3, 15, 3, 24); // ABSENCES EN HEURES (O3:X3)
-  sheet.mergeCells(3, 25, 3, 26); // HEURES SUPP (Y3:Z3)
-  sheet.mergeCells(3, 28, 3, 49); // TRAJETS (AB3:AW3)
-  sheet.mergeCells(3, 50, 3, 52); // Acomptes et prêts (AX3:AZ3)
-  sheet.mergeCells(3, 53, 3, 55); // SAISIES (BA3:BC3)
+  sheet.mergeCells(3, 14, 3, 23); // ABSENCES EN HEURES (N3:W3)
+  sheet.mergeCells(3, 24, 3, 25); // HEURES SUPP (X3:Y3)
+  sheet.mergeCells(3, 27, 3, 48); // TRAJETS (AA3:AV3)
+  sheet.mergeCells(3, 49, 3, 51); // Acomptes et prêts (AW3:AY3)
+  sheet.mergeCells(3, 52, 3, 54); // SAISIES (AZ3:BB3)
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
@@ -511,15 +494,14 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       // Couleur par groupe
       let bg = "E0E0E0";
       if (c >= 1 && c <= 13) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
-      else if (c === 14) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
-      else if (c >= 15 && c <= 24) bg = COLOR_SCHEME.ABSENCES_HEADER;
-      else if (c >= 25 && c <= 26) bg = COLOR_SCHEME.OVERTIME_HEADER;
-      else if (c === 27) bg = COLOR_SCHEME.MEALS_HEADER;
-      else if (c >= 28 && c <= 49) bg = COLOR_SCHEME.TRANSPORT_HEADER;
-      else if (c >= 50 && c <= 52) bg = "A9D08E"; // Vert pour Acomptes et prêts
-      else if (c >= 53 && c <= 55) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
-      else if (c === 56) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
-      else if (c === 57) bg = "E8DAEF"; // Mauve clair pour Autres éléments
+      else if (c >= 14 && c <= 23) bg = COLOR_SCHEME.ABSENCES_HEADER;
+      else if (c >= 24 && c <= 25) bg = COLOR_SCHEME.OVERTIME_HEADER;
+      else if (c === 26) bg = COLOR_SCHEME.MEALS_HEADER;
+      else if (c >= 27 && c <= 48) bg = COLOR_SCHEME.TRANSPORT_HEADER;
+      else if (c >= 49 && c <= 51) bg = "A9D08E"; // Vert pour Acomptes et prêts
+      else if (c >= 52 && c <= 54) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
+      else if (c === 55) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
+      else if (c === 56) bg = "E8DAEF"; // Mauve clair pour Autres éléments
 
       setHeaderFill(cell, bg);
     }
@@ -545,15 +527,14 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     for (let c = 1; c <= totalCols; c++) {
       let bg = isEven ? "FFFFFF" : "F9F9F9";
       if (c >= 1 && c <= 13) bg = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
-      else if (c === 14) bg = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
-      else if (c >= 15 && c <= 24) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD;
-      else if (c >= 25 && c <= 26) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD;
-      else if (c === 27) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD;
-      else if (c >= 28 && c <= 49) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
-      else if (c >= 50 && c <= 52) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
-      else if (c >= 53 && c <= 55) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
-      else if (c === 56) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
-      else if (c === 57) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
+      else if (c >= 14 && c <= 23) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD;
+      else if (c >= 24 && c <= 25) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD;
+      else if (c === 26) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD;
+      else if (c >= 27 && c <= 48) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
+      else if (c >= 49 && c <= 51) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
+      else if (c >= 52 && c <= 54) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
+      else if (c === 55) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
+      else if (c === 56) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
 
       const cell = sheet.getRow(r).getCell(c);
       const align: "left" | "right" = c >= 14 ? "right" : "left";
@@ -562,7 +543,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       // Formats
       if (c === 13) {
         cell.numFmt = "#,##0.00"; // Salaire
-      } else if (c === 14 || (c >= 16 && c <= 26) || c === 27 || (c >= 28 && c <= 49)) {
+      } else if ((c >= 15 && c <= 25) || c === 26 || (c >= 27 && c <= 48)) {
         cell.numFmt = "0"; // Nombres entiers
       }
     }

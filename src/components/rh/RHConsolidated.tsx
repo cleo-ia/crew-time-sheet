@@ -38,20 +38,6 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
 
   return (
     <div className="space-y-4">
-      {employees.some(emp => emp.hasUnqualifiedAbsences) && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div>
-            <p className="font-semibold text-destructive">
-              Attention : {employees.filter(emp => emp.hasUnqualifiedAbsences).length} salarié(s) ont des absences à qualifier
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Vous devez qualifier toutes les absences avant de pouvoir exporter l'Excel.
-            </p>
-          </div>
-        </div>
-      )}
-      
       <div className="rounded-lg border border-border/50 overflow-auto">
         <Table>
           <TableHeader>
@@ -86,14 +72,14 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                             <div className="flex items-center">
                               <Badge 
                                 variant="outline" 
-                                className="bg-destructive/20 text-destructive border-destructive/50 px-2 py-1 animate-pulse"
+                                className="bg-orange-500/10 text-orange-600 border-orange-500/30 px-1.5 py-0.5 text-xs"
                               >
-                                <AlertCircle className="h-4 w-4" />
+                                <AlertCircle className="h-3 w-3" />
                               </Badge>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="font-semibold">Absence(s) à qualifier</p>
+                            <p>Absence(s) à qualifier</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

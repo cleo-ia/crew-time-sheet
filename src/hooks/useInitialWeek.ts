@@ -23,7 +23,7 @@ export const useInitialWeek = (
     queryFn: async () => {
       // Déterminer quelle semaine vérifier : URL ou courante
       const weekToCheck = urlParamWeek || getCurrentWeek();
-      
+
       // Si pas d'utilisateur, retourner la semaine à vérifier
       if (!userId) {
         return weekToCheck;
@@ -35,7 +35,7 @@ export const useInitialWeek = (
           .from("fiches")
           .select("statut")
           .eq("semaine", weekToCheck)
-          .or(`user_id.eq.${userId},user_id.is.null`)
+          .eq("user_id", userId)
           .eq("chantier_id", chantierId);
 
         if (error) {
@@ -67,7 +67,7 @@ export const useInitialWeek = (
         .from("fiches")
         .select("statut, salarie_id")
         .eq("semaine", weekToCheck)
-        .or(`user_id.eq.${userId},user_id.is.null`)
+        .eq("user_id", userId)
         .is("chantier_id", null);
 
       if (errUser) {

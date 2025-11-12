@@ -232,15 +232,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     if (checked) {
       // Vérifier si déjà affecté ailleurs
       if (isFinisseurAffectedElsewhere(finisseurId, date)) {
-        const finisseur = finisseurs.find(f => f.id === finisseurId);
-        const dateLabel = format(new Date(date), "EEEE d MMMM", { locale: fr });
-        
-        toast({
-          variant: "destructive",
-          title: "❌ Affectation impossible",
-          description: `${finisseur?.prenom} ${finisseur?.nom} est déjà affecté(e) à un autre conducteur pour ${dateLabel}.`,
-          duration: 5000,
-        });
+        alert("Ce finisseur est déjà affecté à un autre conducteur pour ce jour.");
         return;
       }
     }
@@ -491,6 +483,14 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
               </SelectContent>
             </Select>
 
+            <Button
+              variant="outline"
+              onClick={() => copyMutation.mutate({ conducteurId, currentWeek: semaine })}
+              disabled={copyMutation.isPending}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copier S-1
+            </Button>
           </div>
 
           {/* Réinitialiser filtres */}
@@ -624,6 +624,28 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                           </Tooltip>
                         </TooltipProvider>
 
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  copyMutation.mutate({
+                                    conducteurId,
+                                    currentWeek: semaine,
+                                    finisseurId: finisseur.id,
+                                  })
+                                }
+                                disabled={copyMutation.isPending}
+                              >
+                                <Copy className="h-4 w-4 mr-1" />
+                                Copier S-1
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copier les affectations de la semaine dernière pour ce finisseur</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
 
                         <TooltipProvider>
                           <Tooltip>
