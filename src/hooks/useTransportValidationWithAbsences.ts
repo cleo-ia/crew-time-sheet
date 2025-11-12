@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTransportDataV2 } from "./useTransportDataV2";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { TransportSheetV2 } from "@/types/transport";
 
 interface InconsistencyDetail {
   day: string;
@@ -16,9 +17,13 @@ export const useTransportValidationWithAbsences = (
   ficheId: string | null,
   chefId?: string,
   semaine?: string,
-  conducteurId?: string
+  conducteurId?: string,
+  localTransportData?: TransportSheetV2 | null
 ) => {
-  const { data: transportData } = useTransportDataV2(ficheId, conducteurId);
+  const { data: dbTransportData } = useTransportDataV2(ficheId, conducteurId);
+  
+  // Utiliser localTransportData si fourni, sinon dbTransportData
+  const transportData = localTransportData || dbTransportData;
 
   // Récupérer tous les conducteurs uniques de la fiche transport
   const uniqueDriverIds = useMemo(() => {

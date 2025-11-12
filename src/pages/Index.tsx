@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useFicheModifiable } from "@/hooks/useFicheModifiable";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
+import { TransportSheetV2 as TransportSheetV2Type } from "@/types/transport";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -39,6 +40,9 @@ const Index = () => {
   const [selectedChef, setSelectedChef] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChef') || ""
   );
+  
+  // État local pour les données de transport (détection en temps réel)
+  const [localTransportData, setLocalTransportData] = useState<TransportSheetV2Type | null>(null);
   
   // Hook intelligent qui détermine la bonne semaine (courante ou suivante si transmise)
   const { data: initialWeek, isLoading: isLoadingWeek } = useInitialWeek(
@@ -136,11 +140,13 @@ const Index = () => {
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
 
-  // Validation de la fiche transport avec détection d'incohérences
+  // Validation de la fiche transport avec détection d'incohérences (temps réel avec localTransportData)
   const { isTransportComplete, hasInconsistencies, inconsistencyDetails } = useTransportValidationWithAbsences(
     ficheId,
     selectedChef,
-    selectedWeek
+    selectedWeek,
+    undefined,
+    localTransportData
   );
   const { toast } = useToast();
 
@@ -444,15 +450,16 @@ const Index = () => {
                     </CollapsibleTrigger>
                     
                     <CollapsibleContent className="pt-4">
-            <TransportSheetV2
-              selectedWeek={parseISOWeek(selectedWeek)}
-              selectedWeekString={selectedWeek}
-              chantierId={selectedChantier}
-              chefId={selectedChef}
-              ficheId={ficheId}
-              isReadOnly={!isFicheModifiable}
-              inconsistencyDetails={inconsistencyDetails}
-            />
+                <TransportSheetV2
+                  selectedWeek={parseISOWeek(selectedWeek)}
+                  selectedWeekString={selectedWeek}
+                  chantierId={selectedChantier}
+                  chefId={selectedChef}
+                  ficheId={ficheId}
+                  isReadOnly={!isFicheModifiable}
+                  inconsistencyDetails={inconsistencyDetails}
+                  onTransportDataChange={setLocalTransportData}
+                />
                     </CollapsibleContent>
                   </Collapsible>
                 </Card>
