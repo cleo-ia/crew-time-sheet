@@ -369,7 +369,7 @@ export const GrutiersManager = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Salaire (€)</Label>
+                <Label>Salaire de base</Label>
                 <Input
                   type="number"
                   step="0.01"
