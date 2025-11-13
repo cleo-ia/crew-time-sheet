@@ -380,7 +380,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         intemperies: Math.round(intemperies * 100) / 100,
         absences,
         paniers,
-        trajets: compteurJoursTrajets,
+        trajets: Math.round(trajets * 100) / 100,
         trajetsPerso: Math.round(trajetsPerso * 100) / 100,
         totalHeures: Math.round(totalHeures * 100) / 100,
         statut: fiches.every(f => f.statut === "AUTO_VALIDE") ? "Validé" : "Partiel",
