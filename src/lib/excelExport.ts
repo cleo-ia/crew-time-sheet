@@ -236,7 +236,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     "SAISIES SUR SALAIRES",
     "",
     "",
-    "REGULARISATION M-1",
+    "Regularisation M-1",
     "Autres éléments",
   ];
   sheet.addRow(headerRow3);
@@ -485,6 +485,8 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   // Forcer explicitement les valeurs des cellules après les merges
   sheet.getCell(`${colToLetter(50)}3`).value = "ACOMPTES ET PRÊTS";
   sheet.getCell(`${colToLetter(53)}3`).value = "SAISIES SUR SALAIRES";
+  sheet.getCell(`${colToLetter(56)}3`).value = "Regularisation M-1";
+  sheet.getCell(`${colToLetter(57)}3`).value = "Autres éléments";
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
