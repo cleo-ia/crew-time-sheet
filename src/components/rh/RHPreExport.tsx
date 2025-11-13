@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Input } from "@/components/ui/input";
 import { Download, RotateCcw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -134,14 +134,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       </div>
 
       {/* Table */}
-      <ScrollArea className="h-[600px] border rounded-lg">
+      <div className="h-[600px] border rounded-lg overflow-auto">
         <div className="min-w-[2400px]">
           <Table>
             <TableHeader>
               <TableRow>
                 {/* Contractuel (non éditable) */}
-                <TableHead className="bg-slate-100 sticky left-0 z-10 min-w-[100px]">Matricule</TableHead>
-                <TableHead className="bg-slate-100 sticky left-[100px] z-10 min-w-[120px]">Nom</TableHead>
+                <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px]">Matricule</TableHead>
+                <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px]">Nom</TableHead>
                 <TableHead className="bg-slate-100 min-w-[120px]">Prénom</TableHead>
                 <TableHead className="bg-slate-100 min-w-[150px]">Métier</TableHead>
                 <TableHead className="bg-slate-100 min-w-[120px]">Statut</TableHead>
@@ -240,7 +240,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             </TableBody>
           </Table>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
