@@ -252,6 +252,7 @@ export interface RHFicheDetailData {
     trajet: number;
     trajetPerso: boolean;
     typeAbsence?: string;
+    commentaire?: string;
   }>;
   recapSalaries: Array<{
     id: string;
@@ -356,6 +357,7 @@ export const useRHFicheDetail = (ficheId: string) => {
           trajet: Number(jour.T) || 0,
           trajetPerso: jour.trajet_perso === true,
           typeAbsence: (jour as any).type_absence || null,
+          commentaire: jour.commentaire || "",
         };
       }).sort((a, b) => {
         // 1. Trier d'abord par date ISO (ordre chronologique garanti)

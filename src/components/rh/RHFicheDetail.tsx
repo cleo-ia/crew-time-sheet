@@ -173,6 +173,7 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   panier: jour.panier,
                   trajet: jour.trajet,
                   trajetPerso: jour.trajetPerso,
+                  commentaire: jour.commentaire || "",
                 }))}
               />
             );
@@ -194,6 +195,7 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                 <TableHead className="text-center">Panier repas</TableHead>
                 <TableHead className="text-center">Trajet</TableHead>
                 <TableHead className="text-center">Trajet Perso</TableHead>
+                <TableHead className="text-left">Commentaires</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -215,6 +217,7 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   <TableCell className="text-center">{jour.panier ? "✓" : "-"}</TableCell>
                   <TableCell className="text-center">{jour.trajet}</TableCell>
                   <TableCell className="text-center">{jour.trajetPerso ? "✓" : "-"}</TableCell>
+                  <TableCell className="text-left text-sm text-muted-foreground">{jour.commentaire || "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
