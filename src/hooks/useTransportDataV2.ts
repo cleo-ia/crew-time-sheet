@@ -122,5 +122,7 @@ export const useTransportDataV2 = (ficheId: string | null, conducteurId?: string
       }
     },
     enabled: !!ficheId,
+    refetchOnMount: false,
+    staleTime: 30000,
   });
 };

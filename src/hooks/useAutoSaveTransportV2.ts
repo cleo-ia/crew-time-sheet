@@ -12,7 +12,7 @@ export const useAutoSaveTransportV2 = () => {
       // Skip auto-save when not dirty
       if (isDirty === false) {
         console.log("[useAutoSaveTransportV2] Not dirty, skipping");
-        return null;
+        return { saved: false };
       }
 
       // Ne pas sauvegarder si aucune donnée valide
@@ -22,7 +22,7 @@ export const useAutoSaveTransportV2 = () => {
       
       if (!hasValidData) {
         console.log("[useAutoSaveTransportV2] No valid data to save, skipping");
-        return null;
+        return { saved: false };
       }
 
       // Même logique que useSaveTransportV2 mais sans toast
@@ -136,7 +136,7 @@ export const useAutoSaveTransportV2 = () => {
         if (joursError) throw joursError;
       }
 
-      return transportId;
+      return { saved: true, transportId };
     },
     onSuccess: () => {
       // Ne pas invalider les queries pendant l'auto-save pour éviter la fermeture de l'accordéon
