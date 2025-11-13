@@ -20,6 +20,7 @@ interface TimeEntry {
       chantierCode?: string | null;
       chantierVille?: string | null;
       chantierNom?: string | null;
+      commentaire?: string;
     };
   };
 }
@@ -92,6 +93,12 @@ export const useSaveFicheJours = () => {
             if (dayData.chantierVille) {
               updatePayload.ville_du_jour = dayData.chantierVille;
             }
+            
+            // Toujours inclure commentaire (null si vide pour permettre l'effacement)
+            updatePayload.commentaire = 
+              typeof dayData.commentaire === "string" && dayData.commentaire.trim().length > 0
+                ? dayData.commentaire.trim()
+                : null;
             
             const { error: updateError } = await supabase
             .from("fiches_jours")
