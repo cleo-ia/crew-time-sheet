@@ -260,11 +260,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             {rows.map((row, index) => {
               const data = { ...row.original, ...row.modified };
               
-              // Calculer les absences par type
+              // Calculer les absences par type EN HEURES (1 jour = 7 heures)
               const absencesByType: Record<string, number> = {};
               data.detailJours?.forEach(jour => {
-                if (jour.typeAbsence && jour.heures) {
-                  absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + jour.heures;
+                if (jour.isAbsent && jour.typeAbsence) {
+                  // 1 jour d'absence = 7 heures
+                  absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + 7;
                 }
               });
               
