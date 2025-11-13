@@ -142,7 +142,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                 {/* Contractuel (non éditable) */}
                 <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px]">Matricule</TableHead>
                 <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px]">Nom</TableHead>
-                <TableHead className="bg-slate-100 min-w-[120px]">Prénom</TableHead>
+                <TableHead className="bg-slate-100 sticky left-[220px] z-10 bg-background shadow-sm min-w-[120px]">Prénom</TableHead>
                 <TableHead className="bg-slate-100 min-w-[150px]">Métier</TableHead>
                 <TableHead className="bg-slate-100 min-w-[120px]">Statut</TableHead>
                 <TableHead className="bg-slate-100 min-w-[100px]">Type contrat</TableHead>
@@ -184,7 +184,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                     {/* Non éditable */}
                     <TableCell className="sticky left-0 z-10 bg-background font-mono text-xs">{data.matricule}</TableCell>
                     <TableCell className="sticky left-[100px] z-10 bg-background font-medium">{data.nom}</TableCell>
-                    <TableCell>{data.prenom}</TableCell>
+                    <TableCell className="sticky left-[220px] z-10 bg-background">{data.prenom}</TableCell>
                     <TableCell className="text-xs">{data.metier}</TableCell>
                     <TableCell className="text-xs">{data.statut}</TableCell>
                     <TableCell className="text-xs">{data.type_contrat}</TableCell>
