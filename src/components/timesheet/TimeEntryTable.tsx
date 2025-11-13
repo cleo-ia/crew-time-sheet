@@ -127,6 +127,7 @@ interface TimeEntry {
       chantierCode?: string | null;
       chantierVille?: string | null;
       chantierNom?: string | null;
+      commentaire?: string;
     };
   };
 }
@@ -350,11 +351,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     if (isConducteurMode && chefId && weekId && !hasLoadedData && finisseursData.length > 0 && chantiers.length > 0) {
       const finisseurEntries = finisseursData.map((finisseur) => {
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "" },
         };
 
         // Appliquer les données existantes si disponibles
@@ -397,6 +398,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 chantierVille: j.ville_du_jour || null,
                 chantierId: chantierDuJour?.id || null,
                 chantierNom: chantierDuJour?.nom || null,
+                commentaire: (j as any).commentaire || "",
               };
             }
           });
@@ -456,11 +458,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         
         // Valeurs par défaut (39h) - UNIQUEMENT Lundi à Vendredi
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "" },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "" },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique
@@ -502,6 +504,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
                 chantierNom: chantierDuJour?.nom || null,
+                commentaire: (j as any).commentaire || "",
               };
             }
           });
@@ -567,6 +570,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                   trajetPerso: !!j.trajet_perso,
                   heuresIntemperie: HI,
                   absent: hours === 0 && !PA && HI === 0,
+                  commentaire: (j as any).commentaire || "",
                 };
               }
             });
@@ -669,6 +673,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                   trajetPerso: !!j.trajet_perso,
                   heuresIntemperie: HI,
                   absent: hours === 0 && !PA && T === 0 && HI === 0,
+                  commentaire: (j as any).commentaire || "",
                 };
               }
             });
@@ -1323,6 +1328,22 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                   </>
                                 )}
                               </div>
+                            </div>
+
+                            {/* Commentaire */}
+                            <div className="mt-3 pt-3 border-t border-border/30">
+                              <label className="text-xs text-muted-foreground block mb-1">
+                                Commentaire (optionnel)
+                              </label>
+                              <textarea
+                                value={dayData.commentaire || ""}
+                                onChange={(e) =>
+                                  updateDayValue(entry.employeeId, day, "commentaire", e.target.value)
+                                }
+                                disabled={isReadOnly}
+                                placeholder="Ex: Arrivé en retard, formation, visite client..."
+                                className="w-full h-20 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              />
                             </div>
                             </div>
                           </div>

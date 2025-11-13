@@ -139,6 +139,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 <TableHead className="text-center py-3 px-4 bg-amber-100 dark:bg-amber-900/20 text-foreground">Trajet Perso</TableHead>
                 <TableHead className="font-semibold py-3 px-4 bg-purple-200 dark:bg-purple-900/30 text-foreground">Régularisation M-1</TableHead>
                 <TableHead className="font-semibold py-3 px-4 bg-purple-100 dark:bg-purple-900/20 text-foreground">Autres éléments</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-blue-100 dark:bg-blue-900/20 text-foreground">Commentaires</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -315,6 +316,11 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                       placeholder="Note..."
                     />
+                  </TableCell>
+                  <TableCell className="py-4 px-4">
+                    <div className="text-sm text-muted-foreground max-w-xs">
+                      {(day as any).commentaire || "-"}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

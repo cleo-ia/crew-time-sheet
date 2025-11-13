@@ -13,6 +13,7 @@ interface DayData {
   chantierCode?: string | null;
   chantierVille?: string | null;
   chantierNom?: string | null;
+  commentaire?: string;
 }
 
 interface TimeEntry {
@@ -219,6 +220,7 @@ export const useAutoSaveFiche = () => {
             trajet_perso: !!dayData?.trajetPerso,
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
+            commentaire: dayData?.commentaire || null,
           };
           
           // N'ajouter code_chantier_du_jour QUE si on a une valeur valide

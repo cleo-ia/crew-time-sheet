@@ -633,6 +633,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           isAbsent,
           regularisationM1: (jour as any).regularisation_m1 || "",
           autresElements: (jour as any).autres_elements || "",
+          commentaire: (jour as any).commentaire || "",
         };
       }) || [])
         .sort((a, b) => {

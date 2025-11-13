@@ -25,7 +25,8 @@ export const useFicheDetailForEdit = (chantierId: string, semaine: string) => {
             code_chantier_du_jour,
             ville_du_jour,
             trajet_perso,
-            total_jour
+            total_jour,
+            commentaire
           )
         `)
         .eq("chantier_id", chantierId)
