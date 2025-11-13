@@ -482,8 +482,9 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   sheet.mergeCells(3, 50, 3, 52); // Acomptes et prêts (AX3:AZ3)
   sheet.mergeCells(3, 53, 3, 55); // SAISIES (BA3:BC3)
   
-  // Forcer explicitement la valeur de la cellule AX3 après le merge
+  // Forcer explicitement les valeurs des cellules après les merges
   sheet.getCell(`${colToLetter(50)}3`).value = "ACOMPTES ET PRÊTS";
+  sheet.getCell(`${colToLetter(53)}3`).value = "SAISIES SUR SALAIRES";
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
