@@ -24,6 +24,7 @@ interface RHEmployeeAccordionProps {
     panier: boolean;
     trajet: number;
     trajetPerso: boolean;
+    commentaire?: string;
   }>;
 }
 
@@ -91,6 +92,7 @@ export const RHEmployeeAccordion = ({ employee, joursSalarie }: RHEmployeeAccord
                 <TableHead className="text-center">Panier</TableHead>
                 <TableHead className="text-center">Trajets</TableHead>
                 <TableHead className="text-center">Trajet perso</TableHead>
+                <TableHead className="text-left">Commentaires</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -111,6 +113,9 @@ export const RHEmployeeAccordion = ({ employee, joursSalarie }: RHEmployeeAccord
                   </TableCell>
                   <TableCell className="text-center">
                     {jour.trajetPerso ? "✓" : "-"}
+                  </TableCell>
+                  <TableCell className="text-left text-sm text-muted-foreground">
+                    {jour.commentaire || "-"}
                   </TableCell>
                 </TableRow>
               ))}
