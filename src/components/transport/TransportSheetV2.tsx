@@ -38,8 +38,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
-  const [openDay, setOpenDay] = useState<string>("");
-  const openDayRef = useRef<string>("");
+  const [openDay, setOpenDay] = useState<string | undefined>(undefined);
+  const openDayRef = useRef<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [initialDataSource, setInitialDataSource] = useState<'existing' | 'copied' | null>(null);
   
@@ -56,9 +56,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   
   // Fonction pour gérer l'ouverture/fermeture de l'accordéon
   const handleOpenDayChange = (val: string | undefined) => {
-    const normalized = val ?? "";
-    openDayRef.current = normalized;
-    setOpenDay(normalized);
+    openDayRef.current = val;
+    setOpenDay(val);
   };
   // Exposer la méthode reset pour le debug admin
   useImperativeHandle(ref, () => ({
@@ -76,7 +75,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       setInitialDataSource(null);
       setHasCopied(false);
       setIsInitialized(false);
-      setOpenDay("");
+      setOpenDay(undefined);
       initializedForWeek.current = {};
       
       // Invalider les queries pour forcer un rechargement
@@ -114,11 +113,11 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
 
 
   // Sauvegarder immédiatement quand l'accordéon se ferme
-  const previousOpenDay = useRef<string>("");
+  const previousOpenDay = useRef<string | undefined>(undefined);
   
   useEffect(() => {
     // Détecter la fermeture : openDay passe d'une date à undefined
-    if (previousOpenDay.current && !openDay && isDirty.current) {
+    if (previousOpenDay.current && openDay === undefined && isDirty.current) {
       console.log("[TransportSheetV2] Accordion closing, saving immediately");
       
       // Annuler le debounce en cours
@@ -333,7 +332,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
         setInitialDataSource(null);
         setHasCopied(false);
         setIsInitialized(true);
-        setOpenDay("");
+        setOpenDay(undefined);
         initializedForWeek.current = {};
 
         // Recharger les données depuis la base (vide après purge)
