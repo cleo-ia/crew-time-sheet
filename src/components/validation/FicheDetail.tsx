@@ -295,6 +295,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
           chantierCode: hasCodeChantier ? jourData.code_chantier_du_jour : "",
           chantierVille: hasCodeChantier ? (jourData.ville_du_jour || "") : "",
           chantierId: hasCodeChantier ? null : (fiche.chantier_id || ""),
+          commentaire: jourData?.commentaire || null,
         };
       });
       
