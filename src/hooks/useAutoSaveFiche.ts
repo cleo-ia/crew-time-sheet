@@ -193,7 +193,6 @@ export const useAutoSaveFiche = () => {
                 chantierCode: cur?.chantierCode,
                 chantierVille: cur?.chantierVille,
                 chantierNom: cur?.chantierNom,
-                commentaire: cur?.commentaire, // ✅ Préserver le commentaire lors de la normalisation
               };
             });
           }
@@ -221,9 +220,7 @@ export const useAutoSaveFiche = () => {
             trajet_perso: !!dayData?.trajetPerso,
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
-            commentaire: (typeof dayData?.commentaire === "string" && dayData.commentaire.trim().length > 0) 
-              ? dayData.commentaire.trim() 
-              : null,
+            commentaire: dayData?.commentaire || null,
           };
           
           // N'ajouter code_chantier_du_jour QUE si on a une valeur valide
@@ -241,19 +238,6 @@ export const useAutoSaveFiche = () => {
           
           return baseEntry;
         });
-        
-        // 🔍 Log de traçabilité pour debug des commentaires
-        const joursAvecCommentaire = jourEntries.filter(j => j.commentaire);
-        if (joursAvecCommentaire.length > 0) {
-          console.info(
-            `[AUTO-SAVE COMMENTAIRES] ${entry.employeeName} - Semaine ${weekId}:`,
-            joursAvecCommentaire.map(j => ({ 
-              date: j.date, 
-              commentaire: j.commentaire 
-            }))
-          );
-        }
-        
         if (jourEntries.length > 0) {
           const { error: joursError } = await supabase
             .from("fiches_jours")

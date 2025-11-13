@@ -209,8 +209,7 @@ const Index = () => {
           PA: entry.days.Lundi.panierRepas ?? false,
           trajet_perso: entry.days.Lundi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Lundi.chantierCode,
-          ville_du_jour: entry.days.Lundi.chantierVille,
-          commentaire: entry.days.Lundi.commentaire || null,
+          ville_du_jour: entry.days.Lundi.chantierVille
         },
         { 
           date: days[1], 
@@ -222,8 +221,7 @@ const Index = () => {
           PA: entry.days.Mardi.panierRepas ?? false,
           trajet_perso: entry.days.Mardi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mardi.chantierCode,
-          ville_du_jour: entry.days.Mardi.chantierVille,
-          commentaire: entry.days.Mardi.commentaire || null,
+          ville_du_jour: entry.days.Mardi.chantierVille
         },
         { 
           date: days[2], 
@@ -235,8 +233,7 @@ const Index = () => {
           PA: entry.days.Mercredi.panierRepas ?? false,
           trajet_perso: entry.days.Mercredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mercredi.chantierCode,
-          ville_du_jour: entry.days.Mercredi.chantierVille,
-          commentaire: entry.days.Mercredi.commentaire || null,
+          ville_du_jour: entry.days.Mercredi.chantierVille
         },
         { 
           date: days[3], 
@@ -248,8 +245,7 @@ const Index = () => {
           PA: entry.days.Jeudi.panierRepas ?? false,
           trajet_perso: entry.days.Jeudi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Jeudi.chantierCode,
-          ville_du_jour: entry.days.Jeudi.chantierVille,
-          commentaire: entry.days.Jeudi.commentaire || null,
+          ville_du_jour: entry.days.Jeudi.chantierVille
         },
         { 
           date: days[4], 
@@ -261,8 +257,7 @@ const Index = () => {
           PA: entry.days.Vendredi.panierRepas ?? false,
           trajet_perso: entry.days.Vendredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Vendredi.chantierCode,
-          ville_du_jour: entry.days.Vendredi.chantierVille,
-          commentaire: entry.days.Vendredi.commentaire || null,
+          ville_du_jour: entry.days.Vendredi.chantierVille
         },
       ],
     }));

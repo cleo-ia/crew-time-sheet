@@ -530,7 +530,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
               // Get fiches_jours to calculate paniers, trajets, intemperie
               const { data: ficheJours } = await supabase
                 .from("fiches_jours")
-                .select("id, date, heures, HNORM, HI, T, PA, pause_minutes, code_chantier_du_jour, ville_du_jour, trajet_perso, total_jour, commentaire")
+                .select("id, date, heures, HNORM, HI, T, PA, pause_minutes, code_chantier_du_jour, ville_du_jour, trajet_perso, total_jour")
                 .eq("fiche_id", fiche.id);
 
               const paniers = ficheJours?.filter(fj => fj.PA === true).length || 0;
@@ -648,7 +648,7 @@ export const useFicheDetailWithJours = (ficheId: string) => {
         // Get fiches_jours to calculate paniers, trajets, intemperie
         const { data: ficheJours } = await supabase
           .from("fiches_jours")
-          .select("id, date, heures, HNORM, HI, T, PA, pause_minutes, code_chantier_du_jour, ville_du_jour, trajet_perso, total_jour, commentaire")
+          .select("id, date, heures, HNORM, HI, T, PA, pause_minutes, code_chantier_du_jour, ville_du_jour, trajet_perso, total_jour")
           .eq("fiche_id", fiche.id);
 
         const paniers = ficheJours?.filter(fj => fj.PA === true).length || 0;

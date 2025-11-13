@@ -203,7 +203,6 @@ const ValidationConducteur = () => {
           trajet_perso: entry.days.Lundi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Lundi.chantierCode || null,
           ville_du_jour: entry.days.Lundi.chantierVille || null,
-          commentaire: entry.days.Lundi.commentaire || null,
         },
         { 
           date: days[1], 
@@ -216,7 +215,6 @@ const ValidationConducteur = () => {
           trajet_perso: entry.days.Mardi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mardi.chantierCode || null,
           ville_du_jour: entry.days.Mardi.chantierVille || null,
-          commentaire: entry.days.Mardi.commentaire || null,
         },
         { 
           date: days[2], 
@@ -229,7 +227,6 @@ const ValidationConducteur = () => {
           trajet_perso: entry.days.Mercredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mercredi.chantierCode || null,
           ville_du_jour: entry.days.Mercredi.chantierVille || null,
-          commentaire: entry.days.Mercredi.commentaire || null,
         },
         { 
           date: days[3], 
@@ -242,7 +239,6 @@ const ValidationConducteur = () => {
           trajet_perso: entry.days.Jeudi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Jeudi.chantierCode || null,
           ville_du_jour: entry.days.Jeudi.chantierVille || null,
-          commentaire: entry.days.Jeudi.commentaire || null,
         },
         { 
           date: days[4], 
@@ -255,7 +251,6 @@ const ValidationConducteur = () => {
           trajet_perso: entry.days.Vendredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Vendredi.chantierCode || null,
           ville_du_jour: entry.days.Vendredi.chantierVille || null,
-          commentaire: entry.days.Vendredi.commentaire || null,
         },
       ],
     }));
