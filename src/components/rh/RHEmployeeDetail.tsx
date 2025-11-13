@@ -129,16 +129,16 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
           <Table>
             <TableHeader>
               <TableRow className="border-b-2">
-                <TableHead className="font-semibold py-3 px-4 bg-[#D3D3D3] text-gray-800">Date</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#D3D3D3] text-gray-800">Chantier</TableHead>
-                <TableHead className="text-center py-3 px-4 bg-[#FED8B1] text-gray-800">H. Normales</TableHead>
-                <TableHead className="text-center py-3 px-4 bg-[#FED8B1] text-gray-800">Intempéries</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#FED8B1] text-gray-800">Type d'absence</TableHead>
-                <TableHead className="text-center py-3 px-4 bg-[#D5F4E6] text-gray-800">Panier</TableHead>
-                <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet</TableHead>
-                <TableHead className="text-center py-3 px-4 bg-[#FCE4D6] text-gray-800">Trajet Perso</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#C9A0DC] text-gray-800">Régularisation M-1</TableHead>
-                <TableHead className="font-semibold py-3 px-4 bg-[#E8DAEF] text-gray-800">Autres éléments</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-muted text-foreground">Date</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-muted text-foreground">Chantier</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-orange-100 dark:bg-orange-900/20 text-foreground">H. Normales</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-orange-100 dark:bg-orange-900/20 text-foreground">Intempéries</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-orange-100 dark:bg-orange-900/20 text-foreground">Type d'absence</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-green-100 dark:bg-green-900/20 text-foreground">Panier</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-amber-100 dark:bg-amber-900/20 text-foreground">Trajet</TableHead>
+                <TableHead className="text-center py-3 px-4 bg-amber-100 dark:bg-amber-900/20 text-foreground">Trajet Perso</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-purple-200 dark:bg-purple-900/30 text-foreground">Régularisation M-1</TableHead>
+                <TableHead className="font-semibold py-3 px-4 bg-purple-100 dark:bg-purple-900/20 text-foreground">Autres éléments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
