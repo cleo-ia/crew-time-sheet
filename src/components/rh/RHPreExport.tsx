@@ -135,103 +135,170 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
       {/* Table */}
       <div className="h-[600px] border rounded-lg overflow-auto">
-        <Table className="min-w-[2400px]">
-            <TableHeader>
-              <TableRow>
-                {/* Contractuel (non éditable) */}
-                <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px]">Matricule</TableHead>
-                <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px]">Nom</TableHead>
-                <TableHead className="bg-slate-100 sticky left-[220px] z-10 bg-background shadow-sm min-w-[120px]">Prénom</TableHead>
-                <TableHead className="bg-slate-100 min-w-[150px]">Métier</TableHead>
-                <TableHead className="bg-slate-100 min-w-[120px]">Statut</TableHead>
-                <TableHead className="bg-slate-100 min-w-[100px]">Type contrat</TableHead>
-                
-                {/* Temps (éditable) */}
-                <TableHead className="bg-blue-50 min-w-[100px]">H. Normales</TableHead>
-                <TableHead className="bg-blue-50 min-w-[100px]">H. Supp 25%</TableHead>
-                <TableHead className="bg-blue-50 min-w-[100px]">H. Supp 50%</TableHead>
-                
-                {/* Absences (éditable) */}
-                <TableHead className="bg-amber-50 min-w-[80px]">CP</TableHead>
-                <TableHead className="bg-amber-50 min-w-[80px]">RTT</TableHead>
-                <TableHead className="bg-amber-50 min-w-[80px]">AM</TableHead>
-                <TableHead className="bg-amber-50 min-w-[80px]">MP</TableHead>
-                <TableHead className="bg-amber-50 min-w-[80px]">AT</TableHead>
-                <TableHead className="bg-amber-50 min-w-[80px]">CSS</TableHead>
-                <TableHead className="bg-amber-50 min-w-[120px]">Autre absence</TableHead>
-                
-                {/* Indemnités (éditable) */}
-                <TableHead className="bg-green-50 min-w-[80px]">Paniers</TableHead>
-                <TableHead className="bg-green-50 min-w-[80px]">Trajets</TableHead>
-                <TableHead className="bg-green-50 min-w-[100px]">Trajets perso</TableHead>
-                <TableHead className="bg-green-50 min-w-[100px]">Intempéries</TableHead>
-                
-                {/* Textes libres (éditable) */}
-                <TableHead className="bg-purple-50 min-w-[200px]">Régul. M-1</TableHead>
-                <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
-                <TableHead className="bg-purple-50 min-w-[200px]">Commentaires</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row, index) => {
-                const data = { ...row.original, ...row.modified };
-                return (
-                  <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
-                    {/* Non éditable */}
-                    <TableCell className="sticky left-0 z-10 bg-background font-mono text-xs">{data.matricule}</TableCell>
-                    <TableCell className="sticky left-[100px] z-10 bg-background font-medium">{data.nom}</TableCell>
-                    <TableCell className="sticky left-[220px] z-10 bg-background">{data.prenom}</TableCell>
-                    <TableCell className="text-xs">{data.metier}</TableCell>
-                    <TableCell className="text-xs">{data.statut}</TableCell>
-                    <TableCell className="text-xs">{data.type_contrat}</TableCell>
-                    
-                    {/* Temps - éditable */}
-                    <EditableCell value={data.heuresNormales} onChange={(v) => handleCellChange(index, 'heuresNormales', v)} type="number" isModified={row.modified.heuresNormales !== undefined} />
-                    <EditableCell value={data.heuresSupp} onChange={(v) => handleCellChange(index, 'heuresSupp', v)} type="number" isModified={row.modified.heuresSupp !== undefined} />
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* H. Supp 50% - TODO */}
-                    
-                    {/* Absences - éditable (par type) */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* CP - TODO calculé depuis detailJours */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* RTT - TODO */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* AM - TODO */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* MP - TODO */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* AT - TODO */}
-                    <EditableCell value={0} onChange={() => {}} type="number" disabled /> {/* CSS - TODO */}
-                    <EditableCell value={data.absences} onChange={(v) => handleCellChange(index, 'absences', v)} type="number" isModified={row.modified.absences !== undefined} />
-                    
-                    {/* Indemnités - éditable */}
-                    <EditableCell value={data.indemnitesRepas} onChange={(v) => handleCellChange(index, 'indemnitesRepas', v)} type="number" isModified={row.modified.indemnitesRepas !== undefined} />
-                    <EditableCell value={data.indemnitesTrajet} onChange={(v) => handleCellChange(index, 'indemnitesTrajet', v)} type="number" isModified={row.modified.indemnitesTrajet !== undefined} />
-                    <EditableCell value={data.indemnitesTrajetPerso} onChange={(v) => handleCellChange(index, 'indemnitesTrajetPerso', v)} type="number" isModified={row.modified.indemnitesTrajetPerso !== undefined} />
-                    <EditableCell value={data.intemperies} onChange={(v) => handleCellChange(index, 'intemperies', v)} type="number" isModified={row.modified.intemperies !== undefined} />
-                    
-                    {/* Textes - éditable (depuis detailJours[0]) */}
-                    <EditableCell 
-                      value={data.detailJours?.[0]?.regularisationM1 || ""} 
-                      onChange={(v) => {
-                        const newDetails = [...(data.detailJours || [])];
-                        if (newDetails[0]) newDetails[0].regularisationM1 = v;
-                        handleCellChange(index, 'detailJours', newDetails);
-                      }} 
-                      type="text" 
-                      isModified={row.modified.detailJours !== undefined} 
-                    />
-                    <EditableCell 
-                      value={data.detailJours?.[0]?.autresElements || ""} 
-                      onChange={(v) => {
-                        const newDetails = [...(data.detailJours || [])];
-                        if (newDetails[0]) newDetails[0].autresElements = v;
-                        handleCellChange(index, 'detailJours', newDetails);
-                      }} 
-                      type="text" 
-                      isModified={row.modified.detailJours !== undefined} 
-                    />
-                    <TableCell className="text-xs text-muted-foreground">-</TableCell> {/* Commentaires - TODO */}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <Table className="min-w-[5000px]">
+          <TableHeader>
+            <TableRow>
+              {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
+              <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px]">Matricule</TableHead>
+              <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px]">Nom</TableHead>
+              <TableHead className="bg-slate-100 sticky left-[220px] z-10 bg-background shadow-sm min-w-[120px]">Prénom</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px]">Echelon</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px]">Niveau</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px]">Degré</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px]">Statut</TableHead>
+              <TableHead className="bg-slate-100 min-w-[150px]">Libellé emploi</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px]">Type contrat</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px]">Horaire mensuel</TableHead>
+              <TableHead className="bg-slate-100 min-w-[120px]">Heures supp mensualisées</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px]">Forfait jours</TableHead>
+              <TableHead className="bg-slate-100 min-w-[120px]">Heures réelles effectuées</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px]">Salaire de base</TableHead>
+              
+              {/* ABSENCES EN HEURES (10 colonnes) */}
+              <TableHead className="bg-amber-50 min-w-[150px]">DATE</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">CP</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">RTT</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">AM</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">MP</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">AT</TableHead>
+              <TableHead className="bg-amber-50 min-w-[120px]">Congé parental</TableHead>
+              <TableHead className="bg-amber-50 min-w-[100px]">Intempéries</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">CPSS</TableHead>
+              <TableHead className="bg-amber-50 min-w-[80px]">ABS INJ</TableHead>
+              
+              {/* HEURES SUPP (2 colonnes) */}
+              <TableHead className="bg-blue-50 min-w-[100px]">h supp à 25%</TableHead>
+              <TableHead className="bg-blue-50 min-w-[100px]">h supp à 50%</TableHead>
+              
+              {/* REPAS (1 colonne) */}
+              <TableHead className="bg-green-50 min-w-[100px]">NB PANIERS</TableHead>
+              
+              {/* TRAJETS (20 colonnes) */}
+              <TableHead className="bg-cyan-50 min-w-[100px]">TOTAL</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[80px]">T Perso</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T1</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T2</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T3</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T4</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T5</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T6</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T7</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T8</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T9</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T10</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T11</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T12</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T13</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T14</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T15</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T16</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T17</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T31</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">T35</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px]">GD</TableHead>
+              
+              {/* ADMINISTRATIF (6 colonnes) */}
+              <TableHead className="bg-orange-50 min-w-[100px]">ACOMPTES</TableHead>
+              <TableHead className="bg-orange-50 min-w-[100px]">PRETS</TableHead>
+              <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
+              <TableHead className="bg-orange-50 min-w-[120px]">TOTAL SAISIE</TableHead>
+              <TableHead className="bg-orange-50 min-w-[120px]">SAISIE DU MOIS</TableHead>
+              <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
+              
+              {/* RÉGULARISATION (2 colonnes) */}
+              <TableHead className="bg-purple-50 min-w-[200px]">REGULARISATION M-1</TableHead>
+              <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row, index) => {
+              const data = { ...row.original, ...row.modified };
+              
+              // Calculer les absences par type
+              const absencesByType: Record<string, number> = {};
+              data.detailJours?.forEach(jour => {
+                if (jour.typeAbsence && jour.heures) {
+                  absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + jour.heures;
+                }
+              });
+              
+              return (
+                <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
+                  {/* DONNÉES CONTRACTUELLES */}
+                  <TableCell className="sticky left-0 z-10 bg-background font-mono text-xs">{data.matricule}</TableCell>
+                  <TableCell className="sticky left-[100px] z-10 bg-background font-medium">{data.nom}</TableCell>
+                  <TableCell className="sticky left-[220px] z-10 bg-background">{data.prenom}</TableCell>
+                  <TableCell className="text-xs">{data.echelon || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.niveau || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.degre || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.statut || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.metier}</TableCell>
+                  <TableCell className="text-xs">{data.type_contrat || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.horaire || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.heures_supp_mensualisees || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.forfait_jours ? "Oui" : "-"}</TableCell>
+                  <TableCell className="text-xs font-medium">{data.heuresNormales}</TableCell>
+                  <TableCell className="text-xs">{data.salaire}</TableCell>
+                  
+                  {/* ABSENCES EN HEURES */}
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">{absencesByType.CP || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.RTT || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.AM || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.MP || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.AT || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.CONGE_PARENTAL || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.HI || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.CPSS || 0}</TableCell>
+                  <TableCell className="text-xs">{absencesByType.ABS_INJ || 0}</TableCell>
+                  
+                  {/* HEURES SUPP */}
+                  <TableCell className="text-xs">{data.heuresSupp || 0}</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  
+                  {/* REPAS */}
+                  <TableCell className="text-xs">{data.indemnitesRepas || 0}</TableCell>
+                  
+                  {/* TRAJETS */}
+                  <TableCell className="text-xs">{(data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0)}</TableCell>
+                  <TableCell className="text-xs">{data.indemnitesTrajetPerso || 0}</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">0</TableCell>
+                  <TableCell className="text-xs">{(data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0)}</TableCell>
+                  
+                  {/* ADMINISTRATIF */}
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">-</TableCell>
+                  <TableCell className="text-xs">-</TableCell>
+                  
+                  {/* RÉGULARISATION */}
+                  <TableCell className="text-xs">{data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-"}</TableCell>
+                  <TableCell className="text-xs">{data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-"}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
