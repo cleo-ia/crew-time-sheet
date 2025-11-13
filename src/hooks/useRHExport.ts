@@ -42,6 +42,7 @@ export interface RHExportEmployee {
     isAbsent: boolean; // true si heures=0 ET intemperie=0
     regularisationM1?: string;
     autresElements?: string;
+    commentaire?: string;
   }>;
 }
 
@@ -101,6 +102,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       isAbsent: jour.isAbsent,
       regularisationM1: jour.regularisationM1,
       autresElements: jour.autresElements,
+      commentaire: jour.commentaire,
     })),
   }));
 
