@@ -18,6 +18,7 @@ export interface EmployeeData {
     trajet_perso?: boolean;
     code_chantier_du_jour?: string;
     ville_du_jour?: string;
+    commentaire?: string | null;
   }[];
 }
 
@@ -134,6 +135,7 @@ export const useSaveFiche = () => {
           trajet_perso: day.trajet_perso ?? false,
           code_chantier_du_jour: day.code_chantier_du_jour || null,
           ville_du_jour: day.ville_du_jour || null,
+          commentaire: day.commentaire ?? null,
           // total_jour est une colonne générée, ne pas l'insérer
         }));
 
