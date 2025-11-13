@@ -185,75 +185,75 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           <TableHeader>
             <TableRow>
               {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
-              <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px]">Matricule</TableHead>
-              <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px]">Nom</TableHead>
-              <TableHead className="bg-slate-100 sticky left-[220px] z-10 bg-background shadow-sm min-w-[120px]">Prénom</TableHead>
-              <TableHead className="bg-slate-100 min-w-[80px]">Echelon</TableHead>
-              <TableHead className="bg-slate-100 min-w-[80px]">Niveau</TableHead>
-              <TableHead className="bg-slate-100 min-w-[80px]">Degré</TableHead>
-              <TableHead className="bg-slate-100 min-w-[100px]">Statut</TableHead>
-              <TableHead className="bg-slate-100 min-w-[150px]">Libellé emploi</TableHead>
-              <TableHead className="bg-slate-100 min-w-[100px]">Type contrat</TableHead>
-              <TableHead className="bg-slate-100 min-w-[100px]">Horaire mensuel</TableHead>
-              <TableHead className="bg-slate-100 min-w-[120px]">Heures supp mensualisées</TableHead>
-              <TableHead className="bg-slate-100 min-w-[100px]">Forfait jours</TableHead>
-              <TableHead className="bg-slate-100 min-w-[120px]">Heures réelles effectuées</TableHead>
-              <TableHead className="bg-slate-100 min-w-[100px]">Salaire de base</TableHead>
+              <TableHead className="bg-slate-100 sticky left-0 z-10 bg-background shadow-sm min-w-[100px] border-r border-gray-300">Matricule</TableHead>
+              <TableHead className="bg-slate-100 sticky left-[100px] z-10 bg-background shadow-sm min-w-[120px] border-r border-gray-300">Nom</TableHead>
+              <TableHead className="bg-slate-100 sticky left-[220px] z-10 bg-background shadow-sm min-w-[120px] border-r border-gray-300">Prénom</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px] border-r border-gray-300">Echelon</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px] border-r border-gray-300">Niveau</TableHead>
+              <TableHead className="bg-slate-100 min-w-[80px] border-r border-gray-300">Degré</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px] border-r border-gray-300">Statut</TableHead>
+              <TableHead className="bg-slate-100 min-w-[150px] border-r border-gray-300">Libellé emploi</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px] border-r border-gray-300">Type contrat</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px] border-r border-gray-300">Horaire mensuel</TableHead>
+              <TableHead className="bg-slate-100 min-w-[120px] border-r border-gray-300">Heures supp mensualisées</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px] border-r border-gray-300">Forfait jours</TableHead>
+              <TableHead className="bg-slate-100 min-w-[120px] border-r border-gray-300">Heures réelles effectuées</TableHead>
+              <TableHead className="bg-slate-100 min-w-[100px] border-r border-gray-300">Salaire de base</TableHead>
               
               {/* ABSENCES EN HEURES (10 colonnes) */}
-              <TableHead className="bg-amber-50 min-w-[150px]">DATE</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">CP</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">RTT</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">AM</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">MP</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">AT</TableHead>
-              <TableHead className="bg-amber-50 min-w-[120px]">Congé parental</TableHead>
-              <TableHead className="bg-amber-50 min-w-[100px]">Intempéries</TableHead>
-              <TableHead className="bg-amber-50 min-w-[70px]">CPSS</TableHead>
-              <TableHead className="bg-amber-50 min-w-[80px]">ABS INJ</TableHead>
+              <TableHead className="bg-amber-50 min-w-[150px] border-r border-gray-300">DATE</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">CP</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">RTT</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">AM</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">MP</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">AT</TableHead>
+              <TableHead className="bg-amber-50 min-w-[120px] border-r border-gray-300">Congé parental</TableHead>
+              <TableHead className="bg-amber-50 min-w-[100px] border-r border-gray-300">Intempéries</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px] border-r border-gray-300">CPSS</TableHead>
+              <TableHead className="bg-amber-50 min-w-[80px] border-r border-gray-300">ABS INJ</TableHead>
               
               {/* HEURES SUPP (2 colonnes) */}
-              <TableHead className="bg-blue-50 min-w-[100px]">h supp à 25%</TableHead>
-              <TableHead className="bg-blue-50 min-w-[100px]">h supp à 50%</TableHead>
+              <TableHead className="bg-blue-50 min-w-[100px] border-r border-gray-300">h supp à 25%</TableHead>
+              <TableHead className="bg-blue-50 min-w-[100px] border-r border-gray-300">h supp à 50%</TableHead>
               
               {/* REPAS (1 colonne) */}
-              <TableHead className="bg-green-50 min-w-[100px]">NB PANIERS</TableHead>
+              <TableHead className="bg-green-50 min-w-[100px] border-r border-gray-300">NB PANIERS</TableHead>
               
               {/* TRAJETS (20 colonnes) */}
-              <TableHead className="bg-cyan-50 min-w-[100px]">TOTAL</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[80px]">T Perso</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T1</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T2</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T3</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T4</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T5</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T6</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T7</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T8</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T9</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T10</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T11</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T12</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T13</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T14</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T15</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T16</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T17</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T31</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T35</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">GD</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[100px] border-r border-gray-300">TOTAL</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[80px] border-r border-gray-300">T Perso</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T1</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T2</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T3</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T4</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T5</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T6</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T7</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T8</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T9</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T10</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T11</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T12</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T13</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T14</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T15</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T16</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T17</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T31</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">T35</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[60px] border-r border-gray-300">GD</TableHead>
               
               {/* ADMINISTRATIF (6 colonnes) */}
-              <TableHead className="bg-green-50 min-w-[100px]">ACOMPTES</TableHead>
-              <TableHead className="bg-green-50 min-w-[100px]">PRETS</TableHead>
-              <TableHead className="bg-green-50 min-w-[150px]">COMMENTAIRES</TableHead>
-              <TableHead className="bg-orange-50 min-w-[120px]">TOTAL SAISIE</TableHead>
-              <TableHead className="bg-orange-50 min-w-[120px]">SAISIE DU MOIS</TableHead>
-              <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
+              <TableHead className="bg-orange-50 min-w-[100px] border-r border-gray-300">ACOMPTES</TableHead>
+              <TableHead className="bg-orange-50 min-w-[100px] border-r border-gray-300">PRETS</TableHead>
+              <TableHead className="bg-orange-50 min-w-[150px] border-r border-gray-300">COMMENTAIRES</TableHead>
+              <TableHead className="bg-orange-50 min-w-[120px] border-r border-gray-300">TOTAL SAISIE</TableHead>
+              <TableHead className="bg-orange-50 min-w-[120px] border-r border-gray-300">SAISIE DU MOIS</TableHead>
+              <TableHead className="bg-orange-50 min-w-[150px] border-r border-gray-300">COMMENTAIRES</TableHead>
               
               {/* RÉGULARISATION (2 colonnes) */}
-              <TableHead className="bg-purple-50 min-w-[200px]">REGULARISATION M-1</TableHead>
-              <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
+              <TableHead className="bg-purple-50 min-w-[200px] border-r border-gray-300">REGULARISATION M-1</TableHead>
+              <TableHead className="bg-purple-50 min-w-[200px] border-r border-gray-300">Autres éléments</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -285,20 +285,20 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               return (
                 <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
                   {/* DONNÉES CONTRACTUELLES */}
-                  <TableCell className="sticky left-0 z-10 bg-background font-mono text-xs">{data.matricule}</TableCell>
-                  <TableCell className="sticky left-[100px] z-10 bg-background font-medium">{data.nom}</TableCell>
-                  <TableCell className="sticky left-[220px] z-10 bg-background">{data.prenom}</TableCell>
-                  <TableCell className="text-xs">{data.echelon || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.niveau || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.degre || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.statut || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.metier}</TableCell>
-                  <TableCell className="text-xs">{data.type_contrat || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.horaire || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.heures_supp_mensualisees || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.forfait_jours ? "Oui" : "-"}</TableCell>
-                  <TableCell className="text-xs font-medium">{data.heuresNormales}</TableCell>
-                  <TableCell className="text-xs">{data.salaire}</TableCell>
+                  <TableCell className="sticky left-0 z-10 bg-background font-mono text-xs border-r border-gray-300">{data.matricule}</TableCell>
+                  <TableCell className="sticky left-[100px] z-10 bg-background font-medium border-r border-gray-300">{data.nom}</TableCell>
+                  <TableCell className="sticky left-[220px] z-10 bg-background border-r border-gray-300">{data.prenom}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.echelon || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.niveau || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.degre || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.statut || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.metier}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.type_contrat || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.horaire || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.heures_supp_mensualisees || "-"}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.forfait_jours ? "Oui" : "-"}</TableCell>
+                  <TableCell className="text-xs font-medium border-r border-gray-300">{data.heuresNormales}</TableCell>
+                  <TableCell className="text-xs border-r border-gray-300">{data.salaire}</TableCell>
                   
                   {/* ABSENCES EN HEURES */}
                   <EditableCell value={row.modified.absenceDate ?? datesAbsenceFormatted} onChange={(v) => handleCellChange(index, 'absenceDate', v)} type="text" isModified={row.modified.absenceDate !== undefined} />
@@ -379,7 +379,7 @@ const EditableCell = ({
   disabled?: boolean;
 }) => {
   return (
-    <TableCell className="p-1">
+    <TableCell className="p-1 border-r border-gray-300">
       <Input
         type={type}
         value={value}
