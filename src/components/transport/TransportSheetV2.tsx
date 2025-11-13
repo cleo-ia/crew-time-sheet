@@ -405,7 +405,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       )}
 
 
-      <Accordion type="single" collapsible value={openDay} onValueChange={handleOpenDayChange}>
+      <Accordion type="single" collapsible onValueChange={handleOpenDayChange}>
         {transportDays.map((day) => (
           <TransportDayAccordion
             key={day.date}
