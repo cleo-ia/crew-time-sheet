@@ -395,6 +395,7 @@ export const useRHFicheDetail = (ficheId: string) => {
         trajet: item.trajet,
         trajetPerso: item.trajetPerso,
         typeAbsence: item.typeAbsence,
+        commentaire: item.commentaire,
       })) || [];
 
       // 5. Calculer le récapitulatif par salarié
