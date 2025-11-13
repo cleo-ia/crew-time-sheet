@@ -25,6 +25,7 @@ export interface EmployeeDetail {
   isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent)
   regularisationM1?: string;
   autresElements?: string;
+  commentaire?: string;
 }
 
 export interface EmployeeWithDetails {
@@ -205,7 +206,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les jours de toutes les fiches
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, T, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements")
+    .select("fiche_id, date, HNORM, HI, PA, T, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
     .in("fiche_id", ficheIds);
 
   if (joursError) throw joursError;
@@ -338,6 +339,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           trajetPerso: jour.trajet_perso === true,
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
+          commentaire: (jour as any).commentaire || "",
           regularisationM1: (jour as any).regularisation_m1 || "",
           autresElements: (jour as any).autres_elements || "",
         });

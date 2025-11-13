@@ -349,7 +349,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <EditableCell value={row.modified.commentairesAdmin ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesAdmin', v)} type="text" isModified={row.modified.commentairesAdmin !== undefined} />
                   <EditableCell value={row.modified.totalSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'totalSaisie', v)} type="text" isModified={row.modified.totalSaisie !== undefined} />
                   <EditableCell value={row.modified.saisieDuMois ?? "-"} onChange={(v) => handleCellChange(index, 'saisieDuMois', v)} type="text" isModified={row.modified.saisieDuMois !== undefined} />
-                  <EditableCell value={row.modified.commentairesSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesSaisie', v)} type="text" isModified={row.modified.commentairesSaisie !== undefined} />
+                  <EditableCell value={row.modified.commentairesSaisie ?? (data.detailJours?.map(j => j.commentaire).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'commentairesSaisie', v)} type="text" isModified={row.modified.commentairesSaisie !== undefined} />
                   
                   {/* RÉGULARISATION */}
                   <EditableCell value={row.modified.regularisationM1 ?? (data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
