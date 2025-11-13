@@ -16,7 +16,53 @@ interface RHPreExportProps {
 
 type EditableRow = {
   original: RHExportEmployee;
-  modified: Partial<RHExportEmployee>;
+  modified: Partial<RHExportEmployee> & {
+    // Absences individuelles
+    absenceCP?: number;
+    absenceRTT?: number;
+    absenceAM?: number;
+    absenceMP?: number;
+    absenceAT?: number;
+    absenceCongeParental?: number;
+    absenceIntemperies?: number;
+    absenceCPSS?: number;
+    absenceAbsInj?: number;
+    absenceDate?: string;
+    // Heures supp
+    heuresSupp50?: number;
+    // Trajets individuels
+    trajetT1?: number;
+    trajetT2?: number;
+    trajetT3?: number;
+    trajetT4?: number;
+    trajetT5?: number;
+    trajetT6?: number;
+    trajetT7?: number;
+    trajetT8?: number;
+    trajetT9?: number;
+    trajetT10?: number;
+    trajetT11?: number;
+    trajetT12?: number;
+    trajetT13?: number;
+    trajetT14?: number;
+    trajetT15?: number;
+    trajetT16?: number;
+    trajetT17?: number;
+    trajetT31?: number;
+    trajetT35?: number;
+    trajetGD?: number;
+    trajetTotal?: number;
+    // Administratif
+    acomptes?: string;
+    prets?: string;
+    commentairesAdmin?: string;
+    totalSaisie?: string;
+    saisieDuMois?: string;
+    commentairesSaisie?: string;
+    // Régularisation
+    regularisationM1?: string;
+    autresElements?: string;
+  };
   isModified: boolean;
 };
 
@@ -44,13 +90,13 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     }
   };
 
-  const handleCellChange = (rowIndex: number, field: keyof RHExportEmployee, value: any) => {
+  const handleCellChange = (rowIndex: number, field: string, value: any) => {
     setRows(prev => {
       const newRows = [...prev];
       const row = newRows[rowIndex];
       
-      // Parse numeric values
-      const parsedValue = typeof row.original[field] === 'number' && typeof value === 'string'
+      // Parse numeric values if needed
+      const parsedValue = typeof value === 'string' && !isNaN(parseFloat(value))
         ? parseFloat(value) || 0
         : value;
       
@@ -241,59 +287,59 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <TableCell className="text-xs">{data.salaire}</TableCell>
                   
                   {/* ABSENCES EN HEURES */}
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">{absencesByType.CP || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.RTT || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.AM || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.MP || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.AT || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.CONGE_PARENTAL || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.HI || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.CPSS || 0}</TableCell>
-                  <TableCell className="text-xs">{absencesByType.ABS_INJ || 0}</TableCell>
+                  <EditableCell value={row.modified.absenceDate ?? "-"} onChange={(v) => handleCellChange(index, 'absenceDate', v)} type="text" isModified={row.modified.absenceDate !== undefined} />
+                  <EditableCell value={row.modified.absenceCP ?? absencesByType.CP ?? 0} onChange={(v) => handleCellChange(index, 'absenceCP', v)} type="number" isModified={row.modified.absenceCP !== undefined} />
+                  <EditableCell value={row.modified.absenceRTT ?? absencesByType.RTT ?? 0} onChange={(v) => handleCellChange(index, 'absenceRTT', v)} type="number" isModified={row.modified.absenceRTT !== undefined} />
+                  <EditableCell value={row.modified.absenceAM ?? absencesByType.AM ?? 0} onChange={(v) => handleCellChange(index, 'absenceAM', v)} type="number" isModified={row.modified.absenceAM !== undefined} />
+                  <EditableCell value={row.modified.absenceMP ?? absencesByType.MP ?? 0} onChange={(v) => handleCellChange(index, 'absenceMP', v)} type="number" isModified={row.modified.absenceMP !== undefined} />
+                  <EditableCell value={row.modified.absenceAT ?? absencesByType.AT ?? 0} onChange={(v) => handleCellChange(index, 'absenceAT', v)} type="number" isModified={row.modified.absenceAT !== undefined} />
+                  <EditableCell value={row.modified.absenceCongeParental ?? absencesByType.CONGE_PARENTAL ?? 0} onChange={(v) => handleCellChange(index, 'absenceCongeParental', v)} type="number" isModified={row.modified.absenceCongeParental !== undefined} />
+                  <EditableCell value={row.modified.absenceIntemperies ?? absencesByType.HI ?? 0} onChange={(v) => handleCellChange(index, 'absenceIntemperies', v)} type="number" isModified={row.modified.absenceIntemperies !== undefined} />
+                  <EditableCell value={row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0} onChange={(v) => handleCellChange(index, 'absenceCPSS', v)} type="number" isModified={row.modified.absenceCPSS !== undefined} />
+                  <EditableCell value={row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0} onChange={(v) => handleCellChange(index, 'absenceAbsInj', v)} type="number" isModified={row.modified.absenceAbsInj !== undefined} />
                   
                   {/* HEURES SUPP */}
-                  <TableCell className="text-xs">{data.heuresSupp || 0}</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
+                  <EditableCell value={row.modified.heuresSupp ?? data.heuresSupp ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp', v)} type="number" isModified={row.modified.heuresSupp !== undefined} />
+                  <EditableCell value={row.modified.heuresSupp50 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp50', v)} type="number" isModified={row.modified.heuresSupp50 !== undefined} />
                   
                   {/* REPAS */}
-                  <TableCell className="text-xs">{data.indemnitesRepas || 0}</TableCell>
+                  <EditableCell value={row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0} onChange={(v) => handleCellChange(index, 'indemnitesRepas', v)} type="number" isModified={row.modified.indemnitesRepas !== undefined} />
                   
                   {/* TRAJETS */}
-                  <TableCell className="text-xs">{(data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0)}</TableCell>
-                  <TableCell className="text-xs">{data.indemnitesTrajetPerso || 0}</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">0</TableCell>
-                  <TableCell className="text-xs">{(data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0)}</TableCell>
+                  <EditableCell value={row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0))} onChange={(v) => handleCellChange(index, 'trajetTotal', v)} type="number" isModified={row.modified.trajetTotal !== undefined} />
+                  <EditableCell value={row.modified.indemnitesTrajetPerso ?? data.indemnitesTrajetPerso ?? 0} onChange={(v) => handleCellChange(index, 'indemnitesTrajetPerso', v)} type="number" isModified={row.modified.indemnitesTrajetPerso !== undefined} />
+                  <EditableCell value={row.modified.trajetT1 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT1', v)} type="number" isModified={row.modified.trajetT1 !== undefined} />
+                  <EditableCell value={row.modified.trajetT2 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT2', v)} type="number" isModified={row.modified.trajetT2 !== undefined} />
+                  <EditableCell value={row.modified.trajetT3 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT3', v)} type="number" isModified={row.modified.trajetT3 !== undefined} />
+                  <EditableCell value={row.modified.trajetT4 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT4', v)} type="number" isModified={row.modified.trajetT4 !== undefined} />
+                  <EditableCell value={row.modified.trajetT5 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT5', v)} type="number" isModified={row.modified.trajetT5 !== undefined} />
+                  <EditableCell value={row.modified.trajetT6 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT6', v)} type="number" isModified={row.modified.trajetT6 !== undefined} />
+                  <EditableCell value={row.modified.trajetT7 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT7', v)} type="number" isModified={row.modified.trajetT7 !== undefined} />
+                  <EditableCell value={row.modified.trajetT8 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT8', v)} type="number" isModified={row.modified.trajetT8 !== undefined} />
+                  <EditableCell value={row.modified.trajetT9 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT9', v)} type="number" isModified={row.modified.trajetT9 !== undefined} />
+                  <EditableCell value={row.modified.trajetT10 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT10', v)} type="number" isModified={row.modified.trajetT10 !== undefined} />
+                  <EditableCell value={row.modified.trajetT11 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT11', v)} type="number" isModified={row.modified.trajetT11 !== undefined} />
+                  <EditableCell value={row.modified.trajetT12 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT12', v)} type="number" isModified={row.modified.trajetT12 !== undefined} />
+                  <EditableCell value={row.modified.trajetT13 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT13', v)} type="number" isModified={row.modified.trajetT13 !== undefined} />
+                  <EditableCell value={row.modified.trajetT14 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT14', v)} type="number" isModified={row.modified.trajetT14 !== undefined} />
+                  <EditableCell value={row.modified.trajetT15 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT15', v)} type="number" isModified={row.modified.trajetT15 !== undefined} />
+                  <EditableCell value={row.modified.trajetT16 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT16', v)} type="number" isModified={row.modified.trajetT16 !== undefined} />
+                  <EditableCell value={row.modified.trajetT17 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT17', v)} type="number" isModified={row.modified.trajetT17 !== undefined} />
+                  <EditableCell value={row.modified.trajetT31 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT31', v)} type="number" isModified={row.modified.trajetT31 !== undefined} />
+                  <EditableCell value={row.modified.trajetT35 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT35', v)} type="number" isModified={row.modified.trajetT35 !== undefined} />
+                  <EditableCell value={row.modified.trajetGD ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0))} onChange={(v) => handleCellChange(index, 'trajetGD', v)} type="number" isModified={row.modified.trajetGD !== undefined} />
                   
                   {/* ADMINISTRATIF */}
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">-</TableCell>
-                  <TableCell className="text-xs">-</TableCell>
+                  <EditableCell value={row.modified.acomptes ?? "-"} onChange={(v) => handleCellChange(index, 'acomptes', v)} type="text" isModified={row.modified.acomptes !== undefined} />
+                  <EditableCell value={row.modified.prets ?? "-"} onChange={(v) => handleCellChange(index, 'prets', v)} type="text" isModified={row.modified.prets !== undefined} />
+                  <EditableCell value={row.modified.commentairesAdmin ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesAdmin', v)} type="text" isModified={row.modified.commentairesAdmin !== undefined} />
+                  <EditableCell value={row.modified.totalSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'totalSaisie', v)} type="text" isModified={row.modified.totalSaisie !== undefined} />
+                  <EditableCell value={row.modified.saisieDuMois ?? "-"} onChange={(v) => handleCellChange(index, 'saisieDuMois', v)} type="text" isModified={row.modified.saisieDuMois !== undefined} />
+                  <EditableCell value={row.modified.commentairesSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesSaisie', v)} type="text" isModified={row.modified.commentairesSaisie !== undefined} />
                   
                   {/* RÉGULARISATION */}
-                  <TableCell className="text-xs">{data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-"}</TableCell>
+                  <EditableCell value={row.modified.regularisationM1 ?? (data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
+                  <EditableCell value={row.modified.autresElements ?? (data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
                 </TableRow>
               );
             })}
