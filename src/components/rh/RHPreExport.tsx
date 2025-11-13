@@ -269,6 +269,19 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                 }
               });
               
+              // Calculer les dates d'absence (pour colonne DATE)
+              const datesAbsence: string[] = [];
+              data.detailJours?.forEach(jour => {
+                if (jour.isAbsent) {
+                  // Formater la date au format DD/MM
+                  const dateObj = new Date(jour.date);
+                  const jour_str = String(dateObj.getDate()).padStart(2, '0');
+                  const mois_str = String(dateObj.getMonth() + 1).padStart(2, '0');
+                  datesAbsence.push(`${jour_str}/${mois_str}`);
+                }
+              });
+              const datesAbsenceFormatted = datesAbsence.length > 0 ? datesAbsence.join(', ') : '-';
+              
               return (
                 <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
                   {/* DONNÉES CONTRACTUELLES */}
@@ -288,7 +301,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <TableCell className="text-xs">{data.salaire}</TableCell>
                   
                   {/* ABSENCES EN HEURES */}
-                  <EditableCell value={row.modified.absenceDate ?? "-"} onChange={(v) => handleCellChange(index, 'absenceDate', v)} type="text" isModified={row.modified.absenceDate !== undefined} />
+                  <EditableCell value={row.modified.absenceDate ?? datesAbsenceFormatted} onChange={(v) => handleCellChange(index, 'absenceDate', v)} type="text" isModified={row.modified.absenceDate !== undefined} />
                   <EditableCell value={row.modified.absenceCP ?? absencesByType.CP ?? 0} onChange={(v) => handleCellChange(index, 'absenceCP', v)} type="number" isModified={row.modified.absenceCP !== undefined} />
                   <EditableCell value={row.modified.absenceRTT ?? absencesByType.RTT ?? 0} onChange={(v) => handleCellChange(index, 'absenceRTT', v)} type="number" isModified={row.modified.absenceRTT !== undefined} />
                   <EditableCell value={row.modified.absenceAM ?? absencesByType.AM ?? 0} onChange={(v) => handleCellChange(index, 'absenceAM', v)} type="number" isModified={row.modified.absenceAM !== undefined} />
