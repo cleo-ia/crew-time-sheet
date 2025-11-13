@@ -13,6 +13,7 @@ export interface FicheJour {
   code_chantier_du_jour?: string | null;
   ville_du_jour?: string | null;
   trajet_perso?: boolean;
+  commentaire?: string | null;
 }
 
 export interface MaconWithFiche {
@@ -72,7 +73,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
           if (fichChef?.id) {
             const { data: jours } = await supabase
               .from("fiches_jours")
-              .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso")
+              .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire")
               .eq("fiche_id", fichChef.id)
               .order("date");
             
@@ -89,6 +90,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
                 code_chantier_du_jour: j.code_chantier_du_jour || null,
                 ville_du_jour: j.ville_du_jour || null,
                 trajet_perso: !!j.trajet_perso,
+                commentaire: j.commentaire || null,
               }));
               
               paniersChef = jours.filter(j => j.PA).length;
@@ -172,7 +174,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
             if (fiche?.id) {
               const { data: jours } = await supabase
                 .from("fiches_jours")
-                .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso")
+                .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire")
                 .eq("fiche_id", fiche.id)
                 .order("date");
               
@@ -189,6 +191,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
                   code_chantier_du_jour: j.code_chantier_du_jour || null,
                   ville_du_jour: j.ville_du_jour || null,
                   trajet_perso: !!j.trajet_perso,
+                  commentaire: j.commentaire || null,
                 }));
                 
                 paniers = jours.filter(j => j.PA).length;
