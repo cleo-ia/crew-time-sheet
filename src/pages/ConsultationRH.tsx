@@ -14,6 +14,7 @@ import { RHHistorique } from "@/components/rh/RHHistorique";
 import { RHFicheDetail } from "@/components/rh/RHFicheDetail";
 import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
 import { ClotureDialog } from "@/components/rh/ClotureDialog";
+import { RHPreExport } from "@/components/rh/RHPreExport";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchRHExportData } from "@/hooks/useRHExport";
@@ -95,13 +96,9 @@ const ConsultationRH = () => {
         theme="consultation-rh"
         actions={
           <>
-            <Button variant="outline" onClick={() => handleExport("csv")}>
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button variant="outline" onClick={() => handleExport("excel")}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Excel
+            <Button variant="outline" onClick={() => setActiveTab("preexport")}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Modifier et Exporter Excel
             </Button>
             <Button 
               className="bg-accent hover:bg-accent-hover"
@@ -127,7 +124,7 @@ const ConsultationRH = () => {
             {/* Tabs */}
             <Card className="shadow-md border-border/50 overflow-hidden">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-3 rounded-none border-b">
+                <TabsList className="w-full grid grid-cols-4 rounded-none border-b">
                   <TabsTrigger value="consolide" className="rounded-none">
                     Consolidé par salarié
                   </TabsTrigger>
@@ -136,6 +133,9 @@ const ConsultationRH = () => {
                   </TabsTrigger>
                   <TabsTrigger value="historique" className="rounded-none">
                     Historique clôturé
+                  </TabsTrigger>
+                  <TabsTrigger value="preexport" className="rounded-none">
+                    Pré-export Excel
                   </TabsTrigger>
                 </TabsList>
 
@@ -149,6 +149,10 @@ const ConsultationRH = () => {
 
                 <TabsContent value="historique" className="p-6">
                   <RHHistorique filters={filters} onSelectFiche={setSelectedFiche} />
+                </TabsContent>
+
+                <TabsContent value="preexport" className="p-6">
+                  <RHPreExport filters={filters} />
                 </TabsContent>
               </Tabs>
             </Card>
