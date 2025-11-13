@@ -59,6 +59,37 @@ Deno.serve(async (req) => {
     results.affectations_finisseurs_jours = affCount || 0;
     console.log(`✅ Deleted ${affCount} affectations_finisseurs_jours`);
 
+    // Step 1.5: Delete affectations (maçons/grutiers) for this week
+    // Calculate date range for the week (Monday to Friday)
+    console.log('Step 1.5: Deleting affectations (maçons/grutiers)...');
+    const weekMatch = semaine.match(/(\d{4})-S(\d{2})/);
+    if (weekMatch) {
+      const year = parseInt(weekMatch[1]);
+      const week = parseInt(weekMatch[2]);
+      
+      // Calculate first day of the week (Monday)
+      const firstDayOfYear = new Date(year, 0, 1);
+      const daysOffset = (week - 1) * 7 + (1 - firstDayOfYear.getDay() + 7) % 7;
+      const startDate = new Date(year, 0, 1 + daysOffset);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6); // End of week (Sunday)
+      
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      const { error: affMaconsError, count: affMaconsCount } = await supabase
+        .from('affectations')
+        .delete({ count: 'exact' })
+        .gte('date_debut', startDateStr)
+        .lte('date_debut', endDateStr);
+      
+      if (affMaconsError) throw affMaconsError;
+      results.affectations = affMaconsCount || 0;
+      console.log(`✅ Deleted ${affMaconsCount} affectations for week ${semaine}`);
+    } else {
+      results.affectations = 0;
+    }
+
     // Step 2: Delete signatures
     console.log('Step 2: Deleting signatures...');
     const { data: fichesIds } = await supabase
