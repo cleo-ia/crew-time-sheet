@@ -170,9 +170,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                 <TableHead className="bg-purple-50 min-w-[200px]">Régul. M-1</TableHead>
                 <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
                 <TableHead className="bg-purple-50 min-w-[200px]">Commentaires</TableHead>
-                
-                {/* Total */}
-                <TableHead className="bg-slate-100 min-w-[100px]">Total heures</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -230,9 +227,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                       isModified={row.modified.detailJours !== undefined} 
                     />
                     <TableCell className="text-xs text-muted-foreground">-</TableCell> {/* Commentaires - TODO */}
-                    
-                    {/* Total */}
-                    <TableCell className="font-semibold">{data.totalHeures.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
