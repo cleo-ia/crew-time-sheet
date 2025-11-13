@@ -135,8 +135,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
       {/* Table */}
       <div className="h-[600px] border rounded-lg overflow-auto">
-        <div className="min-w-[2400px]">
-          <Table>
+        <Table className="min-w-[2400px]">
             <TableHeader>
               <TableRow>
                 {/* Contractuel (non éditable) */}
@@ -239,7 +238,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               })}
             </TableBody>
           </Table>
-        </div>
       </div>
     </div>
   );
