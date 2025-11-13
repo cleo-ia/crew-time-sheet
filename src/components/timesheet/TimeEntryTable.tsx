@@ -733,7 +733,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
     
     const timer = setTimeout(() => {
-      console.log('[DEBUG AUTO-SAVE] Entries avant mutation:', JSON.stringify(entries, null, 2));
       // Auto-save systématique pour TOUTE modification
       autoSaveMutation.mutate({ 
         timeEntries: entries, 
@@ -805,7 +804,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     field: keyof TimeEntry["days"][string],
     value: any
   ) => {
-    console.log(`[DEBUG updateDayValue] employee=${employeeId}, day=${day}, field=${field}, value=`, value);
     setHasUserEdits(true);
     setEntries((prev) =>
       prev.map((entry) => {

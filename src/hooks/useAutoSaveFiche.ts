@@ -169,7 +169,6 @@ export const useAutoSaveFiche = () => {
         };
         
         const normalizedDays: Record<string, typeof entry.days[string]> = { ...entry.days };
-        console.log(`[DEBUG normalizedDays] ${entry.employeeName}:`, normalizedDays);
         
         // Normalisation conditionnelle : uniquement si forceNormalize === true ET tout est à 7h
         if (forceNormalize) {
@@ -194,7 +193,6 @@ export const useAutoSaveFiche = () => {
                 chantierCode: cur?.chantierCode,
                 chantierVille: cur?.chantierVille,
                 chantierNom: cur?.chantierNom,
-                commentaire: cur?.commentaire,
               };
             });
           }
@@ -206,7 +204,6 @@ export const useAutoSaveFiche = () => {
         const selectedDays = chantierId === null
           ? workDays.filter(d => normalizedDays[d] !== undefined) // Finisseurs: jours saisis uniquement
           : workDays; // Autres: tous les jours
-        console.log(`[DEBUG selectedDays] Pour ${entry.employeeName}:`, selectedDays);
 
         const jourEntries = selectedDays.map((dayName) => {
           const dayData = normalizedDays[dayName];
@@ -223,7 +220,7 @@ export const useAutoSaveFiche = () => {
             trajet_perso: !!dayData?.trajetPerso,
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
-            commentaire: dayData?.commentaire ?? null,
+            commentaire: dayData?.commentaire || null,
           };
           
           // N'ajouter code_chantier_du_jour QUE si on a une valeur valide
@@ -241,7 +238,6 @@ export const useAutoSaveFiche = () => {
           
           return baseEntry;
         });
-        console.log(`[DEBUG UPSERT] Pour ${entry.employeeName}, jourEntries:`, JSON.stringify(jourEntries, null, 2));
         if (jourEntries.length > 0) {
           const { error: joursError } = await supabase
             .from("fiches_jours")
