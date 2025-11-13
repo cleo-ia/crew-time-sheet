@@ -96,7 +96,17 @@ const ConsultationRH = () => {
         theme="consultation-rh"
         actions={
           <>
-            <Button variant="outline" onClick={() => setActiveTab("preexport")}>
+            <Button 
+              variant="default"
+              onClick={() => handleExport("excel")}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exporter Excel
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setActiveTab("preexport")}
+            >
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Modifier et Exporter Excel
             </Button>
@@ -128,19 +138,23 @@ const ConsultationRH = () => {
                   <TabsTrigger value="consolide" className="rounded-none">
                     Consolidé par salarié
                   </TabsTrigger>
+                  <TabsTrigger value="preexport" className="rounded-none">
+                    Pré-export Excel
+                  </TabsTrigger>
                   <TabsTrigger value="detail" className="rounded-none">
                     Détail chantier/semaine
                   </TabsTrigger>
                   <TabsTrigger value="historique" className="rounded-none">
                     Historique clôturé
                   </TabsTrigger>
-                  <TabsTrigger value="preexport" className="rounded-none">
-                    Pré-export Excel
-                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="consolide" className="p-6">
                   <RHConsolidated filters={filters} onSelectFiche={setSelectedFiche} />
+                </TabsContent>
+
+                <TabsContent value="preexport" className="p-6">
+                  <RHPreExport filters={filters} />
                 </TabsContent>
 
                 <TabsContent value="detail" className="p-6">
@@ -149,10 +163,6 @@ const ConsultationRH = () => {
 
                 <TabsContent value="historique" className="p-6">
                   <RHHistorique filters={filters} onSelectFiche={setSelectedFiche} />
-                </TabsContent>
-
-                <TabsContent value="preexport" className="p-6">
-                  <RHPreExport filters={filters} />
                 </TabsContent>
               </Tabs>
             </Card>
