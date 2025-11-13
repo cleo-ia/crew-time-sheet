@@ -54,18 +54,10 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const isDirty = useRef<boolean>(false);
   
-  // Fonction pour gérer l'ouverture/fermeture de l'accordéon avec persistance
+  // Fonction pour gérer l'ouverture/fermeture de l'accordéon
   const handleOpenDayChange = (val: string | undefined) => {
     openDayRef.current = val;
     setOpenDay(val);
-    
-    // Persister dans sessionStorage
-    const key = `transport-open-day-${selectedWeekString}-${chefId}-${chantierId ?? "no_chantier"}`;
-    if (val) {
-      sessionStorage.setItem(key, val);
-    } else {
-      sessionStorage.removeItem(key);
-    }
   };
   // Exposer la méthode reset pour le debug admin
   useImperativeHandle(ref, () => ({
@@ -119,15 +111,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     }
   };
 
-  // Restaurer l'onglet ouvert depuis sessionStorage
-  useEffect(() => {
-    const key = `transport-open-day-${selectedWeekString}-${chefId}-${chantierId ?? "no_chantier"}`;
-    const saved = sessionStorage.getItem(key) || undefined;
-    if (saved !== openDay) {
-      openDayRef.current = saved;
-      setOpenDay(saved);
-    }
-  }, [selectedWeekString, chefId, chantierId]);
 
   // Sauvegarder immédiatement quand l'accordéon se ferme
   const previousOpenDay = useRef<string | undefined>(undefined);
