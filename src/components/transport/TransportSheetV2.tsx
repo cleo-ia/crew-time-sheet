@@ -39,6 +39,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [openDay, setOpenDay] = useState<string>("");
+  const openDayRef = useRef<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [initialDataSource, setInitialDataSource] = useState<'existing' | 'copied' | null>(null);
   
@@ -50,8 +51,14 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const autoSave = useAutoSaveTransportV2();
   const { data: existingTransport, isLoading } = useTransportDataV2(ficheId || null, conducteurId);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const openDayRef = useRef<string | undefined>(undefined);
   const isDirty = useRef<boolean>(false);
+  
+  // Fonction pour gérer l'ouverture/fermeture de l'accordéon
+  const handleOpenDayChange = (val: string) => {
+    const newValue = val || "";
+    openDayRef.current = newValue;
+    setOpenDay(newValue);
+  };
   // Exposer la méthode reset pour le debug admin
   useImperativeHandle(ref, () => ({
     resetTransportData: () => {
@@ -104,9 +111,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   };
 
   // Synchroniser openDay avec le ref
-  useEffect(() => {
-    openDayRef.current = openDay;
-  }, [openDay]);
 
   // Sauvegarder immédiatement quand l'accordéon se ferme
   const previousOpenDay = useRef<string>("");
@@ -131,11 +135,14 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
         chefId,
         days: transportDays,
         isDirty: true,
-      }).then(() => {
+      }).then((result) => {
         isDirty.current = false;
         console.log("[TransportSheetV2] Data saved on accordion close");
-        queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
-        queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
+        // Invalider SEULEMENT si des données ont été sauvegardées
+        if (result?.saved) {
+          queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
+          queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
+        }
       }).catch(err => {
         console.error("[TransportSheetV2] Error saving on close:", err);
       }).finally(() => {
@@ -188,11 +195,6 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     setHasLoadedData(true);
     setInitialDataSource(existingTransport ? 'existing' : null);
     setIsInitialized(true);
-    
-    // Restaurer l'accordéon ouvert si nécessaire
-    if (openDayRef.current && allDays.some(d => d.date === openDayRef.current)) {
-      setOpenDay(openDayRef.current);
-    }
   }, [selectedWeek, existingTransport, isLoading, initialDataSource, isInitialized]);
 
   // Auto-save immédiat après copie depuis semaine précédente (seulement si l'utilisateur a modifié ensuite)
@@ -235,15 +237,18 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       try {
-        await autoSave.mutateAsync({
+        const result = await autoSave.mutateAsync({
           ficheId: ficheId || "",
           semaine: selectedWeekString,
           chantierId,
           chefId,
           days: transportDays,
         });
-        queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
-        queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
+        // Invalider SEULEMENT si des données ont été sauvegardées
+        if (result?.saved) {
+          queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
+          queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
+        }
       } finally {
         setIsSaving(false);
       }
@@ -393,7 +398,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       )}
 
 
-      <Accordion type="single" collapsible value={openDay} onValueChange={(val) => setOpenDay(val || "")}>
+      <Accordion type="single" collapsible value={openDay} onValueChange={handleOpenDayChange}>
         {transportDays.map((day) => (
           <TransportDayAccordion
             key={day.date}
