@@ -244,9 +244,9 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               <TableHead className="bg-cyan-50 min-w-[60px]">GD</TableHead>
               
               {/* ADMINISTRATIF (6 colonnes) */}
-              <TableHead className="bg-orange-50 min-w-[100px]">ACOMPTES</TableHead>
-              <TableHead className="bg-orange-50 min-w-[100px]">PRETS</TableHead>
-              <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
+              <TableHead className="bg-green-50 min-w-[100px]">ACOMPTES</TableHead>
+              <TableHead className="bg-green-50 min-w-[100px]">PRETS</TableHead>
+              <TableHead className="bg-green-50 min-w-[150px]">COMMENTAIRES</TableHead>
               <TableHead className="bg-orange-50 min-w-[120px]">TOTAL SAISIE</TableHead>
               <TableHead className="bg-orange-50 min-w-[120px]">SAISIE DU MOIS</TableHead>
               <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
