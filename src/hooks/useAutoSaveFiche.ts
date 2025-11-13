@@ -193,6 +193,7 @@ export const useAutoSaveFiche = () => {
                 chantierCode: cur?.chantierCode,
                 chantierVille: cur?.chantierVille,
                 chantierNom: cur?.chantierNom,
+                commentaire: cur?.commentaire,
               };
             });
           }
