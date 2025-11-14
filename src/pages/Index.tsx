@@ -210,6 +210,7 @@ const Index = () => {
           trajet_perso: entry.days.Lundi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Lundi.chantierCode,
           ville_du_jour: entry.days.Lundi.chantierVille,
+          code_trajet: entry.days.Lundi.codeTrajet || null,
           commentaire: entry.days.Lundi.commentaire || null
         },
         { 
@@ -223,6 +224,7 @@ const Index = () => {
           trajet_perso: entry.days.Mardi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mardi.chantierCode,
           ville_du_jour: entry.days.Mardi.chantierVille,
+          code_trajet: entry.days.Mardi.codeTrajet || null,
           commentaire: entry.days.Mardi.commentaire || null
         },
         { 
@@ -236,6 +238,7 @@ const Index = () => {
           trajet_perso: entry.days.Mercredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Mercredi.chantierCode,
           ville_du_jour: entry.days.Mercredi.chantierVille,
+          code_trajet: entry.days.Mercredi.codeTrajet || null,
           commentaire: entry.days.Mercredi.commentaire || null
         },
         { 
@@ -249,6 +252,7 @@ const Index = () => {
           trajet_perso: entry.days.Jeudi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Jeudi.chantierCode,
           ville_du_jour: entry.days.Jeudi.chantierVille,
+          code_trajet: entry.days.Jeudi.codeTrajet || null,
           commentaire: entry.days.Jeudi.commentaire || null
         },
         { 
@@ -262,6 +266,7 @@ const Index = () => {
           trajet_perso: entry.days.Vendredi.trajetPerso ?? false,
           code_chantier_du_jour: entry.days.Vendredi.chantierCode,
           ville_du_jour: entry.days.Vendredi.chantierVille,
+          code_trajet: entry.days.Vendredi.codeTrajet || null,
           commentaire: entry.days.Vendredi.commentaire || null
         },
       ],
