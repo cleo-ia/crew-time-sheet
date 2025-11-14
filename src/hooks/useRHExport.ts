@@ -15,6 +15,7 @@ export interface RHExportEmployee {
   heures_supp_mensualisees: number;
   forfait_jours: boolean;
   salaire: number;
+  commentaires: string;
   
   // Données MDE (existantes)
   metier: string;
@@ -74,6 +75,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     heures_supp_mensualisees: emp.heures_supp_mensualisees || 0,
     forfait_jours: emp.forfait_jours || false,
     salaire: emp.salaire || 0,
+    commentaires: emp.detailJours.map(j => j.commentaire).filter(Boolean).join(" | "),
     
     // Données MDE
     metier: emp.metier,
