@@ -30,6 +30,7 @@ export const useInitializeNextWeekFromPrevious = () => {
             HI,
             T,
             trajet_perso,
+            code_trajet,
             PA,
             pause_minutes,
             code_chantier_du_jour,
