@@ -21,7 +21,6 @@ export const InterimaireFormDialog = ({
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
-    email: "",
     agence_interim: "",
   });
 
@@ -34,11 +33,10 @@ export const InterimaireFormDialog = ({
       setFormData({
         nom: editingInterimaire.nom || "",
         prenom: editingInterimaire.prenom || "",
-        email: editingInterimaire.email || "",
         agence_interim: editingInterimaire.agence_interim || "",
       });
     } else {
-      setFormData({ nom: "", prenom: "", email: "", agence_interim: "" });
+      setFormData({ nom: "", prenom: "", agence_interim: "" });
     }
   }, [editingInterimaire, open]);
 
@@ -57,7 +55,7 @@ export const InterimaireFormDialog = ({
         onSuccess?.(result);
       }
       onOpenChange(false);
-      setFormData({ nom: "", prenom: "", email: "", agence_interim: "" });
+      setFormData({ nom: "", prenom: "", agence_interim: "" });
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
     }
@@ -93,15 +91,6 @@ export const InterimaireFormDialog = ({
                 onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Email de l'agence *</Label>
-            <Input
-              type="email"
-              placeholder="contact@manpower-bordeaux.fr"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
           </div>
           <div className="space-y-2">
             <Label>Agence d'intérim</Label>

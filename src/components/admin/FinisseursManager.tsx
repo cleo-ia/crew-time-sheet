@@ -19,7 +19,6 @@ export const FinisseursManager = () => {
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
-    email: "",
     matricule: "",
     echelon: "",
     niveau: "",
@@ -57,7 +56,6 @@ export const FinisseursManager = () => {
     setFormData({ 
       nom: "", 
       prenom: "", 
-      email: "",
       matricule: "",
       echelon: "",
       niveau: "",
@@ -78,7 +76,6 @@ export const FinisseursManager = () => {
     setFormData({
       nom: finisseur.nom,
       prenom: finisseur.prenom,
-      email: finisseur.email || "",
       matricule: finisseur.matricule || "",
       echelon: finisseur.echelon || "",
       niveau: finisseur.niveau || "",
@@ -120,20 +117,19 @@ export const FinisseursManager = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : finisseurs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Aucun finisseur enregistré
                 </TableCell>
               </TableRow>
@@ -142,12 +138,6 @@ export const FinisseursManager = () => {
                   <TableRow key={finisseur.id}>
                     <TableCell className="font-medium">{finisseur.nom}</TableCell>
                     <TableCell>{finisseur.prenom}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                        <Mail className="h-3 w-3" />
-                        {finisseur.email || "-"}
-                      </div>
-                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -199,15 +189,6 @@ export const FinisseursManager = () => {
                   onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input 
-                type="email" 
-                placeholder="jean.dupont@example.com" 
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
             </div>
 
             <div className="space-y-2">

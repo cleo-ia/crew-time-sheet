@@ -141,7 +141,7 @@ export const useCreateUtilisateur = () => {
     mutationFn: async (user: { 
       nom: string; 
       prenom: string; 
-      email: string; 
+      email?: string;
       role?: string; 
       agence_interim?: string; 
       role_metier?: 'macon' | 'finisseur' | 'grutier';
@@ -164,7 +164,7 @@ export const useCreateUtilisateur = () => {
         .insert({
           nom: user.nom,
           prenom: user.prenom,
-          email: user.email,
+          email: user.email || null,
           agence_interim: user.agence_interim || null,
           role_metier: user.role_metier || null,
           matricule: user.matricule || null,

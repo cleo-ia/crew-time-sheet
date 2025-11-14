@@ -63,7 +63,6 @@ export const InterimairesManager = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Agence</TableHead>
               <TableHead>Affectation</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -72,13 +71,13 @@ export const InterimairesManager = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : interimaires.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   Aucun intérimaire enregistré
                 </TableCell>
               </TableRow>
@@ -89,12 +88,6 @@ export const InterimairesManager = () => {
                   <TableRow key={interimaire.id}>
                     <TableCell className="font-medium">{interimaire.nom}</TableCell>
                     <TableCell>{interimaire.prenom}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                        <Mail className="h-3 w-3" />
-                        {interimaire.email || "-"}
-                      </div>
-                    </TableCell>
                     <TableCell>
                       {interimaire.agence_interim ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">

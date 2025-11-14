@@ -27,7 +27,6 @@ export const GrutiersManager = () => {
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
-    email: "",
     matricule: "",
     echelon: "",
     niveau: "",
@@ -69,7 +68,6 @@ export const GrutiersManager = () => {
     setFormData({ 
       nom: "", 
       prenom: "", 
-      email: "",
       matricule: "",
       echelon: "",
       niveau: "",
@@ -90,7 +88,6 @@ export const GrutiersManager = () => {
     setFormData({
       nom: grutier.nom,
       prenom: grutier.prenom,
-      email: grutier.email || "",
       matricule: grutier.matricule || "",
       echelon: grutier.echelon || "",
       niveau: grutier.niveau || "",
@@ -135,7 +132,6 @@ export const GrutiersManager = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Affectation</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -143,13 +139,13 @@ export const GrutiersManager = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : grutiers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Aucun grutier enregistré
                 </TableCell>
               </TableRow>
@@ -160,12 +156,6 @@ export const GrutiersManager = () => {
                   <TableRow key={grutier.id}>
                     <TableCell className="font-medium">{grutier.nom}</TableCell>
                     <TableCell>{grutier.prenom}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                        <Mail className="h-3 w-3" />
-                        {grutier.email || "-"}
-                      </div>
-                    </TableCell>
                     <TableCell>
                       {affectation ? (
                         <div className="space-y-1">
@@ -253,15 +243,6 @@ export const GrutiersManager = () => {
                   onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input 
-                type="email" 
-                placeholder="jean.dupont@example.com" 
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
             </div>
 
             <div className="space-y-2">
