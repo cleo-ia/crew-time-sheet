@@ -258,7 +258,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
               
               {/* COMMENTAIRES DU MOIS */}
-              <TableHead className="bg-purple-50 min-w-[300px]">COMMENTAIRES DU MOIS</TableHead>
+              <TableHead className="bg-purple-50 min-w-[180px]">COMMENTAIRES DU MOIS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
