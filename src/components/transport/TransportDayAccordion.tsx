@@ -118,7 +118,7 @@ export const TransportDayAccordion = ({
           </span>
         </div>
       </AccordionTrigger>
-      <AccordionContent forceMount className="px-4 pb-4">
+      <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-2">
           {day.vehicules.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">

@@ -38,14 +38,13 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
-  const [openDay, setOpenDay] = useState<string | undefined>(undefined);
-  const openDayRef = useRef<string | undefined>(undefined);
+  const [openDay, setOpenDay] = useState<string>("");
+  const openDayRef = useRef<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [initialDataSource, setInitialDataSource] = useState<'existing' | 'copied' | null>(null);
   
   const [hasCopied, setHasCopied] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const initializedForWeek = useRef<Record<string, boolean>>({});
   
   const queryClient = useQueryClient();
   const saveTransport = useSaveTransportV2();
@@ -55,9 +54,10 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const isDirty = useRef<boolean>(false);
   
   // Fonction pour gérer l'ouverture/fermeture de l'accordéon
-  const handleOpenDayChange = (val: string | undefined) => {
-    openDayRef.current = val;
-    setOpenDay(val);
+  const handleOpenDayChange = (val: string) => {
+    const newValue = val || "";
+    openDayRef.current = newValue;
+    setOpenDay(newValue);
   };
   // Exposer la méthode reset pour le debug admin
   useImperativeHandle(ref, () => ({
@@ -75,8 +75,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       setInitialDataSource(null);
       setHasCopied(false);
       setIsInitialized(false);
-      setOpenDay(undefined);
-      initializedForWeek.current = {};
+      setOpenDay("");
       
       // Invalider les queries pour forcer un rechargement
       queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
@@ -111,13 +110,14 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     }
   };
 
+  // Synchroniser openDay avec le ref
 
   // Sauvegarder immédiatement quand l'accordéon se ferme
-  const previousOpenDay = useRef<string | undefined>(undefined);
+  const previousOpenDay = useRef<string>("");
   
   useEffect(() => {
-    // Détecter la fermeture : openDay passe d'une date à undefined
-    if (previousOpenDay.current && openDay === undefined && isDirty.current) {
+    // Détecter la fermeture : openDay passe d'une date à ""
+    if (previousOpenDay.current && !openDay && isDirty.current) {
       console.log("[TransportSheetV2] Accordion closing, saving immediately");
       
       // Annuler le debounce en cours
@@ -161,16 +161,11 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   }, [selectedWeekString]);
 
 
-  // Initialisation idempotente des 5 jours de la semaine
+  // Initialiser les 5 jours et fusionner avec les données existantes
   useEffect(() => {
-    // Ne pas réinitialiser si les données proviennent de la copie
-    if (initialDataSource === 'copied') return;
-
-    // Attendre que le fetch soit complet si on a un ficheId
-    if (isLoading && ficheId) return;
-
-    // Si cette semaine a déjà été initialisée, ne pas réinitialiser
-    if (initializedForWeek.current[selectedWeekString]) return;
+    if (isLoading && ficheId) return; // Seulement bloquer si on attend vraiment des données existantes
+    if (initialDataSource === 'copied') return; // Déjà initialisé par la copie
+    if (isInitialized && existingTransport) return; // Éviter les re-initialisations après redirection
 
     // Toujours générer les 5 jours de la semaine
     const allDays: TransportDayV2[] = [];
@@ -200,8 +195,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     setHasLoadedData(true);
     setInitialDataSource(existingTransport ? 'existing' : null);
     setIsInitialized(true);
-    initializedForWeek.current[selectedWeekString] = true;
-  }, [selectedWeek, selectedWeekString, existingTransport, isLoading, initialDataSource, ficheId]);
+  }, [selectedWeek, existingTransport, isLoading, initialDataSource, isInitialized]);
 
   // Auto-save immédiat après copie depuis semaine précédente (seulement si l'utilisateur a modifié ensuite)
   useEffect(() => {
@@ -332,8 +326,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
         setInitialDataSource(null);
         setHasCopied(false);
         setIsInitialized(true);
-        setOpenDay(undefined);
-        initializedForWeek.current = {};
+        setOpenDay("");
 
         // Recharger les données depuis la base (vide après purge)
         queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
@@ -405,7 +398,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       )}
 
 
-      <Accordion type="single" collapsible onValueChange={handleOpenDayChange}>
+      <Accordion type="single" collapsible value={openDay} onValueChange={handleOpenDayChange}>
         {transportDays.map((day) => (
           <TransportDayAccordion
             key={day.date}
