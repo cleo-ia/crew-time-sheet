@@ -193,19 +193,17 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     );
   };
 
-  // Finisseurs de "mon équipe" (avec affectations OU avec fiches OU partiellement affectés)
+  // Finisseurs de "mon équipe" (uniquement ceux affectés par CE conducteur OU avec fiches)
   const mesFinisseursActuels = useMemo(() => {
-    // Union de trois listes :
+    // Union de deux listes :
     // 1. Ceux avec affectations par CE conducteur (semaine en cours)
     // 2. Ceux avec fiches pour CE conducteur (indépendamment des affectations)
-    // 3. Ceux partiellement affectés (1-4 jours) par N'IMPORTE QUEL conducteur
     const mesFinisseursActuelsIds = new Set([
       ...finisseursCurrentIds,
       ...finisseursFichesIds,
-      ...finisseursPartielsIds,
     ]);
     return finisseurs.filter(f => mesFinisseursActuelsIds.has(f.id));
-  }, [finisseurs, finisseursCurrentIds, finisseursFichesIds, finisseursPartielsIds]);
+  }, [finisseurs, finisseursCurrentIds, finisseursFichesIds]);
 
   // Finisseurs à afficher selon recherche
   const finisseursToDisplay = useMemo(() => {
