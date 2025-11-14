@@ -27,7 +27,6 @@ export const MaconsManager = () => {
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
-    email: "",
     matricule: "",
     echelon: "",
     niveau: "",
@@ -69,7 +68,6 @@ export const MaconsManager = () => {
     setFormData({ 
       nom: "", 
       prenom: "", 
-      email: "",
       matricule: "",
       echelon: "",
       niveau: "",
@@ -90,7 +88,6 @@ export const MaconsManager = () => {
     setFormData({
       nom: macon.nom,
       prenom: macon.prenom,
-      email: macon.email || "",
       matricule: macon.matricule || "",
       echelon: macon.echelon || "",
       niveau: macon.niveau || "",
@@ -135,7 +132,6 @@ export const MaconsManager = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Affectation</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -143,13 +139,13 @@ export const MaconsManager = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : macons.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Aucun maçon enregistré
                 </TableCell>
               </TableRow>
@@ -160,12 +156,6 @@ export const MaconsManager = () => {
                   <TableRow key={macon.id}>
                     <TableCell className="font-medium">{macon.nom}</TableCell>
                     <TableCell>{macon.prenom}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                        <Mail className="h-3 w-3" />
-                        {macon.email || "-"}
-                      </div>
-                    </TableCell>
                     <TableCell>
                       {affectation ? (
                         <div className="space-y-1">
@@ -253,15 +243,6 @@ export const MaconsManager = () => {
                   onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input 
-                type="email" 
-                placeholder="jean.dupont@example.com" 
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
             </div>
 
             <div className="space-y-2">
