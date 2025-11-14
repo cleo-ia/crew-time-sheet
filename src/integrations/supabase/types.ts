@@ -346,6 +346,7 @@ export type Database = {
         Row: {
           autres_elements: string | null
           code_chantier_du_jour: string | null
+          code_trajet: string | null
           commentaire: string | null
           created_at: string
           date: string
@@ -369,6 +370,7 @@ export type Database = {
         Insert: {
           autres_elements?: string | null
           code_chantier_du_jour?: string | null
+          code_trajet?: string | null
           commentaire?: string | null
           created_at?: string
           date: string
@@ -392,6 +394,7 @@ export type Database = {
         Update: {
           autres_elements?: string | null
           code_chantier_du_jour?: string | null
+          code_trajet?: string | null
           commentaire?: string | null
           created_at?: string
           date?: string

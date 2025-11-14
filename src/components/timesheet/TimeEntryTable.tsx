@@ -26,8 +26,9 @@ import { useAutoSaveTransportFinisseur } from "@/hooks/useAutoSaveTransportFinis
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { TeamMemberCombobox } from "@/components/chef/TeamMemberCombobox";
 import { TransportFinisseurAccordion } from "@/components/transport/TransportFinisseurAccordion";
-import { TransportFinisseurDay } from "@/types/transport";
+import { TransportFinisseurDay, CodeTrajet } from "@/types/transport";
 import { ChantierSelector } from "./ChantierSelector";
+import { CodeTrajetSelector } from "./CodeTrajetSelector";
 import { format, addDays } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import {
@@ -117,25 +118,27 @@ interface TimeEntryTableProps {
   readOnly?: boolean;
 }
 
+// Type pour les données d'un jour
+type DayData = {
+  hours: number;
+  overtime: number;
+  absent: boolean;
+  panierRepas: boolean;
+  codeTrajet?: CodeTrajet | null;
+  heuresIntemperie: number;
+  chantierId?: string | null;
+  chantierCode?: string | null;
+  chantierVille?: string | null;
+  chantierNom?: string | null;
+  commentaire?: string;
+};
+
 interface TimeEntry {
   employeeId: string;
   employeeName: string;
   ficheId?: string; // Ajout du ficheId pour permettre la suppression
   days: {
-    [key: string]: {
-      hours: number;
-      overtime: number;
-      absent: boolean;
-      panierRepas: boolean;
-      trajet: boolean;
-      trajetPerso: boolean;
-      heuresIntemperie: number;
-      chantierId?: string | null;
-      chantierCode?: string | null;
-      chantierVille?: string | null;
-      chantierNom?: string | null;
-      commentaire?: string;
-    };
+    [key: string]: DayData;
   };
 }
 
@@ -836,15 +839,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           [field]: value,
         };
 
-        // Exclusion mutuelle entre "Trajet" et "Trajet Perso"
-        if (field === "trajet" && value === true) {
-          updatedDayData.trajetPerso = false;
-        }
-        
-        if (field === "trajetPerso" && value === true) {
-          updatedDayData.trajet = false;
-        }
-
         // Logique spéciale pour le champ "absent"
         if (field === "absent") {
           if (value) {
@@ -852,16 +846,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               ...updatedDayData,
               hours: 0,
               panierRepas: false,
-              trajet: false,
-              trajetPerso: false,
+              codeTrajet: null,
             };
           } else {
-            // Si présent, restaurer les heures par défaut et re-cocher panier et trajet
+            // Si présent, restaurer les heures par défaut et re-cocher panier
             const defaultHours = defaultHoursByDay[day] || 8;
             updatedDayData.hours = defaultHours;
             updatedDayData.panierRepas = true;
-            updatedDayData.trajet = true;
-            updatedDayData.trajetPerso = false;
+            // codeTrajet reste null, l'utilisateur devra choisir
           }
         }
         
@@ -900,7 +892,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         return;
       }
       
-      // Construire un Set des dates en "trajet perso" et des dates d'absence
+      // Construire un Set des dates avec code trajet perso et des dates d'absence
       const monday = parseISOWeek(weekId);
       const trajetPersoDates = new Set<string>();
       const absenceDates = new Set<string>();
@@ -909,7 +901,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         const dayData = entry.days[dayName];
         const dateStr = format(addDays(monday, idx), "yyyy-MM-dd");
         
-        if (dayData?.trajetPerso) {
+        if (dayData?.codeTrajet === "T_PERSO") {
           trajetPersoDates.add(dateStr);
         }
         if (dayData?.absent) {
@@ -1317,57 +1309,13 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
                             {/* Colonne Trajet - Stack vertical */}
                             <div className="flex flex-col gap-2">
-                              {/* Trajet */}
-                              <div className="flex items-center gap-2 p-2 rounded bg-background/50">
-                                <Checkbox
-                                  checked={dayData.trajet}
-                                  onCheckedChange={(checked) =>
-                                    updateDayValue(entry.employeeId, day, "trajet", !!checked)
-                                  }
-                                  disabled={isReadOnly || isDayBlocked}
-                                  id={`trajet-${entry.employeeId}-${day}`}
-                                />
-                                <label
-                                  htmlFor={`trajet-${entry.employeeId}-${day}`}
-                                  className="text-xs text-muted-foreground cursor-pointer flex-1"
-                                >
-                                  Trajet
-                                </label>
-                              </div>
-
-                              {/* Trajet Perso */}
-                              <div className="flex items-center gap-2 p-2 rounded bg-background/50">
-                                {(isReadOnly || isDayBlocked) ? (
-                                  <>
-                                    <div className="flex items-center justify-center w-4 h-4">
-                                      {dayData.trajetPerso ? (
-                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-1.5 py-0 text-xs">✓</Badge>
-                                      ) : (
-                                        <Badge variant="outline" className="bg-muted text-muted-foreground px-1.5 py-0 text-xs">✗</Badge>
-                                      )}
-                                    </div>
-                                    <span className="text-xs text-muted-foreground flex-1">
-                                      Trajet Perso
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Checkbox
-                                      checked={dayData.trajetPerso}
-                                      onCheckedChange={(checked) =>
-                                        updateDayValue(entry.employeeId, day, "trajetPerso", !!checked)
-                                      }
-                                      id={`trajet-perso-${entry.employeeId}-${day}`}
-                                    />
-                                    <label
-                                      htmlFor={`trajet-perso-${entry.employeeId}-${day}`}
-                                      className="text-xs text-muted-foreground cursor-pointer flex-1"
-                                    >
-                                      Trajet Perso
-                                    </label>
-                                  </>
-                                )}
-                              </div>
+                              {/* Code Trajet */}
+                              <CodeTrajetSelector
+                                value={dayData.codeTrajet || null}
+                                onChange={(value) => updateDayValue(entry.employeeId, day, "codeTrajet", value)}
+                                disabled={isReadOnly || isDayBlocked}
+                                hasHours={(dayData.hours || 0) > 0}
+                              />
                             </div>
 
                             {/* Commentaire */}
@@ -1420,13 +1368,13 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                       }
                       allAffectations={allAffectations}
                       trajetPersoByDate={
-                              // Créer un Map date → trajetPerso depuis entry.days
+                              // Créer un Map date → true si T_PERSO
                               Object.entries(entry.days).reduce((map, [dayName, dayData]) => {
                                 const dayIndex = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].indexOf(dayName);
                                 if (dayIndex !== -1 && weekId) {
                                   const monday = parseISOWeek(weekId);
                                   const date = format(addDays(monday, dayIndex), "yyyy-MM-dd");
-                                  map.set(date, dayData.trajetPerso || false);
+                                  map.set(date, dayData.codeTrajet === "T_PERSO");
                                 }
                                 return map;
                               }, new Map<string, boolean>())
