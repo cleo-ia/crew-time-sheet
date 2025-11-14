@@ -120,7 +120,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     finisseurs.forEach((f) => {
       newState[f.id] = {};
       days.forEach((day) => {
-        const aff = affectations.find((a) => a.finisseur_id === f.id && a.date === day.date && a.conducteur_id === conducteurId);
+        const aff = affectations.find((a) => a.finisseur_id === f.id && a.date === day.date);
         newState[f.id][day.date] = {
           checked: !!aff,
           chantierId: aff?.chantier_id || "",
@@ -152,8 +152,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
 
   // Fonction pour scroller vers un finisseur
   const scrollToFinisseur = (finisseurId: string) => {
-    // Si le finisseur n'a aucune affectation POUR CE CONDUCTEUR, l'ajouter aux pending
-    if (getMyAffectedDaysCount(finisseurId) === 0 && !pendingFinisseurs.includes(finisseurId)) {
+    // Si le finisseur n'a aucune affectation, l'ajouter aux pending
+    if (getAffectedDaysCount(finisseurId) === 0 && !pendingFinisseurs.includes(finisseurId)) {
       setPendingFinisseurs(prev => [...prev, finisseurId]);
     }
     
@@ -175,15 +175,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   // Utilitaires de filtrage
   const getAffectedDaysCount = (finisseurId: string): number => {
     return days.filter((day) => localState[finisseurId]?.[day.date]?.checked).length;
-  };
-
-  const getMyAffectedDaysCount = (finisseurId: string): number => {
-    return days.filter((day) => {
-      const aff = affectations.find(
-        (a) => a.finisseur_id === finisseurId && a.date === day.date && a.conducteur_id === conducteurId
-      );
-      return !!aff;
-    }).length;
   };
 
   const getFinisseurStatut = (finisseurId: string): StatutAffectation => {
