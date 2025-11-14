@@ -48,21 +48,33 @@ const ValidationConducteur = () => {
   const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
   
+  const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
+  const urlWeek = searchParams.get("semaine");
+  
   // Hook intelligent qui détermine la bonne semaine (courante ou suivante si transmise)
+  // DÉSACTIVÉ si on vient de signer (l'URL est la source de vérité)
   const { data: initialWeek, isLoading: isLoadingWeek } = useInitialWeek(
-    searchParams.get("semaine"),
-    conducteurId || null,
+    fromSignature ? null : urlWeek, // Ne pas utiliser useInitialWeek si on vient de signer
+    fromSignature ? null : (conducteurId || null),
     null // null car conducteur n'a pas de chantier fixe
   );
   
-  const [selectedWeek, setSelectedWeek] = useState<string>(initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II"));
+  // Si on vient de signer, utiliser UNIQUEMENT la semaine de l'URL
+  const defaultWeek = fromSignature && urlWeek 
+    ? urlWeek 
+    : (initialWeek || format(startOfWeek(new Date(), { weekStartsOn: 1, locale: fr }), "RRRR-'S'II"));
   
-  // Mettre à jour selectedWeek quand initialWeek change
+  const [selectedWeek, setSelectedWeek] = useState<string>(defaultWeek);
+  
+  // Mettre à jour selectedWeek quand initialWeek change (sauf si on vient de signer)
   useEffect(() => {
-    const fromSignature = sessionStorage.getItem('fromSignature');
+    const isFromSignature = sessionStorage.getItem('fromSignature') === 'true';
     
-    // Ne pas écraser selectedWeek si on vient de signer (la semaine en URL est prioritaire)
-    if (initialWeek && fromSignature !== 'true') {
+    // Si on vient de signer, ne JAMAIS écraser selectedWeek
+    if (isFromSignature) return;
+    
+    // Sinon, suivre la logique normale de useInitialWeek
+    if (initialWeek) {
       setSelectedWeek(initialWeek);
     }
   }, [initialWeek]);
