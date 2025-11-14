@@ -96,6 +96,35 @@ export const useAffectationsCurrentWeekByConducteur = (conducteurId: string, sem
   });
 };
 
+// Récupérer les finisseurs partiellement affectés (1-4 jours) dans la semaine
+export const useFinisseursPartiellementAffectes = (semaine: string) => {
+  return useQuery({
+    queryKey: ["finisseurs-partiellement-affectes", semaine],
+    queryFn: async () => {
+      if (!semaine) return [];
+      
+      const { data, error } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id")
+        .eq("semaine", semaine);
+      
+      if (error) throw error;
+      
+      // Compter le nombre de jours pour chaque finisseur
+      const countMap = new Map<string, number>();
+      (data || []).forEach(a => {
+        countMap.set(a.finisseur_id, (countMap.get(a.finisseur_id) || 0) + 1);
+      });
+      
+      // Retourner uniquement ceux avec 1 à 4 jours (partiels)
+      return Array.from(countMap.entries())
+        .filter(([_, count]) => count >= 1 && count <= 4)
+        .map(([id, _]) => id);
+    },
+    enabled: !!semaine,
+  });
+};
+
 // Créer ou mettre à jour une affectation
 export const useUpsertAffectationJour = () => {
   const queryClient = useQueryClient();
