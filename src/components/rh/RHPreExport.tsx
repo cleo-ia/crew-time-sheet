@@ -62,6 +62,8 @@ type EditableRow = {
     // Régularisation
     regularisationM1?: string;
     autresElements?: string;
+    // Commentaires du mois
+    commentaires?: string;
   };
   isModified: boolean;
 };
@@ -254,6 +256,9 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               {/* RÉGULARISATION (2 colonnes) */}
               <TableHead className="bg-purple-50 min-w-[200px]">REGULARISATION M-1</TableHead>
               <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
+              
+              {/* COMMENTAIRES DU MOIS */}
+              <TableHead className="bg-purple-50 min-w-[300px]">COMMENTAIRES DU MOIS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -354,6 +359,9 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   {/* RÉGULARISATION */}
                   <EditableCell value={row.modified.regularisationM1 ?? (data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
                   <EditableCell value={row.modified.autresElements ?? (data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
+                  
+                  {/* COMMENTAIRES DU MOIS */}
+                  <EditableCell value={row.modified.commentaires ?? data.commentaires ?? "-"} onChange={(v) => handleCellChange(index, 'commentaires', v)} type="text" isModified={row.modified.commentaires !== undefined} />
                 </TableRow>
               );
             })}
