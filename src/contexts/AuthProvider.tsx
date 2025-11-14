@@ -80,7 +80,7 @@ function AuthProvider({ children }: AuthProviderProps) {
       }
       
       // Après toutes les tentatives, si toujours pas de session, marquer comme signed_out
-      setStatus('signed_out');
+      setStatus('unknown');
     };
 
     getSessionWithRetry();

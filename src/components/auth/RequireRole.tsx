@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { useAuth } from "@/contexts/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RequireRoleProps {
@@ -15,29 +14,18 @@ export const RequireRole = ({
   allowedRoles, 
   redirectTo = "/" 
 }: RequireRoleProps) => {
-  const { status } = useAuth();
   const { data: userRole, isLoading } = useCurrentUserRole();
 
-  // Afficher un loader pendant la vérification du statut auth ou du rôle
-  if (status === 'unknown' || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="space-y-4 w-full max-w-md px-4">
-          <div className="animate-pulse rounded-md bg-muted h-12 w-full" />
-          <div className="animate-pulse rounded-md bg-muted h-64 w-full" />
-          <div className="animate-pulse rounded-md bg-muted h-12 w-full" />
-        </div>
+        <Skeleton className="h-32 w-96" />
       </div>
     );
   }
 
-  // Si déconnecté, rediriger vers /auth
-  if (status === 'signed_out') {
-    return <Navigate to="/auth" replace />;
-  }
-
-  // Si pas de rôle ou rôle non autorisé, redirection intelligente
   if (!userRole || !allowedRoles.includes(userRole as any)) {
+    // Redirection intelligente selon le rôle
     let fallbackRoute = redirectTo;
     
     if (userRole === "conducteur") {

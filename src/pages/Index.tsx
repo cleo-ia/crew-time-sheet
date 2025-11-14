@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,27 +54,10 @@ const Index = () => {
   );
   const [isTransportOpen, setIsTransportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
   const queryClient = useQueryClient();
-
-  // Afficher un loader pendant le chargement de l'utilisateur
-  if (isLoadingUser) {
-    return (
-      <PageLayout>
-        <AppNav />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="space-y-4 w-full max-w-md px-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </div>
-      </PageLayout>
-    );
-  }
 
   // Mettre à jour selectedWeek quand initialWeek change
   useEffect(() => {
@@ -87,45 +69,56 @@ const Index = () => {
   // Auto-sélection du chef connecté au chargement
   useEffect(() => {
     const fetchConnectedChef = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        // Vérifier si cet utilisateur est un chef
-        const { data: utilisateur } = await supabase
-          .from("utilisateurs")
-          .select("id")
-          .eq("auth_user_id", user.id)
-          .maybeSingle();
+      // Vérifier si cet utilisateur est un chef
+      const { data: utilisateur } = await supabase
+        .from("utilisateurs")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
 
-        if (!utilisateur) return;
+      if (!utilisateur) return;
 
-        // Vérifier si cet utilisateur a le rôle "chef"
-        const { data: userRole } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      // Vérifier si cet utilisateur a le rôle "chef"
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-        if (!userRole || userRole.role !== "chef") return;
-
-        // Utiliser l'ID utilisateur directement comme chef
+      if (userRole?.role === "chef") {
         setSelectedChef(utilisateur.id);
-        sessionStorage.setItem('timesheet_selectedChef', utilisateur.id);
 
-        // Charger le premier chantier du chef si aucun n'est sélectionné
+        // Conserver un chantier déjà choisi s'il est valide pour ce chef
+        if (selectedChantier) {
+          const { data: chantierValide } = await supabase
+            .from("chantiers")
+            .select("id")
+            .eq("id", selectedChantier)
+            .eq("chef_id", utilisateur.id)
+            .eq("actif", true)
+            .maybeSingle();
+
+          if (chantierValide) {
+            // Le chantier en session est valide, on le garde
+            return;
+          }
+        }
+
+        // Sinon, choisir le plus récent parmi les chantiers actifs du chef
         const { data: chantiers } = await supabase
           .from("chantiers")
           .select("id")
           .eq("chef_id", utilisateur.id)
           .eq("actif", true)
+          .order("updated_at", { ascending: false })
           .limit(1);
 
         if (chantiers && chantiers.length > 0) {
           setSelectedChantier(chantiers[0].id);
         }
-      } finally {
-        setIsLoadingUser(false);
       }
     };
 

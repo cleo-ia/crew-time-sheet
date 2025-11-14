@@ -9,18 +9,7 @@ export default function RequireAuth() {
 
   // Attendre que le statut soit déterminé
   if (status === 'unknown') {
-    return (
-      <>
-        <OfflineBanner />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="space-y-4 w-full max-w-md px-4">
-            <div className="animate-pulse rounded-md bg-muted h-12 w-full" />
-            <div className="animate-pulse rounded-md bg-muted h-64 w-full" />
-            <div className="animate-pulse rounded-md bg-muted h-12 w-full" />
-          </div>
-        </div>
-      </>
-    );
+    return null;
   }
 
   // Si explicitement déconnecté, rediriger vers /auth
