@@ -319,16 +319,39 @@ const ValidationConducteur = () => {
     const errors: string[] = [];
     
     for (const finisseur of finisseurs) {
-      // Utiliser ficheJours déjà chargé par le hook pour identifier les absences
+      // ✅ CORRECTION: Charger les fiches_jours FRAÎCHES directement depuis la base
+      // pour garantir que les données sont à jour (trajet_perso, absences)
+      const { data: ficheWeek } = await supabase
+        .from("fiches")
+        .select("id")
+        .eq("salarie_id", finisseur.id)
+        .eq("semaine", selectedWeek)
+        .is("chantier_id", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Si pas de fiche trouvée, impossible de valider les trajets
+      if (!ficheWeek) {
+        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune fiche trouvée pour ${selectedWeek}`);
+        continue;
+      }
+
+      // Charger les données FRAÎCHES des fiches_jours (pas de cache)
+      const { data: ficheJoursFresh } = await supabase
+        .from("fiches_jours")
+        .select("date, HNORM, HI, trajet_perso")
+        .eq("fiche_id", ficheWeek.id);
+
+      // Construire les sets à partir des données fraîches
       const absenceDates = new Set(
-        (finisseur.ficheJours || [])
+        (ficheJoursFresh || [])
           .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
           .map(fj => fj.date)
       );
       
-      // Construire l'ensemble des dates en trajet perso
       const trajetPersoDates = new Set(
-        (finisseur.ficheJours || [])
+        (ficheJoursFresh || [])
           .filter(j => j.trajet_perso === true)
           .map(j => j.date)
       );
@@ -346,28 +369,16 @@ const ValidationConducteur = () => {
       let transport = transportByWeek;
 
       // Étape B : Fallback par fiche_id si pas trouvé (données legacy sans "semaine")
-      if (!transport) {
-        const { data: ficheWeek } = await supabase
-          .from("fiches")
-          .select("id")
-          .eq("salarie_id", finisseur.id)
-          .eq("semaine", selectedWeek)
-          .is("chantier_id", null)
+      if (!transport && ficheWeek) {
+        const { data: transportByFiche } = await supabase
+          .from("fiches_transport_finisseurs")
+          .select("id, finisseur_id, fiche_id, semaine")
+          .eq("fiche_id", ficheWeek.id)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-
-        if (ficheWeek) {
-          const { data: transportByFiche } = await supabase
-            .from("fiches_transport_finisseurs")
-            .select("id, finisseur_id, fiche_id, semaine")
-            .eq("fiche_id", ficheWeek.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          
-          transport = transportByFiche;
-        }
+        
+        transport = transportByFiche;
       }
 
       // Si toujours pas trouvé, enregistrer l'erreur et continuer
