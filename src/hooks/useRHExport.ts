@@ -37,7 +37,7 @@ export interface RHExportEmployee {
     heures: number;
     intemperie: number;
     panier: boolean;
-    trajet: number;
+    trajet: string | null;
     trajetPerso: boolean;
     typeAbsence?: string;
     isAbsent: boolean; // true si heures=0 ET intemperie=0
@@ -84,8 +84,8 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     heuresSupp: 0, // Heures supplémentaires réelles (à calculer séparément)
     absences: emp.absences,
     indemnitesRepas: emp.paniers,
-    indemnitesTrajet: emp.trajets,
-    indemnitesTrajetPerso: emp.trajetsPerso,
+    indemnitesTrajet: emp.totalJoursTrajets - (emp.trajetsParCode.T_PERSO || 0),
+    indemnitesTrajetPerso: emp.trajetsParCode.T_PERSO || 0,
     primeAnciennete: 0,
     intemperies: emp.intemperies,
     totalHeures: emp.totalHeures,
