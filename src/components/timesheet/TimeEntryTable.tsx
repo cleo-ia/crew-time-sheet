@@ -104,6 +104,13 @@ interface TimeEntryTableProps {
     finisseur_id: string;
     date: string;
     chantier_id: string;
+    conducteur_id?: string;
+  }>;
+  allAffectations?: Array<{
+    finisseur_id: string;
+    date: string;
+    chantier_id: string;
+    conducteur_id: string;
   }>;
   onAddEmployee?: (salarieId: string) => Promise<void>;
   onDeleteEmployee?: (ficheId: string) => Promise<void>;
@@ -132,7 +139,7 @@ interface TimeEntry {
   };
 }
 
-export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, initialData, mode = "create", affectationsJours, onAddEmployee, onDeleteEmployee, readOnly = false }: TimeEntryTableProps) => {
+export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, initialData, mode = "create", affectationsJours, allAffectations, onAddEmployee, onDeleteEmployee, readOnly = false }: TimeEntryTableProps) => {
   const isReadOnly = readOnly;
   const weekDays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
   const isConducteurMode = mode === "conducteur";
@@ -175,6 +182,21 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     });
     
     return visibleDays;
+  };
+
+  // Helper : vérifie si un jour spécifique est affecté par un AUTRE conducteur
+  const isDayAffectedByOtherConducteur = (finisseurId: string, dateISO: string): boolean => {
+    if (!allAffectations || !isConducteurMode || !chefId) return false;
+    
+    const affectation = allAffectations.find(
+      a => a.finisseur_id === finisseurId && a.date === dateISO
+    );
+    
+    // Si pas d'affectation trouvée OU si c'est NOTRE conducteur : pas bloqué
+    if (!affectation || affectation.conducteur_id === chefId) return false;
+    
+    // Sinon : c'est un autre conducteur
+    return true;
   };
 
   // Charger les chantiers pour les sélecteurs
@@ -1131,20 +1153,38 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                       .filter(day => !isConducteurMode || visibleDays.includes(day))
                       .map((day) => {
                         const dayData = entry.days[day];
+                        
+                        // Calculer la date ISO du jour
+                        const monday = parseISOWeek(weekId);
+                        const dayIndex = weekDays.indexOf(day);
+                        const dateISO = format(addDays(monday, dayIndex), "yyyy-MM-dd");
+                        
+                        // Vérifier si ce jour est affecté par un autre conducteur
+                        const isDayBlocked = isDayAffectedByOtherConducteur(entry.employeeId, dateISO);
+                        
                         return (
                       <div
                         key={day}
                         className={`rounded-lg border p-3 ${
-                          dayData.absent ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border/30"
+                          dayData.absent ? "bg-destructive/5 border-destructive/20" : 
+                          isDayBlocked ? "bg-amber-50/50 border-amber-200" :
+                          "bg-muted/30 border-border/30"
                         }`}
                       >
                         {/* Day Header */}
                         <div className="flex items-center justify-between mb-3">
-                          <span className="font-medium text-sm">{day}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{day}</span>
+                            {isDayBlocked && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">
+                                🔒 Autre conducteur
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <Checkbox
                               checked={dayData.absent}
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || isDayBlocked}
                               id={`absent-${entry.employeeId}-${day}`}
                               onCheckedChange={(checked) =>
                                 updateDayValue(entry.employeeId, day, "absent", !!checked)
@@ -1214,7 +1254,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                 chefId={undefined}
                                 allowAll={true}
                                 compact={true}
-                                disabled={isReadOnly}
+                                disabled={isReadOnly || isDayBlocked}
               />
                             </div>
                             
@@ -1228,7 +1268,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                   onCommit={(v) =>
                                     updateDayValue(entry.employeeId, day, "hours", v)
                                   }
-                                  disabled={isReadOnly}
+                                  disabled={isReadOnly || isDayBlocked}
                                   min={0}
                                   max={24}
                                   step={0.5}
@@ -1247,7 +1287,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                   onCommit={(v) =>
                                     updateDayValue(entry.employeeId, day, "heuresIntemperie", v)
                                   }
-                                  disabled={isReadOnly}
+                                  disabled={isReadOnly || isDayBlocked}
                                   min={0}
                                   max={24}
                                   step={0.5}
@@ -1264,7 +1304,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                 onCheckedChange={(checked) =>
                                   updateDayValue(entry.employeeId, day, "panierRepas", !!checked)
                                 }
-                                disabled={isReadOnly}
+                                disabled={isReadOnly || isDayBlocked}
                                 id={`panier-${entry.employeeId}-${day}`}
                               />
                               <label
@@ -1284,7 +1324,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                   onCheckedChange={(checked) =>
                                     updateDayValue(entry.employeeId, day, "trajet", !!checked)
                                   }
-                                  disabled={isReadOnly}
+                                  disabled={isReadOnly || isDayBlocked}
                                   id={`trajet-${entry.employeeId}-${day}`}
                                 />
                                 <label
@@ -1297,7 +1337,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
                               {/* Trajet Perso */}
                               <div className="flex items-center gap-2 p-2 rounded bg-background/50">
-                                {isReadOnly ? (
+                                {(isReadOnly || isDayBlocked) ? (
                                   <>
                                     <div className="flex items-center justify-center w-4 h-4">
                                       {dayData.trajetPerso ? (
@@ -1340,7 +1380,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                 onChange={(e) =>
                                   updateDayValue(entry.employeeId, day, "commentaire", e.target.value)
                                 }
-                                disabled={isReadOnly}
+                                disabled={isReadOnly || isDayBlocked}
                                 placeholder="Ex: Arrivé en retard, formation, visite client..."
                                 className="w-full h-20 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                               />

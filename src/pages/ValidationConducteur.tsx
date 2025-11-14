@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
-import { useAffectationsByConducteur } from "@/hooks/useAffectationsFinisseursJours";
+import { useAffectationsByConducteur, useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -107,14 +107,29 @@ const ValidationConducteur = () => {
   // Source serveur directe pour affectations
   const { data: affByCond = [] } = useAffectationsByConducteur(conducteurId || "", selectedWeek);
   
+  // Charger TOUTES les affectations de la semaine (pour protection contre modifications d'autres conducteurs)
+  const { data: allAffectations = [] } = useAffectationsFinisseursJours(selectedWeek);
+  
   // Construire la liste des affectations: priorité à la source locale, sinon serveur
   const affectationsFromHook = useMemo(() => 
     affByCond.map(a => ({ 
       finisseur_id: a.finisseur_id, 
       date: a.date, 
-      chantier_id: a.chantier_id 
+      chantier_id: a.chantier_id,
+      conducteur_id: a.conducteur_id
     })), 
     [affByCond]
+  );
+  
+  // Enrichir toutes les affectations avec les infos nécessaires
+  const allAffectationsEnriched = useMemo(() => 
+    allAffectations.map(a => ({
+      finisseur_id: a.finisseur_id,
+      date: a.date,
+      chantier_id: a.chantier_id,
+      conducteur_id: a.conducteur_id
+    })),
+    [allAffectations]
   );
   
   const affectationsJours = affectationsLocal ?? affectationsFromHook;
@@ -494,6 +509,7 @@ const ValidationConducteur = () => {
                           onEntriesChange={setTimeEntries}
                           mode="conducteur"
                           affectationsJours={affectationsJours}
+                          allAffectations={allAffectationsEnriched}
                         />
 
                         <Card className="p-6 shadow-md border-border/50">
