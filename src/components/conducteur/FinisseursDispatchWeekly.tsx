@@ -36,6 +36,7 @@ import {
   useDeleteAffectationJour,
   useAffectationsPreviousWeekByConducteur,
   useAffectationsCurrentWeekByConducteur,
+  useFinisseursPartiellementAffectes,
 } from "@/hooks/useAffectationsFinisseursJours";
 import { useCopyPreviousWeekFinisseurs } from "@/hooks/useCopyPreviousWeekFinisseurs";
 import { useCreateFicheJourForAffectation } from "@/hooks/useCreateFicheJourForAffectation";
@@ -71,6 +72,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     useAffectationsCurrentWeekByConducteur(conducteurId, semaine);
   const { data: finisseursFichesIds = [], isLoading: loadingFiches } = 
     useFinisseursFichesThisWeek(conducteurId, semaine);
+  const { data: finisseursPartielsIds = [], isLoading: loadingPartiels } = 
+    useFinisseursPartiellementAffectes(semaine);
 
   const upsertMutation = useUpsertAffectationJour();
   const deleteMutation = useDeleteAffectationJour();
@@ -190,15 +193,19 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     );
   };
 
-  // Finisseurs de "mon équipe" (avec affectations OU avec fiches)
+  // Finisseurs de "mon équipe" (avec affectations OU avec fiches OU partiellement affectés)
   const mesFinisseursActuels = useMemo(() => {
-    // Union des deux listes : ceux avec affectations + ceux avec fiches
+    // Union de trois listes :
+    // 1. Ceux avec affectations par CE conducteur (semaine en cours)
+    // 2. Ceux avec fiches pour CE conducteur (indépendamment des affectations)
+    // 3. Ceux partiellement affectés (1-4 jours) par N'IMPORTE QUEL conducteur
     const mesFinisseursActuelsIds = new Set([
       ...finisseursCurrentIds,
-      ...finisseursFichesIds
+      ...finisseursFichesIds,
+      ...finisseursPartielsIds,
     ]);
     return finisseurs.filter(f => mesFinisseursActuelsIds.has(f.id));
-  }, [finisseurs, finisseursCurrentIds, finisseursFichesIds]);
+  }, [finisseurs, finisseursCurrentIds, finisseursFichesIds, finisseursPartielsIds]);
 
   // Finisseurs à afficher selon recherche
   const finisseursToDisplay = useMemo(() => {
@@ -569,6 +576,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                           }
                         >
                           {affectedCount}/5 jours
+                          {statut === "partiel" && days.some(day => isFinisseurAffectedElsewhere(finisseur.id, day.date)) && " (partagé)"}
                         </Badge>
                       </div>
                     </AccordionTrigger>
