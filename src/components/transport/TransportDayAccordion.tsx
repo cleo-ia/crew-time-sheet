@@ -1,7 +1,8 @@
-import { Plus, Trash2, User } from "lucide-react";
+import { Plus, Trash2, User, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import {
   AccordionItem,
   AccordionTrigger,
@@ -54,6 +55,32 @@ export const TransportDayAccordion = ({
   const conducteurNom = conducteurData 
     ? `${conducteurData.prenom} ${conducteurData.nom}` 
     : "";
+  
+  // Récupérer les maçons pour détecter les trajets perso
+  const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
+
+  // Détecter si un conducteur assigné est en "Trajet perso"
+  const hasTrajetPersoIssue = useMemo(() => {
+    if (!day.vehicules || day.vehicules.length === 0) return false;
+    
+    return day.vehicules.some((vehicule) => {
+      // Vérifier conducteur matin
+      if (vehicule.conducteurMatinId) {
+        const maconMatin = macons.find(m => m.id === vehicule.conducteurMatinId);
+        const jourMatin = maconMatin?.ficheJours?.find(j => j.date === day.date);
+        if (jourMatin?.trajet_perso) return true;
+      }
+      
+      // Vérifier conducteur soir
+      if (vehicule.conducteurSoirId) {
+        const maconSoir = macons.find(m => m.id === vehicule.conducteurSoirId);
+        const jourSoir = maconSoir?.ficheJours?.find(j => j.date === day.date);
+        if (jourSoir?.trajet_perso) return true;
+      }
+      
+      return false;
+    });
+  }, [day.vehicules, day.date, macons]);
   
   const addVehicule = useCallback(() => {
     const newVehicule: TransportVehicle = {
@@ -109,7 +136,12 @@ export const TransportDayAccordion = ({
     <AccordionItem value={day.date} className="border rounded-lg mb-2">
       <AccordionTrigger className="hover:no-underline px-4 py-3">
         <div className="flex items-center justify-between w-full pr-4">
-          <span className="font-medium capitalize">{dayLabel}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium capitalize">{dayLabel}</span>
+            {hasTrajetPersoIssue && (
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            )}
+          </div>
           <span className="text-sm text-muted-foreground">
             {vehiculeCount === 0 
               ? "Aucun véhicule" 
