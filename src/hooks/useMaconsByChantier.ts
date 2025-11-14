@@ -14,6 +14,7 @@ export interface FicheJour {
   ville_du_jour?: string | null;
   trajet_perso?: boolean;
   commentaire?: string | null;
+  code_trajet?: string | null;
 }
 
 export interface MaconWithFiche {
@@ -73,7 +74,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
           if (fichChef?.id) {
             const { data: jours } = await supabase
               .from("fiches_jours")
-              .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire")
+              .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire, code_trajet")
               .eq("fiche_id", fichChef.id)
               .order("date");
             
@@ -91,6 +92,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
                 ville_du_jour: j.ville_du_jour || null,
                 trajet_perso: !!j.trajet_perso,
                 commentaire: j.commentaire || null,
+                code_trajet: j.code_trajet || null,
               }));
               
               paniersChef = jours.filter(j => j.PA).length;
@@ -171,28 +173,29 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
             let trajets = 0;
             let intemperie = 0;
             
-            if (fiche?.id) {
-              const { data: jours } = await supabase
-                .from("fiches_jours")
-                .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire")
-                .eq("fiche_id", fiche.id)
-                .order("date");
+        if (fiche?.id) {
+          const { data: jours } = await supabase
+            .from("fiches_jours")
+            .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire, code_trajet")
+            .eq("fiche_id", fiche.id)
+            .order("date");
               
-              if (jours) {
-                ficheJours = jours.map(j => ({
-                  id: j.id,
-                  date: j.date,
-                  heures: Number(j.heures || 0),
-                  HNORM: Number(j.HNORM || 0),
-                  pause_minutes: j.pause_minutes || 0,
-                  PA: j.PA || false,
-                  T: Number(j.T || 0),
-                  HI: Number(j.HI || 0),
-                  code_chantier_du_jour: j.code_chantier_du_jour || null,
-                  ville_du_jour: j.ville_du_jour || null,
-                  trajet_perso: !!j.trajet_perso,
-                  commentaire: j.commentaire || null,
-                }));
+          if (jours) {
+            ficheJours = jours.map(j => ({
+              id: j.id,
+              date: j.date,
+              heures: Number(j.heures || 0),
+              HNORM: Number(j.HNORM || 0),
+              pause_minutes: j.pause_minutes || 0,
+              PA: j.PA || false,
+              T: Number(j.T || 0),
+              HI: Number(j.HI || 0),
+              code_chantier_du_jour: j.code_chantier_du_jour || null,
+              ville_du_jour: j.ville_du_jour || null,
+              trajet_perso: !!j.trajet_perso,
+              commentaire: j.commentaire || null,
+              code_trajet: j.code_trajet || null,
+            }));
                 
                 paniers = jours.filter(j => j.PA).length;
                 trajets = jours.filter(j => j.trajet_perso || (j.T && Number(j.T) > 0)).length;

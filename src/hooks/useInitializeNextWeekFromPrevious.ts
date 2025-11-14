@@ -97,6 +97,8 @@ export const useInitializeNextWeekFromPrevious = () => {
               HNORM: jour.HNORM,
               heures: jour.heures,
               HI: jour.HI || 0,
+              T: jour.T || 0,
+              trajet_perso: jour.trajet_perso || false,
               code_trajet: jour.code_trajet || null,
               PA: jour.PA || false,
               pause_minutes: jour.pause_minutes || 0,
