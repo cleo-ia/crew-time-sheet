@@ -108,8 +108,8 @@ export const useRHConsolidated = (filters: any) => {
         heuresSupp: emp.intemperies,
         absences: emp.absences,
         paniers: emp.paniers,
-        trajets: emp.trajets,
-        trajetsPerso: emp.trajetsPerso,
+        trajets: emp.totalJoursTrajets, // ✅ NOUVEAU : somme totale
+        trajetsPerso: emp.trajetsParCode?.T_PERSO || 0, // ✅ NOUVEAU : trajets perso
         statut: emp.statut,
         anomalies: emp.anomalies?.length || 0,
         chantier_codes: emp.chantier_codes,

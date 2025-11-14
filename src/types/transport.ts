@@ -1,3 +1,36 @@
+// ===== TYPES DE CODE TRAJET =====
+export type CodeTrajet = 
+  | "T_PERSO"   // Voiture personnelle
+  | "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "T8" | "T9" 
+  | "T10" | "T11" | "T12" | "T13" | "T14" | "T15" | "T16" | "T17"
+  | "T31" | "T35"  // Trajets spéciaux
+  | "GD";          // Grand déplacement
+
+export const CODE_TRAJET_OPTIONS: { value: CodeTrajet | "AUCUN"; label: string }[] = [
+  { value: "AUCUN", label: "Aucun" },
+  { value: "T_PERSO", label: "T Perso (voiture perso)" },
+  { value: "T1", label: "T1" },
+  { value: "T2", label: "T2" },
+  { value: "T3", label: "T3" },
+  { value: "T4", label: "T4" },
+  { value: "T5", label: "T5" },
+  { value: "T6", label: "T6" },
+  { value: "T7", label: "T7" },
+  { value: "T8", label: "T8" },
+  { value: "T9", label: "T9" },
+  { value: "T10", label: "T10" },
+  { value: "T11", label: "T11" },
+  { value: "T12", label: "T12" },
+  { value: "T13", label: "T13" },
+  { value: "T14", label: "T14" },
+  { value: "T15", label: "T15" },
+  { value: "T16", label: "T16" },
+  { value: "T17", label: "T17" },
+  { value: "T31", label: "T31" },
+  { value: "T35", label: "T35" },
+  { value: "GD", label: "GD (grand déplacement)" },
+];
+
 export interface TransportDay {
   date: string;
   conducteurAllerId: string;

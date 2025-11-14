@@ -103,9 +103,8 @@ export const useInitializeNextWeekMacons = () => {
               HNORM: hoursForDay,
               heures: hoursForDay,
               HI: 0,
-              T: 1,
+              code_trajet: null,  // ✅ Utilisateur devra choisir
               PA: true,
-              trajet_perso: false,
               pause_minutes: 0,
               code_chantier_du_jour: chantierCode,
               ville_du_jour: chantierVille,

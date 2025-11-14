@@ -42,8 +42,8 @@ export interface EmployeeWithDetails {
   intemperies: number;
   absences: number;
   paniers: number;
-  trajets: number;
-  trajetsPerso: number;
+  trajetsParCode: Record<string, number>;
+  totalJoursTrajets: number;
   totalHeures: number;
   statut: string;
   anomalies?: string[];
@@ -265,15 +265,14 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
             ? "Intérimaire"
             : "Maçon";
 
-    let heuresNormales = 0;
-    let intemperies = 0;
-    let absences = 0;
-    let paniers = 0;
-    let trajets = 0;
-    let compteurJoursTrajets = 0;
-    let trajetsPerso = 0;
-    let totalHeures = 0;
-    const detailJours: EmployeeDetail[] = [];
+        let heuresNormales = 0;
+        let intemperies = 0;
+        let absences = 0;
+        let paniers = 0;
+        const trajetsParCode: Record<string, number> = {}; // ✅ NOUVEAU
+        let totalJoursTrajets = 0; // ✅ NOUVEAU
+        let totalHeures = 0;
+        const detailJours: EmployeeDetail[] = [];
 
     for (const fiche of fiches) {
       const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
@@ -310,19 +309,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           absences++;
         }
         
-        if (panier) {
-          paniers++;
-        }
+        if (jour.PA) paniers++;
         
-        // Compter les jours avec trajet (indemnisé OU perso)
-        if (isTrajetPerso || trajet > 0) {
-          compteurJoursTrajets += 1;
-        }
-        
-        trajets += trajet;
-        
-        if (isTrajetPerso) {
-          trajetsPerso += 1; // Compte 1 trajet perso par jour où la case est cochée
+        // ✅ NOUVEAU : Compteur par code trajet
+        if (jour.code_trajet) {
+          trajetsParCode[jour.code_trajet] = (trajetsParCode[jour.code_trajet] || 0) + 1;
+          totalJoursTrajets++;
         }
 
         // Déterminer si c'est une absence (employé pas présent)
@@ -335,8 +327,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           heures: heuresDuJour,
           intemperie,
           panier,
-          trajet,
-          trajetPerso: jour.trajet_perso === true,
+          trajet: jour.code_trajet || null,  // ✅ Code trajet
+          trajetPerso: jour.code_trajet === "T_PERSO",
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
           regularisationM1: (jour as any).regularisation_m1 || "",

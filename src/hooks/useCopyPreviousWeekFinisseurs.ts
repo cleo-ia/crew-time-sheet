@@ -137,7 +137,7 @@ export const useCopyPreviousWeekFinisseurs = () => {
               HNORM: hoursForDay,
               heures: hoursForDay,
               HI: 0,
-              T: 0,
+              code_trajet: null,
               PA: false,
               pause_minutes: 0,
             };

@@ -6,8 +6,7 @@ interface DayData {
   overtime: number;
   absent: boolean;
   panierRepas: boolean;
-  trajet: boolean;
-  trajetPerso: boolean;
+  codeTrajet?: string | null;  // Code trajet (T_PERSO, T1-T17, T31, T35, GD)
   heuresIntemperie: number;
   chantierId?: string | null;
   chantierCode?: string | null;
@@ -145,7 +144,7 @@ export const useAutoSaveFiche = () => {
               HNORM: defaultHours[index],
               heures: defaultHours[index],
               HI: 0,
-              T: 1,
+              code_trajet: null,  // Utilisateur devra choisir
               PA: true,
               pause_minutes: 0,
             }));
@@ -187,8 +186,7 @@ export const useAutoSaveFiche = () => {
                 heuresIntemperie: 0,
                 overtime: 0,
                 panierRepas: cur?.panierRepas ?? true,
-                trajet: cur?.trajet ?? true,
-                trajetPerso: cur?.trajetPerso ?? false,
+                codeTrajet: cur?.codeTrajet ?? null,
                 chantierId: cur?.chantierId,
                 chantierCode: cur?.chantierCode,
                 chantierVille: cur?.chantierVille,
@@ -209,15 +207,14 @@ export const useAutoSaveFiche = () => {
           const dayData = normalizedDays[dayName];
           const defaultHour = standardHours[dayName]; // 8h pour Lundi-Jeudi, 7h pour Vendredi
           
-          // Base payload sans écrasement de chantier
+          // Base payload
           const baseEntry: any = {
             fiche_id: ficheId,
             date: dates[dayName],
             heures: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HNORM: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HI: dayData?.heuresIntemperie || 0,
-            T: (dayData?.trajet ?? true) ? 1 : 0, // 1 si coché, 0 si décoché (défaut: 1)
-            trajet_perso: !!dayData?.trajetPerso,
+            code_trajet: dayData?.codeTrajet || null,  // Code trajet sélectionné par l'utilisateur
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
             commentaire: dayData?.commentaire || null,
