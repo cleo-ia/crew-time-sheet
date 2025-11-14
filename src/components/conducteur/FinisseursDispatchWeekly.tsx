@@ -155,8 +155,9 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
 
   // Fonction pour scroller vers un finisseur
   const scrollToFinisseur = (finisseurId: string) => {
-    // Si le finisseur n'a aucune affectation, l'ajouter aux pending
-    if (getAffectedDaysCount(finisseurId) === 0 && !pendingFinisseurs.includes(finisseurId)) {
+    // Si le finisseur n'est pas déjà dans "Mon équipe" et pas pending, l'ajouter aux pending
+    const isInTeam = mesFinisseursActuels.some(f => f.id === finisseurId);
+    if (!isInTeam && !pendingFinisseurs.includes(finisseurId)) {
       setPendingFinisseurs(prev => [...prev, finisseurId]);
     }
     
