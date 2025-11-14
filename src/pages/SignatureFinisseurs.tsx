@@ -382,9 +382,15 @@ const SignatureFinisseurs = () => {
                       const isExpanded = expandedRows.has(finisseur.id);
                       const stats = calculateAffectedStats(finisseur);
                       
-                      // Calculer les trajets personnels et d'entreprise
-                      const countTrajetPerso = transportData?.days?.filter((day: any) => day.trajet_perso === true).length || 0;
-                      const countTrajetsEntreprise = transportData?.days?.filter((day: any) => !day.trajet_perso && day.immatriculation).length || 0;
+                      // Filtrer les jours de transport pour ne garder QUE ceux affectés au conducteur actuel
+                      const affectedDatesSet = new Set(finisseur.affectedDays?.map(a => a.date) || []);
+                      const relevantTransportDays = transportData?.days?.filter((day: any) => 
+                        affectedDatesSet.has(day.date)
+                      ) || [];
+                      
+                      // Calculer les trajets personnels et d'entreprise UNIQUEMENT sur les jours affectés
+                      const countTrajetPerso = relevantTransportDays.filter((day: any) => day.trajet_perso === true).length;
+                      const countTrajetsEntreprise = relevantTransportDays.filter((day: any) => !day.trajet_perso && day.immatriculation).length;
                       
                       // Calculer les absences (jours affectés avec HNORM=0 et pas trajet perso)
                       const countAbsences = finisseur.ficheJours?.filter(jour => {
