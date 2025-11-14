@@ -92,17 +92,16 @@ export const useInitializeNextWeekFromPrevious = () => {
             
             return {
               fiche_id: newFiche.id,
-        return {
-          date: newDate,
-          HNORM: jour.HNORM,
-          heures: jour.heures,
-          HI: jour.HI || 0,
-          code_trajet: jour.code_trajet || null,
-          PA: jour.PA || false,
-          pause_minutes: jour.pause_minutes || 0,
-          code_chantier_du_jour: jour.code_chantier_du_jour,
-          ville_du_jour: jour.ville_du_jour,
-        };
+              date: format(newDate, "yyyy-MM-dd"),
+              HNORM: jour.HNORM,
+              heures: jour.heures,
+              HI: jour.HI || 0,
+              code_trajet: jour.code_trajet || null,
+              PA: jour.PA || false,
+              pause_minutes: jour.pause_minutes || 0,
+              code_chantier_du_jour: jour.code_chantier_du_jour,
+              ville_du_jour: jour.ville_du_jour,
+            };
           });
 
           const { error: joursError } = await supabase

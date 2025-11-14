@@ -19,7 +19,7 @@ export interface EmployeeDetail {
   heures: number;
   intemperie: number;
   panier: boolean;
-  trajet: number;
+  trajet: string | null;
   trajetPerso: boolean;
   typeAbsence?: string;
   isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent)
@@ -312,8 +312,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         if (jour.PA) paniers++;
         
         // ✅ NOUVEAU : Compteur par code trajet
-        if (jour.code_trajet) {
-          trajetsParCode[jour.code_trajet] = (trajetsParCode[jour.code_trajet] || 0) + 1;
+        if ((jour as any).code_trajet) {
+          trajetsParCode[(jour as any).code_trajet] = (trajetsParCode[(jour as any).code_trajet] || 0) + 1;
           totalJoursTrajets++;
         }
 
@@ -327,8 +327,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           heures: heuresDuJour,
           intemperie,
           panier,
-          trajet: jour.code_trajet || null,  // ✅ Code trajet
-          trajetPerso: jour.code_trajet === "T_PERSO",
+          trajet: (jour as any).code_trajet || null,  // ✅ Code trajet
+          trajetPerso: (jour as any).code_trajet === "T_PERSO",
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
           regularisationM1: (jour as any).regularisation_m1 || "",
@@ -374,8 +374,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         intemperies: Math.round(intemperies * 100) / 100,
         absences,
         paniers,
-        trajets: Math.round(trajets * 100) / 100,
-        trajetsPerso: Math.round(trajetsPerso * 100) / 100,
+        trajetsParCode,
+        totalJoursTrajets,
         totalHeures: Math.round(totalHeures * 100) / 100,
         statut: fiches.every(f => f.statut === "AUTO_VALIDE") ? "Validé" : "Partiel",
         detailJours,
