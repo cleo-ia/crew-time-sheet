@@ -59,7 +59,10 @@ const ValidationConducteur = () => {
   
   // Mettre à jour selectedWeek quand initialWeek change
   useEffect(() => {
-    if (initialWeek) {
+    const fromSignature = sessionStorage.getItem('fromSignature');
+    
+    // Ne pas écraser selectedWeek si on vient de signer (la semaine en URL est prioritaire)
+    if (initialWeek && fromSignature !== 'true') {
       setSelectedWeek(initialWeek);
     }
   }, [initialWeek]);
