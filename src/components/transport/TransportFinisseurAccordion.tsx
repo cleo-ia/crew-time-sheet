@@ -13,7 +13,14 @@ interface TransportFinisseurAccordionProps {
   finisseurId: string;
   finisseurNom: string;
   semaine: string;
+  conducteurId?: string;
   affectedDates: string[]; // 🆕 Liste des dates ISO affectées (ex: ["2025-01-06", "2025-01-07"])
+  allAffectations?: Array<{
+    finisseur_id: string;
+    date: string;
+    chantier_id: string;
+    conducteur_id: string;
+  }>;
   trajetPersoByDate: Map<string, boolean>; // 🆕 Indique si chaque date est en trajet perso
   initialData: {
     days: TransportFinisseurDay[];
@@ -26,7 +33,9 @@ export const TransportFinisseurAccordion = ({
   finisseurId,
   finisseurNom,
   semaine,
+  conducteurId,
   affectedDates,
+  allAffectations,
   trajetPersoByDate,
   initialData,
   onUpdate,
@@ -53,6 +62,21 @@ export const TransportFinisseurAccordion = ({
       return affectedDates.includes(dateStr);
     });
   }, [semaine, affectedDates]);
+
+  // Helper : vérifie si un jour spécifique est affecté par un AUTRE conducteur
+  const isDayAffectedByOtherConducteur = (dateISO: string): boolean => {
+    if (!allAffectations || !conducteurId) return false;
+    
+    const affectation = allAffectations.find(
+      a => a.finisseur_id === finisseurId && a.date === dateISO
+    );
+    
+    // Si pas d'affectation trouvée OU si c'est NOTRE conducteur : pas bloqué
+    if (!affectation || affectation.conducteur_id === conducteurId) return false;
+    
+    // Sinon : c'est un autre conducteur
+    return true;
+  };
 
   // Si aucun jour affecté
   if (weekDays.length === 0) {
@@ -202,12 +226,17 @@ export const TransportFinisseurAccordion = ({
           // Détection d'absence
           const isAbsent = absenceDates.has(dateStr);
           
+          // Vérifier si ce jour est affecté par un autre conducteur
+          const isDayBlocked = isDayAffectedByOtherConducteur(dateStr);
+          
           return (
             <Card 
               key={dateStr} 
               className={`p-3 border ${
                 isAbsent 
-                  ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800" 
+                  ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800"
+                  : isDayBlocked
+                  ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800"
                   : "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800"
               }`}
             >
@@ -215,11 +244,19 @@ export const TransportFinisseurAccordion = ({
                 <div className="flex items-center justify-between">
                   <Label className={`text-sm font-medium capitalize ${
                     isAbsent 
-                      ? "text-red-900 dark:text-red-100" 
+                      ? "text-red-900 dark:text-red-100"
+                      : isDayBlocked
+                      ? "text-amber-900 dark:text-amber-100"
                       : "text-blue-900 dark:text-blue-100"
                   }`}>
                     {dayName} {dayDate}
                   </Label>
+                  
+                  {isDayBlocked && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 rounded-full border border-amber-300 dark:border-amber-700">
+                      🔒 Autre conducteur
+                    </span>
+                  )}
                   
                   {isAbsent && (
                     <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full border border-red-300 dark:border-red-700">
@@ -258,22 +295,37 @@ export const TransportFinisseurAccordion = ({
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    // Affichage normal : sélecteur de véhicule
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-1 block">
-                        Véhicule
-                      </Label>
-                      <VehiculeSelectorFinisseurs
-                        value={days[index]?.immatriculation || ""}
-                        onChange={(value) => handleDayVehiculeChange(index, value)}
-                        date={days[index]?.date || ""}
-                        semaine={semaine}
-                        excludeFinisseurId={finisseurId}
-                        localVehiculeUsage={localVehiculeUsage}
-                      />
+                  ) : isDayBlocked ? (
+                    // Affichage si jour bloqué par un autre conducteur
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium">Jour affecté par un autre conducteur</p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            Vous ne pouvez pas modifier le véhicule pour ce jour
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  ) : (
+                  // Affichage normal : sélecteur de véhicule
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">
+                      Véhicule
+                    </Label>
+                    <VehiculeSelectorFinisseurs
+                      value={days[index]?.immatriculation || ""}
+                      onChange={(value) => handleDayVehiculeChange(index, value)}
+                      date={days[index]?.date || ""}
+                      semaine={semaine}
+                      excludeFinisseurId={finisseurId}
+                      localVehiculeUsage={localVehiculeUsage}
+                    />
+                  </div>
+                )}
                   
                   <div className={`text-xs p-2 rounded border ${
                     isAbsent
