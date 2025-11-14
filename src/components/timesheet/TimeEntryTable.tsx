@@ -1408,16 +1408,18 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-4 pb-2 px-4">
-                          <TransportFinisseurAccordion
-                            finisseurId={entry.employeeId}
-                            finisseurNom={entry.employeeName}
-                            semaine={weekId}
-                            affectedDates={
-                              affectationsJours
-                                ?.filter(a => a.finisseur_id === entry.employeeId)
-                                .map(a => a.date) || []
-                            }
-                            trajetPersoByDate={
+                    <TransportFinisseurAccordion
+                      finisseurId={entry.employeeId}
+                      finisseurNom={entry.employeeName}
+                      semaine={weekId}
+                      conducteurId={chefId}
+                      affectedDates={
+                        affectationsJours
+                          ?.filter(a => a.finisseur_id === entry.employeeId)
+                          .map(a => a.date) || []
+                      }
+                      allAffectations={allAffectations}
+                      trajetPersoByDate={
                               // Créer un Map date → trajetPerso depuis entry.days
                               Object.entries(entry.days).reduce((map, [dayName, dayData]) => {
                                 const dayIndex = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].indexOf(dayName);
