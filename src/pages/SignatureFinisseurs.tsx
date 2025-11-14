@@ -262,7 +262,7 @@ const SignatureFinisseurs = () => {
       sessionStorage.setItem('fromSignature', 'true');
 
       // 5. Rediriger vers la semaine suivante
-      setTimeout(() => navigate(`/validation-conducteur?tab=mes-heures&semaine=${nextWeek}`), 3000);
+      navigate(`/validation-conducteur?tab=mes-heures&semaine=${nextWeek}`);
     } catch (error) {
       console.error("Erreur:", error);
       toast({
