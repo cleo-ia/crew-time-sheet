@@ -123,8 +123,6 @@ export const useTransportDataV2 = (ficheId: string | null, conducteurId?: string
     },
     enabled: !!ficheId,
     refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 30000, // 30 secondes - évite les refetch intempestifs
+    staleTime: 30000,
   });
 };

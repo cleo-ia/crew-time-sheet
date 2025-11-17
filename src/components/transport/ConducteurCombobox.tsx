@@ -49,7 +49,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"

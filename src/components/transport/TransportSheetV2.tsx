@@ -237,19 +237,22 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       try {
-        await autoSave.mutateAsync({
+        const result = await autoSave.mutateAsync({
           ficheId: ficheId || "",
           semaine: selectedWeekString,
           chantierId,
           chefId,
           days: transportDays,
         });
-        // Ne pas invalider les queries pendant l'auto-save pour éviter les re-renders
-        // L'invalidation se fait uniquement lors de la fermeture de l'accordéon
+        // Invalider SEULEMENT si des données ont été sauvegardées
+        if (result?.saved) {
+          queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
+          queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
+        }
       } finally {
         setIsSaving(false);
       }
-    }, 5000);
+    }, 2000);
 
     return () => {
       if (debounceTimer.current) {
