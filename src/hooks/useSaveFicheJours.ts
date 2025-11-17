@@ -21,6 +21,7 @@ interface TimeEntry {
       chantierVille?: string | null;
       chantierNom?: string | null;
       commentaire?: string | null;
+      codeTrajet?: string | null;
     };
   };
 }
@@ -79,7 +80,8 @@ export const useSaveFicheJours = () => {
               HI: dayData.heuresIntemperie,
               PA: dayData.panierRepas,
               T: dayData.trajet ? 1 : 0,
-              trajet_perso: dayData.trajetPerso,
+              trajet_perso: dayData.trajetPerso || dayData.codeTrajet === "T_PERSO",
+              code_trajet: dayData.codeTrajet ?? null,
               commentaire: dayData.commentaire ?? null,
             };
             
@@ -105,7 +107,45 @@ export const useSaveFicheJours = () => {
               throw updateError;
             }
           } else {
-            console.warn(`No fiche_jour found for fiche ${entry.ficheId} on ${date}`);
+            // Créer le fiche_jour s'il y a des données à enregistrer
+            const shouldCreate = !dayData.absent && (
+              dayData.hours > 0 ||
+              dayData.heuresIntemperie > 0 ||
+              dayData.panierRepas === true ||
+              !!dayData.codeTrajet ||
+              !!dayData.commentaire ||
+              !!dayData.chantierCode ||
+              !!dayData.chantierVille
+            );
+            
+            if (shouldCreate) {
+              const code = dayData.chantierCode 
+                ?? chantierCodeById.get(dayData.chantierId || "");
+              
+              const { error: insertError } = await supabase
+                .from("fiches_jours")
+                .insert({
+                  fiche_id: entry.ficheId,
+                  date,
+                  heures: dayData.hours,
+                  HNORM: dayData.hours,
+                  HI: dayData.heuresIntemperie,
+                  PA: dayData.panierRepas,
+                  T: dayData.trajet ? 1 : 0,
+                  trajet_perso: dayData.trajetPerso || dayData.codeTrajet === "T_PERSO",
+                  code_trajet: dayData.codeTrajet ?? null,
+                  code_chantier_du_jour: code || null,
+                  ville_du_jour: dayData.chantierVille || null,
+                  commentaire: dayData.commentaire ?? null,
+                });
+              
+              if (insertError) {
+                console.error("Error creating fiche_jour:", insertError);
+                throw insertError;
+              }
+            } else {
+              console.warn(`No fiche_jour found for fiche ${entry.ficheId} on ${date} and no data to create`);
+            }
           }
         }
       }
