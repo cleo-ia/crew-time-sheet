@@ -249,7 +249,7 @@ export interface RHFicheDetailData {
     heuresNormales: number;
     heuresIntemperics: number;
     panier: boolean;
-    trajet: number;
+    codeTrajet: string | null;
     trajetPerso: boolean;
     typeAbsence?: string;
     commentaire?: string;
@@ -354,7 +354,7 @@ export const useRHFicheDetail = (ficheId: string) => {
           heuresNormales: Number(jour.heures) || Number(jour.HNORM) || 0,
           heuresIntemperics: Number(jour.HI) || 0,
           panier: jour.PA || false,
-          trajet: Number(jour.T) || 0,
+          codeTrajet: jour.code_trajet || null,
           trajetPerso: jour.trajet_perso === true,
           typeAbsence: (jour as any).type_absence || null,
           commentaire: jour.commentaire || "",
@@ -392,7 +392,7 @@ export const useRHFicheDetail = (ficheId: string) => {
         heuresNormales: item.heuresNormales,
         heuresIntemperics: item.heuresIntemperics,
         panier: item.panier,
-        trajet: item.trajet,
+        codeTrajet: item.codeTrajet,
         trajetPerso: item.trajetPerso,
         typeAbsence: item.typeAbsence,
         commentaire: item.commentaire,
@@ -410,7 +410,7 @@ export const useRHFicheDetail = (ficheId: string) => {
         const totalHeures = joursFiche.reduce((sum, j) => sum + (Number(j.heures) || Number(j.HNORM) || 0), 0);
         const totalIntemperics = joursFiche.reduce((sum, j) => sum + (Number(j.HI) || 0), 0);
         const paniers = joursFiche.filter(j => j.PA === true).length;
-        const trajets = joursFiche.reduce((sum, j) => sum + (Number(j.T) || 0), 0);
+        const trajets = joursFiche.filter(j => j.code_trajet).length;
         const trajetsPerso = joursFiche.filter(j => j.trajet_perso === true).length;
 
         const salarie = salarieMap.get(salarieId);

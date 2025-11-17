@@ -22,7 +22,7 @@ interface RHEmployeeAccordionProps {
     heuresNormales: number;
     heuresIntemperics: number;
     panier: boolean;
-    trajet: number;
+    codeTrajet: string | null;
     trajetPerso: boolean;
     commentaire?: string;
   }>;
@@ -109,7 +109,13 @@ export const RHEmployeeAccordion = ({ employee, joursSalarie }: RHEmployeeAccord
                     {jour.panier ? "✓" : "-"}
                   </TableCell>
                   <TableCell className="text-center">
-                    {jour.trajet > 0 ? "✓" : "-"}
+                    {(jour as any).codeTrajet ? (
+                      <span className="font-mono text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded font-medium">
+                        {(jour as any).codeTrajet}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     {jour.trajetPerso ? "✓" : "-"}
