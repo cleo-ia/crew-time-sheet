@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthProvider from "@/contexts/AuthProvider";
+import InstallPWA from "@/components/pwa/InstallPWA";
 import Index from "./pages/Index";
 import ValidationConducteur from "./pages/ValidationConducteur";
 import ConsultationRH from "./pages/ConsultationRH";
@@ -11,6 +12,7 @@ import SignatureMacons from "./pages/SignatureMacons";
 import SignatureFinisseurs from "./pages/SignatureFinisseurs";
 import AdminPanel from "./pages/AdminPanel";
 import Auth from "./pages/Auth";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
@@ -30,11 +32,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <InstallPWA />
       <AuthProvider>
         <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route element={<RequireAuth />}> 
+          <Route path="/install" element={<Install />} />
+          <Route element={<RequireAuth />}>
             {/* Saisie Chef - Accessible par: admin, chef */}
             <Route 
               path="/" 
