@@ -39,6 +39,9 @@ export const useCodeTrajetValidation = (timeEntries: TimeEntry[]): ValidationRes
       for (const day of dayNames) {
         const dayData = entry[day];
         
+        // Vérifier que dayData existe
+        if (!dayData) continue;
+        
         // Si l'employé a travaillé ce jour (hours > 0) ET n'est pas absent
         if (dayData.hours > 0 && !dayData.absent) {
           // Vérifier si code trajet OU trajet perso est renseigné
