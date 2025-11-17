@@ -41,14 +41,26 @@ function AuthProvider({ children }: AuthProviderProps) {
 
     // Écouter les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
-        setStatus('signed_out');
-      } else {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setStatus(newSession ? 'authenticated' : 'unknown');
+      console.debug('[AuthProvider] Auth event:', event, 'Session:', !!newSession);
+      
+      switch (event) {
+        case 'SIGNED_OUT':
+          setSession(null);
+          setUser(null);
+          setStatus('signed_out');
+          console.debug('[AuthProvider] Status -> signed_out');
+          break;
+        case 'INITIAL_SESSION':
+        case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+        case 'USER_UPDATED':
+        default:
+          setSession(newSession ?? null);
+          setUser(newSession?.user ?? null);
+          const newStatus = newSession ? 'authenticated' : 'signed_out';
+          setStatus(newStatus);
+          console.debug('[AuthProvider] Status ->', newStatus);
+          break;
       }
     });
 
@@ -63,15 +75,20 @@ function AuthProvider({ children }: AuthProviderProps) {
           if (!error) {
             setSession(existingSession);
             setUser(existingSession?.user ?? null);
-            setStatus(existingSession ? 'authenticated' : 'signed_out');
+            const status = existingSession ? 'authenticated' : 'signed_out';
+            setStatus(status);
+            console.debug('[AuthProvider] Initial session loaded, status:', status);
             return;
           }
+          
+          console.debug('[AuthProvider] getSession error, retry', i + 1, '/', delays.length);
           
           // Si c'est une erreur réseau et qu'on n'est pas à la dernière tentative, retry
           if (i < delays.length - 1) {
             await new Promise(resolve => setTimeout(resolve, delays[i]));
           }
         } catch (err) {
+          console.debug('[AuthProvider] getSession exception, retry', i + 1, '/', delays.length);
           // En cas d'erreur, retry sauf si c'est la dernière tentative
           if (i < delays.length - 1) {
             await new Promise(resolve => setTimeout(resolve, delays[i]));
@@ -79,8 +96,12 @@ function AuthProvider({ children }: AuthProviderProps) {
         }
       }
       
-      // Après toutes les tentatives, si toujours pas de session, marquer comme signed_out
-      setStatus('unknown');
+      // Après toutes les tentatives, purger la session corrompue et passer en signed_out
+      console.debug('[AuthProvider] All retries failed, purging session');
+      await supabase.auth.signOut().catch(() => {});
+      setSession(null);
+      setUser(null);
+      setStatus('signed_out');
     };
 
     getSessionWithRetry();
@@ -90,6 +111,21 @@ function AuthProvider({ children }: AuthProviderProps) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Watchdog: si status reste "unknown" après 3s, le forcer en "signed_out"
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStatus(currentStatus => {
+        if (currentStatus === 'unknown') {
+          console.debug('[AuthProvider] Watchdog: forcing unknown -> signed_out');
+          return 'signed_out';
+        }
+        return currentStatus;
+      });
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
