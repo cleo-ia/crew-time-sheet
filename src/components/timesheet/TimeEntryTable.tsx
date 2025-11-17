@@ -1336,7 +1336,9 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
                             {/* Colonne Trajet - Stack vertical */}
                             <div className="flex flex-col gap-2">
-                              {/* Code Trajet */}
+                              <label className="text-xs text-muted-foreground block mb-1">
+                                Trajet
+                              </label>
                               <CodeTrajetSelector
                                 value={dayData.codeTrajet || null}
                                 onChange={(value) => updateDayValue(entry.employeeId, day, "codeTrajet", value)}
