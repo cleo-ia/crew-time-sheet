@@ -25,6 +25,7 @@ export const useFicheDetailForEdit = (chantierId: string, semaine: string) => {
             code_chantier_du_jour,
             ville_du_jour,
             trajet_perso,
+            code_trajet,
             total_jour,
             commentaire
           )
