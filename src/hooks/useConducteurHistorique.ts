@@ -8,6 +8,7 @@ export interface FicheJourHistorique {
   HI: number;
   PA: boolean;
   T: number;
+  code_trajet: string | null;
   code_chantier_du_jour: string | null;
   ville_du_jour: string | null;
 }
@@ -162,7 +163,7 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
         const datesAffectees = Array.from(affectationDates.get(key)!);
         const { data: ficheJours, error: joursError } = await supabase
           .from("fiches_jours")
-          .select("date, heures, HNORM, HI, PA, T, code_chantier_du_jour, ville_du_jour, trajet_perso")
+          .select("date, heures, HNORM, HI, PA, T, code_trajet, code_chantier_du_jour, ville_du_jour, trajet_perso")
           .eq("fiche_id", fiche.id)
           .in("date", datesAffectees)
           .order("date");
