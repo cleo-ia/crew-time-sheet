@@ -630,7 +630,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           heuresNormales,
           heuresIntemperies,
           panier: !!jour.PA,
-          trajet: Number(jour.T) || 0,
+          codeTrajet: (jour as any).code_trajet || null,
           trajetPerso: !!(jour as any).trajet_perso,
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
@@ -649,7 +649,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         totalHeures: dailyDetails.reduce((sum, d) => sum + d.heuresNormales, 0),
         totalIntemperies: dailyDetails.reduce((sum, d) => sum + d.heuresIntemperies, 0),
         totalPaniers: dailyDetails.filter(d => d.panier).length,
-        totalTrajets: dailyDetails.reduce((sum, d) => sum + d.trajet, 0),
+        totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet).length,
       };
 
       // Récupérer isChef et role pour le salarié

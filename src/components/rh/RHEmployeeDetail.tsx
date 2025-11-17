@@ -234,33 +234,13 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     />
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
-                    <EditableCell
-                      value={day.trajet > 0}
-                      type="checkbox"
-                      disabled={isAbsent}
-                      onSave={async (checked) => {
-                        if (checked) {
-                          // Si on coche "Trajet", on décoche "Trajet Perso"
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "T",
-                            value: 1,
-                          });
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "trajet_perso",
-                            value: false,
-                          });
-                        } else {
-                          // Si on décoche "Trajet", on met juste à 0
-                          await updateFicheJour.mutateAsync({
-                            ficheJourId: day.ficheJourId,
-                            field: "T",
-                            value: 0,
-                          });
-                        }
-                      }}
-                    />
+                    {(day as any).codeTrajet ? (
+                      <span className="font-mono text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded font-medium">
+                        {(day as any).codeTrajet}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
                     <EditableCell
