@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useFicheModifiable } from "@/hooks/useFicheModifiable";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
+import { useCodeTrajetValidation } from "@/hooks/useCodeTrajetValidation";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -140,6 +141,9 @@ const Index = () => {
   const { isTransportComplete } = useTransportValidation(ficheId);
   const { toast } = useToast();
 
+  // Validation des codes trajets
+  const { isValid: areCodeTrajetsComplete, missingCount } = useCodeTrajetValidation(timeEntries);
+
   // Vérifier si la fiche est modifiable (pas encore transmise au conducteur ou RH)
   const { data: ficheModifiableData } = useFicheModifiable(
     selectedWeek,
@@ -186,6 +190,18 @@ const Index = () => {
         variant: "destructive",
         title: "❌ Fiche de trajet incomplète",
         description: "Vous devez remplir les 15 champs obligatoires de la fiche de trajet (5 jours × 3 informations : conducteur aller, conducteur retour et immatriculation) avant de passer à l'étape de signature.",
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Vérification obligatoire : Codes trajets renseignés
+    if (!areCodeTrajetsComplete) {
+      setIsSubmitting(false);
+      toast({
+        variant: "destructive",
+        title: "❌ Codes trajets manquants",
+        description: `${missingCount} code(s) trajet manquant(s). Tous les jours travaillés doivent avoir un code trajet renseigné (ou "Trajet perso" coché).`,
         duration: 5000,
       });
       return;
@@ -458,7 +474,7 @@ const Index = () => {
                     size="lg"
                     className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
                     onClick={handleSaveAndSign}
-                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable}
+                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !areCodeTrajetsComplete || !isFicheModifiable}
                   >
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                     Enregistrer et collecter les signatures
@@ -470,6 +486,16 @@ const Index = () => {
                     <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md">
                       <p className="text-sm text-red-800 dark:text-red-200 font-medium text-center">
                         ⚠️ La fiche de trajet doit être complétée avant de collecter les signatures
+                      </p>
+                    </div>
+                  )}
+                  {!areCodeTrajetsComplete && selectedWeek && selectedChantier && timeEntries.length > 0 && (
+                    <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-md">
+                      <p className="text-sm text-orange-800 dark:text-orange-200 font-medium text-center">
+                        ⚠️ {missingCount} code(s) trajet manquant(s)
+                      </p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-1 text-center">
+                        Tous les jours travaillés doivent avoir un code trajet
                       </p>
                     </div>
                   )}
