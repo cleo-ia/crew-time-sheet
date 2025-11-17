@@ -258,7 +258,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
               
               {/* COMMENTAIRES DU MOIS */}
-              <TableHead className="sticky right-0 z-10 bg-blue-50 shadow-sm min-w-[180px]">COMMENTAIRES DU MOIS</TableHead>
+              <TableHead className="bg-blue-50 min-w-[180px]">COMMENTAIRES DU MOIS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -361,7 +361,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <EditableCell value={row.modified.autresElements ?? (data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
                   
                   {/* COMMENTAIRES DU MOIS */}
-                  <EditableCell value={row.modified.commentaires ?? data.commentaires ?? "-"} onChange={(v) => handleCellChange(index, 'commentaires', v)} type="text" isModified={row.modified.commentaires !== undefined} cellClassName="sticky right-0 z-10 bg-background shadow-sm" />
+                  <EditableCell value={row.modified.commentaires ?? data.commentaires ?? "-"} onChange={(v) => handleCellChange(index, 'commentaires', v)} type="text" isModified={row.modified.commentaires !== undefined} />
                 </TableRow>
               );
             })}
