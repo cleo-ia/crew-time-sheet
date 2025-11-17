@@ -171,7 +171,7 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   heuresNormales: jour.heuresNormales,
                   heuresIntemperics: jour.heuresIntemperics,
                   panier: jour.panier,
-                  trajet: jour.trajet,
+                  codeTrajet: (jour as any).codeTrajet,
                   trajetPerso: jour.trajetPerso,
                   commentaire: jour.commentaire || "",
                 }))}
@@ -215,7 +215,15 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   <TableCell className="text-right">{jour.heuresNormales}h</TableCell>
                   <TableCell className="text-right">{jour.heuresIntemperics}h</TableCell>
                   <TableCell className="text-center">{jour.panier ? "✓" : "-"}</TableCell>
-                  <TableCell className="text-center">{jour.trajet}</TableCell>
+                  <TableCell className="text-center">
+                    {(jour as any).codeTrajet ? (
+                      <span className="font-mono text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded font-medium">
+                        {(jour as any).codeTrajet}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">{jour.trajetPerso ? "✓" : "-"}</TableCell>
                   <TableCell className="text-left text-sm text-muted-foreground">{jour.commentaire || "-"}</TableCell>
                 </TableRow>
