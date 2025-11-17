@@ -862,6 +862,28 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           }
         }
         
+        // Propagation automatique des codes trajet depuis le lundi
+        if (field === "codeTrajet" && day === "Lundi" && value) {
+          const daysToPropagate = ["Mardi", "Mercredi", "Jeudi", "Vendredi"];
+          const updatedDays = { ...entry.days, [day]: updatedDayData };
+          
+          // Propager uniquement aux jours qui n'ont pas déjà un code trajet et ne sont pas absents
+          daysToPropagate.forEach(nextDay => {
+            const nextDayData = updatedDays[nextDay];
+            if (!nextDayData?.codeTrajet && !nextDayData?.absent) {
+              updatedDays[nextDay] = {
+                ...nextDayData,
+                codeTrajet: value,
+              };
+            }
+          });
+          
+          return {
+            ...entry,
+            days: updatedDays,
+          };
+        }
+        
         return {
           ...entry,
           days: {
