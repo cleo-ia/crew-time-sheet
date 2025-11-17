@@ -29,6 +29,7 @@ type EditableRow = {
     absenceAbsInj?: number;
     absenceDate?: string;
     // Heures supp
+    heuresSupp25?: number;
     heuresSupp50?: number;
     // Trajets individuels
     trajetT1?: number;
@@ -318,8 +319,8 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <EditableCell value={row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0} onChange={(v) => handleCellChange(index, 'absenceAbsInj', v)} type="number" isModified={row.modified.absenceAbsInj !== undefined} />
                   
                   {/* HEURES SUPP */}
-                  <EditableCell value={row.modified.heuresSupp ?? data.heuresSupp ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp', v)} type="number" isModified={row.modified.heuresSupp !== undefined} />
-                  <EditableCell value={row.modified.heuresSupp50 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp50', v)} type="number" isModified={row.modified.heuresSupp50 !== undefined} />
+                  <EditableCell value={row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp25', v)} type="number" isModified={row.modified.heuresSupp25 !== undefined} />
+                  <EditableCell value={row.modified.heuresSupp50 ?? data.heuresSupp50 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp50', v)} type="number" isModified={row.modified.heuresSupp50 !== undefined} />
                   
                   {/* REPAS */}
                   <EditableCell value={row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0} onChange={(v) => handleCellChange(index, 'indemnitesRepas', v)} type="number" isModified={row.modified.indemnitesRepas !== undefined} />

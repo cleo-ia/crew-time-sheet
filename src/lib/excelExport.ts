@@ -308,9 +308,9 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
 
   data.forEach((emp) => {
     const { absences, dateText } = calculateAbsencesByType(emp);
-    // Pour l'instant, on met toutes les heures supp dans la colonne 25%
-    const heuresSupp25 = emp.heuresSupp;
-    const heuresSupp50 = 0;
+    // 🆕 Utilisation des heures supp calculées automatiquement
+    const heuresSupp25 = emp.heuresSupp25;
+    const heuresSupp50 = emp.heuresSupp50;
 
     const row = [
       emp.matricule,
