@@ -243,7 +243,8 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
       return allEmployees;
     },
     enabled: !!chantierId && !!semaine,
-    refetchOnMount: "always",
-    staleTime: 0,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30000, // 30 secondes - évite les refetch intempestifs
   });
 };
