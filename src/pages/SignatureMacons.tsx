@@ -364,8 +364,10 @@ const SignatureMacons = () => {
                                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                                           Perso
                                         </Badge>
-                                      ) : jour.T > 0 ? (
-                                        <span className="text-foreground">{jour.T}</span>
+                                      ) : jour.code_trajet && jour.code_trajet !== '' ? (
+                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                          {jour.code_trajet}
+                                        </Badge>
                                       ) : (
                                         <span className="text-muted-foreground">-</span>
                                       )}
