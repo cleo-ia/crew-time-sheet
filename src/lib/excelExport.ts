@@ -345,27 +345,27 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       emp.indemnitesRepas,
       // TRAJETS (TOTAL + T Perso + T1-T19,T31,T35 + GD)
       emp.indemnitesTrajet + emp.indemnitesTrajetPerso, // TOTAL
-      emp.indemnitesTrajetPerso, // T Perso
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      emp.indemnitesTrajet + emp.indemnitesTrajetPerso, // GD (total)
+      emp.trajetTPerso || 0, // T Perso
+      emp.trajetT1 || 0,     // T1
+      emp.trajetT2 || 0,     // T2
+      emp.trajetT3 || 0,     // T3
+      emp.trajetT4 || 0,     // T4
+      emp.trajetT5 || 0,     // T5
+      emp.trajetT6 || 0,     // T6
+      emp.trajetT7 || 0,     // T7
+      emp.trajetT8 || 0,     // T8
+      emp.trajetT9 || 0,     // T9
+      emp.trajetT10 || 0,    // T10
+      emp.trajetT11 || 0,    // T11
+      emp.trajetT12 || 0,    // T12
+      emp.trajetT13 || 0,    // T13
+      emp.trajetT14 || 0,    // T14
+      emp.trajetT15 || 0,    // T15
+      emp.trajetT16 || 0,    // T16
+      emp.trajetT17 || 0,    // T17
+      emp.trajetT31 || 0,    // T31
+      emp.trajetT35 || 0,    // T35
+      emp.trajetGD || 0,     // GD
       // Colonnes administratives (vides pour l'instant)
       "", // ACOMPTES
       "", // PRETS
