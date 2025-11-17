@@ -392,17 +392,6 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
     totalTrajets += emp.indemnitesTrajet || 0;
   });
 
-  // Ligne vide avant les totaux GD
-  sheet.addRow(Array(totalCols).fill(""));
-
-  // Lignes de résumé GD (structure uniquement)
-  const gdRow20 = Array(totalCols).fill("");
-  gdRow20[48] = "20 GD"; // Colonne 49 (GD ajustée)
-  sheet.addRow(gdRow20);
-
-  const gdRow23 = Array(totalCols).fill("");
-  gdRow23[48] = "23 GD"; // Colonne 49 (GD ajustée)
-  sheet.addRow(gdRow23);
 
   // Largeurs de colonnes
   const colWidths = [
