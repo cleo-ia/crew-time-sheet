@@ -326,27 +326,27 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   
                   {/* TRAJETS */}
                   <EditableCell value={row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0))} onChange={(v) => handleCellChange(index, 'trajetTotal', v)} type="number" isModified={row.modified.trajetTotal !== undefined} />
-                  <EditableCell value={row.modified.indemnitesTrajetPerso ?? data.indemnitesTrajetPerso ?? 0} onChange={(v) => handleCellChange(index, 'indemnitesTrajetPerso', v)} type="number" isModified={row.modified.indemnitesTrajetPerso !== undefined} />
-                  <EditableCell value={row.modified.trajetT1 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT1', v)} type="number" isModified={row.modified.trajetT1 !== undefined} />
-                  <EditableCell value={row.modified.trajetT2 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT2', v)} type="number" isModified={row.modified.trajetT2 !== undefined} />
-                  <EditableCell value={row.modified.trajetT3 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT3', v)} type="number" isModified={row.modified.trajetT3 !== undefined} />
-                  <EditableCell value={row.modified.trajetT4 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT4', v)} type="number" isModified={row.modified.trajetT4 !== undefined} />
-                  <EditableCell value={row.modified.trajetT5 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT5', v)} type="number" isModified={row.modified.trajetT5 !== undefined} />
-                  <EditableCell value={row.modified.trajetT6 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT6', v)} type="number" isModified={row.modified.trajetT6 !== undefined} />
-                  <EditableCell value={row.modified.trajetT7 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT7', v)} type="number" isModified={row.modified.trajetT7 !== undefined} />
-                  <EditableCell value={row.modified.trajetT8 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT8', v)} type="number" isModified={row.modified.trajetT8 !== undefined} />
-                  <EditableCell value={row.modified.trajetT9 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT9', v)} type="number" isModified={row.modified.trajetT9 !== undefined} />
-                  <EditableCell value={row.modified.trajetT10 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT10', v)} type="number" isModified={row.modified.trajetT10 !== undefined} />
-                  <EditableCell value={row.modified.trajetT11 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT11', v)} type="number" isModified={row.modified.trajetT11 !== undefined} />
-                  <EditableCell value={row.modified.trajetT12 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT12', v)} type="number" isModified={row.modified.trajetT12 !== undefined} />
-                  <EditableCell value={row.modified.trajetT13 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT13', v)} type="number" isModified={row.modified.trajetT13 !== undefined} />
-                  <EditableCell value={row.modified.trajetT14 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT14', v)} type="number" isModified={row.modified.trajetT14 !== undefined} />
-                  <EditableCell value={row.modified.trajetT15 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT15', v)} type="number" isModified={row.modified.trajetT15 !== undefined} />
-                  <EditableCell value={row.modified.trajetT16 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT16', v)} type="number" isModified={row.modified.trajetT16 !== undefined} />
-                  <EditableCell value={row.modified.trajetT17 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT17', v)} type="number" isModified={row.modified.trajetT17 !== undefined} />
-                  <EditableCell value={row.modified.trajetT31 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT31', v)} type="number" isModified={row.modified.trajetT31 !== undefined} />
-                  <EditableCell value={row.modified.trajetT35 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT35', v)} type="number" isModified={row.modified.trajetT35 !== undefined} />
-                  <EditableCell value={row.modified.trajetGD ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0))} onChange={(v) => handleCellChange(index, 'trajetGD', v)} type="number" isModified={row.modified.trajetGD !== undefined} />
+                  <EditableCell value={row.modified.trajetTPerso ?? data.trajetTPerso ?? 0} onChange={(v) => handleCellChange(index, 'trajetTPerso', v)} type="number" isModified={row.modified.trajetTPerso !== undefined} />
+                  <EditableCell value={row.modified.trajetT1 ?? data.trajetT1 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT1', v)} type="number" isModified={row.modified.trajetT1 !== undefined} />
+                  <EditableCell value={row.modified.trajetT2 ?? data.trajetT2 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT2', v)} type="number" isModified={row.modified.trajetT2 !== undefined} />
+                  <EditableCell value={row.modified.trajetT3 ?? data.trajetT3 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT3', v)} type="number" isModified={row.modified.trajetT3 !== undefined} />
+                  <EditableCell value={row.modified.trajetT4 ?? data.trajetT4 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT4', v)} type="number" isModified={row.modified.trajetT4 !== undefined} />
+                  <EditableCell value={row.modified.trajetT5 ?? data.trajetT5 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT5', v)} type="number" isModified={row.modified.trajetT5 !== undefined} />
+                  <EditableCell value={row.modified.trajetT6 ?? data.trajetT6 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT6', v)} type="number" isModified={row.modified.trajetT6 !== undefined} />
+                  <EditableCell value={row.modified.trajetT7 ?? data.trajetT7 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT7', v)} type="number" isModified={row.modified.trajetT7 !== undefined} />
+                  <EditableCell value={row.modified.trajetT8 ?? data.trajetT8 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT8', v)} type="number" isModified={row.modified.trajetT8 !== undefined} />
+                  <EditableCell value={row.modified.trajetT9 ?? data.trajetT9 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT9', v)} type="number" isModified={row.modified.trajetT9 !== undefined} />
+                  <EditableCell value={row.modified.trajetT10 ?? data.trajetT10 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT10', v)} type="number" isModified={row.modified.trajetT10 !== undefined} />
+                  <EditableCell value={row.modified.trajetT11 ?? data.trajetT11 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT11', v)} type="number" isModified={row.modified.trajetT11 !== undefined} />
+                  <EditableCell value={row.modified.trajetT12 ?? data.trajetT12 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT12', v)} type="number" isModified={row.modified.trajetT12 !== undefined} />
+                  <EditableCell value={row.modified.trajetT13 ?? data.trajetT13 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT13', v)} type="number" isModified={row.modified.trajetT13 !== undefined} />
+                  <EditableCell value={row.modified.trajetT14 ?? data.trajetT14 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT14', v)} type="number" isModified={row.modified.trajetT14 !== undefined} />
+                  <EditableCell value={row.modified.trajetT15 ?? data.trajetT15 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT15', v)} type="number" isModified={row.modified.trajetT15 !== undefined} />
+                  <EditableCell value={row.modified.trajetT16 ?? data.trajetT16 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT16', v)} type="number" isModified={row.modified.trajetT16 !== undefined} />
+                  <EditableCell value={row.modified.trajetT17 ?? data.trajetT17 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT17', v)} type="number" isModified={row.modified.trajetT17 !== undefined} />
+                  <EditableCell value={row.modified.trajetT31 ?? data.trajetT31 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT31', v)} type="number" isModified={row.modified.trajetT31 !== undefined} />
+                  <EditableCell value={row.modified.trajetT35 ?? data.trajetT35 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT35', v)} type="number" isModified={row.modified.trajetT35 !== undefined} />
+                  <EditableCell value={row.modified.trajetGD ?? data.trajetGD ?? 0} onChange={(v) => handleCellChange(index, 'trajetGD', v)} type="number" isModified={row.modified.trajetGD !== undefined} />
                   
                   {/* ADMINISTRATIF */}
                   <EditableCell value={row.modified.acomptes ?? "-"} onChange={(v) => handleCellChange(index, 'acomptes', v)} type="text" isModified={row.modified.acomptes !== undefined} />
