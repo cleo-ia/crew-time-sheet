@@ -135,8 +135,10 @@ export const ConducteurHistorique = ({ conducteurId }: ConducteurHistoriqueProps
                                   <TableCell>
                                     {(jour as any).trajet_perso ? (
                                       <Badge variant="secondary" className="text-xs">Trajet perso</Badge>
+                                    ) : jour.code_trajet ? (
+                                      <Badge variant="outline" className="text-xs">{jour.code_trajet}</Badge>
                                     ) : (
-                                      jour.T || "-"
+                                      "-"
                                     )}
                                   </TableCell>
                                   <TableCell className="text-sm">
