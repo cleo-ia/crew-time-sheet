@@ -260,6 +260,7 @@ export const useAutoSaveFiche = () => {
       queryClient.invalidateQueries({ queryKey: ["macons-chantier"] });
       queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["finisseurs-conducteur"] });
       // PAS de toast (sauvegarde silencieuse)
     },
     onError: (error) => {
