@@ -867,10 +867,10 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           const daysToPropagate = ["Mardi", "Mercredi", "Jeudi", "Vendredi"];
           const updatedDays = { ...entry.days, [day]: updatedDayData };
           
-          // Propager uniquement aux jours qui n'ont pas déjà un code trajet et ne sont pas absents
+          // Propager aux jours non-absents (écrase les valeurs existantes)
           daysToPropagate.forEach(nextDay => {
             const nextDayData = updatedDays[nextDay];
-            if (!nextDayData?.codeTrajet && !nextDayData?.absent) {
+            if (!nextDayData?.absent) {
               updatedDays[nextDay] = {
                 ...nextDayData,
                 codeTrajet: value,
