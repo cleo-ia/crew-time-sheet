@@ -206,7 +206,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les jours de toutes les fiches
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, T, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
+    .select("fiche_id, date, HNORM, HI, PA, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
     .in("fiche_id", ficheIds);
 
   if (joursError) throw joursError;
@@ -298,7 +298,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         const heuresDuJour = Number(jour.heures) || Number(jour.HNORM) || 0;
         const intemperie = Number(jour.HI) || 0;
         const panier = jour.PA === true;
-        const trajet = Number(jour.T) || 0;
+        
         const isTrajetPerso = jour.trajet_perso === true;
 
         heuresNormales += heuresDuJour;
