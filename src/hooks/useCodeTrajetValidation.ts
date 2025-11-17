@@ -1,13 +1,18 @@
 import { useMemo } from "react";
 
+type DayData = {
+  hours: number;
+  absent: boolean;
+  trajetPerso: boolean;
+  codeTrajet?: string | null;
+};
+
 export interface TimeEntry {
   employeeId: string;
   employeeName: string;
-  lundi: { hours: number; absent?: boolean; codeTrajet?: string | null; trajetPerso?: boolean };
-  mardi: { hours: number; absent?: boolean; codeTrajet?: string | null; trajetPerso?: boolean };
-  mercredi: { hours: number; absent?: boolean; codeTrajet?: string | null; trajetPerso?: boolean };
-  jeudi: { hours: number; absent?: boolean; codeTrajet?: string | null; trajetPerso?: boolean };
-  vendredi: { hours: number; absent?: boolean; codeTrajet?: string | null; trajetPerso?: boolean };
+  days: {
+    [key: string]: DayData;
+  };
 }
 
 interface ValidationResult {
@@ -24,20 +29,13 @@ export const useCodeTrajetValidation = (timeEntries: TimeEntry[]): ValidationRes
     let missingCount = 0;
     const employeesWithMissing: Array<{ employeeName: string; missingDays: string[] }> = [];
 
-    const dayNames = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"] as const;
-    const dayLabels: Record<typeof dayNames[number], string> = {
-      lundi: "Lundi",
-      mardi: "Mardi",
-      mercredi: "Mercredi",
-      jeudi: "Jeudi",
-      vendredi: "Vendredi",
-    };
+    const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
     for (const entry of timeEntries) {
       const missingDays: string[] = [];
 
       for (const day of dayNames) {
-        const dayData = entry[day];
+        const dayData = entry.days[day];
         
         // Vérifier que dayData existe
         if (!dayData) continue;
@@ -50,7 +48,7 @@ export const useCodeTrajetValidation = (timeEntries: TimeEntry[]): ValidationRes
 
           if (!hasCodeTrajet && !hasTrajetPerso) {
             missingCount++;
-            missingDays.push(dayLabels[day]);
+            missingDays.push(day);
           }
         }
       }
