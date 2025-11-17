@@ -452,8 +452,9 @@ const SignatureFinisseurs = () => {
                                         const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectedDay.date);
                                         const transportDay = transportData?.days?.find((d: any) => d.date === affectedDay.date);
                                         
-                                        // Récupérer le code chantier
+                                        // Récupérer le code chantier et code trajet
                                         const codeChantier = ficheJour?.code_chantier_du_jour || chantiersMap.get(affectedDay.chantier_id) || null;
+                                        const codeTrajet = ficheJour?.code_trajet || null;
                                         
                                         const isAbsent = ficheJour && ficheJour.HNORM === 0 && !ficheJour.trajet_perso;
                                         const isTrajetPerso = ficheJour?.trajet_perso === true;
@@ -472,6 +473,13 @@ const SignatureFinisseurs = () => {
                                             {codeChantier && (
                                               <span className="font-mono text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-medium">
                                                 {codeChantier}
+                                              </span>
+                                            )}
+                                            
+                                            {/* Badge code trajet */}
+                                            {codeTrajet && (
+                                              <span className="font-mono text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-medium">
+                                                {codeTrajet}
                                               </span>
                                             )}
                                             
