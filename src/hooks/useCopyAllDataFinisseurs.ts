@@ -141,6 +141,7 @@ export const useCopyAllDataFinisseurs = () => {
               T: jour.T,
               PA: jour.PA,
               trajet_perso: jour.trajet_perso,
+              code_trajet: jour.code_trajet,
               type_absence: jour.type_absence,
               code_chantier_du_jour: jour.code_chantier_du_jour,
               ville_du_jour: jour.ville_du_jour,
