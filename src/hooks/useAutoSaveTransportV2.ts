@@ -15,9 +15,15 @@ export const useAutoSaveTransportV2 = () => {
         return { saved: false };
       }
 
-      // Ne pas sauvegarder si aucune donnée valide
+      // Ne pas sauvegarder si aucune donnée valide (accepter aussi véhicules partiellement remplis)
       const hasValidData = days.some(day => 
-        day.vehicules.some(v => v.immatriculation || v.conducteurMatinId || v.conducteurSoirId)
+        day.vehicules.some(v => 
+          v.immatriculation || 
+          v.conducteurMatinId || 
+          v.conducteurSoirId ||
+          v.conducteurMatinNom ||
+          v.conducteurSoirNom
+        )
       );
       
       if (!hasValidData) {

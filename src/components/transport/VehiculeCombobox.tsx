@@ -42,6 +42,7 @@ export const VehiculeCombobox = ({
   localVehiculeUsage,
 }: VehiculeComboboxProps) => {
   const [open, setOpen] = useState(false);
+  const normalizedValue = value || "";
   const { data: vehicules = [], isLoading: isLoadingVehicules } = useActiveVehicules();
 
   // Mode Finisseurs : récupérer les plaques déjà utilisées par d'autres finisseurs
@@ -175,7 +176,7 @@ export const VehiculeCombobox = ({
   const selectedVehicule = vehicules.find((v) => v.immatriculation === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -228,20 +229,20 @@ export const VehiculeCombobox = ({
                   key={vehicule.id}
                   value={vehicule.immatriculation}
                   onSelect={(currentValue) => {
-                    if (!isUsed) {
+                    if (!isUsed && currentValue !== normalizedValue) {
                       onChange(currentValue);
-                      setOpen(false);
+                      setTimeout(() => setOpen(false), 50);
                     }
                   }}
                   disabled={isUsed}
                   className="font-mono"
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === vehicule.immatriculation ? "opacity-100" : "opacity-0"
-                    )}
-                  />
+            <Check
+              className={cn(
+                "mr-2 h-4 w-4",
+                normalizedValue === vehicule.immatriculation ? "opacity-100" : "opacity-0"
+              )}
+            />
                   <span className="flex-1">{vehicule.immatriculation}</span>
                   {isUsedSimple && (
                     <span className="text-xs text-muted-foreground ml-2">

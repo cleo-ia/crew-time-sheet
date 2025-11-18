@@ -243,6 +243,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
           chantierId,
           chefId,
           days: transportDays,
+          isDirty: isDirty.current,
         });
         // Invalider SEULEMENT si des données ont été sauvegardées
         if (result?.saved) {
