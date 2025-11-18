@@ -261,7 +261,7 @@ export const MaconsManager = () => {
               <div className="space-y-2">
                 <Label>Échelon</Label>
                 <Input
-                  placeholder="Ex: A, B, C..."
+                  placeholder="Ex: 1, 2, 3..."
                   value={formData.echelon}
                   onChange={(e) => setFormData({ ...formData, echelon: e.target.value })}
                 />
