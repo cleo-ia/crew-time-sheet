@@ -21,6 +21,7 @@ export const ChantiersManager = () => {
     nom: "",
     code_chantier: "",
     ville: "",
+    adresse: "",
     conducteur_id: "",
     chef_id: "",
     actif: true,
@@ -49,6 +50,7 @@ export const ChantiersManager = () => {
       nom: "",
       code_chantier: "",
       ville: "",
+      adresse: "",
       conducteur_id: "",
       chef_id: "",
       actif: true,
@@ -68,6 +70,7 @@ export const ChantiersManager = () => {
       nom: chantier.nom,
       code_chantier: chantier.code_chantier || "",
       ville: chantier.ville || "",
+      adresse: chantier.adresse || "",
       conducteur_id: chantier.conducteur_id || "",
       chef_id: chantier.chef_id || "",
       actif: chantier.actif ?? true,
@@ -224,6 +227,17 @@ export const ChantiersManager = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Adresse</Label>
+                <Input 
+                  placeholder="Ex: 12 Rue de la République" 
+                  value={formData.adresse}
+                  onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Conducteur de travaux</Label>
                 <Select value={formData.conducteur_id} onValueChange={(value) => setFormData({ ...formData, conducteur_id: value })}>
                   <SelectTrigger>
@@ -238,9 +252,6 @@ export const ChantiersManager = () => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Chef d'équipe (optionnel)</Label>
                 <Select value={formData.chef_id} onValueChange={(value) => setFormData({ ...formData, chef_id: value })}>
@@ -256,18 +267,19 @@ export const ChantiersManager = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Statut</Label>
-                <Select value={formData.actif ? "true" : "false"} onValueChange={(value) => setFormData({ ...formData, actif: value === "true" })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Actif</SelectItem>
-                    <SelectItem value="false">Inactif</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Statut</Label>
+              <Select value={formData.actif ? "true" : "false"} onValueChange={(value) => setFormData({ ...formData, actif: value === "true" })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Actif</SelectItem>
+                  <SelectItem value="false">Inactif</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
