@@ -291,11 +291,12 @@ export const MaconsManager = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ETAM">ETAM</SelectItem>
-                    <SelectItem value="Ouvrier">Ouvrier</SelectItem>
-                    <SelectItem value="Cadre">Cadre</SelectItem>
-                  </SelectContent>
+                <SelectContent>
+                  <SelectItem value="ETAM">ETAM</SelectItem>
+                  <SelectItem value="Ouvrier">Ouvrier</SelectItem>
+                  <SelectItem value="Cadre">Cadre</SelectItem>
+                  <SelectItem value="Apprenti">Apprenti</SelectItem>
+                </SelectContent>
                 </Select>
               </div>
             </div>
