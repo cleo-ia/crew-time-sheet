@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConducteurCombobox } from "@/components/transport/ConducteurCombobox";
-import { VehiculeSelectorChefsMacons } from "@/components/transport/VehiculeSelectorChefsMacons";
+import { VehiculeCombobox } from "@/components/transport/VehiculeCombobox";
 import { TransportDay } from "@/types/transport";
 import { useSaveTransport } from "@/hooks/useSaveTransport";
 import { useTransportData } from "@/hooks/useTransportData";
@@ -212,7 +212,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
                 />
               </TableCell>
               <TableCell>
-                <VehiculeSelectorChefsMacons
+                <VehiculeCombobox
                   value={day.immatriculation}
                   onChange={(value) => updateDay(index, "immatriculation", value)}
                 />
