@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ConducteurCombobox } from "./ConducteurCombobox";
-import { VehiculeSelectorChefsMacons } from "./VehiculeSelectorChefsMacons";
+import { VehiculeCombobox } from "./VehiculeCombobox";
 import { TransportVehicle, TransportDayV2 } from "@/types/transport";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,7 +175,7 @@ export const TransportDayAccordion = ({
                 <div className="space-y-3">
                   <div>
                     <Label className="text-xs">Immatriculation *</Label>
-                    <VehiculeSelectorChefsMacons
+                    <VehiculeCombobox
                       value={vehicule.immatriculation}
                       onChange={(value) => updateVehicule(vehicule.id, "immatriculation", value)}
                       disabled={isReadOnly}

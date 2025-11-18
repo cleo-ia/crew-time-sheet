@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { VehiculeSelectorFinisseurs } from "./VehiculeSelectorFinisseurs";
+import { VehiculeCombobox } from "./VehiculeCombobox";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TransportFinisseurDay } from "@/types/transport";
@@ -316,7 +316,7 @@ export const TransportFinisseurAccordion = ({
                     <Label className="text-xs text-muted-foreground mb-1 block">
                       Véhicule
                     </Label>
-                    <VehiculeSelectorFinisseurs
+                    <VehiculeCombobox
                       value={days[index]?.immatriculation || ""}
                       onChange={(value) => handleDayVehiculeChange(index, value)}
                       date={days[index]?.date || ""}
