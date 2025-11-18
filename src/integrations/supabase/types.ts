@@ -1000,37 +1000,7 @@ export type Database = {
         }
         Relationships: []
       }
-      vehicules_chefs_macons: {
-        Row: {
-          actif: boolean
-          created_at: string
-          id: string
-          immatriculation: string
-          marque: string | null
-          modele: string | null
-          updated_at: string
-        }
-        Insert: {
-          actif?: boolean
-          created_at?: string
-          id?: string
-          immatriculation: string
-          marque?: string | null
-          modele?: string | null
-          updated_at?: string
-        }
-        Update: {
-          actif?: boolean
-          created_at?: string
-          id?: string
-          immatriculation?: string
-          marque?: string | null
-          modele?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      vehicules_finisseurs: {
+      vehicules: {
         Row: {
           actif: boolean
           created_at: string

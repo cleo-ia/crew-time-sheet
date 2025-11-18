@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export interface VehiculeFinisseur {
+export interface Vehicule {
   id: string;
   immatriculation: string;
   marque?: string;
@@ -12,45 +12,45 @@ export interface VehiculeFinisseur {
   updated_at: string;
 }
 
-export const useVehiculesFinisseurs = () => {
+export const useVehicules = () => {
   return useQuery({
-    queryKey: ["vehicules-finisseurs"],
+    queryKey: ["vehicules"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("vehicules_finisseurs")
+        .from("vehicules")
         .select("*")
         .order("immatriculation");
       
       if (error) throw error;
-      return data as VehiculeFinisseur[];
+      return data as Vehicule[];
     },
   });
 };
 
-export const useActiveVehiculesFinisseurs = () => {
+export const useActiveVehicules = () => {
   return useQuery({
-    queryKey: ["vehicules-finisseurs", "active"],
+    queryKey: ["vehicules", "active"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("vehicules_finisseurs")
+        .from("vehicules")
         .select("*")
         .eq("actif", true)
         .order("immatriculation");
       
       if (error) throw error;
-      return data as VehiculeFinisseur[];
+      return data as Vehicule[];
     },
   });
 };
 
-export const useCreateVehiculeFinisseur = () => {
+export const useCreateVehicule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (vehicule: { immatriculation: string; marque?: string; modele?: string; actif: boolean }) => {
       const { data, error } = await supabase
-        .from("vehicules_finisseurs")
+        .from("vehicules")
         .insert(vehicule)
         .select()
         .single();
@@ -59,30 +59,30 @@ export const useCreateVehiculeFinisseur = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-finisseurs"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules"] });
       toast({
-        title: "Véhicule finisseur ajouté",
+        title: "Véhicule ajouté",
         description: "Le véhicule a été ajouté avec succès.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'ajouter le véhicule finisseur.",
+        description: error.message || "Impossible d'ajouter le véhicule.",
         variant: "destructive",
       });
     },
   });
 };
 
-export const useUpdateVehiculeFinisseur = () => {
+export const useUpdateVehicule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<VehiculeFinisseur> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<Vehicule> & { id: string }) => {
       const { data, error } = await supabase
-        .from("vehicules_finisseurs")
+        .from("vehicules")
         .update(updates)
         .eq("id", id)
         .select()
@@ -92,46 +92,46 @@ export const useUpdateVehiculeFinisseur = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-finisseurs"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules"] });
       toast({
-        title: "Véhicule finisseur modifié",
+        title: "Véhicule modifié",
         description: "Le véhicule a été modifié avec succès.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de modifier le véhicule finisseur.",
+        description: error.message || "Impossible de modifier le véhicule.",
         variant: "destructive",
       });
     },
   });
 };
 
-export const useDeleteVehiculeFinisseur = () => {
+export const useDeleteVehicule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("vehicules_finisseurs")
+        .from("vehicules")
         .delete()
         .eq("id", id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-finisseurs"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules"] });
       toast({
-        title: "Véhicule finisseur supprimé",
+        title: "Véhicule supprimé",
         description: "Le véhicule a été supprimé avec succès.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de supprimer le véhicule finisseur.",
+        description: error.message || "Impossible de supprimer le véhicule.",
         variant: "destructive",
       });
     },

@@ -11,8 +11,7 @@ import { MaconsManager } from "@/components/admin/MaconsManager";
 import { GrutiersManager } from "@/components/admin/GrutiersManager";
 import { InterimairesManager } from "@/components/admin/InterimairesManager";
 import { FinisseursManager } from "@/components/admin/FinisseursManager";
-import { VehiculesFinisseursManager } from "@/components/admin/VehiculesFinisseursManager";
-import { VehiculesChefsMaconsManager } from "@/components/admin/VehiculesChefsMaconsManager";
+import { VehiculesManager } from "@/components/admin/VehiculesManager";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { InviteUserDialog } from "@/components/admin/InviteUserDialog";
 import { UsersManager } from "@/components/admin/UsersManager";
@@ -129,18 +128,7 @@ const AdminPanel = () => {
             </TabsContent>
 
             <TabsContent value="vehicules" className="p-6">
-              <Tabs defaultValue="chefs-macons" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="chefs-macons">Véhicules Chefs/Maçons</TabsTrigger>
-                  <TabsTrigger value="finisseurs">Véhicules Finisseurs</TabsTrigger>
-                </TabsList>
-                <TabsContent value="chefs-macons" className="mt-4">
-                  <VehiculesChefsMaconsManager />
-                </TabsContent>
-                <TabsContent value="finisseurs" className="mt-4">
-                  <VehiculesFinisseursManager />
-                </TabsContent>
-              </Tabs>
+              <VehiculesManager />
             </TabsContent>
 
             <TabsContent value="rappels" className="p-6">

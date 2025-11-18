@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useActiveVehiculesFinisseurs } from "@/hooks/useVehiculesFinisseurs";
+import { useActiveVehicules } from "@/hooks/useVehicules";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ export const VehiculeSelectorFinisseurs = ({
   excludeFinisseurId,
   localVehiculeUsage 
 }: VehiculeSelectorFinisseursProps) => {
-  const { data: vehicules = [], isLoading: isLoadingVehicules } = useActiveVehiculesFinisseurs();
+  const { data: vehicules = [], isLoading: isLoadingVehicules } = useActiveVehicules();
 
   // Récupérer les plaques déjà utilisées par d'autres finisseurs ce jour-là
   const { data: usedVehicules, isLoading: isLoadingUsed } = useQuery({
