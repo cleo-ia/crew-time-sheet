@@ -280,7 +280,7 @@ export const MaconsManager = () => {
               <div className="space-y-2">
                 <Label>Degré</Label>
                 <Input
-                  placeholder="Ex: 1, 2, 3..."
+                  placeholder="Ex: 150, 185, 230..."
                   value={formData.degre}
                   onChange={(e) => setFormData({ ...formData, degre: e.target.value })}
                 />
