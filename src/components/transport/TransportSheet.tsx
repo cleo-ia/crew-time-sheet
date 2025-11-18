@@ -215,6 +215,8 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
                 <VehiculeCombobox
                   value={day.immatriculation}
                   onChange={(value) => updateDay(index, "immatriculation", value)}
+                  date={day.date}
+                  semaine={selectedWeekString}
                 />
               </TableCell>
             </TableRow>

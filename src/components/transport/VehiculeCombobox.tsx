@@ -79,7 +79,79 @@ export const VehiculeCombobox = ({
     enabled: !!date && !!semaine && !!excludeFinisseurId,
   });
 
-  const isLoading = isLoadingVehicules || (date && semaine && excludeFinisseurId ? isLoadingUsed : false);
+  // Vérification croisée : véhicules utilisés par les DEUX équipes (Maçons ↔ Finisseurs)
+  const { data: vehiculesUtilisesGlobal, isLoading: isLoadingGlobal } = useQuery({
+    queryKey: ["vehicules-all-teams-used", semaine, date],
+    queryFn: async () => {
+      const usedMap = new Map<string, { type: 'macon' | 'finisseur'; nom: string }>();
+
+      // 1. Véhicules utilisés par les MAÇONS
+      const { data: transportMacons } = await supabase
+        .from("fiches_transport_jours")
+        .select(`
+          immatriculation,
+          fiche_transport:fiches_transport!inner(
+            fiche:fiches!inner(
+              semaine,
+              chantier:chantiers(nom)
+            )
+          )
+        `)
+        .eq("date", date!)
+        .eq("fiche_transport.fiche.semaine", semaine!);
+
+      transportMacons?.forEach((jour: any) => {
+        if (jour.immatriculation) {
+          const chantierNom = jour.fiche_transport?.fiche?.chantier?.nom || 'Chantier inconnu';
+          usedMap.set(jour.immatriculation, {
+            type: 'macon',
+            nom: `Équipe maçons (${chantierNom})`
+          });
+        }
+      });
+
+      // 2. Véhicules utilisés par les FINISSEURS
+      const { data: transportFinisseurs } = await supabase
+        .from("fiches_transport_finisseurs_jours")
+        .select(`
+          immatriculation,
+          fiches_transport_finisseurs!inner(
+            finisseur_id,
+            semaine,
+            utilisateurs!inner(prenom, nom)
+          )
+        `)
+        .eq("date", date!)
+        .eq("fiches_transport_finisseurs.semaine", semaine!);
+
+      transportFinisseurs?.forEach((jour: any) => {
+        if (jour.immatriculation && jour.fiches_transport_finisseurs) {
+          const finisseurId = jour.fiches_transport_finisseurs.finisseur_id;
+          
+          // Ne pas écraser si déjà utilisé par maçons
+          if (!usedMap.has(jour.immatriculation)) {
+            const utilisateur = jour.fiches_transport_finisseurs.utilisateurs;
+            const nom = `${utilisateur?.prenom || ''} ${utilisateur?.nom || ''}`.trim();
+            
+            // Exclure le finisseur courant si on est en mode finisseur
+            if (finisseurId !== excludeFinisseurId) {
+              usedMap.set(jour.immatriculation, {
+                type: 'finisseur',
+                nom: `Finisseur ${nom}`
+              });
+            }
+          }
+        }
+      });
+
+      return usedMap;
+    },
+    enabled: !!date && !!semaine,
+  });
+
+  const isLoading = isLoadingVehicules || 
+    (date && semaine && excludeFinisseurId ? isLoadingUsed : false) ||
+    (date && semaine ? isLoadingGlobal : false);
 
   if (isLoading) {
     return (
@@ -140,7 +212,16 @@ export const VehiculeCombobox = ({
               const localUserId = dateUsage?.get(vehicule.immatriculation);
               const isUsedLocally = localUserId && localUserId !== excludeFinisseurId;
               
-              const isUsed = isUsedSimple || isUsedInDB || isUsedLocally;
+              // Vérification CROISÉE (Maçons ↔ Finisseurs)
+              const globalUsage = vehiculesUtilisesGlobal?.get(vehicule.immatriculation);
+              
+              // Si mode Finisseurs → vérifier si utilisé par maçons
+              const isUsedByMacons = excludeFinisseurId && globalUsage?.type === 'macon';
+              
+              // Si mode Maçons → vérifier si utilisé par finisseurs
+              const isUsedByFinisseurs = !excludeFinisseurId && globalUsage?.type === 'finisseur';
+              
+              const isUsed = isUsedSimple || isUsedInDB || isUsedLocally || isUsedByMacons || isUsedByFinisseurs;
 
               return (
                 <CommandItem
@@ -172,7 +253,17 @@ export const VehiculeCombobox = ({
                       (Utilisée par {usedByDB?.nom})
                     </span>
                   )}
-                  {isUsedLocally && !isUsedInDB && !isUsedSimple && (
+                  {isUsedByMacons && !isUsedSimple && !isUsedInDB && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                      (Utilisée par {globalUsage?.nom})
+                    </span>
+                  )}
+                  {isUsedByFinisseurs && !isUsedSimple && !isUsedInDB && (
+                    <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">
+                      (Utilisée par {globalUsage?.nom})
+                    </span>
+                  )}
+                  {isUsedLocally && !isUsedInDB && !isUsedSimple && !isUsedByMacons && !isUsedByFinisseurs && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (En cours d'attribution)
                     </span>

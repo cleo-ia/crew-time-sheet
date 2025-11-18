@@ -179,11 +179,12 @@ export const TransportDayAccordion = ({
                       value={vehicule.immatriculation}
                       onChange={(value) => updateVehicule(vehicule.id, "immatriculation", value)}
                       disabled={isReadOnly}
+                      date={day.date}
+                      semaine={semaine}
                       otherVehiculesPlates={
                         day.vehicules
                           .filter(v => v.id !== vehicule.id)
                           .map(v => v.immatriculation)
-                          .filter(Boolean)
                       }
                     />
                   </div>
