@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 export interface VehiculeFinisseur {
   id: string;
   immatriculation: string;
+  marque?: string;
+  modele?: string;
   actif: boolean;
   created_at: string;
   updated_at: string;
@@ -46,7 +48,7 @@ export const useCreateVehiculeFinisseur = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (vehicule: { immatriculation: string; actif: boolean }) => {
+    mutationFn: async (vehicule: { immatriculation: string; marque?: string; modele?: string; actif: boolean }) => {
       const { data, error } = await supabase
         .from("vehicules_finisseurs")
         .insert(vehicule)
