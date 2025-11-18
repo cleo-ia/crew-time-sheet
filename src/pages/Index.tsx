@@ -12,6 +12,7 @@ import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { AppNav } from "@/components/navigation/AppNav";
 import { UserSelector } from "@/components/timesheet/UserSelector";
 import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
+import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -58,6 +59,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
+  const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
 
   // Mettre à jour selectedWeek quand initialWeek change
@@ -174,6 +176,118 @@ const Index = () => {
     }
     setPreviousChef(selectedChef);
   }, [selectedChef, previousChef]);
+
+  // Auto-save des timeEntries avec debounce de 3 secondes
+  useEffect(() => {
+    if (timeEntries.length === 0 || !selectedChef || !selectedWeek) return;
+    
+    // Ne pas auto-sauvegarder si aucune donnée valide
+    const hasData = timeEntries.some(entry => 
+      Object.values(entry.days).some((day: any) => 
+        day.hours > 0 || day.absent || day.codeTrajet
+      )
+    );
+    
+    if (!hasData) return;
+
+    const timer = setTimeout(async () => {
+      console.log("[Index] Auto-saving fiche...");
+      try {
+        await autoSaveFiche.mutateAsync({
+          timeEntries,
+          weekId: selectedWeek,
+          chantierId: selectedChantier || null,
+          chefId: selectedChef,
+        });
+        console.log("[Index] Auto-save successful");
+      } catch (error) {
+        console.error("[Index] Auto-save failed:", error);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [timeEntries, selectedChef, selectedChantier, selectedWeek, autoSaveFiche]);
+
+  // Charger les données existantes au démarrage
+  useEffect(() => {
+    if (!selectedChef || !selectedWeek || !macons || macons.length === 0) return;
+
+    const loadExistingData = async () => {
+      const { data: fiches } = await supabase
+        .from("fiches")
+        .select(`
+          id,
+          user_id,
+          fiches_jours (
+            date,
+            heures,
+            pause_minutes,
+            type_absence,
+            PA,
+            trajet_perso,
+            code_trajet,
+            commentaire
+          )
+        `)
+        .eq("semaine", selectedWeek)
+        .eq("user_id", selectedChef)
+        .eq("chantier_id", selectedChantier || null);
+
+      if (!fiches || fiches.length === 0) return;
+
+      const entriesMap = new Map();
+      
+      // Initialiser avec les maçons actuels
+      macons.forEach(macon => {
+        entriesMap.set(macon.id, {
+          employeeId: macon.id,
+          employeeName: `${macon.prenom} ${macon.nom}`,
+          days: {
+            Lundi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+            Mardi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+            Mercredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+            Jeudi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+            Vendredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+          }
+        });
+      });
+
+      // Remplir avec les données de la base
+      fiches.forEach((fiche: any) => {
+        fiche.fiches_jours?.forEach((jour: any) => {
+          const entry = entriesMap.get(fiche.user_id);
+          if (!entry) return;
+
+          const date = new Date(jour.date);
+          const dayName = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"][date.getDay() - 1];
+          
+          if (dayName && entry.days[dayName]) {
+            entry.days[dayName] = {
+              hours: jour.heures || 0,
+              overtime: 0,
+              absent: !!jour.type_absence,
+              panierRepas: jour.PA || false,
+              heuresIntemperie: 0,
+              codeTrajet: jour.code_trajet || undefined,
+              commentaire: jour.commentaire || undefined,
+              trajetPerso: jour.trajet_perso || false,
+            };
+          }
+        });
+      });
+      
+      const loadedEntries = Array.from(entriesMap.values()).filter(entry => 
+        Object.values(entry.days).some((day: any) => day.hours > 0 || day.absent || day.codeTrajet)
+      );
+
+      if (loadedEntries.length > 0) {
+        setTimeEntries(loadedEntries);
+        console.log("[Index] Loaded existing timeEntries from DB:", loadedEntries.length);
+      }
+    };
+    
+    loadExistingData();
+  }, [selectedChef, selectedWeek, selectedChantier, macons]);
 
 
   const handleSaveAndSign = async () => {
