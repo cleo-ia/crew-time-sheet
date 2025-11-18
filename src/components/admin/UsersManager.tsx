@@ -187,8 +187,9 @@ export const UsersManager = () => {
       conducteur: 3,
       chef: 4,
       macon: 5,
-      finisseur: 6,
-      interimaire: 7,
+      grutier: 6,
+      finisseur: 7,
+      interimaire: 8,
     };
     return priorities[role] || 999;
   };
@@ -200,8 +201,9 @@ export const UsersManager = () => {
       if (userRole) return userRole.role;
     }
     
-    // 2️⃣ Vérifier le champ role_metier (pour maçons et finisseurs)
+    // 2️⃣ Vérifier le champ role_metier (pour maçons, grutiers et finisseurs)
     if (utilisateur.role_metier === "macon") return "macon";
+    if (utilisateur.role_metier === "grutier") return "grutier";
     if (utilisateur.role_metier === "finisseur") return "finisseur";
     
     // 3️⃣ Si c'est un intérimaire → retourner "interimaire"
