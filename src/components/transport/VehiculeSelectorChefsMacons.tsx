@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useActiveVehiculesChefsMacons } from "@/hooks/useVehiculesChefsMacons";
+import { useActiveVehicules } from "@/hooks/useVehicules";
 import { Loader2 } from "lucide-react";
 
 interface VehiculeSelectorChefsMaconsProps {
@@ -10,7 +10,7 @@ interface VehiculeSelectorChefsMaconsProps {
 }
 
 export const VehiculeSelectorChefsMacons = ({ value, onChange, otherVehiculesPlates, disabled = false }: VehiculeSelectorChefsMaconsProps) => {
-  const { data: vehicules = [], isLoading } = useActiveVehiculesChefsMacons();
+  const { data: vehicules = [], isLoading } = useActiveVehicules();
 
   if (isLoading) {
     return (
