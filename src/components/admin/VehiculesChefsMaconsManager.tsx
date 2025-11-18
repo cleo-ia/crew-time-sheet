@@ -21,7 +21,7 @@ export const VehiculesChefsMaconsManager = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingVehicule, setEditingVehicule] = useState<VehiculeChefMacon | null>(null);
   const [deletingVehiculeId, setDeletingVehiculeId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ immatriculation: "", actif: true });
+  const [formData, setFormData] = useState({ immatriculation: "", marque: "", modele: "", actif: true });
 
   const { data: vehicules = [], isLoading } = useVehiculesChefsMacons();
   const createMutation = useCreateVehiculeChefMacon();
@@ -31,10 +31,15 @@ export const VehiculesChefsMaconsManager = () => {
   const handleOpenDialog = (vehicule?: VehiculeChefMacon) => {
     if (vehicule) {
       setEditingVehicule(vehicule);
-      setFormData({ immatriculation: vehicule.immatriculation, actif: vehicule.actif });
+      setFormData({ 
+        immatriculation: vehicule.immatriculation, 
+        marque: vehicule.marque || "",
+        modele: vehicule.modele || "",
+        actif: vehicule.actif 
+      });
     } else {
       setEditingVehicule(null);
-      setFormData({ immatriculation: "", actif: true });
+      setFormData({ immatriculation: "", marque: "", modele: "", actif: true });
     }
     setIsDialogOpen(true);
   };
@@ -42,7 +47,7 @@ export const VehiculesChefsMaconsManager = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingVehicule(null);
-    setFormData({ immatriculation: "", actif: true });
+    setFormData({ immatriculation: "", marque: "", modele: "", actif: true });
   };
 
   const handleSubmit = async () => {
@@ -84,6 +89,8 @@ export const VehiculesChefsMaconsManager = () => {
         <TableHeader>
           <TableRow>
             <TableHead>Immatriculation</TableHead>
+            <TableHead>Marque</TableHead>
+            <TableHead>Modèle</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -91,7 +98,7 @@ export const VehiculesChefsMaconsManager = () => {
         <TableBody>
           {vehicules.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground">
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
                 Aucun véhicule chefs/maçons trouvé
               </TableCell>
             </TableRow>
@@ -99,6 +106,8 @@ export const VehiculesChefsMaconsManager = () => {
             vehicules.map((vehicule) => (
               <TableRow key={vehicule.id}>
                 <TableCell className="font-mono">{vehicule.immatriculation}</TableCell>
+                <TableCell>{vehicule.marque || "-"}</TableCell>
+                <TableCell>{vehicule.modele || "-"}</TableCell>
                 <TableCell>
                   {vehicule.actif ? (
                     <Badge variant="default">Actif</Badge>
@@ -146,6 +155,24 @@ export const VehiculesChefsMaconsManager = () => {
                 onChange={(e) => setFormData({ ...formData, immatriculation: e.target.value })}
                 placeholder="AB-123-CD"
                 className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="marque">Marque</Label>
+              <Input
+                id="marque"
+                value={formData.marque}
+                onChange={(e) => setFormData({ ...formData, marque: e.target.value })}
+                placeholder="Ex: Renault"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modele">Modèle</Label>
+              <Input
+                id="modele"
+                value={formData.modele}
+                onChange={(e) => setFormData({ ...formData, modele: e.target.value })}
+                placeholder="Ex: Clio"
               />
             </div>
             <div className="flex items-center space-x-2">
