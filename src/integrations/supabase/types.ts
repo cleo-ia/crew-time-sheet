@@ -171,6 +171,7 @@ export type Database = {
       chantiers: {
         Row: {
           actif: boolean | null
+          adresse: string | null
           chef_id: string | null
           code_chantier: string | null
           conducteur_id: string | null
@@ -185,6 +186,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          adresse?: string | null
           chef_id?: string | null
           code_chantier?: string | null
           conducteur_id?: string | null
@@ -199,6 +201,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          adresse?: string | null
           chef_id?: string | null
           code_chantier?: string | null
           conducteur_id?: string | null
