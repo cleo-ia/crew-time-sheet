@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 
 export interface RHFilters {
@@ -39,6 +39,9 @@ export interface EmployeeWithDetails {
   agence_interim: string | null;
   chantier_codes: string[]; // Codes des chantiers (pour colonne Chantier)
   heuresNormales: number;
+  heuresSupp25: number; // Heures supp à 25% (36e-43e heure)
+  heuresSupp50: number; // Heures supp à 50% (au-delà 43e heure)
+  heuresSupp: number;    // Total heures supp (25% + 50%)
   intemperies: number;
   absences: number;
   paniers: number;
@@ -62,6 +65,88 @@ export interface EmployeeWithDetails {
   forfait_jours?: boolean | null;
   salaire?: number | null;
 }
+
+/**
+ * Calcule les heures supplémentaires BTP par semaine pour un mois donné
+ * Logique : Contrat 39h → 4h structurelles incluses (36e-39e)
+ * - Heures à 25% : 36e à 43e heure (max 8h/semaine)
+ * - Heures à 50% : au-delà de 43e heure
+ * - Semaine = Lundi-Vendredi uniquement
+ * - Attribution au mois où tombe le lundi (Option A)
+ * 
+ * @param detailJours - Tous les jours travaillés (peut inclure plusieurs mois)
+ * @param moisCible - Mois au format "YYYY-MM" pour lequel on calcule
+ * @returns { heuresSupp25: number, heuresSupp50: number }
+ */
+export const calculateHeuresSuppBTP = (
+  detailJours: EmployeeDetail[],
+  moisCible: string
+): { heuresSupp25: number; heuresSupp50: number } => {
+  const [annee, mois] = moisCible.split("-").map(Number);
+  
+  // Grouper les jours par semaine civile (lundi = début de semaine ISO)
+  const joursParSemaine = new Map<string, EmployeeDetail[]>();
+  
+  detailJours.forEach(jour => {
+    const dateObj = parseISO(jour.date);
+    // Obtenir le lundi de la semaine (ISO 8601)
+    const lundi = startOfWeek(dateObj, { weekStartsOn: 1 }); // 1 = Lundi
+    const weekKey = format(lundi, 'yyyy-MM-dd');
+    
+    if (!joursParSemaine.has(weekKey)) {
+      joursParSemaine.set(weekKey, []);
+    }
+    joursParSemaine.get(weekKey)!.push(jour);
+  });
+  
+  let totalHeuresSupp25 = 0;
+  let totalHeuresSupp50 = 0;
+  
+  // Calculer pour chaque semaine DONT LE LUNDI APPARTIENT AU MOIS CIBLE
+  joursParSemaine.forEach((joursDeUneSemaine, weekKey) => {
+    const lundi = parseISO(weekKey);
+    const lundiAnnee = lundi.getFullYear();
+    const lundiMois = lundi.getMonth() + 1; // getMonth() retourne 0-11
+    
+    // ⚠️ OPTION A : On ne traite que les semaines dont le lundi est dans le mois cible
+    if (lundiAnnee !== annee || lundiMois !== mois) {
+      return; // Ignorer cette semaine (son lundi n'est pas dans le mois demandé)
+    }
+    
+    // Total heures TRAVAILLÉES dans la semaine (lundi-vendredi uniquement)
+    // ❌ Exclure : absences (isAbsent=true) et intempéries
+    const heuresSemaine = joursDeUneSemaine
+      .filter(j => {
+        const d = parseISO(j.date);
+        const dayOfWeek = d.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi, 6=Samedi
+        const isLundiVendredi = dayOfWeek >= 1 && dayOfWeek <= 5;
+        const estTravail = !j.isAbsent; // On exclut les absences
+        return isLundiVendredi && estTravail;
+      })
+      .reduce((sum, j) => sum + j.heures, 0);
+    
+    // Logique BTP : base 39h, 4h structurelles (36-39)
+    // - Heures 36-43 (inclus) → 25% (max 8h)
+    // - Heures > 43 → 50%
+    if (heuresSemaine > 35) {
+      const heuresAuDelaDe35 = heuresSemaine - 35;
+      
+      if (heuresAuDelaDe35 <= 8) {
+        // Toutes les heures au-delà de 35h vont en 25%
+        totalHeuresSupp25 += heuresAuDelaDe35;
+      } else {
+        // 8 premières heures (36-43) en 25%, le reste en 50%
+        totalHeuresSupp25 += 8;
+        totalHeuresSupp50 += heuresAuDelaDe35 - 8;
+      }
+    }
+  });
+  
+  return {
+    heuresSupp25: Math.round(totalHeuresSupp25 * 100) / 100,
+    heuresSupp50: Math.round(totalHeuresSupp50 * 100) / 100,
+  };
+};
 
 /**
  * Source de vérité unique pour la consolidation RH
@@ -360,6 +445,10 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
       );
 
+      // Calculer les heures supplémentaires BTP
+      const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(detailJours, mois);
+      const heuresSupp = heuresSupp25 + heuresSupp50;
+
       employeeMap.set(salarieId, {
         salarieId,
         id: salarieId, // Alias pour UI
@@ -371,6 +460,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         agence_interim: salarie.agence_interim || null,
         chantier_codes: chantierCodes,
         heuresNormales: Math.round(heuresNormales * 100) / 100,
+        heuresSupp25: Math.round(heuresSupp25 * 100) / 100,
+        heuresSupp50: Math.round(heuresSupp50 * 100) / 100,
+        heuresSupp: Math.round(heuresSupp * 100) / 100,
         intemperies: Math.round(intemperies * 100) / 100,
         absences,
         paniers,
