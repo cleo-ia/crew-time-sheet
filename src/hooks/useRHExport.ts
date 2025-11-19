@@ -62,6 +62,11 @@ export interface RHExportEmployee {
   prets?: string;
   commentaire_rh?: string;
   notes_paie?: string;
+  totalSaisie?: string;
+  saisieDuMois?: string;
+  commentaireSaisie?: string;
+  regularisationM1?: string;
+  autresElements?: string;
   
   detailJours?: Array<{
     date: string;
@@ -162,6 +167,11 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       prets: (emp as any).prets || "",
       commentaire_rh: (emp as any).commentaire_rh || "",
       notes_paie: (emp as any).notes_paie || "",
+      totalSaisie: (emp as any).total_saisie || "",
+      saisieDuMois: (emp as any).saisie_du_mois || "",
+      commentaireSaisie: (emp as any).commentaire_saisie || "",
+      regularisationM1: (emp as any).regularisation_m1_export || "",
+      autresElements: (emp as any).autres_elements_export || "",
       
       detailJours: emp.detailJours.map(jour => ({
         date: jour.date,

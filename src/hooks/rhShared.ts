@@ -74,6 +74,11 @@ export interface EmployeeWithDetails {
   prets?: string | null;
   commentaire_rh?: string | null;
   notes_paie?: string | null;
+  total_saisie?: string | null;
+  saisie_du_mois?: string | null;
+  commentaire_saisie?: string | null;
+  regularisation_m1_export?: string | null;
+  autres_elements_export?: string | null;
 }
 
 /**
@@ -185,6 +190,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       prets,
       commentaire_rh,
       notes_paie,
+      total_saisie,
+      saisie_du_mois,
+      commentaire_saisie,
+      regularisation_m1_export,
+      autres_elements_export,
       chantiers!inner(
         code_chantier,
         ville,
@@ -225,7 +235,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       acomptes,
       prets,
       commentaire_rh,
-      notes_paie
+      notes_paie,
+      total_saisie,
+      saisie_du_mois,
+      commentaire_saisie,
+      regularisation_m1_export,
+      autres_elements_export
     `)
     .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
     .is("chantier_id", null);
@@ -519,6 +534,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         prets: (fiches[0] as any)?.prets || null,
         commentaire_rh: (fiches[0] as any)?.commentaire_rh || null,
         notes_paie: (fiches[0] as any)?.notes_paie || null,
+        total_saisie: (fiches[0] as any)?.total_saisie || null,
+        saisie_du_mois: (fiches[0] as any)?.saisie_du_mois || null,
+        commentaire_saisie: (fiches[0] as any)?.commentaire_saisie || null,
+        regularisation_m1_export: (fiches[0] as any)?.regularisation_m1_export || null,
+        autres_elements_export: (fiches[0] as any)?.autres_elements_export || null,
       });
     }
   }

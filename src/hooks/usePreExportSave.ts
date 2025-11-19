@@ -10,6 +10,11 @@ interface ModifiedRow {
   prets?: string;
   commentaireRH?: string;
   notesPaie?: string;
+  totalSaisie?: string;
+  saisieDuMois?: string;
+  commentaireSaisie?: string;
+  regularisationM1?: string;
+  autresElements?: string;
 }
 
 export const usePreExportSave = () => {
@@ -28,6 +33,11 @@ export const usePreExportSave = () => {
         if (row.prets !== undefined) updatePayload.prets = row.prets;
         if (row.commentaireRH !== undefined) updatePayload.commentaire_rh = row.commentaireRH;
         if (row.notesPaie !== undefined) updatePayload.notes_paie = row.notesPaie;
+        if (row.totalSaisie !== undefined) updatePayload.total_saisie = row.totalSaisie;
+        if (row.saisieDuMois !== undefined) updatePayload.saisie_du_mois = row.saisieDuMois;
+        if (row.commentaireSaisie !== undefined) updatePayload.commentaire_saisie = row.commentaireSaisie;
+        if (row.regularisationM1 !== undefined) updatePayload.regularisation_m1_export = row.regularisationM1;
+        if (row.autresElements !== undefined) updatePayload.autres_elements_export = row.autresElements;
 
         const { error } = await supabase
           .from("fiches")
