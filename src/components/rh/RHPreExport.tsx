@@ -249,10 +249,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               💾 Enregistrer
             </Button>
           )}
-          <Button onClick={handleExport} disabled={isLoading}>
-            <Download className="h-4 w-4 mr-2" />
-            Générer l'Excel {modifiedCount > 0 && `(${modifiedCount} modif.)`}
-          </Button>
           {modifiedCount > 0 && (
             <Button onClick={handleReset} variant="outline" disabled={isLoading}>
               <RotateCcw className="h-4 w-4 mr-2" />
