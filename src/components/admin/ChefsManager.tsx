@@ -53,6 +53,7 @@ export const ChefsManager = () => {
     } else {
       await createUtilisateur.mutateAsync({
         ...formData,
+        role_metier: 'chef',
       });
     }
     setShowDialog(false);

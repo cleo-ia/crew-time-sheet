@@ -10,7 +10,7 @@ export interface Utilisateur {
   auth_user_id: string | null;
   role?: string;
   agence_interim?: string | null;
-  role_metier?: 'macon' | 'finisseur' | 'grutier' | null;
+  role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur' | null;
   
   // Champs contractuels
   matricule?: string | null;
@@ -91,7 +91,58 @@ export const useUtilisateursByRole = (role?: string) => {
         return data || [];
       }
 
-      // Handle valid roles (admin, rh, conducteur, chef)
+      // Handle "chef" and "conducteur" with UNION logic
+      // Get both users with role_metier AND users with auth role
+      if (role === "chef" || role === "conducteur") {
+        // 1. Get users with role_metier = 'chef' or 'conducteur'
+        const { data: roleMetierUsers, error: metierError } = await supabase
+          .from("utilisateurs")
+          .select("*")
+          .eq("role_metier", role);
+        
+        if (metierError) throw metierError;
+
+        // 2. Get users with auth role (via user_roles)
+        const { data: userRoles, error: roleError } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .eq("role", role as any);
+        
+        if (roleError) throw roleError;
+
+        let authUsers: any[] = [];
+        if (userRoles && userRoles.length > 0) {
+          const userIds = userRoles.map(ur => ur.user_id);
+          const { data: users, error: usersError } = await supabase
+            .from("utilisateurs")
+            .select("*")
+            .in("auth_user_id", userIds);
+          
+          if (usersError) throw usersError;
+          authUsers = users || [];
+        }
+
+        // 3. Combine and deduplicate using Map
+        const userMap = new Map();
+        
+        // Add role_metier users first
+        (roleMetierUsers || []).forEach(u => {
+          userMap.set(u.id, { ...u, role });
+        });
+        
+        // Add auth users (will overwrite if duplicate)
+        authUsers.forEach(u => {
+          userMap.set(u.id, { ...u, role });
+        });
+
+        // Convert back to array and sort
+        const combinedUsers = Array.from(userMap.values());
+        combinedUsers.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+        
+        return combinedUsers;
+      }
+
+      // Handle valid roles (admin, rh)
       // Get user IDs for this role
       const { data: userRoles, error: roleError } = await supabase
         .from("user_roles")
@@ -143,7 +194,7 @@ export const useCreateUtilisateur = () => {
       prenom: string; 
       email?: string;
       agence_interim?: string; 
-      role_metier?: 'macon' | 'finisseur' | 'grutier';
+      role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur';
       matricule?: string;
       echelon?: string;
       niveau?: string;
