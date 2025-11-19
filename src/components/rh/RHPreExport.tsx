@@ -298,7 +298,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <TableCell className="text-xs">{data.niveau || "-"}</TableCell>
                   <TableCell className="text-xs">{data.degre || "-"}</TableCell>
                   <TableCell className="text-xs">{data.statut || "-"}</TableCell>
-                  <TableCell className="text-xs">{data.metier}</TableCell>
+                  <TableCell className="text-xs">{data.libelle_emploi || data.metier}</TableCell>
                   <TableCell className="text-xs">{data.type_contrat || "-"}</TableCell>
                   <TableCell className="text-xs">{data.horaire || "-"}</TableCell>
                   <TableCell className="text-xs">{data.heures_supp_mensualisees || "-"}</TableCell>

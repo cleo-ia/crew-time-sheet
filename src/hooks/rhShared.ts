@@ -34,6 +34,7 @@ export interface EmployeeWithDetails {
   nom: string;
   prenom: string;
   metier: string;
+  libelle_emploi: string | null;
   role: string; // chef/macon/interimaire/finisseur (pour UI)
   isChef: boolean; // Flag pour affichage badge chef
   agence_interim: string | null;
@@ -244,7 +245,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   
   const { data: salarieData, error: salarieError } = await supabase
     .from("utilisateurs")
-    .select("id, nom, prenom, agence_interim, role_metier, matricule, echelon, niveau, degre, statut, type_contrat, horaire, heures_supp_mensualisees, forfait_jours, salaire")
+    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, horaire, heures_supp_mensualisees, forfait_jours, salaire")
     .in("id", salarieIds);
 
   if (salarieError) throw salarieError;
@@ -340,7 +341,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
 
     // Déterminer le métier
-    const metier = isChef 
+    const metierDefault = isChef 
       ? "Chef" 
       : isFinisseur
         ? "Finisseur"
@@ -349,6 +350,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           : isInterimaire
             ? "Intérimaire"
             : "Maçon";
+    
+    const metier = metierDefault;
+    const libelleEmploi = salarie.libelle_emploi;
 
         let heuresNormales = 0;
         let intemperies = 0;
@@ -455,6 +459,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         nom: salarie.nom || "",
         prenom: salarie.prenom || "",
         metier,
+        libelle_emploi: libelleEmploi,
         role,
         isChef,
         agence_interim: salarie.agence_interim || null,
