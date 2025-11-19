@@ -366,23 +366,15 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
       emp.trajetT31 || 0,    // T31
       emp.trajetT35 || 0,    // T35
       emp.trajetGD || 0,     // GD
-      // Colonnes administratives (vides pour l'instant)
-      "", // ACOMPTES
-      "", // PRETS
-      "", // COMMENTAIRES
-      "", // TOTAL SAISIE
-      "", // SAISIE DU MOIS
-      "", // COMMENTAIRES
-      // Concaténer les notes de régularisation M-1 de tous les jours
-      emp.detailJours
-        ?.map(j => j.regularisationM1)
-        .filter(Boolean)
-        .join(" | ") || "",
-      // Concaténer les autres éléments de tous les jours
-      emp.detailJours
-        ?.map(j => j.autresElements)
-        .filter(Boolean)
-        .join(" | ") || "",
+      // Colonnes administratives depuis le pré-export
+      emp.acomptes || "", // ACOMPTES
+      emp.prets || "", // PRETS
+      emp.commentaire_rh || "", // COMMENTAIRES RH
+      emp.totalSaisie || "", // TOTAL SAISIE
+      emp.saisieDuMois || "", // SAISIE DU MOIS
+      emp.commentaireSaisie || "", // COMMENTAIRES SAISIE
+      emp.regularisationM1 || "", // Regularisation M-1 (mensuel)
+      emp.autresElements || "", // Autres éléments (mensuel)
     ];
 
     // Garantir la longueur exacte
