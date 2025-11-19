@@ -35,7 +35,6 @@ export const ConducteursManager = () => {
     } else {
       await createUtilisateur.mutateAsync({
         ...formData,
-        role: "conducteur",
       });
     }
     setShowDialog(false);

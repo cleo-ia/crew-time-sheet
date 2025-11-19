@@ -142,7 +142,6 @@ export const useCreateUtilisateur = () => {
       nom: string; 
       prenom: string; 
       email?: string;
-      role?: string; 
       agence_interim?: string; 
       role_metier?: 'macon' | 'finisseur' | 'grutier';
       matricule?: string;
@@ -185,19 +184,6 @@ export const useCreateUtilisateur = () => {
         .single();
       
       if (userError) throw userError;
-
-      // Only assign role if it's a valid auth role (admin, rh, conducteur, chef)
-      const validRoles = ['admin', 'rh', 'conducteur', 'chef'];
-      if (user.role && validRoles.includes(user.role)) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert([{
-            user_id: utilisateur.id,
-            role: user.role as any,
-          }]);
-        
-        if (roleError) throw roleError;
-      }
       
       return utilisateur;
     },
