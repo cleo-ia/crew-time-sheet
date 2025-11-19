@@ -65,6 +65,15 @@ export interface EmployeeWithDetails {
   heures_supp_mensualisees?: number | null;
   forfait_jours?: boolean | null;
   salaire?: number | null;
+  
+  // 🆕 Nouveaux champs pour pré-export
+  ficheId?: string | null;
+  absences_export_override?: Record<string, number> | null;
+  trajets_export_override?: Record<string, number> | null;
+  acomptes?: string | null;
+  prets?: string | null;
+  commentaire_rh?: string | null;
+  notes_paie?: string | null;
 }
 
 /**
@@ -170,6 +179,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       statut,
       salarie_id,
       chantier_id,
+      absences_export_override,
+      trajets_export_override,
+      acomptes,
+      prets,
+      commentaire_rh,
+      notes_paie,
       chantiers!inner(
         code_chantier,
         ville,
@@ -204,7 +219,13 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       id,
       semaine,
       statut,
-      salarie_id
+      salarie_id,
+      absences_export_override,
+      trajets_export_override,
+      acomptes,
+      prets,
+      commentaire_rh,
+      notes_paie
     `)
     .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
     .is("chantier_id", null);
@@ -489,6 +510,15 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         heures_supp_mensualisees: salarie.heures_supp_mensualisees || null,
         forfait_jours: salarie.forfait_jours || null,
         salaire: salarie.salaire || null,
+        
+        // 🆕 Nouveaux champs pour pré-export (depuis la première fiche du mois)
+        ficheId: fiches[0]?.id || null,
+        absences_export_override: (fiches[0] as any)?.absences_export_override || null,
+        trajets_export_override: (fiches[0] as any)?.trajets_export_override || null,
+        acomptes: (fiches[0] as any)?.acomptes || null,
+        prets: (fiches[0] as any)?.prets || null,
+        commentaire_rh: (fiches[0] as any)?.commentaire_rh || null,
+        notes_paie: (fiches[0] as any)?.notes_paie || null,
       });
     }
   }

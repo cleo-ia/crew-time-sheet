@@ -283,41 +283,59 @@ export type Database = {
       }
       fiches: {
         Row: {
+          absences_export_override: Json | null
+          acomptes: string | null
           chantier_id: string | null
+          commentaire_rh: string | null
           created_at: string
           date: string | null
           id: string
+          notes_paie: string | null
           notification_conducteur_envoyee_at: string | null
+          prets: string | null
           salarie_id: string | null
           semaine: string | null
           statut: Database["public"]["Enums"]["statut_fiche"]
           total_heures: number
+          trajets_export_override: Json | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          absences_export_override?: Json | null
+          acomptes?: string | null
           chantier_id?: string | null
+          commentaire_rh?: string | null
           created_at?: string
           date?: string | null
           id?: string
+          notes_paie?: string | null
           notification_conducteur_envoyee_at?: string | null
+          prets?: string | null
           salarie_id?: string | null
           semaine?: string | null
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
+          trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          absences_export_override?: Json | null
+          acomptes?: string | null
           chantier_id?: string | null
+          commentaire_rh?: string | null
           created_at?: string
           date?: string | null
           id?: string
+          notes_paie?: string | null
           notification_conducteur_envoyee_at?: string | null
+          prets?: string | null
           salarie_id?: string | null
           semaine?: string | null
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
+          trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null
         }

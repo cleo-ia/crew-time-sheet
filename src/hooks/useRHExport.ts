@@ -55,6 +55,14 @@ export interface RHExportEmployee {
   trajetGD: number;
   totalHeures: number;
   statut_fiche: string;
+  
+  // 🆕 Nouveaux champs pour pré-export
+  ficheId?: string; // ID de la fiche pour les updates
+  acomptes?: string;
+  prets?: string;
+  commentaire_rh?: string;
+  notes_paie?: string;
+  
   detailJours?: Array<{
     date: string;
     chantierCode: string;
@@ -89,6 +97,10 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     // 🆕 CALCUL AUTOMATIQUE DES HEURES SUPP BTP
     const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(emp.detailJours, mois);
     
+    // 🆕 Récupérer les overrides si présents (pas encore implémenté dans buildRHConsolidation)
+    const absencesOverride = (emp as any).absences_export_override;
+    const trajetsOverride = (emp as any).trajets_export_override;
+    
     return {
       // Données contractuelles
       matricule: emp.matricule || "",
@@ -113,36 +125,44 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       heuresSupp25, // 🆕 Calculé automatiquement
       heuresSupp50, // 🆕 Calculé automatiquement
       absences: emp.absences,
-    indemnitesRepas: emp.paniers,
-    indemnitesTrajet: emp.totalJoursTrajets - (emp.trajetsParCode.T_PERSO || 0),
-    indemnitesTrajetPerso: emp.trajetsParCode.T_PERSO || 0,
-    
-    // Trajets détaillés
-    trajetTPerso: emp.trajetsParCode.T_PERSO || 0,
-    trajetT1: emp.trajetsParCode.T1 || 0,
-    trajetT2: emp.trajetsParCode.T2 || 0,
-    trajetT3: emp.trajetsParCode.T3 || 0,
-    trajetT4: emp.trajetsParCode.T4 || 0,
-    trajetT5: emp.trajetsParCode.T5 || 0,
-    trajetT6: emp.trajetsParCode.T6 || 0,
-    trajetT7: emp.trajetsParCode.T7 || 0,
-    trajetT8: emp.trajetsParCode.T8 || 0,
-    trajetT9: emp.trajetsParCode.T9 || 0,
-    trajetT10: emp.trajetsParCode.T10 || 0,
-    trajetT11: emp.trajetsParCode.T11 || 0,
-    trajetT12: emp.trajetsParCode.T12 || 0,
-    trajetT13: emp.trajetsParCode.T13 || 0,
-    trajetT14: emp.trajetsParCode.T14 || 0,
-    trajetT15: emp.trajetsParCode.T15 || 0,
-    trajetT16: emp.trajetsParCode.T16 || 0,
-    trajetT17: emp.trajetsParCode.T17 || 0,
-    trajetT31: emp.trajetsParCode.T31 || 0,
-    trajetT35: emp.trajetsParCode.T35 || 0,
-    trajetGD: emp.trajetsParCode.GD || 0,
+      indemnitesRepas: emp.paniers,
+      indemnitesTrajet: emp.totalJoursTrajets - (emp.trajetsParCode.T_PERSO || 0),
+      indemnitesTrajetPerso: emp.trajetsParCode.T_PERSO || 0,
+      
+      // Trajets détaillés (avec override si présent)
+      trajetTPerso: trajetsOverride?.T_PERSO ?? (emp.trajetsParCode.T_PERSO || 0),
+      trajetT1: trajetsOverride?.T1 ?? (emp.trajetsParCode.T1 || 0),
+      trajetT2: trajetsOverride?.T2 ?? (emp.trajetsParCode.T2 || 0),
+      trajetT3: trajetsOverride?.T3 ?? (emp.trajetsParCode.T3 || 0),
+      trajetT4: trajetsOverride?.T4 ?? (emp.trajetsParCode.T4 || 0),
+      trajetT5: trajetsOverride?.T5 ?? (emp.trajetsParCode.T5 || 0),
+      trajetT6: trajetsOverride?.T6 ?? (emp.trajetsParCode.T6 || 0),
+      trajetT7: trajetsOverride?.T7 ?? (emp.trajetsParCode.T7 || 0),
+      trajetT8: trajetsOverride?.T8 ?? (emp.trajetsParCode.T8 || 0),
+      trajetT9: trajetsOverride?.T9 ?? (emp.trajetsParCode.T9 || 0),
+      trajetT10: trajetsOverride?.T10 ?? (emp.trajetsParCode.T10 || 0),
+      trajetT11: trajetsOverride?.T11 ?? (emp.trajetsParCode.T11 || 0),
+      trajetT12: trajetsOverride?.T12 ?? (emp.trajetsParCode.T12 || 0),
+      trajetT13: trajetsOverride?.T13 ?? (emp.trajetsParCode.T13 || 0),
+      trajetT14: trajetsOverride?.T14 ?? (emp.trajetsParCode.T14 || 0),
+      trajetT15: trajetsOverride?.T15 ?? (emp.trajetsParCode.T15 || 0),
+      trajetT16: trajetsOverride?.T16 ?? (emp.trajetsParCode.T16 || 0),
+      trajetT17: trajetsOverride?.T17 ?? (emp.trajetsParCode.T17 || 0),
+      trajetT31: trajetsOverride?.T31 ?? (emp.trajetsParCode.T31 || 0),
+      trajetT35: trajetsOverride?.T35 ?? (emp.trajetsParCode.T35 || 0),
+      trajetGD: trajetsOverride?.GD ?? (emp.trajetsParCode.GD || 0),
       primeAnciennete: 0,
       intemperies: emp.intemperies,
       totalHeures: emp.totalHeures,
       statut_fiche: emp.statut,
+      
+      // 🆕 Nouveaux champs administratifs
+      ficheId: (emp as any).ficheId,
+      acomptes: (emp as any).acomptes || "",
+      prets: (emp as any).prets || "",
+      commentaire_rh: (emp as any).commentaire_rh || "",
+      notes_paie: (emp as any).notes_paie || "",
+      
       detailJours: emp.detailJours.map(jour => ({
         date: jour.date,
         chantierCode: jour.chantierCode,
