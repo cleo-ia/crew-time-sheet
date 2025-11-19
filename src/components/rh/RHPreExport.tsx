@@ -178,13 +178,9 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     });
 
     await savePreExportMutation.mutateAsync(modifiedData);
-    
-    // Réinitialiser l'état après sauvegarde réussie
-    setRows(prev => prev.map(row => ({
-      ...row,
-      modified: {},
-      isModified: false
-    })));
+
+    // Recharger les données depuis la base avec les overrides
+    await loadData();
   };
 
   const handleExport = async () => {
