@@ -201,10 +201,12 @@ export const UsersManager = () => {
       if (userRole) return userRole.role;
     }
     
-    // 2️⃣ Vérifier le champ role_metier (pour maçons, grutiers et finisseurs)
+    // 2️⃣ Vérifier le champ role_metier (pour tous les métiers)
     if (utilisateur.role_metier === "macon") return "macon";
     if (utilisateur.role_metier === "grutier") return "grutier";
     if (utilisateur.role_metier === "finisseur") return "finisseur";
+    if (utilisateur.role_metier === "chef") return "chef";
+    if (utilisateur.role_metier === "conducteur") return "conducteur";
     
     // 3️⃣ Si c'est un intérimaire → retourner "interimaire"
     if (utilisateur.agence_interim) return "interimaire";
