@@ -285,18 +285,23 @@ export type Database = {
         Row: {
           absences_export_override: Json | null
           acomptes: string | null
+          autres_elements_export: string | null
           chantier_id: string | null
           commentaire_rh: string | null
+          commentaire_saisie: string | null
           created_at: string
           date: string | null
           id: string
           notes_paie: string | null
           notification_conducteur_envoyee_at: string | null
           prets: string | null
+          regularisation_m1_export: string | null
+          saisie_du_mois: string | null
           salarie_id: string | null
           semaine: string | null
           statut: Database["public"]["Enums"]["statut_fiche"]
           total_heures: number
+          total_saisie: string | null
           trajets_export_override: Json | null
           updated_at: string
           user_id: string | null
@@ -304,18 +309,23 @@ export type Database = {
         Insert: {
           absences_export_override?: Json | null
           acomptes?: string | null
+          autres_elements_export?: string | null
           chantier_id?: string | null
           commentaire_rh?: string | null
+          commentaire_saisie?: string | null
           created_at?: string
           date?: string | null
           id?: string
           notes_paie?: string | null
           notification_conducteur_envoyee_at?: string | null
           prets?: string | null
+          regularisation_m1_export?: string | null
+          saisie_du_mois?: string | null
           salarie_id?: string | null
           semaine?: string | null
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
+          total_saisie?: string | null
           trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null
@@ -323,18 +333,23 @@ export type Database = {
         Update: {
           absences_export_override?: Json | null
           acomptes?: string | null
+          autres_elements_export?: string | null
           chantier_id?: string | null
           commentaire_rh?: string | null
+          commentaire_saisie?: string | null
           created_at?: string
           date?: string | null
           id?: string
           notes_paie?: string | null
           notification_conducteur_envoyee_at?: string | null
           prets?: string | null
+          regularisation_m1_export?: string | null
+          saisie_du_mois?: string | null
           salarie_id?: string | null
           semaine?: string | null
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
+          total_saisie?: string | null
           trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null
