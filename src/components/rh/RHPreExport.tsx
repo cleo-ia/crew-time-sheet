@@ -441,8 +441,8 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <EditableCell value={row.modified.commentairesSaisie ?? data.commentaireSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesSaisie', v)} type="text" isModified={row.modified.commentairesSaisie !== undefined} />
                   
                   {/* RÉGULARISATION */}
-                  <EditableCell value={row.modified.regularisationM1 ?? (data.detailJours?.map(j => j.regularisationM1).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
-                  <EditableCell value={row.modified.autresElements ?? (data.detailJours?.map(j => j.autresElements).filter(Boolean).join(" | ") || "-")} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
+                  <EditableCell value={row.modified.regularisationM1 ?? data.regularisationM1 ?? "-"} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
+                  <EditableCell value={row.modified.autresElements ?? data.autresElements ?? "-"} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
                   
                   {/* COMMENTAIRES DU MOIS */}
                   <EditableCell value={row.modified.commentaires ?? data.commentaires ?? "-"} onChange={(v) => handleCellChange(index, 'commentaires', v)} type="text" isModified={row.modified.commentaires !== undefined} />
