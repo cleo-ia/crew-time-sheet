@@ -94,7 +94,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       matricule: emp.matricule || "",
       nom: emp.nom,
       prenom: emp.prenom,
-      libelle_emploi: emp.metier,
+      libelle_emploi: emp.libelle_emploi || emp.metier,
       echelon: emp.echelon || "",
       niveau: emp.niveau || "",
       degre: emp.degre || "",
