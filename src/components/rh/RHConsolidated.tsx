@@ -111,7 +111,15 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                   ) : null}
                 </TableCell>
                 <TableCell className="text-center">{emp.heuresNormales}h</TableCell>
-                <TableCell className="text-center">{emp.heuresSupp}h</TableCell>
+                <TableCell className="text-center">
+                  {emp.heuresSupp > 0 ? (
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">
+                      {emp.heuresSupp}h
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">0h</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-center">{emp.absences}j</TableCell>
                 <TableCell className="text-center">{emp.paniers}</TableCell>
                 <TableCell className="text-center">{emp.trajets}</TableCell>

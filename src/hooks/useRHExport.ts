@@ -1,4 +1,4 @@
-import { buildRHConsolidation, RHFilters, EmployeeDetail } from "./rhShared";
+import { buildRHConsolidation, RHFilters, EmployeeDetail, calculateHeuresSuppBTP } from "./rhShared";
 import { startOfWeek, format, parseISO } from "date-fns";
 
 export interface RHExportEmployee {
@@ -70,80 +70,6 @@ export interface RHExportEmployee {
     autresElements?: string;
   }>;
 }
-
-/**
- * Calcule les heures supplémentaires BTP par semaine pour un mois donné
- * Logique : Contrat 39h → 4h structurelles incluses (36e-39e)
- * - Heures à 25% : 36e à 43e heure (max 8h/semaine)
- * - Heures à 50% : au-delà de 43e heure
- * - Semaine = Lundi-Vendredi uniquement
- * - Attribution au mois où tombe le lundi (Option A)
- * 
- * @param detailJours - Tous les jours travaillés (peut inclure plusieurs mois)
- * @param moisCible - Mois au format "YYYY-MM" pour lequel on calcule
- * @returns { heuresSupp25: number, heuresSupp50: number }
- */
-const calculateHeuresSuppBTP = (
-  detailJours: EmployeeDetail[],
-  moisCible: string
-): { heuresSupp25: number; heuresSupp50: number } => {
-  const [annee, mois] = moisCible.split("-").map(Number);
-  
-  // Grouper les jours par semaine civile (lundi = début de semaine ISO)
-  const joursParSemaine = new Map<string, EmployeeDetail[]>();
-  
-  detailJours.forEach(jour => {
-    const dateObj = parseISO(jour.date);
-    // Obtenir le lundi de la semaine (ISO 8601)
-    const lundi = startOfWeek(dateObj, { weekStartsOn: 1 }); // 1 = Lundi
-    const weekKey = format(lundi, 'yyyy-MM-dd');
-    
-    if (!joursParSemaine.has(weekKey)) {
-      joursParSemaine.set(weekKey, []);
-    }
-    joursParSemaine.get(weekKey)!.push(jour);
-  });
-  
-  let totalHeuresSupp25 = 0;
-  let totalHeuresSupp50 = 0;
-  
-  // Calculer pour chaque semaine DONT LE LUNDI APPARTIENT AU MOIS CIBLE
-  joursParSemaine.forEach((joursDeUneSemaine, weekKey) => {
-    const lundi = parseISO(weekKey);
-    const lundiAnnee = lundi.getFullYear();
-    const lundiMois = lundi.getMonth() + 1; // getMonth() retourne 0-11
-    
-    // ⚠️ OPTION A : On ne traite que les semaines dont le lundi est dans le mois cible
-    if (lundiAnnee !== annee || lundiMois !== mois) {
-      return; // Ignorer cette semaine (son lundi n'est pas dans le mois demandé)
-    }
-    
-    // Total heures TRAVAILLÉES dans la semaine (lundi-vendredi uniquement)
-    // ❌ Exclure : absences (isAbsent=true) et intempéries
-    const totalHeuresSemaine = joursDeUneSemaine.reduce((sum, jour) => {
-      // Ne compter QUE les heures réellement travaillées
-      const heuresTravaillees = jour.isAbsent ? 0 : (jour.heures || 0);
-      return sum + heuresTravaillees;
-    }, 0);
-    
-    // 🧮 CALCUL DES HEURES SUPP BTP (législation + contrat 39h)
-    // Heures à 25% : de la 36e à la 43e heure (plafonné à 8h/semaine)
-    const heuresSupp25Semaine = Math.min(8, Math.max(0, totalHeuresSemaine - 35));
-    
-    // Heures à 50% : au-delà de la 43e heure (pas de plafond)
-    const heuresSupp50Semaine = Math.max(0, totalHeuresSemaine - 43);
-    
-    totalHeuresSupp25 += heuresSupp25Semaine;
-    totalHeuresSupp50 += heuresSupp50Semaine;
-    
-    console.log(`[Heures Supp BTP] Semaine ${weekKey}: ${totalHeuresSemaine}h → 25%: ${heuresSupp25Semaine}h, 50%: ${heuresSupp50Semaine}h`);
-  });
-  
-  return {
-    heuresSupp25: totalHeuresSupp25,
-    heuresSupp50: totalHeuresSupp50,
-  };
-};
 
 /**
  * Récupère les données RH pour export Excel (cumul mensuel)
