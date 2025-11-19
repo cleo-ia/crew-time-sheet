@@ -58,7 +58,7 @@ export const useRHSummary = (filters: any) => {
 
       // Calculer les stats à partir des employés consolidés
       const heuresNormales = employees.reduce((sum, emp) => sum + emp.heuresNormales, 0);
-      const heuresSupp = employees.reduce((sum, emp) => sum + emp.intemperies, 0);
+      const heuresSupp = employees.reduce((sum, emp) => sum + emp.heuresSupp, 0);
       const absences = employees.reduce((sum, emp) => sum + emp.absences, 0);
       
       // Récupérer tous les codes chantier uniques
@@ -75,7 +75,7 @@ export const useRHSummary = (filters: any) => {
         salaries: employees.length,
       };
 
-      console.log(`[RH Summary] Calculé depuis buildRHConsolidation: ${employees.length} salariés, ${heuresNormales}h normales, ${heuresSupp}h intempéries`);
+      console.log(`[RH Summary] Calculé depuis buildRHConsolidation: ${employees.length} salariés, ${heuresNormales}h normales, ${heuresSupp}h supp`);
       
       return summary;
     },
@@ -105,7 +105,7 @@ export const useRHConsolidated = (filters: any) => {
         isChef: emp.isChef,
         role: emp.role,
         heuresNormales: emp.heuresNormales,
-        heuresSupp: emp.intemperies,
+        heuresSupp: emp.heuresSupp,
         absences: emp.absences,
         paniers: emp.paniers,
         trajets: emp.totalJoursTrajets, // ✅ NOUVEAU : somme totale
