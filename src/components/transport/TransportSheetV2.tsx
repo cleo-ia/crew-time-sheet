@@ -222,10 +222,11 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     }
   }, [initialDataSource, hasLoadedData, transportDays.length]);
 
-  // Auto-save avec debounce pour les modifications
+  // Auto-save avec debounce pour les modifications - protégé contre les boucles
   useEffect(() => {
     if (!hasLoadedData) return;
     if (initialDataSource === 'copied') return; // Déjà sauvegardé par l'effet ci-dessus
+    if (!isDirty.current) return; // NE SAUVEGARDER QUE SI MODIFIÉ
 
     const hasData = transportDays.some((day) => day.vehicules.length > 0);
     if (!hasData) return;
@@ -237,7 +238,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       try {
-        const result = await autoSave.mutateAsync({
+        await autoSave.mutateAsync({
           ficheId: ficheId || "",
           semaine: selectedWeekString,
           chantierId,
@@ -245,11 +246,9 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
           days: transportDays,
           isDirty: isDirty.current,
         });
-        // Invalider SEULEMENT si des données ont été sauvegardées
-        if (result?.saved) {
-          queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
-          queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
-        }
+        // Réinitialiser isDirty AVANT les invalidations pour éviter les boucles
+        isDirty.current = false;
+        // NE PAS invalider les queries ici - cause le clignotement
       } finally {
         setIsSaving(false);
       }
@@ -263,10 +262,17 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   }, [transportDays, hasLoadedData, selectedWeekString, chantierId, chefId, ficheId, autoSave, initialDataSource]);
 
   const updateDay = (date: string, updatedDay: TransportDayV2) => {
-    isDirty.current = true;
-    setTransportDays((prev) =>
-      prev.map((day) => (day.date === date ? updatedDay : day))
-    );
+    // Marquer comme dirty UNIQUEMENT si les données changent vraiment
+    setTransportDays((prev) => {
+      const existingDay = prev.find(d => d.date === date);
+      const hasChanged = JSON.stringify(existingDay) !== JSON.stringify(updatedDay);
+      
+      if (hasChanged) {
+        isDirty.current = true;
+      }
+      
+      return prev.map((day) => (day.date === date ? updatedDay : day));
+    });
   };
 
   const handleSave = async () => {

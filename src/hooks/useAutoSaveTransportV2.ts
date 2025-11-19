@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SaveTransportParamsV2 } from "@/types/transport";
+import { toast } from "@/hooks/use-toast";
 
 export const useAutoSaveTransportV2 = () => {
   const queryClient = useQueryClient();
@@ -150,6 +151,12 @@ export const useAutoSaveTransportV2 = () => {
     },
     onError: (error) => {
       console.error("[useAutoSaveTransportV2] Error:", error);
+      toast({
+        variant: "destructive",
+        title: "❌ Erreur de sauvegarde trajet",
+        description: "Les modifications de trajet n'ont PAS été enregistrées. Vérifiez votre connexion.",
+        duration: 6000,
+      });
     },
   });
 };

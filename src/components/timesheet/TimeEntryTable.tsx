@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -758,22 +758,56 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     onEntriesChange?.(entries);
   }, [entries, onEntriesChange]);
 
-  // Auto-save avec debounce de 2 secondes
+  // Flag pour suivre les modifications en attente
+  const isDirty = useRef<boolean>(false);
+
+  // Auto-save avec debounce de 1 seconde (réduit pour plus de réactivité)
   useEffect(() => {
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
     
     const timer = setTimeout(() => {
-      // Auto-save systématique pour TOUTE modification
-      autoSaveMutation.mutate({ 
-        timeEntries: entries, 
-        weekId, 
-        chantierId, 
-        chefId 
-      });
-    }, 2000);
+      console.log("[TimeEntryTable] Auto-saving (debounce)...");
+      autoSaveMutation.mutate(
+        { 
+          timeEntries: entries, 
+          weekId, 
+          chantierId, 
+          chefId 
+        },
+        {
+          onSuccess: () => {
+            isDirty.current = false;
+          }
+        }
+      );
+    }, 1000); // Réduit de 2s à 1s
     
     return () => clearTimeout(timer);
   }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly]);
+
+  // Sauvegarder immédiatement quand la page est masquée (fermeture tablette)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly) {
+        console.log("[TimeEntryTable] Page hidden, forcing immediate save");
+        autoSaveMutation.mutate({ 
+          timeEntries: entries, 
+          weekId, 
+          chantierId, 
+          chefId 
+        });
+        isDirty.current = false;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handleVisibilityChange);
+    };
+  }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, autoSaveMutation]);
   
   // Handler pour mise à jour des fiches trajet finisseurs
   const handleTransportFinisseurUpdate = useCallback((finisseurId: string, data: { days: TransportFinisseurDay[] }) => {
@@ -835,6 +869,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     value: any
   ) => {
     setHasUserEdits(true);
+    isDirty.current = true; // Marquer comme modifié
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.employeeId !== employeeId) return entry;

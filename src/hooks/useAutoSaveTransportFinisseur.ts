@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SaveTransportFinisseurParams } from "@/types/transport";
+import { toast } from "@/hooks/use-toast";
 
 export const useAutoSaveTransportFinisseur = () => {
   const queryClient = useQueryClient();
@@ -163,6 +164,12 @@ export const useAutoSaveTransportFinisseur = () => {
     },
     onError: (error) => {
       console.error("Auto-save transport finisseur error:", error);
+      toast({
+        variant: "destructive",
+        title: "❌ Erreur de sauvegarde trajet finisseur",
+        description: "Les modifications de trajet n'ont PAS été enregistrées. Vérifiez votre connexion.",
+        duration: 6000,
+      });
     },
   });
 };
