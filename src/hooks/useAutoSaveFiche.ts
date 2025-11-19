@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface DayData {
   hours: number;
@@ -264,8 +265,13 @@ export const useAutoSaveFiche = () => {
       // PAS de toast (sauvegarde silencieuse)
     },
     onError: (error) => {
-      // Logger uniquement en console
       console.error("Auto-save fiche failed:", error);
+      toast({
+        variant: "destructive",
+        title: "❌ Erreur de sauvegarde automatique",
+        description: "Vos modifications n'ont PAS été enregistrées. Vérifiez votre connexion et réessayez.",
+        duration: 6000,
+      });
     },
   });
 };

@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
@@ -177,36 +178,7 @@ const Index = () => {
     setPreviousChef(selectedChef);
   }, [selectedChef, previousChef]);
 
-  // Auto-save des timeEntries avec debounce de 3 secondes
-  useEffect(() => {
-    if (timeEntries.length === 0 || !selectedChef || !selectedWeek) return;
-    
-    // Ne pas auto-sauvegarder si aucune donnée valide
-    const hasData = timeEntries.some(entry => 
-      Object.values(entry.days).some((day: any) => 
-        day.hours > 0 || day.absent || day.codeTrajet
-      )
-    );
-    
-    if (!hasData) return;
-
-    const timer = setTimeout(async () => {
-      console.log("[Index] Auto-saving fiche...");
-      try {
-        await autoSaveFiche.mutateAsync({
-          timeEntries,
-          weekId: selectedWeek,
-          chantierId: selectedChantier || null,
-          chefId: selectedChef,
-        });
-        console.log("[Index] Auto-save successful");
-      } catch (error) {
-        console.error("[Index] Auto-save failed:", error);
-      }
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [timeEntries, selectedChef, selectedChantier, selectedWeek, autoSaveFiche]);
+  // Auto-save supprimé ici - géré directement dans TimeEntryTable.tsx
 
   // Charger les données existantes au démarrage
   useEffect(() => {
@@ -545,6 +517,42 @@ const Index = () => {
                 onEntriesChange={setTimeEntries}
                 readOnly={!isFicheModifiable}
               />
+
+              {/* Bouton "Enregistrer maintenant" */}
+              {selectedChef && selectedWeek && timeEntries.length > 0 && (
+                <div className="flex items-center gap-3 mt-4">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      autoSaveFiche.mutate({
+                        timeEntries,
+                        weekId: selectedWeek,
+                        chantierId: selectedChantier || null,
+                        chefId: selectedChef,
+                      });
+                    }}
+                    disabled={!selectedChef || !selectedWeek || timeEntries.length === 0 || autoSaveFiche.isPending}
+                  >
+                    {autoSaveFiche.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Enregistrer maintenant
+                      </>
+                    )}
+                  </Button>
+                  {autoSaveFiche.isSuccess && (
+                    <Badge variant="default" className="bg-green-600">
+                      ✓ Enregistré
+                    </Badge>
+                  )}
+                </div>
+              )}
 
               {/* Transport Sheet - Accordéon */}
               {selectedWeek && (
