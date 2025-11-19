@@ -291,7 +291,7 @@ export const MaconsManager = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner" />
                   </SelectTrigger>
-                <SelectContent>
+                <SelectContent modal={false}>
                   <SelectItem value="ETAM">ETAM</SelectItem>
                   <SelectItem value="Ouvrier">Ouvrier</SelectItem>
                   <SelectItem value="Cadre">Cadre</SelectItem>
@@ -320,7 +320,7 @@ export const MaconsManager = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent modal={false}>
                     <SelectItem value="CDI">CDI</SelectItem>
                     <SelectItem value="CDD">CDD</SelectItem>
                     <SelectItem value="Intérim">Intérim</SelectItem>
