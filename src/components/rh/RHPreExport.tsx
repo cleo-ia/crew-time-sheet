@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
 import { Input } from "@/components/ui/input";
-import { Download, RotateCcw, AlertCircle } from "lucide-react";
+import { Download, RotateCcw, AlertCircle, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { generateRHExcel } from "@/lib/excelExport";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { RHFilters } from "@/hooks/rhShared";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { usePreExportSave } from "@/hooks/usePreExportSave";
 
 interface RHPreExportProps {
   filters: RHFilters;
@@ -73,6 +73,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const savePreExportMutation = usePreExportSave();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -117,6 +118,73 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       isModified: false
     })));
     toast.success("Modifications annulées");
+  };
+
+  const handleSaveModifications = async () => {
+    const modifiedRows = rows.filter(row => row.isModified);
+    
+    if (modifiedRows.length === 0) {
+      toast.info("Aucune modification à enregistrer");
+      return;
+    }
+
+    const modifiedData = modifiedRows.map(row => {
+      const absencesOverride: Record<string, number> = {};
+      const trajetsOverride: Record<string, number> = {};
+      
+      // Collecter les absences modifiées
+      if (row.modified.absenceCP !== undefined) absencesOverride.CP = row.modified.absenceCP;
+      if (row.modified.absenceRTT !== undefined) absencesOverride.RTT = row.modified.absenceRTT;
+      if (row.modified.absenceAM !== undefined) absencesOverride.AM = row.modified.absenceAM;
+      if (row.modified.absenceMP !== undefined) absencesOverride.MP = row.modified.absenceMP;
+      if (row.modified.absenceAT !== undefined) absencesOverride.AT = row.modified.absenceAT;
+      if (row.modified.absenceCongeParental !== undefined) absencesOverride.CONGE_PARENTAL = row.modified.absenceCongeParental;
+      if (row.modified.absenceIntemperies !== undefined) absencesOverride.HI = row.modified.absenceIntemperies;
+      if (row.modified.absenceCPSS !== undefined) absencesOverride.CPSS = row.modified.absenceCPSS;
+      if (row.modified.absenceAbsInj !== undefined) absencesOverride.ABS_INJ = row.modified.absenceAbsInj;
+      
+      // Collecter les trajets modifiés
+      if (row.modified.trajetT1 !== undefined) trajetsOverride.T1 = row.modified.trajetT1;
+      if (row.modified.trajetT2 !== undefined) trajetsOverride.T2 = row.modified.trajetT2;
+      if (row.modified.trajetT3 !== undefined) trajetsOverride.T3 = row.modified.trajetT3;
+      if (row.modified.trajetT4 !== undefined) trajetsOverride.T4 = row.modified.trajetT4;
+      if (row.modified.trajetT5 !== undefined) trajetsOverride.T5 = row.modified.trajetT5;
+      if (row.modified.trajetT6 !== undefined) trajetsOverride.T6 = row.modified.trajetT6;
+      if (row.modified.trajetT7 !== undefined) trajetsOverride.T7 = row.modified.trajetT7;
+      if (row.modified.trajetT8 !== undefined) trajetsOverride.T8 = row.modified.trajetT8;
+      if (row.modified.trajetT9 !== undefined) trajetsOverride.T9 = row.modified.trajetT9;
+      if (row.modified.trajetT10 !== undefined) trajetsOverride.T10 = row.modified.trajetT10;
+      if (row.modified.trajetT11 !== undefined) trajetsOverride.T11 = row.modified.trajetT11;
+      if (row.modified.trajetT12 !== undefined) trajetsOverride.T12 = row.modified.trajetT12;
+      if (row.modified.trajetT13 !== undefined) trajetsOverride.T13 = row.modified.trajetT13;
+      if (row.modified.trajetT14 !== undefined) trajetsOverride.T14 = row.modified.trajetT14;
+      if (row.modified.trajetT15 !== undefined) trajetsOverride.T15 = row.modified.trajetT15;
+      if (row.modified.trajetT16 !== undefined) trajetsOverride.T16 = row.modified.trajetT16;
+      if (row.modified.trajetT17 !== undefined) trajetsOverride.T17 = row.modified.trajetT17;
+      if (row.modified.trajetT31 !== undefined) trajetsOverride.T31 = row.modified.trajetT31;
+      if (row.modified.trajetT35 !== undefined) trajetsOverride.T35 = row.modified.trajetT35;
+      if (row.modified.trajetGD !== undefined) trajetsOverride.GD = row.modified.trajetGD;
+      if (row.modified.trajetTPerso !== undefined) trajetsOverride.T_PERSO = row.modified.trajetTPerso;
+
+      return {
+        ficheId: row.original.ficheId!,
+        absencesOverride: Object.keys(absencesOverride).length > 0 ? absencesOverride : undefined,
+        trajetsOverride: Object.keys(trajetsOverride).length > 0 ? trajetsOverride : undefined,
+        acomptes: row.modified.acomptes,
+        prets: row.modified.prets,
+        commentaireRH: row.modified.commentaires || row.modified.commentairesAdmin,
+        notesPaie: row.modified.commentairesAdmin,
+      };
+    });
+
+    await savePreExportMutation.mutateAsync(modifiedData);
+    
+    // Réinitialiser l'état après sauvegarde réussie
+    setRows(prev => prev.map(row => ({
+      ...row,
+      modified: {},
+      isModified: false
+    })));
   };
 
   const handleExport = async () => {
@@ -166,6 +234,20 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       {/* Actions */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
+          {modifiedCount > 0 && (
+            <Button 
+              onClick={handleSaveModifications} 
+              variant="default"
+              disabled={savePreExportMutation.isPending}
+            >
+              {savePreExportMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              💾 Enregistrer ({modifiedCount})
+            </Button>
+          )}
           <Button onClick={handleExport} disabled={isLoading}>
             <Download className="h-4 w-4 mr-2" />
             Générer l'Excel {modifiedCount > 0 && `(${modifiedCount} modif.)`}
