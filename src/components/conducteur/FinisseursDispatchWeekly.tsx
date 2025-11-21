@@ -440,17 +440,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
               </p>
             </div>
 
-            {/* Toggle Accordéon/Tableau */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === "accordion" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("accordion")}
-              >
-                <List className="h-4 w-4 mr-2" />
-                Liste
-              </Button>
-            </div>
           </div>
 
           {/* Barre de recherche + Filtres */}
