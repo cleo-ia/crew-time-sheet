@@ -222,7 +222,7 @@ export const TransportDayAccordion = ({
                           otherConducteursIds={
                             day.vehicules
                               .filter(v => v.id !== vehicule.id)
-                              .flatMap(v => [v.conducteurMatinId, v.conducteurSoirId])
+                              .map(v => v.conducteurMatinId)
                               .filter(Boolean)
                           }
                         />
@@ -241,7 +241,7 @@ export const TransportDayAccordion = ({
                           otherConducteursIds={
                             day.vehicules
                               .filter(v => v.id !== vehicule.id)
-                              .flatMap(v => [v.conducteurMatinId, v.conducteurSoirId])
+                              .map(v => v.conducteurSoirId)
                               .filter(Boolean)
                           }
                         />
