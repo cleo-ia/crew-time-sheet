@@ -585,7 +585,11 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         const datesAffectees = new Set(affectationsAvecDates?.map(a => a.date) || []);
 
         // Filtrer les fiches_jours pour ne garder que les dates affectées
-        fichesJours = fichesJours.filter(jour => datesAffectees.has(jour.date));
+        // SEULEMENT s'il existe des affectations journalières (finisseur autonome)
+        if (datesAffectees.size > 0) {
+          fichesJours = fichesJours.filter(jour => datesAffectees.has(jour.date));
+        }
+        // Sinon (pas d'affectations journalières), traiter comme un maçon (aucun filtre)
 
         console.debug(`[RH Employee Detail] Finisseur ${salarieId}: ${fichesJoursRaw?.length || 0} → ${fichesJours.length} jours`);
       }
