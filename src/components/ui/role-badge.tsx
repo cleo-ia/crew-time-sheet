@@ -63,7 +63,7 @@ export const RoleBadge = ({ role, size = "md" }: RoleBadgeProps) => {
           color: 'white' 
         }}
       >
-        Chef d'équipe
+        Chef de chantier
       </Badge>
     );
   }

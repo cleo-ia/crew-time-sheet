@@ -414,14 +414,14 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <p className="text-xs text-amber-700 dark:text-amber-300 text-center flex items-center justify-center gap-2">
             <AlertTriangle className="h-3 w-3" />
-            Mode développement : Authentification désactivée. Sélectionnez manuellement le chef d'équipe.
+            Mode développement : Authentification désactivée. Sélectionnez manuellement le chef de chantier.
           </p>
         </div>
       </div>
 
       <PageHeader
         title="Saisie hebdomadaire"
-        subtitle="Chef d'équipe"
+        subtitle="Chef de chantier"
         icon={FileText}
         theme="saisie-chef"
       />
@@ -441,7 +441,7 @@ const Index = () => {
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  Chef d'équipe
+                  Chef de chantier
                 </label>
                 <UserSelector role="chef" value={selectedChef} onChange={setSelectedChef} />
               </div>

@@ -88,7 +88,7 @@ export const FichesFilters = ({ filters, onFiltersChange }: FichesFiltersProps) 
         <div>
           <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
-            Chef d'équipe
+            Chef de chantier
           </label>
           <Select
             value={filters.chef}

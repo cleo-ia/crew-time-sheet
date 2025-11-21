@@ -1070,7 +1070,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         </Card>
       )}
       {/* Time Entry Cards with Accordion */}
-      {/* Trier les entrées : Chef d'équipe > Maçons > Intérimaires */}
+      {/* Trier les entrées : Chef de chantier > Maçons > Intérimaires */}
       {(() => {
         const baseEntries = !isConducteurMode
           ? entries
@@ -1148,7 +1148,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                     {isChef && (
                       <Badge variant="default" className="bg-primary text-primary-foreground">
                         <Crown className="h-3 w-3 mr-1" />
-                        Chef d'équipe
+                        Chef de chantier
                       </Badge>
                     )}
                     {isInterimaire && (
