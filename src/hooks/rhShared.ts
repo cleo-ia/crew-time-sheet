@@ -412,11 +412,16 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         }
 
         // Pour les finisseurs, vérifier qu'ils sont affectés ce jour-là
+        // SEULEMENT s'ils ont des affectations journalières (finisseur autonome)
         if (isFinisseur) {
           const datesAffectees = affectationsMap.get(salarieId);
-          if (!datesAffectees || !datesAffectees.has(jour.date)) {
-            continue; // Ignorer ce jour si non affecté
+          // Si le finisseur a des affectations journalières, on filtre
+          if (datesAffectees && datesAffectees.size > 0) {
+            if (!datesAffectees.has(jour.date)) {
+              continue; // Ignorer ce jour si non affecté
+            }
           }
+          // Sinon (pas d'affectations journalières), on traite comme un maçon
         }
 
         // Calcul des heures: priorité à heures, sinon HNORM
