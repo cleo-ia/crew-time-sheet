@@ -333,7 +333,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                                 className="bg-primary text-primary-foreground"
                               >
                                 <Crown className="h-3 w-3 mr-1" />
-                                Chef d'équipe
+                                Chef de chantier
                               </Badge>
                             ) : macon.role === "interimaire" ? (
                               <Badge 

@@ -164,7 +164,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
             : ((rolesMap?.get(f.salarie?.id) as any) || "macon")),
     }))
     .sort((a, b) => {
-      // 1. Chef d'équipe toujours en premier
+      // 1. Chef de chantier toujours en premier
       if (a.isChef && !b.isChef) return -1;
       if (!a.isChef && b.isChef) return 1;
       
@@ -202,7 +202,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
       };
     })
     .sort((a, b) => {
-      // 1. Chef d'équipe toujours en premier
+      // 1. Chef de chantier toujours en premier
       if (a.isChef && !b.isChef) return -1;
       if (!a.isChef && b.isChef) return 1;
       

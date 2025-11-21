@@ -64,7 +64,7 @@ export const InviteUserDialog = ({ open, onOpenChange }: InviteUserDialogProps) 
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="rh">RH</SelectItem>
                 <SelectItem value="conducteur">Conducteur</SelectItem>
-                <SelectItem value="chef">Chef d'équipe</SelectItem>
+                <SelectItem value="chef">Chef de chantier</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -126,7 +126,7 @@ export const ChefsManager = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">
-          {chefs.length} chef{chefs.length > 1 ? "s" : ""} d'équipe enregistré{chefs.length > 1 ? "s" : ""}
+          {chefs.length} chef{chefs.length > 1 ? "s" : ""} de chantier enregistré{chefs.length > 1 ? "s" : ""}
         </p>
         <Button onClick={() => setShowDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -217,10 +217,10 @@ export const ChefsManager = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingChef ? "Modifier le chef" : "Nouveau chef d'équipe"}
+              {editingChef ? "Modifier le chef" : "Nouveau chef de chantier"}
             </DialogTitle>
             <DialogDescription>
-              Renseignez les informations du chef d'équipe
+              Renseignez les informations du chef de chantier
             </DialogDescription>
           </DialogHeader>
 
