@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useAffectations } from "@/hooks/useAffectations";
 
 interface Finisseur {
   id: string;
@@ -41,16 +42,26 @@ export const FinisseurCombobox = ({
   onSearchChange,
 }: FinisseurComboboxProps) => {
   const [open, setOpen] = useState(false);
+  
+  // Charger les affectations des chefs
+  const { data: affectationsChefs } = useAffectations();
 
-  // Tri des finisseurs : Non affectés → Partiels → Complets
+  // Tri des finisseurs : Affectés par chef → Non affectés → Partiels → Complets
   const sortedFinisseurs = useMemo(() => {
     const withDays = finisseurs.map((f) => ({
       ...f,
       affectedDays: getAffectedDaysCount(f.id),
       isAffected: mesFinisseursActuels.some((mf) => mf.id === f.id),
+      isAffectedByChef: affectationsChefs?.some(
+        (aff: any) => aff.macon_id === f.id && aff.date_fin === null
+      ) ?? false,
     }));
 
     return withDays.sort((a, b) => {
+      // 0. Affectés par chef en dernier (non sélectionnables)
+      if (a.isAffectedByChef && !b.isAffectedByChef) return 1;
+      if (!a.isAffectedByChef && b.isAffectedByChef) return -1;
+
       // 1. Non affectés (0 jours) en premier
       if (a.affectedDays === 0 && b.affectedDays > 0) return -1;
       if (a.affectedDays > 0 && b.affectedDays === 0) return 1;
@@ -68,7 +79,7 @@ export const FinisseurCombobox = ({
       // 4. Tri alphabétique dans chaque groupe
       return `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`);
     });
-  }, [finisseurs, mesFinisseursActuels, getAffectedDaysCount]);
+  }, [finisseurs, mesFinisseursActuels, getAffectedDaysCount, affectationsChefs]);
 
   // Grouper par statut pour affichage
   const groupedFinisseurs = useMemo(() => {
@@ -92,25 +103,35 @@ export const FinisseurCombobox = ({
       key={f.id}
       value={f.id}
       keywords={[f.prenom.toLowerCase(), f.nom.toLowerCase()]}
-      onSelect={(value) => handleSelect(value)}
-      className="flex items-center justify-between gap-2 cursor-pointer"
+      onSelect={(value) => !f.isAffectedByChef && handleSelect(value)}
+      className={cn(
+        "flex items-center justify-between gap-2",
+        f.isAffectedByChef ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+      )}
+      disabled={f.isAffectedByChef}
     >
       <div className="flex items-center gap-2 flex-1">
-        {f.isAffected && (
+        {f.isAffected && !f.isAffectedByChef && (
           <Check className="h-4 w-4 text-green-600 shrink-0" />
         )}
         <span className={cn(!f.isAffected && "ml-6")}>
           {f.prenom} {f.nom}
         </span>
       </div>
-      {f.affectedDays > 0 && (
-        <Badge
-          variant={f.affectedDays === 5 ? "default" : "secondary"}
-          className="text-xs shrink-0"
-        >
-          {f.affectedDays}/5 jours
-        </Badge>
-      )}
+      <div className="flex items-center gap-2">
+        {f.isAffectedByChef ? (
+          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 text-xs shrink-0">
+            Affecté à un chef
+          </Badge>
+        ) : f.affectedDays > 0 ? (
+          <Badge
+            variant={f.affectedDays === 5 ? "default" : "secondary"}
+            className="text-xs shrink-0"
+          >
+            {f.affectedDays}/5 jours
+          </Badge>
+        ) : null}
+      </div>
     </CommandItem>
   );
 

@@ -31,10 +31,11 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Récupérer tous les maçons, grutiers et intérimaires du système
+  // Récupérer tous les maçons, grutiers, intérimaires et finisseurs du système
   const { data: allMacons, isLoading: loadingMacons } = useUtilisateursByRole("macon");
   const { data: allGrutiers, isLoading: loadingGrutiers } = useUtilisateursByRole("grutier");
   const { data: allInterimaires, isLoading: loadingInterimaires } = useUtilisateursByRole("interimaire");
+  const { data: allFinisseurs, isLoading: loadingFinisseurs } = useUtilisateursByRole("finisseur");
   
   // Filtre défensif : garantir qu'on n'affiche que des maçons purs (role_metier = 'macon')
   const maconsPurs = (allMacons || []).filter(u => u.role_metier === 'macon');
@@ -102,6 +103,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
     ? allInterimaires
     : allInterimaires?.filter(i => i.id === searchValue);
 
+  const filteredFinisseurs = searchValue === "all"
+    ? allFinisseurs
+    : allFinisseurs?.filter(f => f.id === searchValue);
+
   // Déterminer quelles sections afficher
   const showMaconsSection = searchValue === "all" || 
     (searchValue !== "all" && maconsPurs?.some(m => m.id === searchValue));
@@ -112,6 +117,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
   const showInterimairesSection = searchValue === "all" || 
     (searchValue !== "all" && allInterimaires?.some(i => i.id === searchValue));
 
+  const showFinisseursSection = searchValue === "all" ||
+    (searchValue !== "all" && allFinisseurs?.some(f => f.id === searchValue));
+
   // Fonction utilitaire pour obtenir le label du rôle
   const getRoleLabel = (role: string): string => {
     switch (role) {
@@ -119,6 +127,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
         return "Grutier";
       case "interimaire":
         return "Intérimaire";
+      case "finisseur":
+        return "Finisseur";
       case "macon":
       default:
         return "Maçon";
@@ -283,7 +293,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                 allMacons={maconsPurs || []}
                 allGrutiers={allGrutiers || []}
                 allInterimaires={allInterimaires || []}
-                isLoading={loadingMacons || loadingGrutiers || loadingInterimaires}
+                allFinisseurs={allFinisseurs || []}
+                isLoading={loadingMacons || loadingGrutiers || loadingInterimaires || loadingFinisseurs}
               />
             </div>
           </DialogHeader>
@@ -351,12 +362,19 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                               >
                                 Intérimaire
                               </Badge>
-                            ) : macon.role === "grutier" ? (
+                             ) : macon.role === "grutier" ? (
                               <Badge 
                                 variant="secondary" 
                                 className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                               >
                                 Grutier
+                              </Badge>
+                            ) : macon.role === "finisseur" ? (
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                              >
+                                Finisseur
                               </Badge>
                             ) : (
                               <Badge 
@@ -391,12 +409,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                 )}
               </div>
 
-              {(showMaconsSection || showGrutiersSection || showInterimairesSection) && (
+              {(showMaconsSection || showGrutiersSection || showInterimairesSection || showFinisseursSection) && (
                 <>
                   <Separator className="my-6" />
 
-                  {/* Grille 3 colonnes pour afficher maçons, grutiers et intérimaires côte à côte */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Grille 4 colonnes pour afficher maçons, grutiers, intérimaires et finisseurs côte à côte */}
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
                     {/* Colonne gauche : AJOUTER DES MAÇONS */}
                     {showMaconsSection && (
@@ -688,6 +706,100 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                     ) : (
                       <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-border rounded-lg">
                         Aucun intérimaire disponible dans le système
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                    {/* Colonne 4 : AJOUTER DES FINISSEURS */}
+                    {showFinisseursSection && (
+                      <div>
+                        <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                          AJOUTER DES FINISSEURS
+                        </h3>
+                        {loadingFinisseurs ? (
+                          <div className="flex items-center justify-center p-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : filteredFinisseurs && filteredFinisseurs.length > 0 ? (
+                          <div className="space-y-2">
+                            {[...filteredFinisseurs].sort((a, b) => {
+                              const prenomCompare = (a.prenom || "").localeCompare(b.prenom || "", 'fr');
+                              if (prenomCompare !== 0) return prenomCompare;
+                              return (a.nom || "").localeCompare(b.nom || "", 'fr');
+                            }).map((finisseur) => {
+                          const inTeam = isMaconInTeam(finisseur.id);
+                          const status = getMaconStatus(finisseur.id);
+                          const isAdding = addingIds.has(finisseur.id);
+
+                          return (
+                            <div 
+                              key={finisseur.id}
+                              className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
+                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                              }`}
+                              onClick={() => {
+                                if (!inTeam && !isAdding) {
+                                  handleAddMacon(finisseur.id, finisseur.nom || "", finisseur.prenom || "", "finisseur");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-lg flex-shrink-0">🔨</span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">
+                                    {finisseur.prenom} {finisseur.nom}
+                                  </p>
+                                  {finisseur.email && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {finisseur.email}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {status && !inTeam && (
+                                  <Badge 
+                                    variant="outline"
+                                    className={`whitespace-nowrap ${
+                                      status.type === "available" 
+                                        ? "bg-success/10 text-success border-success/20" 
+                                        : status.type === "assigned"
+                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                        : "bg-warning/10 text-warning border-warning/20"
+                                    }`}
+                                  >
+                                    {status.label}
+                                  </Badge>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  disabled={inTeam || isAdding}
+                                  className="whitespace-nowrap"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddMacon(finisseur.id, finisseur.nom || "", finisseur.prenom || "", "finisseur");
+                                  }}
+                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                >
+                                  {isAdding ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : inTeam ? (
+                                    "✓ Ajouté"
+                                  ) : (
+                                    "+ Ajouter"
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-border rounded-lg">
+                        Aucun finisseur disponible dans le système
                       </p>
                     )}
                   </div>

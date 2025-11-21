@@ -42,6 +42,7 @@ import { useCopyPreviousWeekFinisseurs } from "@/hooks/useCopyPreviousWeekFiniss
 import { useCreateFicheJourForAffectation } from "@/hooks/useCreateFicheJourForAffectation";
 import { useDeleteFicheJourForAffectation } from "@/hooks/useDeleteFicheJourForAffectation";
 import { useFinisseursFichesThisWeek } from "@/hooks/useFinisseursFichesThisWeek";
+import { useAffectations } from "@/hooks/useAffectations";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -74,6 +75,9 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     useFinisseursFichesThisWeek(conducteurId, semaine);
   const { data: finisseursPartielsIds = [], isLoading: loadingPartiels } = 
     useFinisseursPartiellementAffectes(semaine);
+  
+  // Charger les affectations des chefs pour bloquer les finisseurs déjà affectés
+  const { data: affectationsChefs } = useAffectations();
 
   const upsertMutation = useUpsertAffectationJour();
   const deleteMutation = useDeleteAffectationJour();
@@ -191,6 +195,15 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   const isFinisseurAffectedElsewhere = (finisseurId: string, date: string): boolean => {
     return affectations.some(
       (a) => a.finisseur_id === finisseurId && a.date === date && a.conducteur_id !== conducteurId
+    );
+  };
+
+  // Vérifier si un finisseur est affecté par un chef (dans la table affectations)
+  const isFinisseurAffectedByChef = (finisseurId: string): boolean => {
+    if (!affectationsChefs) return false;
+    
+    return affectationsChefs.some(
+      (aff: any) => aff.macon_id === finisseurId && aff.date_fin === null
     );
   };
 
@@ -631,6 +644,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                       <div className="space-y-3 pt-2">
                         {days.map((day) => {
                           const isBlocked = isFinisseurAffectedElsewhere(finisseur.id, day.date);
+                          const isAffectedByChef = isFinisseurAffectedByChef(finisseur.id);
                           const cellState = localState[finisseur.id]?.[day.date] || {
                             checked: false,
                             chantierId: "",
@@ -646,19 +660,29 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <div>
+                                    <div className="flex items-center gap-2">
                                       <Checkbox
                                         checked={cellState.checked}
-                                        disabled={isBlocked}
+                                        disabled={isBlocked || isAffectedByChef}
                                         onCheckedChange={(checked) =>
                                           handleCheckboxChange(finisseur.id, day.date, !!checked)
                                         }
                                       />
+                                      {isAffectedByChef && (
+                                        <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+                                          Affecté à un chef
+                                        </Badge>
+                                      )}
                                     </div>
                                   </TooltipTrigger>
                                   {isBlocked && (
                                     <TooltipContent>
                                       <p>⚠️ Déjà affecté à un autre conducteur</p>
+                                    </TooltipContent>
+                                  )}
+                                  {isAffectedByChef && (
+                                    <TooltipContent>
+                                      <p>🔒 Ce finisseur fait partie de l'équipe d'un chef</p>
                                     </TooltipContent>
                                   )}
                                 </Tooltip>
