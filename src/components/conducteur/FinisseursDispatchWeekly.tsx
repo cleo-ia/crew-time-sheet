@@ -450,14 +450,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                 <List className="h-4 w-4 mr-2" />
                 Liste
               </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-              >
-                <TableIcon className="h-4 w-4 mr-2" />
-                Tableau
-              </Button>
             </div>
           </div>
 
