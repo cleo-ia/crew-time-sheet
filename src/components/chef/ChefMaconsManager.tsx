@@ -304,7 +304,16 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                         if (member.role === "interimaire") return 2; // Intérimaires en dernier
                         return 1;                            // Maçons au milieu
                       };
-                      return getPriority(a) - getPriority(b);
+                      
+                      const priorityDiff = getPriority(a) - getPriority(b);
+                      if (priorityDiff !== 0) return priorityDiff;
+                      
+                      // Tri alphabétique par Prénom (à priorité égale)
+                      const prenomCompare = (a.prenom || "").localeCompare(b.prenom || "", 'fr');
+                      if (prenomCompare !== 0) return prenomCompare;
+                      
+                      // Tri par Nom si Prénoms identiques
+                      return (a.nom || "").localeCompare(b.nom || "", 'fr');
                     }).map((macon) => {
                       const isRemoving = removingIds.has(macon.id);
                       return (
@@ -401,7 +410,11 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                           </div>
                         ) : filteredMacons && filteredMacons.length > 0 ? (
                           <div className="space-y-2">
-                            {filteredMacons.map((macon) => {
+                            {[...filteredMacons].sort((a, b) => {
+                              const prenomCompare = (a.prenom || "").localeCompare(b.prenom || "", 'fr');
+                              if (prenomCompare !== 0) return prenomCompare;
+                              return (a.nom || "").localeCompare(b.nom || "", 'fr');
+                            }).map((macon) => {
                           const inTeam = isMaconInTeam(macon.id);
                           const status = getMaconStatus(macon.id);
                           const isAdding = addingIds.has(macon.id);
@@ -491,7 +504,11 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                           </div>
                         ) : filteredGrutiers && filteredGrutiers.length > 0 ? (
                           <div className="space-y-2">
-                            {filteredGrutiers.map((grutier) => {
+                            {[...filteredGrutiers].sort((a, b) => {
+                              const prenomCompare = (a.prenom || "").localeCompare(b.prenom || "", 'fr');
+                              if (prenomCompare !== 0) return prenomCompare;
+                              return (a.nom || "").localeCompare(b.nom || "", 'fr');
+                            }).map((grutier) => {
                           const inTeam = isMaconInTeam(grutier.id);
                           const status = getMaconStatus(grutier.id);
                           const isAdding = addingIds.has(grutier.id);
@@ -594,7 +611,11 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                           </div>
                         ) : filteredInterimaires && filteredInterimaires.length > 0 ? (
                           <div className="space-y-2">
-                            {filteredInterimaires.map((interimaire) => {
+                            {[...filteredInterimaires].sort((a, b) => {
+                              const prenomCompare = (a.prenom || "").localeCompare(b.prenom || "", 'fr');
+                              if (prenomCompare !== 0) return prenomCompare;
+                              return (a.nom || "").localeCompare(b.nom || "", 'fr');
+                            }).map((interimaire) => {
                           const inTeam = isMaconInTeam(interimaire.id);
                           const status = getMaconStatus(interimaire.id);
                           const isAdding = addingIds.has(interimaire.id);
