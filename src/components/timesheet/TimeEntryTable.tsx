@@ -1083,11 +1083,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           
           // Déterminer la priorité de tri
           const getPriority = (macon: typeof maconA) => {
-            if (!macon) return 4; // Inconnu en dernier
+            if (!macon) return 5; // Inconnu en dernier
             if (macon.isChef) return 0; // Chef en premier
             if (macon.role === "macon") return 1; // Maçons en 2ème
             if (macon.role === "grutier") return 2; // Grutiers en 3ème
-            if (macon.role === "interimaire") return 3; // Intérimaires en dernier
+            if (macon.role === "finisseur") return 3; // Finisseurs en 4ème
+            if (macon.role === "interimaire") return 4; // Intérimaires en dernier
             return 1; // Par défaut avec les maçons
           };
           
@@ -1101,7 +1102,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           const isChef = macon?.isChef;
           const isInterimaire = macon?.role === "interimaire";
           const isGrutier = macon?.role === "grutier";
-          const isMacon = macon && !isChef && !isInterimaire && !isGrutier;
+          const isFinisseur = macon?.role === "finisseur";
+          const isMacon = macon && !isChef && !isInterimaire && !isGrutier && !isFinisseur;
           
           // Récupérer l'état de complétude depuis la map pré-calculée
           const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);
@@ -1141,6 +1143,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                     {/* Emoji selon le rôle */}
                     {isInterimaire && <span className="text-xl">🔄</span>}
                     {isGrutier && <span className="text-xl">🏗️</span>}
+                    {isFinisseur && <span className="text-xl">🔨</span>}
                     {isMacon && <span className="text-xl">👷‍♂️</span>}
                     
                     {/* Nom */}
@@ -1161,6 +1164,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                     {isGrutier && (
                       <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
                         Grutier
+                      </Badge>
+                    )}
+                    {isFinisseur && (
+                      <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20">
+                        Finisseur
                       </Badge>
                     )}
                     {isMacon && (
