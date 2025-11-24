@@ -13,23 +13,29 @@ Ce document décrit la configuration des tâches planifiées (cron jobs) pour le
 - **Description** : Vérifie toutes les heures s'il y a des lots de fiches prêts à être notifiés aux conducteurs
 
 ### 2. **rappel-chefs** - Rappel hebdomadaire aux chefs d'équipe
-- **Fréquence** : Vendredi à 17h Paris
-- **Cron heure d'hiver (UTC+1)** : `0 16 * * 5` (16h UTC)
-- **Cron heure d'été (UTC+2)** : `0 15 * * 5` (15h UTC)
+- **Fréquence** : Vendredi à 12h Paris
+- **Cron heure d'hiver (UTC+1)** : `0 11 * * 5` (11h UTC)
+- **Cron heure d'été (UTC+2)** : `0 10 * * 5` (10h UTC)
 - **Edge Function** : `rappel-chefs`
-- **Description** : Envoie un rappel aux chefs d'équipe qui ont des fiches non finalisées pour la semaine en cours
+- **Description** : Envoie un rappel aux chefs d'équipe qui ont des fiches non finalisées (statuts `BROUILLON` ou `EN_SIGNATURE`) pour la semaine en cours
 
-### 3. **rappel-conducteurs** - Rappel hebdomadaire aux conducteurs
-- **Fréquence** : Vendredi à 17h Paris
-- **Cron** : `0 * * * 5` (Toutes les heures le vendredi, la fonction vérifie si c'est 17h Paris)
+### 3. **rappel-chefs-lundi** - Rappel hebdomadaire lundi matin
+- **Fréquence** : Lundi à 8h Paris
+- **Cron** : `0 * * * 1` (Toutes les heures le lundi, la fonction vérifie si c'est 8h Paris)
+- **Edge Function** : `rappel-chefs-lundi`
+- **Description** : Envoie un rappel aux chefs d'équipe pour les fiches de S-1 non finalisées (statuts `BROUILLON` ou `EN_SIGNATURE`)
+
+### 4. **rappel-conducteurs** - Rappel hebdomadaire aux conducteurs
+- **Fréquence** : Vendredi à 12h Paris
+- **Cron** : `0 * * * 5` (Toutes les heures le vendredi, la fonction vérifie si c'est 12h Paris)
 - **Edge Function** : `rappel-conducteurs`
 - **Description** : Envoie un rappel hebdomadaire aux conducteurs qui ont des fiches en attente de validation (statut `VALIDE_CHEF`)
 
-### 4. **rappel-conducteurs-finisseurs** - Rappel hebdomadaire aux conducteurs pour finisseurs
-- **Fréquence** : Vendredi à 17h Paris
-- **Cron** : `0 * * * 5` (Toutes les heures le vendredi, la fonction vérifie si c'est 17h Paris)
+### 5. **rappel-conducteurs-finisseurs** - Rappel hebdomadaire aux conducteurs pour finisseurs
+- **Fréquence** : Vendredi à 12h Paris
+- **Cron** : `0 * * * 5` (Toutes les heures le vendredi, la fonction vérifie si c'est 12h Paris)
 - **Edge Function** : `rappel-conducteurs-finisseurs`
-- **Description** : Envoie un rappel aux conducteurs pour valider/exporter les heures de leurs finisseurs (statut `BROUILLON` ou `EN_SIGNATURE`)
+- **Description** : Envoie un rappel aux conducteurs pour valider/exporter les heures de leurs finisseurs (statuts `BROUILLON` ou `EN_SIGNATURE`)
 
 ## Changements d'heure saisonniers
 
