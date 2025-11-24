@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Smartphone, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -29,6 +31,61 @@ export default function Install() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Fonction pour marquer l'onboarding comme terminé et rediriger selon le rôle
+  const completeOnboarding = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Utilisateur non connecté");
+        navigate("/auth", { replace: true });
+        return;
+      }
+
+      // Mettre à jour le flag d'onboarding
+      const { error: updateError } = await supabase
+        .from("user_roles")
+        .update({ has_completed_onboarding: true })
+        .eq("user_id", user.id);
+
+      if (updateError) {
+        console.error("Erreur lors de la mise à jour de l'onboarding:", updateError);
+        toast.error("Erreur lors de la finalisation de l'onboarding");
+        return;
+      }
+
+      // Récupérer le rôle pour redirection
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      // Redirection basée sur le rôle
+      let targetPath = "/";
+      switch (roleData?.role) {
+        case "conducteur":
+          targetPath = "/validation-conducteur";
+          break;
+        case "chef":
+          targetPath = "/";
+          break;
+        case "rh":
+          targetPath = "/consultation-rh";
+          break;
+        case "admin":
+          targetPath = "/admin";
+          break;
+        default:
+          targetPath = "/";
+      }
+
+      navigate(targetPath, { replace: true });
+    } catch (err) {
+      console.error("Erreur completeOnboarding:", err);
+      toast.error("Erreur inattendue");
+    }
+  };
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
@@ -36,7 +93,9 @@ export default function Install() {
     
     if (outcome === 'accepted') {
       setIsInstalled(true);
-      setTimeout(() => navigate('/'), 2000);
+      toast.success("Application installée avec succès !");
+      // Attendre un peu puis rediriger via completeOnboarding
+      setTimeout(() => completeOnboarding(), 1500);
     }
     
     setDeferredPrompt(null);
@@ -56,7 +115,7 @@ export default function Install() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/')} className="w-full">
+            <Button onClick={completeOnboarding} className="w-full">
               Ouvrir l'application
             </Button>
           </CardContent>
@@ -122,7 +181,7 @@ export default function Install() {
                 </ol>
               </div>
 
-              <Button onClick={() => navigate('/')} variant="outline" className="w-full">
+              <Button onClick={completeOnboarding} variant="outline" className="w-full">
                 Continuer dans le navigateur
               </Button>
             </div>

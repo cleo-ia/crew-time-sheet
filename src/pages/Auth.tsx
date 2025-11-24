@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LogIn, UserPlus, Mail, Lock, User, Shield } from "lucide-react";
+import { Mail, Lock, Shield } from "lucide-react";
 import logo from "@/assets/logo-limoge-revillon.png";
 import bgAuth from "@/assets/bg-auth.png";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,12 +20,6 @@ const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-
-  // Inscription
-  const [signupFullName, setSignupFullName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupLoading, setSignupLoading] = useState(false);
 
   // Invitation: définir le mot de passe
   const [isInviteMode, setIsInviteMode] = useState(false);
@@ -92,9 +85,43 @@ const Auth = () => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast.success("Mot de passe défini, vous êtes connecté.");
-      // Récupérer la route appropriée selon le rôle
-      const { data: redirectPath } = await getRedirectPath();
-      navigate(redirectPath || "/", { replace: true });
+      
+      // Vérifier si l'utilisateur doit faire l'onboarding
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role, has_completed_onboarding")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install
+        if (roleData?.has_completed_onboarding === false) {
+          navigate("/install", { replace: true });
+          return;
+        }
+        
+        // Sinon, redirection normale selon le rôle
+        const role = roleData?.role;
+        let targetPath = "/";
+        switch (role) {
+          case "conducteur":
+            targetPath = "/validation-conducteur";
+            break;
+          case "chef":
+            targetPath = "/";
+            break;
+          case "rh":
+            targetPath = "/consultation-rh";
+            break;
+          case "admin":
+            targetPath = "/admin";
+            break;
+          default:
+            targetPath = "/";
+        }
+        navigate(targetPath, { replace: true });
+      }
     } catch (err: any) {
       toast.error(err?.message || "Impossible de définir le mot de passe");
     } finally {
@@ -117,15 +144,22 @@ const Auth = () => {
       // Attendre que la session soit propagée (délai augmenté pour garantir la cohérence)
       await new Promise(resolve => setTimeout(resolve, 250));
       
-      // Récupérer le rôle directement
+      // Récupérer le rôle et le statut d'onboarding directement
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
         const { data: roleData } = await supabase
           .from("user_roles")
-          .select("role")
+          .select("role, has_completed_onboarding")
           .eq("user_id", user.id)
           .maybeSingle();
+        
+        // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install
+        // Cela ne devrait arriver que si un utilisateur se connecte pour la première fois après avoir défini son mot de passe
+        if (roleData?.has_completed_onboarding === false) {
+          navigate("/install", { replace: true });
+          return;
+        }
         
         const role = roleData?.role;
         
@@ -212,29 +246,6 @@ const Auth = () => {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSignupLoading(true);
-      const redirectUrl = `${window.location.origin}/auth`;
-      const [first_name, ...rest] = signupFullName.trim().split(" ");
-      const last_name = rest.join(" ");
-      const { error } = await supabase.auth.signUp({
-        email: signupEmail,
-        password: signupPassword,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: { first_name, last_name },
-        },
-      });
-      if (error) throw error;
-      toast.success("Inscription réussie. Vérifiez votre email pour confirmer.");
-    } catch (err: any) {
-      toast.error(err?.message || "Impossible de créer le compte");
-    } finally {
-      setSignupLoading(false);
-    }
-  };
 
   return (
     <PageLayout>
@@ -301,122 +312,51 @@ const Auth = () => {
                 </Button>
               </form>
             ) : (
-              <Tabs defaultValue="connexion" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="connexion" className="flex items-center gap-2">
-                    <LogIn className="h-4 w-4" />
-                    Connexion
-                  </TabsTrigger>
-                  <TabsTrigger value="inscription" className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Inscription
-                  </TabsTrigger>
-                </TabsList>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Adresse email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="nom.prenom@entreprise.fr"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
 
-                <TabsContent value="connexion">
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Adresse email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder="nom.prenom@entreprise.fr"
-                          value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Mot de passe</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Votre mot de passe"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Mot de passe</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="login-password"
-                          type="password"
-                          placeholder="Votre mot de passe"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                      <Button type="submit" className="w-full" disabled={loginLoading}>
-                        {loginLoading ? "Connexion..." : "Se connecter"}
-                      </Button>
-                      <div className="mt-3 grid grid-cols-1 gap-2">
-                        <Button type="button" variant="secondary" onClick={handleMagicLink} disabled={loginLoading} className="w-full">
-                          Recevoir un lien magique par email
-                        </Button>
-                        <Button type="button" variant="outline" onClick={handleResetPassword} disabled={loginLoading} className="w-full">
-                          Définir/Reset mon mot de passe
-                        </Button>
-                      </div>
-                    </form>
-                </TabsContent>
-
-                <TabsContent value="inscription">
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-fullname">Nom complet</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-fullname"
-                          type="text"
-                          placeholder="Prénom Nom"
-                          value={signupFullName}
-                          onChange={(e) => setSignupFullName(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Adresse email professionnelle</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="nom.prenom@entreprise.fr"
-                          value={signupEmail}
-                          onChange={(e) => setSignupEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Mot de passe</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          placeholder="Choisissez un mot de passe sécurisé"
-                          value={signupPassword}
-                          onChange={(e) => setSignupPassword(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={signupLoading}>
-                      {signupLoading ? "Inscription..." : "Créer mon compte"}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                <Button type="submit" className="w-full" disabled={loginLoading}>
+                  {loginLoading ? "Connexion..." : "Se connecter"}
+                </Button>
+                <div className="mt-3 grid grid-cols-1 gap-2">
+                  <Button type="button" variant="secondary" onClick={handleMagicLink} disabled={loginLoading} className="w-full">
+                    Recevoir un lien magique par email
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleResetPassword} disabled={loginLoading} className="w-full">
+                    Définir/Reset mon mot de passe
+                  </Button>
+                </div>
+              </form>
             )}
           </CardContent>
         </Card>
