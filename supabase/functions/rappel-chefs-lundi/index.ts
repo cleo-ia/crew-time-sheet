@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       .select('id, statut, chantier_id, user_id')
       .in('user_id', chefIds)
       .eq('semaine', previousWeek)
-      .in('statut', ['BROUILLON', 'EN_SIGNATURE', 'VALIDE_CHEF'])
+      .in('statut', ['BROUILLON', 'EN_SIGNATURE'])
 
     if (fichesError) {
       console.error(`[${executionId}] ❌ Erreur récupération fiches:`, fichesError)

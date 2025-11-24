@@ -57,9 +57,9 @@ Deno.serve(async (req) => {
       // Body vide ou invalide, on garde les valeurs par défaut
     }
 
-    // Vérifier si on est à 17h Paris (sauf si force = true)
-    if (!force && !isTargetParisHour(17)) {
-      console.log('[rappel-conducteurs] ⏭️ Pas encore 17h à Paris, skip')
+    // Vérifier si on est à 12h Paris (sauf si force = true)
+    if (!force && !isTargetParisHour(12)) {
+      console.log('[rappel-conducteurs] ⏭️ Pas encore 12h à Paris, skip')
       return new Response(
         JSON.stringify({ message: 'Not target hour', skipped: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
