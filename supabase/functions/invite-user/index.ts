@@ -26,26 +26,41 @@ serve(async (req) => {
     );
 
     // Créer le client avec l'autorisation de l'utilisateur appelant
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    
+    // Créer le client - inclure le header seulement s'il existe
+    const clientOptions: any = {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    };
+    
+    if (authHeader) {
+      clientOptions.global = {
+        headers: { Authorization: authHeader }
+      };
+    }
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      clientOptions
     );
 
     // Vérifier l'authentification de l'utilisateur appelant ou activer le mode bootstrap (premier admin)
     let isBootstrap = false;
     let invitedByUserId: string | null = null;
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Tenter d'obtenir l'utilisateur seulement si un header d'auth est présent
+    let user = null;
+    let userError = null;
+    
+    if (authHeader) {
+      const authResult = await supabaseClient.auth.getUser();
+      user = authResult.data.user;
+      userError = authResult.error;
+    }
     
     if (userError || !user) {
       // Aucun JWT utilisateur valide. Si aucun admin n'existe encore, autoriser une invitation unique pour bootstrap.
