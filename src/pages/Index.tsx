@@ -457,7 +457,7 @@ const Index = () => {
                   <Users className="h-4 w-4 text-primary" />
                   Choisir un chantier
                 </label>
-                <ChantierSelector value={selectedChantier} onChange={setSelectedChantier} chefId={selectedChef} disabled={!isFicheModifiable} />
+                <ChantierSelector value={selectedChantier} onChange={setSelectedChantier} chefId={selectedChef} />
               </div>
             </div>
 
