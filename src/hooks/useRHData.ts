@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { buildRHConsolidation } from "./rhShared";
+import { parseISOWeek } from "@/lib/weekUtils";
 
 export interface RHSummary {
   heuresNormales: number;
@@ -127,6 +128,16 @@ export const useRHDetails = (filters: any) => {
   return useQuery({
     queryKey: ["rh-details", filters],
     queryFn: async () => {
+      // 1. Calculer les bornes du mois si période définie
+      let dateDebut: Date | null = null;
+      let dateFin: Date | null = null;
+      
+      if (filters.periode) {
+        const [year, month] = filters.periode.split("-").map(Number);
+        dateDebut = startOfMonth(new Date(year, month - 1));
+        dateFin = endOfMonth(new Date(year, month - 1));
+      }
+
       let query = supabase
         .from("fiches")
         .select(`
@@ -159,8 +170,24 @@ export const useRHDetails = (filters: any) => {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Récupérer tous les fiches_jours pour calculer les heures totales
-      const ficheIds = data?.map(f => f.id) || [];
+      // 2. Filtrer côté client par période si pas de semaine spécifique
+      let fichesFiltered = data || [];
+      if (filters.periode && (!filters.semaine || filters.semaine === "all")) {
+        fichesFiltered = fichesFiltered.filter(fiche => {
+          if (!fiche.semaine) return false;
+          try {
+            const lundi = parseISOWeek(fiche.semaine);
+            const dimanche = addDays(lundi, 6);
+            // Inclure si la semaine chevauche le mois
+            return lundi <= dateFin! && dimanche >= dateDebut!;
+          } catch {
+            return false;
+          }
+        });
+      }
+
+      // 3. Récupérer tous les fiches_jours pour calculer les heures totales
+      const ficheIds = fichesFiltered.map(f => f.id) || [];
       const { data: allFichesJours, error: joursError } = await supabase
         .from("fiches_jours")
         .select("fiche_id, HNORM, HI, heures")
@@ -178,7 +205,7 @@ export const useRHDetails = (filters: any) => {
 
       const groupMap = new Map<string, RHDetail>();
 
-      data?.forEach(fiche => {
+      fichesFiltered.forEach(fiche => {
         const key = `${fiche.chantier.id}___${fiche.semaine}`;
         
         if (!groupMap.has(key)) {
