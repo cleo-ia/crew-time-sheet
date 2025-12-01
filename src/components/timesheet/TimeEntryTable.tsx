@@ -514,7 +514,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               
               // 🔧 Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
               const rawT = j.T;
-              const trajet = rawT === null || rawT === undefined ? true : Boolean(rawT);
+              const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
               
               // Trouver le chantier par code si disponible
               const chantierDuJour = j.code_chantier_du_jour 
