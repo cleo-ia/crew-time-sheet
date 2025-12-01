@@ -16,17 +16,16 @@ export const useAddEmployeeToFiche = () => {
 
   return useMutation({
     mutationFn: async ({ chantierId, semaine, salarieId, conducteurId }: AddEmployeeToFicheParams) => {
-      // 1. Vérifier si la fiche existe déjà
+      // 1. Vérifier si la fiche existe déjà pour cet employé cette semaine (peu importe le chantier)
       const { data: existingFiche } = await supabase
         .from("fiches")
         .select("id")
-        .eq("chantier_id", chantierId)
         .eq("semaine", semaine)
         .eq("salarie_id", salarieId)
         .maybeSingle();
 
       if (existingFiche) {
-        throw new Error("Cet employé a déjà une fiche pour cette semaine sur ce chantier.");
+        throw new Error("Cet employé a déjà une fiche pour cette semaine. Un employé ne peut avoir qu'une seule fiche par semaine.");
       }
 
       // 2. Récupérer les informations du chantier pour avoir le code et la ville

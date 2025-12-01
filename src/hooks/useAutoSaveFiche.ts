@@ -92,18 +92,16 @@ export const useAutoSaveFiche = () => {
       };
       // Pour chaque employé, créer ou mettre à jour sa fiche
       for (const entry of timeEntries) {
-        // 1. Chercher fiche existante pour cet employé
+        // 1. Chercher fiche existante pour cet employé (peu importe le chantier)
+        // Une seule fiche par employé par semaine, le chantier peut varier jour par jour
         let query = supabase
           .from("fiches")
           .select("id, created_at")
           .eq("semaine", weekId)
           .eq("salarie_id", entry.employeeId);
 
-        if (chantierId) {
-          // Maçons/Chefs: filtrer par chantier ET user_id pour isoler les fiches par chef
-          query = query.eq("chantier_id", chantierId).eq("user_id", chefId);
-        } else {
-          // Finisseurs: UNE fiche partagée entre tous les conducteurs (pas de filtre user_id)
+        if (!chantierId) {
+          // Finisseurs: filtrer explicitement les fiches sans chantier_id
           query = query.is("chantier_id", null);
         }
 
