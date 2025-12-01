@@ -484,6 +484,7 @@ const Index = () => {
                   chefId={selectedChef}
                   chantierId={selectedChantier}
                   semaine={selectedWeek}
+                  disabled={!isFicheModifiable}
                 />
               </div>
             )}
@@ -497,6 +498,11 @@ const Index = () => {
                 <div>
                   <p className="font-medium">Modification impossible</p>
                   <p className="text-sm">{raisonBlocage}</p>
+                  {ficheModifiableData?.statutBloquant === "VALIDE_CHEF" && (
+                    <p className="text-xs mt-1">
+                      Passez à la semaine suivante pour continuer la saisie.
+                    </p>
+                  )}
                   {ficheModifiableData?.statutBloquant === "VALIDE_CONDUCTEUR" && (
                     <p className="text-xs mt-1">
                       Cette fiche a été transmise au conducteur. Pour la modifier, contactez le conducteur.
@@ -532,7 +538,7 @@ const Index = () => {
                         chefId: selectedChef,
                       });
                     }}
-                    disabled={!selectedChef || !selectedWeek || timeEntries.length === 0 || autoSaveFiche.isPending}
+                    disabled={!selectedChef || !selectedWeek || timeEntries.length === 0 || autoSaveFiche.isPending || !isFicheModifiable}
                   >
                     {autoSaveFiche.isPending ? (
                       <>

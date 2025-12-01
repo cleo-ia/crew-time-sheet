@@ -19,9 +19,10 @@ interface ChefMaconsManagerProps {
   chefId: string;
   chantierId: string;
   semaine: string;
+  disabled?: boolean;
 }
 
-export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsManagerProps) => {
+export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: ChefMaconsManagerProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
@@ -285,6 +286,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
       <Button 
         variant="outline" 
         onClick={() => setShowDialog(true)}
+        disabled={disabled}
         className="w-full sm:w-auto"
       >
         <UserPlus className="h-4 w-4 mr-2" />
