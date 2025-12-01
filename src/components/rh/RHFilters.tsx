@@ -6,9 +6,10 @@ import { useChantiers } from "@/hooks/useChantiers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EmployeeCombobox } from "./EmployeeCombobox";
-import { format, subMonths } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, parse, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { parseISOWeek } from "@/lib/weekUtils";
 
 interface RHFiltersProps {
   filters: {
@@ -56,6 +57,29 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
     return mois;
   }, []);
 
+  // Filtrer les semaines qui appartiennent au mois sélectionné
+  const semainesFiltrees = useMemo(() => {
+    if (!filters.periode || semaines.length === 0) return semaines;
+    
+    const periodeDate = parse(filters.periode, "yyyy-MM", new Date());
+    const debutMois = startOfMonth(periodeDate);
+    const finMois = endOfMonth(periodeDate);
+    
+    return semaines.filter((semaine) => {
+      const lundi = parseISOWeek(semaine);
+      const dimanche = addDays(lundi, 6);
+      // Une semaine est incluse si elle chevauche le mois
+      return lundi <= finMois && dimanche >= debutMois;
+    });
+  }, [filters.periode, semaines]);
+
+  // Réinitialiser la semaine si elle n'est plus disponible après changement de période
+  useEffect(() => {
+    if (filters.semaine !== "all" && !semainesFiltrees.includes(filters.semaine)) {
+      onFiltersChange({ ...filters, semaine: "all" });
+    }
+  }, [semainesFiltrees, filters.semaine]);
+
   return (
     <Card className="p-4 shadow-md border-border/50">
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -97,7 +121,7 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes</SelectItem>
-              {semaines.map((sem) => (
+              {semainesFiltrees.map((sem) => (
                 <SelectItem key={sem} value={sem}>{sem}</SelectItem>
               ))}
             </SelectContent>
