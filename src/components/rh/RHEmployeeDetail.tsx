@@ -12,6 +12,7 @@ import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
 import { EditableTextCell } from "@/components/rh/EditableTextCell";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
+import { CodeTrajetSelector } from "@/components/timesheet/CodeTrajetSelector";
 
 interface RHEmployeeDetailProps {
   salarieId: string;
@@ -234,13 +235,18 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     />
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
-                    {(day as any).codeTrajet ? (
-                      <span className="font-mono text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded font-medium">
-                        {(day as any).codeTrajet}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                    <CodeTrajetSelector
+                      value={(day as any).codeTrajet || null}
+                      onChange={async (value) => {
+                        await updateFicheJour.mutateAsync({
+                          ficheJourId: day.ficheJourId,
+                          field: "code_trajet",
+                          value: value || null,
+                        });
+                      }}
+                      disabled={false}
+                      hasHours={day.heuresNormales > 0}
+                    />
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
                     <EditableCell

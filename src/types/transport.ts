@@ -1,6 +1,7 @@
 // ===== TYPES DE CODE TRAJET =====
 export type CodeTrajet = 
-  | "T_PERSO"   // Voiture personnelle
+  | "A_COMPLETER"  // À compléter par RH
+  | "T_PERSO"      // Voiture personnelle
   | "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "T8" | "T9" 
   | "T10" | "T11" | "T12" | "T13" | "T14" | "T15" | "T16" | "T17"
   | "T31" | "T35"  // Trajets spéciaux
@@ -8,6 +9,7 @@ export type CodeTrajet =
 
 export const CODE_TRAJET_OPTIONS: { value: CodeTrajet | "AUCUN"; label: string }[] = [
   { value: "AUCUN", label: "Aucun" },
+  { value: "A_COMPLETER", label: "⚠️ À compléter (RH)" },
   { value: "T_PERSO", label: "T Perso (voiture perso)" },
   { value: "T1", label: "T1" },
   { value: "T2", label: "T2" },
