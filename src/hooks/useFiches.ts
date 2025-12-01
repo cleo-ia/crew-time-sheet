@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { parseISOWeek } from "@/lib/weekUtils";
-import { format } from "date-fns";
 
 // Hook pour supprimer les fiches d'un maçon lors de son retrait
 export const useDeleteFichesByMacon = () => {
@@ -221,31 +219,26 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
       const allFichesArrays = await Promise.all(allFichesPromises);
       const data = allFichesArrays.flat();
 
-      // ✅ FILTRE DE SÉCURITÉ : Ne garder que les fiches avec affectation active PENDANT la semaine
-      // Récupérer TOUTES les affectations (on filtrera ensuite par date)
-      const { data: allAffectations, error: affError } = await supabase
+      // ✅ FILTRE DE SÉCURITÉ : Ne garder que les fiches avec affectation active
+      // Récupérer toutes les affectations actives
+      const { data: activeAffectations, error: affError } = await supabase
         .from("affectations")
-        .select("macon_id, chantier_id, date_debut, date_fin");
+        .select("macon_id, chantier_id")
+        .is("date_fin", null);
 
       if (affError) {
-        console.error("Error fetching affectations:", affError);
+        console.error("Error fetching active affectations:", affError);
         // En cas d'erreur, on continue avec les données non filtrées
       }
 
-      // Filtrer les fiches pour ne garder que celles avec affectation active PENDANT la semaine OU qui sont le chef
+      // Filtrer les fiches pour ne garder que celles avec affectation active OU qui sont le chef du chantier
       const validFiches = data?.filter(fiche => {
-        if (!allAffectations) return true; // Si pas d'affectations, on garde tout
+        if (!activeAffectations) return true; // Si pas d'affectations, on garde tout
         
-        // Calculer le lundi de la semaine de la fiche
-        const weekStart = parseISOWeek(fiche.semaine);
-        const weekStartStr = format(weekStart, "yyyy-MM-dd");
-        
-        // Vérifier si l'affectation était active PENDANT la semaine de la fiche
-        const hasActiveAffectation = allAffectations.some(aff => 
+        // Inclure si c'est un maçon avec affectation active OU si c'est le chef du chantier
+        const hasActiveAffectation = activeAffectations.some(aff => 
           aff.macon_id === fiche.salarie_id && 
-          aff.chantier_id === fiche.chantier_id &&
-          aff.date_debut <= weekStartStr && // L'affectation a commencé avant ou le lundi
-          (aff.date_fin === null || aff.date_fin >= weekStartStr) // Et n'est pas terminée avant
+          aff.chantier_id === fiche.chantier_id
         );
         const isChefOfChantier = fiche.chantier?.chef_id === fiche.salarie_id;
         
