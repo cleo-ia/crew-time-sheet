@@ -146,48 +146,78 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
         }
       }
 
-      let query = supabase
+      // ÉTAPE 1: Récupérer les combinaisons chantier/semaine qui ont au moins une fiche avec le statut demandé
+      let statusQuery = supabase
         .from("fiches")
-        .select(`
-          id,
-          semaine,
-          chantier_id,
-          salarie_id,
-          statut,
-          total_heures,
-          created_at,
-          updated_at,
-          chantier:chantiers!chantier_id(
-            id, 
-            nom, 
-            code_chantier, 
-            ville, 
-            chef_id,
-            chef:utilisateurs!chef_id(id, nom, prenom)
-          )
-        `)
-        .eq("statut", status as any)
-        .order("created_at", { ascending: false });
+        .select("chantier_id, semaine")
+        .eq("statut", status as any);
 
       if (filters?.semaine) {
-        query = query.eq("semaine", filters.semaine);
+        statusQuery = statusQuery.eq("semaine", filters.semaine);
       }
 
       if (filters?.chantier && filters.chantier !== "all") {
-        query = query.eq("chantier_id", filters.chantier);
+        statusQuery = statusQuery.eq("chantier_id", filters.chantier);
       }
 
-      // Filter by chef's chantiers if provided
       if (chantierIds && chantierIds.length > 0) {
-        query = query.in("chantier_id", chantierIds);
+        statusQuery = statusQuery.in("chantier_id", chantierIds);
       }
 
-      const { data, error } = await query;
+      const { data: matchingFiches, error: statusError } = await statusQuery;
 
-      if (error) {
-        console.error("Error fetching fiches:", error);
-        throw error;
+      if (statusError) {
+        console.error("Error fetching fiches by status:", statusError);
+        throw statusError;
       }
+
+      if (!matchingFiches || matchingFiches.length === 0) {
+        return [];
+      }
+
+      // Extraire les combinaisons uniques chantier_id/semaine
+      const chantierSemainePairs = Array.from(
+        new Set(matchingFiches.map(f => `${f.chantier_id}|${f.semaine}`))
+      );
+
+      // ÉTAPE 2: Récupérer TOUTES les fiches pour ces combinaisons (sans filtre de statut)
+      const allFichesPromises = chantierSemainePairs.map(async (pair) => {
+        const [chantierId, semaine] = pair.split("|");
+        
+        const { data, error } = await supabase
+          .from("fiches")
+          .select(`
+            id,
+            semaine,
+            chantier_id,
+            salarie_id,
+            statut,
+            total_heures,
+            created_at,
+            updated_at,
+            chantier:chantiers!chantier_id(
+              id, 
+              nom, 
+              code_chantier, 
+              ville, 
+              chef_id,
+              chef:utilisateurs!chef_id(id, nom, prenom)
+            )
+          `)
+          .eq("chantier_id", chantierId)
+          .eq("semaine", semaine)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching all fiches for pair:", error);
+          return [];
+        }
+
+        return data || [];
+      });
+
+      const allFichesArrays = await Promise.all(allFichesPromises);
+      const data = allFichesArrays.flat();
 
       // ✅ FILTRE DE SÉCURITÉ : Ne garder que les fiches avec affectation active
       // Récupérer toutes les affectations actives

@@ -16,11 +16,11 @@ interface FichesListProps {
 export const FichesList = ({ status, filters, onSelectFiche }: FichesListProps) => {
   const { data: rawFiches, isLoading } = useFichesByStatus(status, filters);
 
-  // Filtre de sécurité frontend pour garantir la cohérence du statut
+  // Filtre de sécurité frontend - afficher les groupes avec au moins une fiche du statut demandé
   const fiches = useMemo(() => {
     if (!rawFiches) return [];
     return rawFiches.filter((fiche: any) => 
-      fiche.fiches && fiche.fiches.every((f: any) => f.statut === status)
+      fiche.fiches && fiche.fiches.some((f: any) => f.statut === status)
     );
   }, [rawFiches, status]);
 
