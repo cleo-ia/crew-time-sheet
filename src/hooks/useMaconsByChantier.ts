@@ -56,12 +56,11 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         }
 
         if (chef) {
-          // Récupérer la fiche du chef
+          // Récupérer la fiche du chef pour cette semaine (peu importe le chantier)
           const { data: fichChef } = await supabase
             .from("fiches")
             .select("id, total_heures")
             .eq("salarie_id", chef.id)
-            .eq("chantier_id", chantierId)
             .eq("semaine", semaine)
             .maybeSingle();
 
@@ -158,12 +157,11 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
             const macon = affectation.utilisateurs;
             if (!macon) return null;
 
-            // Récupérer la fiche pour ce maçon, ce chantier et cette semaine
+            // Récupérer la fiche pour ce maçon cette semaine (peu importe le chantier)
             const { data: fiche } = await supabase
               .from("fiches")
               .select("id, total_heures")
               .eq("salarie_id", macon.id)
-              .eq("chantier_id", chantierId)
               .eq("semaine", semaine)
               .maybeSingle();
 
