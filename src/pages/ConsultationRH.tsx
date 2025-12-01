@@ -4,10 +4,12 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
 import { RHSummary } from "@/components/rh/RHSummary";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useRHSummary } from "@/hooks/useRHData";
 import { RHConsolidated } from "@/components/rh/RHConsolidated";
 import { RHDetailView } from "@/components/rh/RHDetailView";
 import { RHHistorique } from "@/components/rh/RHHistorique";
@@ -34,6 +36,8 @@ const ConsultationRH = () => {
     salarie: "all",
     typeSalarie: "all",
   });
+
+  const { data: summary } = useRHSummary(filters);
 
   const handleExport = async (exportFormat: "csv" | "excel") => {
     if (exportFormat === "excel") {
@@ -127,6 +131,27 @@ const ConsultationRH = () => {
           <div className="space-y-6">
             {/* Summary */}
             <RHSummary filters={filters} />
+
+            {/* Bannière d'alerte trajets à compléter */}
+            {summary && summary.trajetsACompleter > 0 && (
+              <Alert className="bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800">
+                <Route className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <AlertDescription className="flex items-center justify-between gap-4">
+                  <span className="text-orange-900 dark:text-orange-200">
+                    <strong>{summary.trajetsACompleter} trajet(s)</strong> en attente de complétion. 
+                    Accédez à l'onglet "Pré-export Excel" pour les renseigner.
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="border-orange-300 hover:bg-orange-100 dark:border-orange-700 dark:hover:bg-orange-900 shrink-0"
+                    onClick={() => setActiveTab("preexport")}
+                  >
+                    Compléter les trajets
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Filters */}
             <RHFilters filters={filters} onFiltersChange={setFilters} />
