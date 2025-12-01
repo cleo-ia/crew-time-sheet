@@ -70,6 +70,7 @@ export const useAddEmployeeToFiche = () => {
           code_chantier_du_jour: chantier.code_chantier,
           ville_du_jour: chantier.ville,
           trajet_perso: false,
+          code_trajet: "A_COMPLETER", // Code à compléter par RH
         };
       });
 
