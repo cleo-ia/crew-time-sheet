@@ -27,10 +27,10 @@ const ConsultationRH = () => {
   const [showClotureDialog, setShowClotureDialog] = useState(false);
   const [filters, setFilters] = useState({
     periode: format(new Date(), "yyyy-MM"), // Mois courant par défaut
-    semaine: "",
-    conducteur: "",
-    chantier: "",
-    chef: "",
+    semaine: "all",
+    conducteur: "all",
+    chantier: "all",
+    chef: "all",
     salarie: "all",
     typeSalarie: "all",
   });
