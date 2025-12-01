@@ -147,6 +147,17 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
       return;
     }
 
+    // Vérifier si déjà affecté à un autre chantier
+    const status = getMaconStatus(maconId);
+    if (status.type === "assigned") {
+      toast({
+        title: "Employé déjà affecté",
+        description: `${maconPrenom} ${maconNom} est déjà affecté à un autre chantier.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Ajouter à la liste des IDs en cours d'ajout
     setAddingIds(prev => new Set(prev).add(maconId));
 
@@ -441,10 +452,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                             <div 
                               key={macon.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding) {
+                                if (!inTeam && !isAdding && status.type !== "assigned") {
                                   handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                 }
                               }}
@@ -481,13 +492,19 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding}
+                                  disabled={inTeam || isAdding || status.type === "assigned"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                   }}
-                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                  title={
+                                    inTeam 
+                                      ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? "Déjà affecté à un autre chantier"
+                                      : "Ajouter à l'équipe"
+                                  }
                                 >
                                   {isAdding ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -535,10 +552,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                             <div 
                               key={grutier.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding) {
+                                if (!inTeam && !isAdding && status.type !== "assigned") {
                                   handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                 }
                               }}
@@ -575,13 +592,19 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding}
+                                  disabled={inTeam || isAdding || status.type === "assigned"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                   }}
-                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                  title={
+                                    inTeam 
+                                      ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? "Déjà affecté à un autre chantier"
+                                      : "Ajouter à l'équipe"
+                                  }
                                 >
                                   {isAdding ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -642,10 +665,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                             <div 
                               key={interimaire.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding) {
+                                if (!inTeam && !isAdding && status.type !== "assigned") {
                                   handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                 }
                               }}
@@ -682,13 +705,19 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding}
+                                  disabled={inTeam || isAdding || status.type === "assigned"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                   }}
-                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                  title={
+                                    inTeam 
+                                      ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? "Déjà affecté à un autre chantier"
+                                      : "Ajouter à l'équipe"
+                                  }
                                 >
                                   {isAdding ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -736,10 +765,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
                             <div 
                               key={finisseur.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding) {
+                                if (!inTeam && !isAdding && status.type !== "assigned") {
                                   handleAddMacon(finisseur.id, finisseur.nom || "", finisseur.prenom || "", "finisseur");
                                 }
                               }}
@@ -776,13 +805,19 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine }: ChefMaconsMan
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding}
+                                  disabled={inTeam || isAdding || status.type === "assigned"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAddMacon(finisseur.id, finisseur.nom || "", finisseur.prenom || "", "finisseur");
                                   }}
-                                  title={inTeam ? "Déjà dans votre équipe" : "Ajouter à l'équipe"}
+                                  title={
+                                    inTeam 
+                                      ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? "Déjà affecté à un autre chantier"
+                                      : "Ajouter à l'équipe"
+                                  }
                                 >
                                   {isAdding ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
