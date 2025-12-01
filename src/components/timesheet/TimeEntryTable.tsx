@@ -28,7 +28,7 @@ import { TeamMemberCombobox } from "@/components/chef/TeamMemberCombobox";
 import { TransportFinisseurAccordion } from "@/components/transport/TransportFinisseurAccordion";
 import { TransportFinisseurDay, CodeTrajet } from "@/types/transport";
 import { ChantierSelector } from "./ChantierSelector";
-import { CodeTrajetSelector } from "./CodeTrajetSelector";
+
 import { format, addDays } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import {
@@ -1379,17 +1379,39 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                               </label>
                             </div>
 
-                            {/* Colonne Trajet - Stack vertical */}
+                            {/* Trajet - 2 checkboxes simples */}
                             <div className="flex flex-col gap-2">
-                              <label className="text-xs text-muted-foreground block mb-1">
-                                Trajet
-                              </label>
-                              <CodeTrajetSelector
-                                value={dayData.codeTrajet || null}
-                                onChange={(value) => updateDayValue(entry.employeeId, day, "codeTrajet", value)}
-                                disabled={isReadOnly || isDayBlocked}
-                                hasHours={(dayData.hours || 0) > 0}
-                              />
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={!!dayData.trajet}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      updateDayValue(entry.employeeId, day, "trajet", true);
+                                      updateDayValue(entry.employeeId, day, "codeTrajet", "A_COMPLETER");
+                                      updateDayValue(entry.employeeId, day, "trajetPerso", false);
+                                    } else {
+                                      updateDayValue(entry.employeeId, day, "trajet", false);
+                                      updateDayValue(entry.employeeId, day, "codeTrajet", null);
+                                    }
+                                  }}
+                                  disabled={isReadOnly || isDayBlocked}
+                                />
+                                <label className="text-xs text-muted-foreground cursor-pointer">Trajet</label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={dayData.trajetPerso}
+                                  onCheckedChange={(checked) => {
+                                    updateDayValue(entry.employeeId, day, "trajetPerso", checked);
+                                    if (checked) {
+                                      updateDayValue(entry.employeeId, day, "trajet", false);
+                                      updateDayValue(entry.employeeId, day, "codeTrajet", "T_PERSO");
+                                    }
+                                  }}
+                                  disabled={isReadOnly || isDayBlocked}
+                                />
+                                <label className="text-xs text-muted-foreground cursor-pointer">Trajet Perso</label>
+                              </div>
                             </div>
 
                             {/* Commentaire */}
