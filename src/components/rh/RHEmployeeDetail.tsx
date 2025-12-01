@@ -12,6 +12,7 @@ import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
 import { EditableTextCell } from "@/components/rh/EditableTextCell";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
+import { useUpdateCodeTrajetBatch } from "@/hooks/useUpdateCodeTrajetBatch";
 import { CodeTrajetSelector } from "@/components/timesheet/CodeTrajetSelector";
 
 interface RHEmployeeDetailProps {
@@ -23,6 +24,7 @@ interface RHEmployeeDetailProps {
 export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetailProps) => {
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
+  const batchUpdateTrajet = useUpdateCodeTrajetBatch();
 
   if (isLoading) {
     return (
@@ -147,6 +149,16 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
               {data.dailyDetails.map((day, idx) => {
                 const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
                 
+                // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
+                const sameSiteDays = data.dailyDetails.filter(
+                  d => d.chantier === day.chantier && 
+                       d.ficheJourId !== day.ficheJourId &&
+                       (!((d as any).codeTrajet) || (d as any).codeTrajet === 'A_COMPLETER')
+                );
+                
+                const batchFicheJourIds = [day.ficheJourId, ...sameSiteDays.map(d => d.ficheJourId)];
+                const batchDaysCount = batchFicheJourIds.length;
+
                 return (
                 <TableRow 
                   key={idx} 
@@ -244,6 +256,14 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           value: value || null,
                         });
                       }}
+                      onBatchChange={async (value) => {
+                        await batchUpdateTrajet.mutateAsync({
+                          ficheJourIds: batchFicheJourIds,
+                          codeTrajet: value,
+                        });
+                      }}
+                      batchDaysCount={batchDaysCount}
+                      chantierName={day.chantier}
                       disabled={false}
                       hasHours={day.heuresNormales > 0}
                     />
