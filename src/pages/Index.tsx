@@ -215,11 +215,11 @@ const Index = () => {
           employeeId: macon.id,
           employeeName: `${macon.prenom} ${macon.nom}`,
           days: {
-            Lundi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
-            Mardi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
-            Mercredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
-            Jeudi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
-            Vendredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0 },
+            Lundi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0, trajet: true, codeTrajet: "A_COMPLETER" },
+            Mardi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0, trajet: true, codeTrajet: "A_COMPLETER" },
+            Mercredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0, trajet: true, codeTrajet: "A_COMPLETER" },
+            Jeudi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0, trajet: true, codeTrajet: "A_COMPLETER" },
+            Vendredi: { hours: 0, overtime: 0, absent: false, panierRepas: false, heuresIntemperie: 0, trajet: true, codeTrajet: "A_COMPLETER" },
           }
         });
       });

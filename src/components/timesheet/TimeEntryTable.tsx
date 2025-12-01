@@ -379,11 +379,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     if (isConducteurMode && chefId && weekId && !hasLoadedData && finisseursData.length > 0 && chantiers.length > 0) {
       const finisseurEntries = finisseursData.map((finisseur) => {
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
         };
 
         // Appliquer les données existantes si disponibles
@@ -487,11 +487,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         
         // Valeurs par défaut (39h) - UNIQUEMENT Lundi à Vendredi
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: null },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique
@@ -562,11 +562,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
 
       const defaults = {
-        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: null as CodeTrajet | null },
-        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: null as CodeTrajet | null },
-        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: null as CodeTrajet | null },
-        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: null as CodeTrajet | null },
-        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: null as CodeTrajet | null },
+        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true,  trajetPerso: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
       } as const;
 
       const toAdd = finisseursData
@@ -1383,7 +1383,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                             <div className="flex flex-col gap-2">
                               <div className="flex items-center gap-2">
                                 <Checkbox
-                                  checked={!!dayData.trajet}
+                                  checked={dayData.trajet !== false}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       updateDayValue(entry.employeeId, day, "trajet", true);
