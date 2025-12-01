@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Clock, TrendingUp, UserX, Building2, Users } from "lucide-react";
+import { Clock, TrendingUp, UserX, Building2, Users, Route } from "lucide-react";
 import { useRHSummary } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,6 +22,8 @@ export const RHSummary = ({ filters }: RHSummaryProps) => {
     );
   }
 
+  const trajetsACompleter = summary?.trajetsACompleter || 0;
+  
   const stats = [
     {
       label: "Heures normales",
@@ -53,6 +55,13 @@ export const RHSummary = ({ filters }: RHSummaryProps) => {
       icon: Users,
       color: "text-primary",
     },
+    {
+      label: "Trajets à compléter",
+      value: trajetsACompleter,
+      icon: Route,
+      color: trajetsACompleter > 0 ? "text-orange-500" : "text-muted-foreground",
+      bgColor: trajetsACompleter > 0 ? "bg-orange-100 dark:bg-orange-950" : undefined,
+    },
   ];
 
   return (
@@ -60,9 +69,9 @@ export const RHSummary = ({ filters }: RHSummaryProps) => {
       {stats.map((stat, idx) => {
         const Icon = stat.icon;
         return (
-          <Card key={idx} className="p-4 shadow-md border-border/50">
+          <Card key={idx} className={`p-4 shadow-md border-border/50 ${stat.bgColor || ''}`}>
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-muted/50 ${stat.color}`}>
+              <div className={`p-2 rounded-lg ${stat.bgColor ? 'bg-orange-200 dark:bg-orange-900' : 'bg-muted/50'} ${stat.color}`}>
                 <Icon className="h-5 w-5" />
               </div>
               <div className="flex-1">

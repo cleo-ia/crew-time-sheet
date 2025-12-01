@@ -11,6 +11,7 @@ export interface RHSummary {
   absences: number;
   chantiers: number;
   salaries: number;
+  trajetsACompleter: number;
 }
 
 export interface RHEmployee {
@@ -68,15 +69,21 @@ export const useRHSummary = (filters: any) => {
         emp.chantier_codes.forEach(code => uniqueChantiers.add(code));
       });
 
+      // Calculer le nombre de trajets à compléter
+      const trajetsACompleter = employees.reduce((total, emp) => {
+        return total + emp.detailJours.filter(j => j.trajet === "A_COMPLETER").length;
+      }, 0);
+
       const summary: RHSummary = {
         heuresNormales: Math.round(heuresNormales * 100) / 100,
         heuresSupp: Math.round(heuresSupp * 100) / 100,
         absences,
         chantiers: uniqueChantiers.size,
         salaries: employees.length,
+        trajetsACompleter,
       };
 
-      console.log(`[RH Summary] Calculé depuis buildRHConsolidation: ${employees.length} salariés, ${heuresNormales}h normales, ${heuresSupp}h supp`);
+      console.log(`[RH Summary] Calculé depuis buildRHConsolidation: ${employees.length} salariés, ${heuresNormales}h normales, ${heuresSupp}h supp, ${trajetsACompleter} trajets à compléter`);
       
       return summary;
     },
