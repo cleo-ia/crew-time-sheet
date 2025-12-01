@@ -6,6 +6,9 @@ import { useChantiers } from "@/hooks/useChantiers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EmployeeCombobox } from "./EmployeeCombobox";
+import { format, subMonths } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useMemo } from "react";
 
 interface RHFiltersProps {
   filters: {
@@ -40,9 +43,45 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
     },
   });
 
+  const derniersMois = useMemo(() => {
+    const mois = [];
+    const today = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = subMonths(today, i);
+      mois.push({
+        value: format(date, "yyyy-MM"),
+        label: format(date, "MMMM yyyy", { locale: fr })
+      });
+    }
+    return mois;
+  }, []);
+
   return (
     <Card className="p-4 shadow-md border-border/50">
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {/* Période (mois) */}
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            Période
+          </label>
+          <Select
+            value={filters.periode}
+            onValueChange={(value) => onFiltersChange({ ...filters, periode: value })}
+          >
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Mois" />
+            </SelectTrigger>
+            <SelectContent>
+              {derniersMois.map((mois) => (
+                <SelectItem key={mois.value} value={mois.value}>
+                  {mois.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Semaine */}
         <div>
           <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
