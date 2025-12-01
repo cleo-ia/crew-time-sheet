@@ -50,14 +50,16 @@ export const useFicheModifiable = (
       }
 
       // Vérifier si au moins une fiche a un statut bloquant
-      const statutsBloquants = ["VALIDE_CONDUCTEUR", "ENVOYE_RH"];
+      const statutsBloquants = ["VALIDE_CHEF", "VALIDE_CONDUCTEUR", "ENVOYE_RH"];
       const ficheBloquante = fiches.find((f) => statutsBloquants.includes(f.statut));
 
       if (ficheBloquante) {
         return {
           isModifiable: false,
           raison:
-            ficheBloquante.statut === "VALIDE_CONDUCTEUR"
+            ficheBloquante.statut === "VALIDE_CHEF"
+              ? "Fiche déjà transmise et signatures collectées"
+              : ficheBloquante.statut === "VALIDE_CONDUCTEUR"
               ? "Fiche déjà transmise au conducteur"
               : "Fiche déjà envoyée aux RH",
           statutBloquant: ficheBloquante.statut,
