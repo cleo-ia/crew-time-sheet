@@ -21,19 +21,19 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
   }
 };
 
-const getStatusInfo = (statut: TacheChantier["statut"], isLate: boolean) => {
+const getStatusInfo = (statut: TacheChantier["statut"], isLate: boolean, isOngoing: boolean) => {
   if (isLate || statut === "EN_RETARD") {
     return { label: "En retard", color: "bg-red-500", textColor: "text-red-700", badgeBg: "bg-red-100" };
   }
-  switch (statut) {
-    case "TERMINE":
-      return { label: "Terminé", color: "bg-green-500", textColor: "text-green-700", badgeBg: "bg-green-100" };
-    case "EN_COURS":
-      return { label: "En cours", color: "bg-orange-400", textColor: "text-orange-700", badgeBg: "bg-orange-100" };
-    case "A_FAIRE":
-    default:
-      return { label: "À venir", color: "bg-gray-400", textColor: "text-gray-700", badgeBg: "bg-gray-100" };
+  if (statut === "TERMINE") {
+    return { label: "Terminé", color: "bg-green-500", textColor: "text-green-700", badgeBg: "bg-green-100" };
   }
+  // Si la tâche est en cours (date du jour comprise entre début et fin)
+  if (isOngoing || statut === "EN_COURS") {
+    return { label: "En cours", color: "bg-orange-400", textColor: "text-orange-700", badgeBg: "bg-orange-100" };
+  }
+  // À venir (pas encore commencé)
+  return { label: "À venir", color: "bg-gray-400", textColor: "text-gray-700", badgeBg: "bg-gray-100" };
 };
 
 const ROW_HEIGHT = 40;
@@ -69,6 +69,7 @@ export const TaskBars = ({
       width: number;
       row: number;
       isLate: boolean;
+      isOngoing: boolean;
     }> = [];
 
     // Track end positions per row to assign rows without overlap
@@ -85,8 +86,11 @@ export const TaskBars = ({
       const left = startDayIndex * dayWidth;
       const width = Math.max(duration * dayWidth, dayWidth); // Minimum 1 day width
 
-      // Check if task is late
+      // Check if task is late (end date passed and not completed)
       const isLate = isAfter(today, taskEndDate) && tache.statut !== "TERMINE";
+      
+      // Check if task is ongoing (today is between start and end dates)
+      const isOngoing = !isAfter(taskStartDate, today) && !isAfter(today, taskEndDate) && tache.statut !== "TERMINE";
 
       // Find the first row where this task fits (doesn't overlap)
       let assignedRow = 0;
@@ -111,6 +115,7 @@ export const TaskBars = ({
         width,
         row: assignedRow,
         isLate,
+        isOngoing,
       });
     });
 
@@ -121,8 +126,8 @@ export const TaskBars = ({
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {taskPositions.map(({ tache, left, width, row, isLate }) => {
-        const statusInfo = getStatusInfo(tache.statut, isLate);
+      {taskPositions.map(({ tache, left, width, row, isLate, isOngoing }) => {
+        const statusInfo = getStatusInfo(tache.statut, isLate, isOngoing);
         const top = row * ROW_HEIGHT + BAR_VERTICAL_PADDING;
 
         return (
