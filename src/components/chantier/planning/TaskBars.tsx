@@ -9,8 +9,6 @@ interface TaskBarsProps {
   startDate: Date;
   zoomLevel: ZoomLevel;
   onTaskClick: (tache: TacheChantier) => void;
-  scrollLeft: number;
-  containerWidth: number;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -48,16 +46,9 @@ export const TaskBars = ({
   startDate, 
   zoomLevel, 
   onTaskClick,
-  scrollLeft,
-  containerWidth
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
-
-  // Calculate visible range for optimization
-  const bufferDays = 60;
-  const visibleStartDay = Math.max(0, Math.floor(scrollLeft / dayWidth) - bufferDays);
-  const visibleEndDay = Math.ceil((scrollLeft + containerWidth) / dayWidth) + bufferDays;
 
   // Sort tasks by start date, then by duration (longer first) for better visual stacking
   const sortedTaches = useMemo(() => {
@@ -92,11 +83,6 @@ export const TaskBars = ({
       const endDayIndex = differenceInDays(taskEndDate, startDate);
       const duration = endDayIndex - startDayIndex + 1;
 
-      // Skip tasks completely outside visible range
-      if (endDayIndex < visibleStartDay || startDayIndex > visibleEndDay) {
-        return;
-      }
-
       const left = startDayIndex * dayWidth;
       const width = Math.max(duration * dayWidth, dayWidth); // Minimum 1 day width
 
@@ -130,27 +116,16 @@ export const TaskBars = ({
     });
 
     return positions;
-  }, [sortedTaches, startDate, dayWidth, today, visibleStartDay, visibleEndDay]);
-
-  // Filter to only visible tasks
-  const visibleTasks = useMemo(() => {
-    return taskPositions.filter(({ left, width }) => {
-      const taskEnd = left + width;
-      const visibleStart = scrollLeft - bufferDays * dayWidth;
-      const visibleEnd = scrollLeft + containerWidth + bufferDays * dayWidth;
-      return taskEnd >= visibleStart && left <= visibleEnd;
-    });
-  }, [taskPositions, scrollLeft, containerWidth, dayWidth]);
+  }, [sortedTaches, startDate, dayWidth, today]);
 
   const totalRows = Math.max(1, ...taskPositions.map(p => p.row + 1));
-  const contentHeight = totalRows * ROW_HEIGHT;
 
   return (
     <div 
       className="absolute inset-0 pointer-events-none"
       style={{ top: HEADER_HEIGHT }}
     >
-      {visibleTasks.map(({ tache, left, width, row, isLate }) => {
+      {taskPositions.map(({ tache, left, width, row, isLate }) => {
         const statusInfo = getStatusInfo(tache.statut, isLate);
         const top = row * ROW_HEIGHT + BAR_VERTICAL_PADDING;
 
