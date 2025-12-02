@@ -238,6 +238,7 @@ Deno.serve(async (req) => {
           nb_finisseurs_en_attente: conducteur.nb_finisseurs_en_attente,
           finisseurs: conducteur.finisseurs,
           semaine: currentWeek,
+          appBaseUrl: 'https://crew-time-sheet.lovable.app/validation-conducteur',
           timestamp: new Date().toISOString()
         }
 

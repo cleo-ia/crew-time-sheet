@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
             chantier_nom,
             semaine: currentWeek
           })),
+          appBaseUrl: 'https://crew-time-sheet.lovable.app/',
           timestamp: new Date().toISOString()
         }
 

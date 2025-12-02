@@ -239,6 +239,7 @@ Deno.serve(async (req) => {
             semaine: currentWeek,
             nb_fiches: ch.nb_fiches
           })),
+          appBaseUrl: 'https://crew-time-sheet.lovable.app/validation-conducteur',
           timestamp: new Date().toISOString()
         }
 

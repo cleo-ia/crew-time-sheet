@@ -115,6 +115,7 @@ serve(async (req) => {
         chef_prenom: chef?.prenom || "",
         chef_nom: chef?.nom || "",
         nb_prets: lot.nb_prets,
+        appBaseUrl: 'https://crew-time-sheet.lovable.app/validation-conducteur',
       };
 
       console.log(`[notify-conducteur] 📧 Envoi webhook n8n pour: ${payload.chantier_nom} - ${payload.semaine}`);
