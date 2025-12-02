@@ -218,7 +218,7 @@ export const ChantiersManager = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+          <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto px-1">
             {/* Section Identification */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
