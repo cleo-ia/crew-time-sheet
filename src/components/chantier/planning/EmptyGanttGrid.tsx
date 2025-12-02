@@ -9,6 +9,7 @@ interface EmptyGanttGridProps {
   numDays?: number;
   zoomLevel?: ZoomLevel;
   showDates?: boolean;
+  onScrollChange?: (scrollLeft: number, containerWidth: number) => void;
 }
 
 export interface EmptyGanttGridRef {
@@ -36,7 +37,7 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
 };
 
 export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>(
-  ({ startDate, numDays = 90, zoomLevel = "month", showDates = true }, ref) => {
+  ({ startDate, numDays = 90, zoomLevel = "month", showDates = true, onScrollChange }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scrollLeft, setScrollLeft] = useState(0);
     const [containerWidth, setContainerWidth] = useState(1200);
@@ -104,7 +105,8 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       const target = e.target as HTMLDivElement;
       setScrollLeft(target.scrollLeft);
-    }, []);
+      onScrollChange?.(target.scrollLeft, target.clientWidth);
+    }, [onScrollChange]);
 
     const scrollToToday = useCallback(() => {
       if (containerRef.current && todayIndex >= 0) {
@@ -130,14 +132,15 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
       return () => window.removeEventListener("resize", updateWidth);
     }, []);
 
-    // Scroll to today on mount
+    // Scroll to today on mount and notify parent
     useEffect(() => {
       if (containerRef.current && todayIndex >= 0) {
         const scrollPosition = todayIndex * dayWidth - containerRef.current.clientWidth / 2 + dayWidth / 2;
         containerRef.current.scrollLeft = Math.max(0, scrollPosition);
         setScrollLeft(Math.max(0, scrollPosition));
+        onScrollChange?.(Math.max(0, scrollPosition), containerRef.current.clientWidth);
       }
-    }, [todayIndex, dayWidth]);
+    }, [todayIndex, dayWidth, onScrollChange]);
 
     // Determine if we should show day numbers based on zoom level
     const showDayNumbers = zoomLevel === "month" && showDates;
