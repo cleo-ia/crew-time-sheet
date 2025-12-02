@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTache } from "@/hooks/useCreateTache";
 import { format, addDays } from "date-fns";
 
@@ -13,17 +12,6 @@ interface TaskFormDialogProps {
   onOpenChange: (open: boolean) => void;
   chantierId: string;
 }
-
-const COULEURS = [
-  { value: "#3b82f6", label: "Bleu" },
-  { value: "#22c55e", label: "Vert" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#ef4444", label: "Rouge" },
-  { value: "#8b5cf6", label: "Violet" },
-  { value: "#06b6d4", label: "Cyan" },
-  { value: "#ec4899", label: "Rose" },
-  { value: "#eab308", label: "Jaune" },
-];
 
 export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialogProps) => {
   const createTache = useCreateTache();
@@ -36,7 +24,6 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
     date_debut: today,
     date_fin: nextWeek,
     heures_estimees: "",
-    couleur: "#3b82f6",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +38,6 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
       date_debut: formData.date_debut,
       date_fin: formData.date_fin,
       heures_estimees: formData.heures_estimees ? parseInt(formData.heures_estimees) : undefined,
-      couleur: formData.couleur,
     });
 
     // Reset form and close
@@ -61,7 +47,6 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
       date_debut: today,
       date_fin: nextWeek,
       heures_estimees: "",
-      couleur: "#3b82f6",
     });
     onOpenChange(false);
   };
@@ -119,41 +104,16 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="heures_estimees">Heures estimées</Label>
-              <Input
-                id="heures_estimees"
-                type="number"
-                value={formData.heures_estimees}
-                onChange={(e) => setFormData({ ...formData, heures_estimees: e.target.value })}
-                placeholder="Ex: 40"
-                min={0}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Couleur</Label>
-              <Select value={formData.couleur} onValueChange={(v) => setFormData({ ...formData, couleur: v })}>
-                <SelectTrigger>
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: formData.couleur }} />
-                      {COULEURS.find(c => c.value === formData.couleur)?.label}
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {COULEURS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
-                        {c.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="heures_estimees">Heures estimées</Label>
+            <Input
+              id="heures_estimees"
+              type="number"
+              value={formData.heures_estimees}
+              onChange={(e) => setFormData({ ...formData, heures_estimees: e.target.value })}
+              placeholder="Ex: 40"
+              min={0}
+            />
           </div>
 
           <DialogFooter>
