@@ -25,7 +25,8 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDates, setShowDates] = useState(true);
-  const [currentDate, setCurrentDate] = useState(() => startOfMonth(new Date()));
+  // Start from January 2025
+  const [currentDate, setCurrentDate] = useState(() => new Date(2025, 0, 1));
 
   const handleTaskClick = (tache: TacheChantier) => {
     setSelectedTache(tache);
@@ -131,7 +132,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             showDates={showDates}
           />
         ) : (
-          <EmptyGanttGrid startDate={currentDate} numDays={90} />
+          <EmptyGanttGrid startDate={currentDate} numDays={365} />
         )}
       </div>
 
