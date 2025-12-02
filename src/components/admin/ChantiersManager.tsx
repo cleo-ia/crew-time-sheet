@@ -236,6 +236,58 @@ export const ChantiersManager = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label>Ville</Label>
+                <Input 
+                  placeholder="Ex: Paris" 
+                  value={formData.ville}
+                  onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Adresse</Label>
+                <Input 
+                  placeholder="Ex: 12 Rue de la République" 
+                  value={formData.adresse}
+                  onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Conducteur de travaux</Label>
+                <Select value={formData.conducteur_id} onValueChange={(value) => setFormData({ ...formData, conducteur_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {conducteurs.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.prenom} {c.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Chef d'équipe (optionnel)</Label>
+                <Select value={formData.chef_id} onValueChange={(value) => setFormData({ ...formData, chef_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {chefs.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.prenom} {c.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Date de début</Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -294,58 +346,6 @@ export const ChantiersManager = () => {
                     />
                   </PopoverContent>
                 </Popover>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Ville</Label>
-                <Input 
-                  placeholder="Ex: Paris" 
-                  value={formData.ville}
-                  onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Adresse</Label>
-                <Input 
-                  placeholder="Ex: 12 Rue de la République" 
-                  value={formData.adresse}
-                  onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Conducteur de travaux</Label>
-                <Select value={formData.conducteur_id} onValueChange={(value) => setFormData({ ...formData, conducteur_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {conducteurs.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.prenom} {c.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Chef d'équipe (optionnel)</Label>
-                <Select value={formData.chef_id} onValueChange={(value) => setFormData({ ...formData, chef_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {chefs.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.prenom} {c.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 
