@@ -39,9 +39,8 @@ const getStatusInfo = (statut: TacheChantier["statut"], isLate: boolean) => {
 const ROW_HEIGHT = 40;
 const BAR_HEIGHT = 32;
 const BAR_VERTICAL_PADDING = (ROW_HEIGHT - BAR_HEIGHT) / 2;
-const HEADER_HEIGHT = 56; // Height of the month/day headers
 
-export const TaskBars = ({ 
+export const TaskBars = ({
   taches, 
   startDate, 
   zoomLevel, 
@@ -121,10 +120,7 @@ export const TaskBars = ({
   const totalRows = Math.max(1, ...taskPositions.map(p => p.row + 1));
 
   return (
-    <div 
-      className="absolute inset-0 pointer-events-none"
-      style={{ top: HEADER_HEIGHT }}
-    >
+    <div className="absolute inset-0 pointer-events-none">
       {taskPositions.map(({ tache, left, width, row, isLate }) => {
         const statusInfo = getStatusInfo(tache.statut, isLate);
         const top = row * ROW_HEIGHT + BAR_VERTICAL_PADDING;

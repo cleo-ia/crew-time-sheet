@@ -111,22 +111,23 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       </div>
 
       {/* Gantt Chart - Always show grid with tasks overlay */}
-      <div className="border rounded-lg overflow-hidden bg-background relative">
+      <div className="border rounded-lg overflow-hidden bg-background">
         <EmptyGanttGrid 
           ref={ganttRef} 
           startDate={START_DATE} 
           numDays={NUM_DAYS} 
           zoomLevel={zoomLevel}
           showDates={showDates}
-        />
-        {taches.length > 0 && (
-          <TaskBars
-            taches={taches}
-            startDate={START_DATE}
-            zoomLevel={zoomLevel}
-            onTaskClick={handleTaskClick}
-          />
-        )}
+        >
+          {taches.length > 0 && (
+            <TaskBars
+              taches={taches}
+              startDate={START_DATE}
+              zoomLevel={zoomLevel}
+              onTaskClick={handleTaskClick}
+            />
+          )}
+        </EmptyGanttGrid>
       </div>
 
       {/* Legend */}
