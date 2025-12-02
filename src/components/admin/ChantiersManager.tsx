@@ -208,7 +208,7 @@ export const ChantiersManager = () => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {editingChantier ? "Modifier le chantier" : "Nouveau chantier"}
