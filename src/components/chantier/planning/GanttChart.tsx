@@ -11,6 +11,7 @@ interface GanttChartProps {
   chantierId: string;
   viewMode: ViewMode;
   onTaskClick: (tache: TacheChantier) => void;
+  showDates?: boolean;
 }
 
 // Map our status to progress percentage for visual display
@@ -44,7 +45,7 @@ const getBarStyles = (tache: TacheChantier): { backgroundColor: string; progress
   return { backgroundColor: baseColor, progressColor: baseColor };
 };
 
-export const GanttChart = ({ taches, chantierId, viewMode, onTaskClick }: GanttChartProps) => {
+export const GanttChart = ({ taches, chantierId, viewMode, onTaskClick, showDates = true }: GanttChartProps) => {
   const updateTache = useUpdateTache();
   const [columnWidth, setColumnWidth] = useState(viewMode === ViewMode.Day ? 65 : viewMode === ViewMode.Week ? 250 : 300);
 
