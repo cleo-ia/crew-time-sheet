@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,9 @@ import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface ChantierPlanningTabProps {
   chantierId: string;
@@ -34,9 +37,11 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   // Show dates by default for month and quarter views
   const [showDates, setShowDates] = useState(true);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-enable dates for month/quarter zoom levels
   const handleZoomChange = (newZoom: ZoomLevel) => {
@@ -61,6 +66,67 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
 
   const goForwardOneWeek = () => {
     ganttRef.current?.scrollByDays(7);
+  };
+
+  const exportToPDF = async () => {
+    const scrollContainer = ganttRef.current?.getScrollContainer();
+    if (!scrollContainer) {
+      toast.error("Impossible d'exporter le planning");
+      return;
+    }
+
+    setIsExporting(true);
+    toast.info("Export en cours...");
+
+    try {
+      // Save current scroll position
+      const currentScrollLeft = scrollContainer.scrollLeft;
+      
+      // Temporarily expand to show visible area properly
+      const canvas = await html2canvas(scrollContainer, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: scrollContainer.scrollWidth,
+        height: scrollContainer.scrollHeight,
+        x: currentScrollLeft,
+        windowWidth: scrollContainer.scrollWidth,
+      });
+
+      // Create PDF in landscape mode
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate dimensions to fit the page
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+      
+      // Center the image
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = (pdfHeight - finalHeight) / 2;
+
+      pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+      pdf.save(`planning-${new Date().toISOString().split("T")[0]}.pdf`);
+
+      toast.success("Planning exporté en PDF");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Erreur lors de l'export");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isLoading) {
@@ -135,6 +201,25 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Ajouter une tâche</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Export PDF button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={exportToPDF} 
+                  size="sm"
+                  variant="outline"
+                  disabled={isExporting}
+                >
+                  <FileDown className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Exporter en PDF</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
