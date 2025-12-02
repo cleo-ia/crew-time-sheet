@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ViewMode } from "gantt-task-react";
 import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,17 +6,20 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { GanttChart } from "@/components/chantier/planning/GanttChart";
-import { EmptyGanttGrid } from "@/components/chantier/planning/EmptyGanttGrid";
+import { EmptyGanttGrid, EmptyGanttGridRef } from "@/components/chantier/planning/EmptyGanttGrid";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
 import { Skeleton } from "@/components/ui/skeleton";
-import { addMonths, startOfMonth, subMonths, format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 interface ChantierPlanningTabProps {
   chantierId: string;
 }
+
+// Start from January 2020 to allow scrolling far back and forward
+const START_DATE = new Date(2020, 0, 1);
+// ~11 years of days to 2030
+const NUM_DAYS = 365 * 11;
 
 export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
@@ -25,8 +28,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDates, setShowDates] = useState(true);
-  // Start from January 2025
-  const [currentDate, setCurrentDate] = useState(() => new Date(2025, 0, 1));
+  const ganttRef = useRef<EmptyGanttGridRef>(null);
 
   const handleTaskClick = (tache: TacheChantier) => {
     setSelectedTache(tache);
@@ -40,15 +42,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   };
 
   const goToToday = () => {
-    setCurrentDate(startOfMonth(new Date()));
-  };
-
-  const goToPrevious = () => {
-    setCurrentDate((prev) => subMonths(prev, 1));
-  };
-
-  const goToNext = () => {
-    setCurrentDate((prev) => addMonths(prev, 1));
+    ganttRef.current?.scrollToToday();
   };
 
   if (isLoading) {
@@ -69,14 +63,10 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-muted/30 rounded-lg">
         {/* Left side - Navigation */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={goToPrevious}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
           <Button variant="ghost" onClick={goToToday} className="text-primary font-medium">
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Aujourd'hui
-          </Button>
-          <Button variant="ghost" size="icon" onClick={goToNext}>
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
@@ -132,7 +122,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             showDates={showDates}
           />
         ) : (
-          <EmptyGanttGrid startDate={currentDate} numDays={365} />
+          <EmptyGanttGrid ref={ganttRef} startDate={START_DATE} numDays={NUM_DAYS} />
         )}
       </div>
 
