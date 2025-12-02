@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyGanttGrid, EmptyGanttGridRef, ZoomLevel } from "@/components/chantier/planning/EmptyGanttGrid";
 import { TaskBars } from "@/components/chantier/planning/TaskBars";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
@@ -121,13 +122,22 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           </Select>
 
           {/* Add task button */}
-          <Button 
-            onClick={() => setShowCreateDialog(true)} 
-            size="sm"
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={() => setShowCreateDialog(true)} 
+                  size="sm"
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ajouter une tâche</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
