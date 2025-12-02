@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Clock, X, MoreHorizontal, Plus, Send, Trash2, HelpCircle, FileText } from "lucide-react";
+import { Clock, X, MoreHorizontal, Plus, Send, Trash2, HelpCircle, FileText, Download, Image } from "lucide-react";
 import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { useDeleteTache } from "@/hooks/useDeleteTache";
+import { useTacheDocuments, TacheDocument } from "@/hooks/useTacheDocuments";
 import { TacheChantier } from "@/hooks/useTachesChantier";
 import { toast } from "sonner";
 import { format, parseISO, isAfter, startOfDay } from "date-fns";
@@ -52,6 +53,8 @@ const getComputedStatus = (statut: string, dateDebut: string, dateFin: string) =
 export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: TaskDetailDialogProps) => {
   const updateTache = useUpdateTache();
   const deleteTache = useDeleteTache();
+  const { documents, uploadDocument, deleteDocument, getPublicUrl } = useTacheDocuments(tache?.id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -490,19 +493,96 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
           {/* Fichiers Tab */}
           <TabsContent value="fichiers" className="p-5 mt-0 flex-1 overflow-y-auto">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && tache) {
+                  if (file.size > 10 * 1024 * 1024) {
+                    toast.error("Le fichier ne doit pas dépasser 10 Mo");
+                    return;
+                  }
+                  uploadDocument.mutate({ file, tacheId: tache.id });
+                }
+                e.target.value = "";
+              }}
+            />
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-base">Fichiers</h4>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <div className="border rounded-lg p-10 text-center">
-              <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground mb-4">Aucun fichier</p>
-              <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
-                Ajouter un fichier
-              </Button>
-            </div>
+            
+            {documents.length === 0 ? (
+              <div className="border rounded-lg p-10 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground mb-4">Aucun fichier</p>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="bg-orange-500 hover:bg-orange-600 h-9 px-4"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Ajouter un fichier
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc) => {
+                  const isImage = doc.file_type.startsWith("image/");
+                  const url = getPublicUrl(doc.file_path);
+                  return (
+                    <div 
+                      key={doc.id} 
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      {isImage ? (
+                        <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
+                          <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.nom}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(doc.file_size / 1024).toFixed(1)} Ko
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => window.open(url, "_blank")}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => deleteDocument.mutate(doc)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
