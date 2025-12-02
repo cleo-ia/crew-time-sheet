@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
-import { format, addDays, isWeekend, isToday, startOfMonth } from "date-fns";
+import { format, addDays, isWeekend, isToday, startOfMonth, getISOWeek, startOfWeek, isSameWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export type ZoomLevel = "month" | "quarter" | "semester" | "year";
@@ -102,6 +102,47 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
       return result;
     }, [visibleDays]);
 
+    // Group visible days by week for semester/year views
+    const visibleWeeks = useMemo(() => {
+      const result: { weekNum: number; startIdx: number; count: number; isCurrentWeek: boolean }[] = [];
+      let currentWeekNum: number | null = null;
+      let currentStartIdx = 0;
+      let currentCount = 0;
+      const today = new Date();
+
+      visibleDays.forEach(({ date, index }) => {
+        const weekNum = getISOWeek(date);
+        if (currentWeekNum === null || weekNum !== currentWeekNum) {
+          if (currentWeekNum !== null) {
+            const weekStart = startOfWeek(addDays(startDate, currentStartIdx), { weekStartsOn: 1 });
+            result.push({ 
+              weekNum: currentWeekNum, 
+              startIdx: currentStartIdx, 
+              count: currentCount,
+              isCurrentWeek: isSameWeek(weekStart, today, { weekStartsOn: 1 })
+            });
+          }
+          currentWeekNum = weekNum;
+          currentStartIdx = index;
+          currentCount = 1;
+        } else {
+          currentCount++;
+        }
+      });
+
+      if (currentWeekNum !== null && currentCount > 0) {
+        const weekStart = startOfWeek(addDays(startDate, currentStartIdx), { weekStartsOn: 1 });
+        result.push({ 
+          weekNum: currentWeekNum, 
+          startIdx: currentStartIdx, 
+          count: currentCount,
+          isCurrentWeek: isSameWeek(weekStart, today, { weekStartsOn: 1 })
+        });
+      }
+
+      return result;
+    }, [visibleDays, startDate]);
+
     // Throttled scroll handler
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       const target = e.target as HTMLDivElement;
@@ -145,6 +186,8 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
 
     // Determine if we should show day numbers based on zoom level
     const showDayNumbers = (zoomLevel === "month" || zoomLevel === "quarter") && showDates;
+    // Show week numbers for semester and year views
+    const showWeekNumbers = (zoomLevel === "semester" || zoomLevel === "year") && showDates;
 
     const leftSpacerWidth = startIdx * dayWidth;
     const rightSpacerWidth = Math.max(0, (numDays - endIdx) * dayWidth);
@@ -192,6 +235,25 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
                   </div>
                 );
               })}
+              <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
+            </div>
+          )}
+
+          {/* Week header row - for semester and year views */}
+          {showWeekNumbers && (
+            <div className="flex border-b border-border">
+              <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
+              {visibleWeeks.map((weekGroup, idx) => (
+                <div
+                  key={`week-${weekGroup.weekNum}-${idx}`}
+                  className={`flex items-center justify-center text-xs py-1 border-r border-border/20 ${
+                    weekGroup.isCurrentWeek ? "text-red-500 font-bold" : "text-muted-foreground"
+                  }`}
+                  style={{ width: weekGroup.count * dayWidth, flexShrink: 0 }}
+                >
+                  {weekGroup.weekNum}
+                </div>
+              ))}
               <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
             </div>
           )}
