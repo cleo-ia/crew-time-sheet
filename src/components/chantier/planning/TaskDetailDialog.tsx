@@ -135,7 +135,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Header */}
         <div className="p-5 pb-4 border-b border-border/50">
           {/* Top row: title + actions */}
