@@ -12,6 +12,7 @@ interface TaskBarsProps {
   zoomLevel: ZoomLevel;
   onTaskClick: (tache: TacheChantier) => void;
   chantierId: string;
+  scrollLeft?: number;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -49,6 +50,7 @@ export const TaskBars = ({
   zoomLevel, 
   onTaskClick,
   chantierId,
+  scrollLeft = 0,
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
@@ -255,6 +257,17 @@ export const TaskBars = ({
         const displayLeft = isDragging ? left + dragOffset.x : left;
         const displayTop = isDragging ? top + dragOffset.y : top;
 
+        // Calculate sticky label offset
+        const barStart = displayLeft;
+        const barEnd = displayLeft + width;
+        const isPartiallyHidden = barStart < scrollLeft;
+        const isStillVisible = barEnd > scrollLeft;
+        
+        let labelOffset = 0;
+        if (isPartiallyHidden && isStillVisible && !isDragging) {
+          labelOffset = Math.min(scrollLeft - barStart, width - 80); // Keep at least 80px for content
+        }
+
         return (
           <div
             key={tache.id}
@@ -271,7 +284,13 @@ export const TaskBars = ({
             onMouseDown={(e) => handleMouseDown(e, tache, left, row)}
             onClick={(e) => handleClick(e, tache)}
           >
-            <div className="flex items-center gap-2 h-full px-2 overflow-hidden select-none">
+            <div 
+              className="flex items-center gap-2 h-full overflow-hidden select-none"
+              style={{ 
+                paddingLeft: `${Math.max(8, labelOffset + 8)}px`,
+                paddingRight: '8px',
+              }}
+            >
               <span className="text-white text-sm font-medium truncate">
                 {tache.nom}
               </span>
