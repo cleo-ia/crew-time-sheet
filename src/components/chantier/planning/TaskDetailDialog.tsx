@@ -359,6 +359,39 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                 className="min-h-[100px] resize-none bg-muted/30 text-sm"
               />
             </div>
+
+            {/* Fichiers preview */}
+            {documents.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-sm text-muted-foreground">Fichiers ({documents.length})</span>
+                <div className="flex flex-wrap gap-2">
+                  {documents.map((doc) => {
+                    const isImage = doc.file_type.startsWith("image/");
+                    const url = getPublicUrl(doc.file_path);
+                    return (
+                      <a
+                        key={doc.id}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative"
+                      >
+                        {isImage ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
+                            <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
+                            <FileText className="h-6 w-6 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground mt-1">PDF</span>
+                          </div>
+                        )}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Date Tab */}
