@@ -144,7 +144,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               value={formData.nom}
               onChange={(e) => handleFieldChange("nom", e.target.value)}
               onBlur={handleFieldBlur}
-              className="text-2xl font-semibold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+              className="text-3xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
               placeholder="Nom de la tâche"
             />
             <div className="flex items-center gap-1 shrink-0">
@@ -194,10 +194,10 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </div>
 
           {/* Progress bar */}
-          <div className="flex items-center gap-4 mt-5">
-            <span className="text-sm font-medium text-muted-foreground shrink-0 w-12">{heuresRealisees}h</span>
-            <Progress value={progressPercent} className="h-2.5 flex-1" />
-            <span className="text-sm font-medium text-muted-foreground shrink-0 w-12 text-right">{heuresEstimees}h</span>
+          <div className="flex items-center gap-4 mt-6">
+            <span className="text-base font-semibold text-muted-foreground shrink-0 w-14">{heuresRealisees}h</span>
+            <Progress value={progressPercent} className="h-4 flex-1" />
+            <span className="text-base font-semibold text-muted-foreground shrink-0 w-14 text-right">{heuresEstimees}h</span>
           </div>
         </div>
 
