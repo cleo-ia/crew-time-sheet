@@ -11,6 +11,7 @@ import ConsultationRH from "./pages/ConsultationRH";
 import SignatureMacons from "./pages/SignatureMacons";
 import SignatureFinisseurs from "./pages/SignatureFinisseurs";
 import AdminPanel from "./pages/AdminPanel";
+import ChantierDetail from "./pages/ChantierDetail";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
@@ -94,6 +95,16 @@ const App = () => (
               element={
                 <RequireRole allowedRoles={["admin"]}>
                   <AdminPanel />
+                </RequireRole>
+              } 
+            />
+            
+            {/* Chantier Detail - Accessible par: admin */}
+            <Route 
+              path="/admin/chantiers/:id" 
+              element={
+                <RequireRole allowedRoles={["admin"]}>
+                  <ChantierDetail />
                 </RequireRole>
               } 
             />

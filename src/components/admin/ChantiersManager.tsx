@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, MapPin, CalendarIcon, Building2, User, Users, FileText, Paperclip } from "lucide-react";
@@ -21,6 +22,7 @@ import { ChantierDocumentsUpload } from "./ChantierDocumentsUpload";
 
 export const ChantiersManager = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
   const [editingChantier, setEditingChantier] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,7 +155,11 @@ export const ChantiersManager = () => {
               </TableRow>
             ) : (
               filteredChantiers.map((chantier) => (
-                <TableRow key={chantier.id}>
+                <TableRow 
+                  key={chantier.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onDoubleClick={() => navigate(`/admin/chantiers/${chantier.id}`)}
+                >
                   <TableCell className="font-medium">{chantier.nom}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{chantier.code_chantier || "-"}</Badge>
