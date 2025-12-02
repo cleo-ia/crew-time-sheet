@@ -990,6 +990,62 @@ export type Database = {
           },
         ]
       }
+      taches_chantier: {
+        Row: {
+          chantier_id: string
+          couleur: string | null
+          created_at: string
+          date_debut: string
+          date_fin: string
+          description: string | null
+          heures_estimees: number | null
+          heures_realisees: number | null
+          id: string
+          nom: string
+          ordre: number
+          statut: Database["public"]["Enums"]["statut_tache"]
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          couleur?: string | null
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          description?: string | null
+          heures_estimees?: number | null
+          heures_realisees?: number | null
+          id?: string
+          nom: string
+          ordre?: number
+          statut?: Database["public"]["Enums"]["statut_tache"]
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          couleur?: string | null
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          description?: string | null
+          heures_estimees?: number | null
+          heures_realisees?: number | null
+          id?: string
+          nom?: string
+          ordre?: number
+          statut?: Database["public"]["Enums"]["statut_tache"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taches_chantier_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1262,6 +1318,7 @@ export type Database = {
         | "VALIDE_CONDUCTEUR"
         | "ENVOYE_RH"
         | "AUTO_VALIDE"
+      statut_tache: "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD"
       type_absence:
         | "CP"
         | "RTT"
@@ -1409,6 +1466,7 @@ export const Constants = {
         "ENVOYE_RH",
         "AUTO_VALIDE",
       ],
+      statut_tache: ["A_FAIRE", "EN_COURS", "TERMINE", "EN_RETARD"],
       type_absence: [
         "CP",
         "RTT",

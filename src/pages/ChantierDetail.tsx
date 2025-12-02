@@ -84,7 +84,7 @@ const ChantierDetail = () => {
 
           <div className="mt-6">
             <TabsContent value="planning">
-              <ChantierPlanningTab />
+              <ChantierPlanningTab chantierId={chantier.id} />
             </TabsContent>
             <TabsContent value="recap">
               <ChantierRecapTab chantier={chantier} />
