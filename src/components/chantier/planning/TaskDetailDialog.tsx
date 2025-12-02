@@ -196,7 +196,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           {/* Progress bar */}
           <div className="flex items-center gap-4 mt-6">
             <span className="text-base font-semibold text-muted-foreground shrink-0 w-14">{heuresRealisees}h</span>
-            <Progress value={progressPercent} className="h-4 flex-1" />
+            <Progress value={progressPercent} className="h-4 flex-1 [&>div]:bg-orange-500" />
             <span className="text-base font-semibold text-muted-foreground shrink-0 w-14 text-right">{heuresEstimees}h</span>
           </div>
         </div>
