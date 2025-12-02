@@ -125,6 +125,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
               startDate={START_DATE}
               zoomLevel={zoomLevel}
               onTaskClick={handleTaskClick}
+              chantierId={chantierId}
             />
           )}
         </EmptyGanttGrid>

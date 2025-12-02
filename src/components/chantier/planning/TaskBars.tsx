@@ -1,14 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { TacheChantier } from "@/hooks/useTachesChantier";
-import { parseISO, differenceInDays, isAfter, startOfDay } from "date-fns";
+import { parseISO, differenceInDays, isAfter, startOfDay, addDays, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ZoomLevel } from "./EmptyGanttGrid";
+import { useUpdateTache } from "@/hooks/useUpdateTache";
+import { toast } from "sonner";
 
 interface TaskBarsProps {
   taches: TacheChantier[];
   startDate: Date;
   zoomLevel: ZoomLevel;
   onTaskClick: (tache: TacheChantier) => void;
+  chantierId: string;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -45,23 +48,30 @@ export const TaskBars = ({
   startDate, 
   zoomLevel, 
   onTaskClick,
+  chantierId,
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
+  const updateTache = useUpdateTache();
+  
+  // Drag state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef<{ x: number; y: number; taskLeft: number; taskRow: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sort tasks by start date, then by duration (longer first) for better visual stacking
+  // Sort tasks by ordre field first, then by start date
   const sortedTaches = useMemo(() => {
     return [...taches].sort((a, b) => {
-      const startDiff = differenceInDays(parseISO(a.date_debut), parseISO(b.date_debut));
-      if (startDiff !== 0) return startDiff;
-      // If same start, longer tasks first
-      const durationA = differenceInDays(parseISO(a.date_fin), parseISO(a.date_debut));
-      const durationB = differenceInDays(parseISO(b.date_fin), parseISO(b.date_debut));
-      return durationB - durationA;
+      // Primary sort by ordre
+      if (a.ordre !== b.ordre) return a.ordre - b.ordre;
+      // Secondary sort by start date
+      return differenceInDays(parseISO(a.date_debut), parseISO(b.date_debut));
     });
   }, [taches]);
 
-  // Calculate task positions with row assignment to avoid overlaps
+  // Calculate task positions - each task gets its own row based on ordre
   const taskPositions = useMemo(() => {
     const positions: Array<{
       tache: TacheChantier;
@@ -72,10 +82,7 @@ export const TaskBars = ({
       isOngoing: boolean;
     }> = [];
 
-    // Track end positions per row to assign rows without overlap
-    const rowEndDays: number[] = [];
-
-    sortedTaches.forEach((tache) => {
+    sortedTaches.forEach((tache, index) => {
       const taskStartDate = parseISO(tache.date_debut);
       const taskEndDate = parseISO(tache.date_fin);
       
@@ -84,36 +91,16 @@ export const TaskBars = ({
       const duration = endDayIndex - startDayIndex + 1;
 
       const left = startDayIndex * dayWidth;
-      const width = Math.max(duration * dayWidth, dayWidth); // Minimum 1 day width
+      const width = Math.max(duration * dayWidth, dayWidth);
 
-      // Check if task is late (end date passed and not completed)
       const isLate = isAfter(today, taskEndDate) && tache.statut !== "TERMINE";
-      
-      // Check if task is ongoing (today is between start and end dates)
       const isOngoing = !isAfter(taskStartDate, today) && !isAfter(today, taskEndDate) && tache.statut !== "TERMINE";
-
-      // Find the first row where this task fits (doesn't overlap)
-      let assignedRow = 0;
-      for (let i = 0; i < rowEndDays.length; i++) {
-        if (rowEndDays[i] < startDayIndex) {
-          assignedRow = i;
-          break;
-        }
-        assignedRow = i + 1;
-      }
-
-      // Update or add the end day for this row
-      if (assignedRow < rowEndDays.length) {
-        rowEndDays[assignedRow] = endDayIndex;
-      } else {
-        rowEndDays.push(endDayIndex);
-      }
 
       positions.push({
         tache,
         left,
         width,
-        row: assignedRow,
+        row: index, // Each task gets its own row
         isLate,
         isOngoing,
       });
@@ -122,27 +109,155 @@ export const TaskBars = ({
     return positions;
   }, [sortedTaches, startDate, dayWidth, today]);
 
-  const totalRows = Math.max(1, ...taskPositions.map(p => p.row + 1));
+  const handleMouseDown = useCallback((e: React.MouseEvent, tache: TacheChantier, currentLeft: number, currentRow: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setDraggedTaskId(tache.id);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, taskLeft: currentLeft, taskRow: currentRow };
+    isDraggingRef.current = false;
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragStartRef.current || !draggedTaskId) return;
+    
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    
+    // Mark as dragging if moved more than 5px
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      isDraggingRef.current = true;
+    }
+    
+    setDragOffset({ x: dx, y: dy });
+  }, [draggedTaskId]);
+
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    if (!dragStartRef.current || !draggedTaskId) {
+      setDraggedTaskId(null);
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
+
+    const dx = dragOffset.x;
+    const dy = dragOffset.y;
+    
+    // Only process if actually dragged
+    if (isDraggingRef.current) {
+      const draggedTask = taches.find(t => t.id === draggedTaskId);
+      if (draggedTask) {
+        // Calculate day shift from horizontal movement
+        const dayShift = Math.round(dx / dayWidth);
+        
+        // Calculate row shift from vertical movement
+        const rowShift = Math.round(dy / ROW_HEIGHT);
+        
+        const hasHorizontalChange = dayShift !== 0;
+        const hasVerticalChange = rowShift !== 0;
+        
+        if (hasHorizontalChange || hasVerticalChange) {
+          const currentTaskStart = parseISO(draggedTask.date_debut);
+          const currentTaskEnd = parseISO(draggedTask.date_fin);
+          
+          // Calculate new dates
+          const newStartDate = addDays(currentTaskStart, dayShift);
+          const newEndDate = addDays(currentTaskEnd, dayShift);
+          
+          // Calculate new ordre based on row position
+          const currentIndex = sortedTaches.findIndex(t => t.id === draggedTaskId);
+          let newIndex = currentIndex + rowShift;
+          newIndex = Math.max(0, Math.min(newIndex, sortedTaches.length - 1));
+          
+          // If vertical change, we need to reorder
+          if (hasVerticalChange && newIndex !== currentIndex) {
+            // Update ordre for all affected tasks
+            const reorderedTasks = [...sortedTaches];
+            const [movedTask] = reorderedTasks.splice(currentIndex, 1);
+            reorderedTasks.splice(newIndex, 0, movedTask);
+            
+            // Update all tasks with their new ordre
+            reorderedTasks.forEach((task, idx) => {
+              const updates: any = { id: task.id, chantier_id: chantierId, ordre: idx };
+              
+              // Also update dates if this is the dragged task and dates changed
+              if (task.id === draggedTaskId && hasHorizontalChange) {
+                updates.date_debut = format(newStartDate, "yyyy-MM-dd");
+                updates.date_fin = format(newEndDate, "yyyy-MM-dd");
+              }
+              
+              if (task.ordre !== idx || task.id === draggedTaskId) {
+                updateTache.mutate(updates);
+              }
+            });
+            
+            toast.success("Tâche déplacée");
+          } else if (hasHorizontalChange) {
+            // Only horizontal change
+            updateTache.mutate({
+              id: draggedTask.id,
+              chantier_id: chantierId,
+              date_debut: format(newStartDate, "yyyy-MM-dd"),
+              date_fin: format(newEndDate, "yyyy-MM-dd"),
+            });
+            toast.success("Dates modifiées");
+          }
+        }
+      }
+    }
+    
+    setDraggedTaskId(null);
+    setDragOffset({ x: 0, y: 0 });
+    dragStartRef.current = null;
+    isDraggingRef.current = false;
+  }, [draggedTaskId, dragOffset, taches, sortedTaches, dayWidth, chantierId, updateTache]);
+
+  // Handle click separately to avoid triggering on drag
+  const handleClick = useCallback((e: React.MouseEvent, tache: TacheChantier) => {
+    if (!isDraggingRef.current) {
+      onTaskClick(tache);
+    }
+  }, [onTaskClick]);
+
+  // Add global mouse event listeners
+  useEffect(() => {
+    if (draggedTaskId) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [draggedTaskId, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none">
       {taskPositions.map(({ tache, left, width, row, isLate, isOngoing }) => {
         const statusInfo = getStatusInfo(tache.statut, isLate, isOngoing);
         const top = row * ROW_HEIGHT + BAR_VERTICAL_PADDING;
+        const isDragging = draggedTaskId === tache.id;
+        
+        // Apply drag offset if dragging this task
+        const displayLeft = isDragging ? left + dragOffset.x : left;
+        const displayTop = isDragging ? top + dragOffset.y : top;
 
         return (
           <div
             key={tache.id}
-            className={`absolute rounded-md cursor-pointer pointer-events-auto transition-all hover:brightness-95 hover:shadow-md ${statusInfo.color}`}
+            className={`absolute rounded-md pointer-events-auto transition-shadow ${statusInfo.color} ${
+              isDragging ? "opacity-80 shadow-lg z-50 cursor-grabbing" : "cursor-grab hover:brightness-95 hover:shadow-md"
+            }`}
             style={{
-              left: `${left}px`,
-              top: `${top}px`,
+              left: `${displayLeft}px`,
+              top: `${displayTop}px`,
               width: `${width}px`,
               height: `${BAR_HEIGHT}px`,
+              transition: isDragging ? "none" : "box-shadow 0.2s",
             }}
-            onClick={() => onTaskClick(tache)}
+            onMouseDown={(e) => handleMouseDown(e, tache, left, row)}
+            onClick={(e) => handleClick(e, tache)}
           >
-            <div className="flex items-center gap-2 h-full px-2 overflow-hidden">
+            <div className="flex items-center gap-2 h-full px-2 overflow-hidden select-none">
               <span className="text-white text-sm font-medium truncate">
                 {tache.nom}
               </span>
