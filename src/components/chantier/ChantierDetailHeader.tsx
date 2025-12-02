@@ -56,7 +56,7 @@ export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) =>
         </div>
 
         {/* Info */}
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{title || chantier.nom}</h1>
             <Badge variant={chantier.actif ? "default" : "secondary"}>
@@ -64,9 +64,12 @@ export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) =>
             </Badge>
           </div>
 
-          {dateRange && (
-            <p className="text-sm text-muted-foreground">{dateRange}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {chantier.code_chantier && (
+              <span className="font-medium text-foreground">{chantier.code_chantier}</span>
+            )}
+            {dateRange && <span>{dateRange}</span>}
+          </div>
 
           {chantier.client && (
             <p className="text-sm">
