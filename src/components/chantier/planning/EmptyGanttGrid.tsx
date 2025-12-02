@@ -86,12 +86,18 @@ export const EmptyGanttGrid = ({ startDate, numDays = 90 }: EmptyGanttGridProps)
             return (
               <div
                 key={idx}
-                className={`text-center text-xs py-1.5 border-r border-border/20 ${
+                className={`flex items-center justify-center text-xs py-1 border-r border-border/20 ${
                   weekend ? "text-red-400" : "text-muted-foreground"
-                } ${today ? "text-red-500 font-bold" : ""}`}
+                }`}
                 style={{ width: DAY_WIDTH }}
               >
-                {format(day, "d")}
+                {today ? (
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white font-bold text-xs">
+                    {format(day, "d")}
+                  </span>
+                ) : (
+                  format(day, "d")
+                )}
               </div>
             );
           })}
