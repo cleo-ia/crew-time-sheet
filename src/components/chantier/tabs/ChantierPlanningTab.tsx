@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GanttChart } from "@/components/chantier/planning/GanttChart";
 import { EmptyGanttGrid, EmptyGanttGridRef, ZoomLevel } from "@/components/chantier/planning/EmptyGanttGrid";
+import { TaskBars } from "@/components/chantier/planning/TaskBars";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
@@ -29,11 +29,13 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
 
 export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
-  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("month");
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("quarter");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [showDates, setShowDates] = useState(true);
+  const [showDates, setShowDates] = useState(false);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(1200);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
 
   const handleTaskClick = (tache: TacheChantier) => {
@@ -44,6 +46,11 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const goToToday = () => {
     ganttRef.current?.scrollToToday();
   };
+
+  const handleScrollChange = useCallback((newScrollLeft: number, newContainerWidth: number) => {
+    setScrollLeft(newScrollLeft);
+    setContainerWidth(newContainerWidth);
+  }, []);
 
   if (isLoading) {
     return (
@@ -110,48 +117,47 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         </div>
       </div>
 
-      {/* Gantt Chart - Always show grid even without tasks */}
-      <div className="border rounded-lg overflow-hidden bg-background">
-        {taches.length > 0 ? (
-          <GanttChart
+      {/* Gantt Chart - Always show grid with tasks overlay */}
+      <div className="border rounded-lg overflow-hidden bg-background relative">
+        <EmptyGanttGrid 
+          ref={ganttRef} 
+          startDate={START_DATE} 
+          numDays={NUM_DAYS} 
+          zoomLevel={zoomLevel}
+          showDates={showDates}
+          onScrollChange={handleScrollChange}
+        />
+        {taches.length > 0 && (
+          <TaskBars
             taches={taches}
-            chantierId={chantierId}
+            startDate={START_DATE}
             zoomLevel={zoomLevel}
             onTaskClick={handleTaskClick}
-            showDates={showDates}
-          />
-        ) : (
-          <EmptyGanttGrid 
-            ref={ganttRef} 
-            startDate={START_DATE} 
-            numDays={NUM_DAYS} 
-            zoomLevel={zoomLevel}
-            showDates={showDates}
+            scrollLeft={scrollLeft}
+            containerWidth={containerWidth}
           />
         )}
       </div>
 
-      {/* Legend - only show if there are tasks */}
-      {taches.length > 0 && (
-        <div className="flex flex-wrap gap-4 px-4 py-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-orange-500" />
-            <span>À faire</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-blue-500" />
-            <span>En cours</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-green-500" />
-            <span>Terminé</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-red-500" />
-            <span>En retard</span>
-          </div>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 px-4 py-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-orange-400" />
+          <span>En cours</span>
         </div>
-      )}
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-green-500" />
+          <span>Terminé</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-gray-400" />
+          <span>À venir</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500" />
+          <span>En retard</span>
+        </div>
+      </div>
 
       {/* Info text when empty */}
       {taches.length === 0 && (
