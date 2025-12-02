@@ -130,8 +130,12 @@ export const TaskBars = ({
       isDraggingRef.current = true;
     }
     
-    setDragOffset({ x: dx, y: dy });
-  }, [draggedTaskId]);
+    // Snap to grid: days horizontally, rows vertically
+    const snappedX = Math.round(dx / dayWidth) * dayWidth;
+    const snappedY = Math.round(dy / ROW_HEIGHT) * ROW_HEIGHT;
+    
+    setDragOffset({ x: snappedX, y: snappedY });
+  }, [draggedTaskId, dayWidth]);
 
   const handleMouseUp = useCallback((e: MouseEvent) => {
     if (!dragStartRef.current || !draggedTaskId) {
