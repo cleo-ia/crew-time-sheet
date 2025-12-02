@@ -15,6 +15,7 @@ interface EmptyGanttGridProps {
 
 export interface EmptyGanttGridRef {
   scrollToToday: () => void;
+  getScrollContainer: () => HTMLDivElement | null;
 }
 
 const ROW_HEIGHT = 48;
@@ -157,9 +158,10 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
       }
     }, [todayIndex, dayWidth]);
 
-    // Expose scrollToToday to parent
+    // Expose scrollToToday and getScrollContainer to parent
     useImperativeHandle(ref, () => ({
       scrollToToday,
+      getScrollContainer: () => containerRef.current,
     }));
 
     // Update container width on resize
