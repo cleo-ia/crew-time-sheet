@@ -16,10 +16,10 @@ interface ChantierPlanningTabProps {
   chantierId: string;
 }
 
-// Start from January 2020 to allow scrolling far back and forward
-const START_DATE = new Date(2020, 0, 1);
-// ~11 years of days to 2030
-const NUM_DAYS = 365 * 11;
+// Start from January 2015 to allow scrolling far back and forward
+const START_DATE = new Date(2015, 0, 1);
+// ~36 years of days to 2050
+const NUM_DAYS = 365 * 36;
 
 export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
