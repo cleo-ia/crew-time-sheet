@@ -113,14 +113,26 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
       
-      // Generate weeks between min and max date
-      const weeks: Date[] = [];
-      const currentWeek = new Date(minDate);
-      currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay() + 1); // Start of week (Monday)
-      while (currentWeek <= maxDate) {
-        weeks.push(new Date(currentWeek));
-        currentWeek.setDate(currentWeek.getDate() + 7);
+      // Generate all days between min and max date
+      const days: Date[] = [];
+      const currentDay = new Date(minDate);
+      while (currentDay <= maxDate) {
+        days.push(new Date(currentDay));
+        currentDay.setDate(currentDay.getDate() + 1);
       }
+
+      // Group days by month for header row
+      const monthGroups: { month: string; startCol: number; count: number }[] = [];
+      let currentMonth = "";
+      days.forEach((day, idx) => {
+        const monthLabel = format(day, "MMMM yyyy", { locale: fr });
+        if (monthLabel !== currentMonth) {
+          monthGroups.push({ month: monthLabel, startCol: baseColumns.length + 1 + idx, count: 1 });
+          currentMonth = monthLabel;
+        } else {
+          monthGroups[monthGroups.length - 1].count++;
+        }
+      });
 
       // Define base columns
       const baseColumns = [
@@ -133,17 +145,41 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         { header: "H. Réal.", key: "heures_realisees", width: 10 },
       ];
 
-      // Add week columns for Gantt visualization
-      const weekColumns = weeks.map((week, i) => ({
-        header: `S${format(week, "w")}`,
-        key: `week_${i}`,
-        width: 5,
+      // Add day columns for Gantt visualization
+      const dayColumns = days.map((day, i) => ({
+        header: format(day, "d", { locale: fr }),
+        key: `day_${i}`,
+        width: 3,
       }));
 
-      worksheet.columns = [...baseColumns, ...weekColumns];
+      worksheet.columns = [...baseColumns, ...dayColumns];
 
-      // Style header row
-      const headerRow = worksheet.getRow(1);
+      // Add month header row first
+      const monthRow = worksheet.insertRow(1, []);
+      monthRow.height = 20;
+      
+      // Merge cells for base columns in month row
+      worksheet.mergeCells(1, 1, 1, baseColumns.length);
+      
+      // Add month labels and merge cells
+      monthGroups.forEach(group => {
+        const startCell = monthRow.getCell(group.startCol);
+        startCell.value = group.month.charAt(0).toUpperCase() + group.month.slice(1);
+        startCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF1F2937" },
+        };
+        startCell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
+        startCell.alignment = { horizontal: "center", vertical: "middle" };
+        
+        if (group.count > 1) {
+          worksheet.mergeCells(1, group.startCol, 1, group.startCol + group.count - 1);
+        }
+      });
+      
+      // Style day header row (now row 2)
+      const headerRow = worksheet.getRow(2);
       headerRow.font = { bold: true, size: 10 };
       headerRow.alignment = { horizontal: "center", vertical: "middle" };
       headerRow.height = 22;
@@ -159,8 +195,8 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
       }
       
-      // Style week header cells
-      for (let i = baseColumns.length + 1; i <= baseColumns.length + weeks.length; i++) {
+      // Style day header cells
+      for (let i = baseColumns.length + 1; i <= baseColumns.length + days.length; i++) {
         const cell = headerRow.getCell(i);
         cell.fill = {
           type: "pattern",
@@ -187,14 +223,11 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           heures_realisees: tache.heures_realisees || "-",
         };
 
-        // Fill week cells based on task dates
-        weeks.forEach((weekStart, weekIndex) => {
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 6);
-          
-          // Check if task overlaps with this week
-          const overlaps = dateDebut <= weekEnd && dateFin >= weekStart;
-          rowData[`week_${weekIndex}`] = overlaps ? "●" : "";
+        // Fill day cells based on task dates
+        days.forEach((day, dayIndex) => {
+          const dayTime = day.getTime();
+          const overlaps = dayTime >= dateDebut.getTime() && dayTime <= dateFin.getTime();
+          rowData[`day_${dayIndex}`] = overlaps ? "●" : "";
         });
 
         const row = worksheet.addRow(rowData);
@@ -209,14 +242,13 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         statusCell.font = { color: { argb: "FFFFFFFF" }, bold: true, size: 9 };
         statusCell.alignment = { horizontal: "center" };
 
-        // Style week cells with task color
-        weeks.forEach((weekStart, weekIndex) => {
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 6);
-          const overlaps = dateDebut <= weekEnd && dateFin >= weekStart;
+        // Style day cells with task color
+        days.forEach((day, dayIndex) => {
+          const dayTime = day.getTime();
+          const overlaps = dayTime >= dateDebut.getTime() && dayTime <= dateFin.getTime();
           
           if (overlaps) {
-            const cell = row.getCell(baseColumns.length + 1 + weekIndex);
+            const cell = row.getCell(baseColumns.length + 1 + dayIndex);
             cell.fill = {
               type: "pattern",
               pattern: "solid",
