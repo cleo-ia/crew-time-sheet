@@ -196,16 +196,12 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
             </div>
           </div>
 
-          {/* Status badge + late message */}
-          <div className="flex items-center gap-3 mt-3">
-            <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 gap-1.5 px-3 py-1`}>
-              {isLate && <Clock className="h-3.5 w-3.5" />}
-              {statusInfo.label}
-            </Badge>
-            {getLateMessage() && (
+          {/* Late message only (badge removed - shown in Statut below) */}
+          {getLateMessage() && (
+            <div className="mt-3">
               <span className="text-sm text-muted-foreground">{getLateMessage()}</span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Progress bar */}
           <div className="flex items-center gap-4 mt-6">
@@ -260,7 +256,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                 >
                   <SelectTrigger className="w-auto h-8 border-0 bg-transparent shadow-none p-0 gap-1.5">
                     <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 px-3 py-1`}>
-                      {STATUTS.find(s => s.value === formData.statut)?.label}
+                      {statusInfo.label}
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
