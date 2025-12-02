@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, MapPin } from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, CalendarIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useChantiers, useCreateChantier, useUpdateChantier, useDeleteChantier } from "@/hooks/useChantiers";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
@@ -26,6 +31,8 @@ export const ChantiersManager = () => {
     chef_id: "",
     actif: true,
     description: "",
+    date_debut: null as Date | null,
+    date_fin: null as Date | null,
   });
 
   const { data: chantiers = [], isLoading } = useChantiers();
@@ -36,13 +43,19 @@ export const ChantiersManager = () => {
   const deleteChantier = useDeleteChantier();
 
   const handleSave = async () => {
+    const payload = {
+      ...formData,
+      date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
+      date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
+    };
+
     if (editingChantier) {
       await updateChantier.mutateAsync({
         id: editingChantier.id,
-        ...formData,
+        ...payload,
       });
     } else {
-      await createChantier.mutateAsync(formData);
+      await createChantier.mutateAsync(payload);
     }
     setShowDialog(false);
     setEditingChantier(null);
@@ -55,6 +68,8 @@ export const ChantiersManager = () => {
       chef_id: "",
       actif: true,
       description: "",
+      date_debut: null,
+      date_fin: null,
     });
   };
 
@@ -75,6 +90,8 @@ export const ChantiersManager = () => {
       chef_id: chantier.chef_id || "",
       actif: chantier.actif ?? true,
       description: chantier.description || "",
+      date_debut: chantier.date_debut ? new Date(chantier.date_debut) : null,
+      date_fin: chantier.date_fin ? new Date(chantier.date_fin) : null,
     });
     setShowDialog(true);
   };
@@ -214,6 +231,69 @@ export const ChantiersManager = () => {
                   value={formData.code_chantier}
                   onChange={(e) => setFormData({ ...formData, code_chantier: e.target.value })}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date de début</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.date_debut && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.date_debut ? (
+                        format(formData.date_debut, "PPP", { locale: fr })
+                      ) : (
+                        <span>Sélectionner une date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.date_debut || undefined}
+                      onSelect={(date) => setFormData({ ...formData, date_debut: date || null })}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Date de fin</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.date_fin && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.date_fin ? (
+                        format(formData.date_fin, "PPP", { locale: fr })
+                      ) : (
+                        <span>Sélectionner une date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.date_fin || undefined}
+                      onSelect={(date) => setFormData({ ...formData, date_fin: date || null })}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
