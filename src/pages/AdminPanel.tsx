@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,22 @@ import { RappelsManager } from "@/components/admin/RappelsManager";
 import { TransportDebugManager } from "@/components/admin/TransportDebugManager";
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState("utilisateurs");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "utilisateurs");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  // Sync tab with URL parameter
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
@@ -47,7 +62,7 @@ const AdminPanel = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Card className="shadow-md border-border/50 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="w-full grid grid-cols-11 rounded-none border-b">
               <TabsTrigger value="utilisateurs" className="rounded-none gap-2">
                 <Users className="h-4 w-4" />
