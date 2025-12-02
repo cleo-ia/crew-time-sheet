@@ -1,12 +1,11 @@
 import { useState, useRef } from "react";
-import { ViewMode } from "gantt-task-react";
 import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GanttChart } from "@/components/chantier/planning/GanttChart";
-import { EmptyGanttGrid, EmptyGanttGridRef } from "@/components/chantier/planning/EmptyGanttGrid";
+import { EmptyGanttGrid, EmptyGanttGridRef, ZoomLevel } from "@/components/chantier/planning/EmptyGanttGrid";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
@@ -21,9 +20,16 @@ const START_DATE = new Date(2015, 0, 1);
 // ~36 years of days to 2050
 const NUM_DAYS = 365 * 36;
 
+const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
+  { value: "month", label: "Mois" },
+  { value: "quarter", label: "Trimestre" },
+  { value: "semester", label: "Semestre" },
+  { value: "year", label: "Année" },
+];
+
 export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
-  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Day);
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("month");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -33,12 +39,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const handleTaskClick = (tache: TacheChantier) => {
     setSelectedTache(tache);
     setShowDetailDialog(true);
-  };
-
-  const handleViewModeChange = (value: string) => {
-    if (value) {
-      setViewMode(value as ViewMode);
-    }
   };
 
   const goToToday = () => {
@@ -59,7 +59,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
 
   return (
     <div className="space-y-4">
-      {/* Toolbar - Similar to the reference image */}
+      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-muted/30 rounded-lg">
         {/* Left side - Navigation */}
         <div className="flex items-center gap-2">
@@ -84,21 +84,20 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             />
           </div>
 
-          {/* View mode selector */}
-          <div className="flex items-center gap-2 border rounded-md px-2 py-1 bg-background">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange} size="sm">
-              <ToggleGroupItem value={ViewMode.Day} aria-label="Vue jour" className="text-xs">
-                Jour
-              </ToggleGroupItem>
-              <ToggleGroupItem value={ViewMode.Week} aria-label="Vue semaine" className="text-xs">
-                Semaine
-              </ToggleGroupItem>
-              <ToggleGroupItem value={ViewMode.Month} aria-label="Vue mois" className="text-xs">
-                Mois
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {/* Zoom level selector */}
+          <Select value={zoomLevel} onValueChange={(v) => setZoomLevel(v as ZoomLevel)}>
+            <SelectTrigger className="w-[140px] bg-background">
+              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ZOOM_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Add task button */}
           <Button 
@@ -117,12 +116,18 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           <GanttChart
             taches={taches}
             chantierId={chantierId}
-            viewMode={viewMode}
+            zoomLevel={zoomLevel}
             onTaskClick={handleTaskClick}
             showDates={showDates}
           />
         ) : (
-          <EmptyGanttGrid ref={ganttRef} startDate={START_DATE} numDays={NUM_DAYS} />
+          <EmptyGanttGrid 
+            ref={ganttRef} 
+            startDate={START_DATE} 
+            numDays={NUM_DAYS} 
+            zoomLevel={zoomLevel}
+            showDates={showDates}
+          />
         )}
       </div>
 
