@@ -144,7 +144,7 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
     }, [todayIndex, dayWidth, onScrollChange]);
 
     // Determine if we should show day numbers based on zoom level
-    const showDayNumbers = zoomLevel === "month" && showDates;
+    const showDayNumbers = (zoomLevel === "month" || zoomLevel === "quarter") && showDates;
 
     const leftSpacerWidth = startIdx * dayWidth;
     const rightSpacerWidth = Math.max(0, (numDays - endIdx) * dayWidth);
