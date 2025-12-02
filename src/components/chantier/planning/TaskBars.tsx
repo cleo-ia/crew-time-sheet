@@ -1,8 +1,8 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect, RefObject } from "react";
 import { TacheChantier } from "@/hooks/useTachesChantier";
 import { parseISO, differenceInDays, isAfter, startOfDay, addDays, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { ZoomLevel } from "./EmptyGanttGrid";
+import { ZoomLevel, EmptyGanttGridRef } from "./EmptyGanttGrid";
 import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { toast } from "sonner";
 
@@ -12,7 +12,7 @@ interface TaskBarsProps {
   zoomLevel: ZoomLevel;
   onTaskClick: (tache: TacheChantier) => void;
   chantierId: string;
-  scrollLeft?: number;
+  scrollContainerRef?: RefObject<EmptyGanttGridRef>;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -50,11 +50,14 @@ export const TaskBars = ({
   zoomLevel, 
   onTaskClick,
   chantierId,
-  scrollLeft = 0,
+  scrollContainerRef,
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
   const updateTache = useUpdateTache();
+  
+  // Scroll state - directly from container
+  const [scrollLeft, setScrollLeft] = useState(0);
   
   // Drag state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -63,6 +66,22 @@ export const TaskBars = ({
   const isDraggingRef = useRef(false);
   const justDraggedRef = useRef(false); // Persists slightly longer to block click
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Listen to scroll directly from the container
+  useEffect(() => {
+    const container = scrollContainerRef?.current?.getScrollContainer();
+    if (!container) return;
+    
+    const handleScroll = () => {
+      setScrollLeft(container.scrollLeft);
+    };
+    
+    // Initialize
+    setScrollLeft(container.scrollLeft);
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [scrollContainerRef, scrollContainerRef?.current]);
 
   // Sort tasks by ordre field first, then by start date
   const sortedTaches = useMemo(() => {
@@ -269,15 +288,11 @@ export const TaskBars = ({
           labelOffset = Math.min(scrollLeft - barStart, width - 120); // Keep at least 120px for content
           labelOffset = Math.max(0, labelOffset);
         }
-
-        // Calculate visible portion of the bar
-        const visibleLeft = Math.max(0, scrollLeft - barStart);
-        const visibleWidth = Math.max(0, Math.min(width - visibleLeft, barEnd - scrollLeft));
         
         return (
           <div
             key={tache.id}
-            className={`absolute rounded-md pointer-events-auto transition-shadow ${statusInfo.color} ${
+            className={`absolute rounded-md pointer-events-auto transition-shadow overflow-hidden ${statusInfo.color} ${
               isDragging ? "opacity-80 shadow-lg z-50 cursor-grabbing" : "cursor-grab hover:brightness-95 hover:shadow-md"
             }`}
             style={{
@@ -290,14 +305,11 @@ export const TaskBars = ({
             onMouseDown={(e) => handleMouseDown(e, tache, left, row)}
             onClick={(e) => handleClick(e, tache)}
           >
-            {/* Label container with sticky behavior */}
+            {/* Label container with sticky behavior using transform */}
             <div 
-              className="absolute inset-y-0 flex items-center gap-2 select-none whitespace-nowrap overflow-hidden"
+              className="h-full flex items-center gap-2 select-none whitespace-nowrap px-2"
               style={{ 
-                left: `${labelOffset}px`,
-                right: 0,
-                paddingLeft: '8px',
-                paddingRight: '8px',
+                transform: labelOffset > 0 ? `translateX(${labelOffset}px)` : undefined,
               }}
             >
               <span className="text-white text-sm font-medium truncate">

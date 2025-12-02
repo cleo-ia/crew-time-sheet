@@ -35,7 +35,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   // Show dates by default for month and quarter views
   const [showDates, setShowDates] = useState(true);
-  const [scrollLeft, setScrollLeft] = useState(0);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
 
   // Auto-enable dates for month/quarter zoom levels
@@ -128,7 +127,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           numDays={NUM_DAYS} 
           zoomLevel={zoomLevel}
           showDates={showDates}
-          onScrollChange={setScrollLeft}
         >
           {taches.length > 0 && (
             <TaskBars
@@ -137,7 +135,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
               zoomLevel={zoomLevel}
               onTaskClick={handleTaskClick}
               chantierId={chantierId}
-              scrollLeft={scrollLeft}
+              scrollContainerRef={ganttRef}
             />
           )}
         </EmptyGanttGrid>
