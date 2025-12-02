@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Clock, X, MoreHorizontal, Plus, Send, Trash2, HelpCircle, FileText } from "lucide-react";
@@ -16,6 +18,7 @@ import { TacheChantier } from "@/hooks/useTachesChantier";
 import { toast } from "sonner";
 import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface TaskDetailDialogProps {
   open: boolean;
@@ -176,9 +179,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
@@ -232,14 +232,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
           {/* Récap Tab */}
           <TabsContent value="recap" className="p-5 space-y-5 mt-0 flex-1 overflow-y-auto">
-            {/* Assignée à */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground w-28">Assignée à</span>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-
             {/* Statut + Lot */}
             <div className="grid grid-cols-2 gap-6">
               <div className="flex items-center gap-3">
@@ -276,15 +268,70 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               </div>
             </div>
 
-            {/* Dates display */}
+            {/* Dates with datepicker */}
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de début</span>
-                <p className="text-base font-medium">{formatDateDisplay(formData.date_debut)}</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-medium h-10",
+                        !formData.date_debut && "text-muted-foreground"
+                      )}
+                    >
+                      {formData.date_debut ? formatDateDisplay(formData.date_debut) : "Sélectionner"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.date_debut ? parseISO(formData.date_debut) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleFieldChange("date_debut", format(date, "yyyy-MM-dd"));
+                          handleSave();
+                        }
+                      }}
+                      locale={fr}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de fin</span>
-                <p className="text-base font-medium">{formatDateDisplay(formData.date_fin)}</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-medium h-10",
+                        !formData.date_fin && "text-muted-foreground"
+                      )}
+                    >
+                      {formData.date_fin ? formatDateDisplay(formData.date_fin) : "Sélectionner"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.date_fin ? parseISO(formData.date_fin) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleFieldChange("date_fin", format(date, "yyyy-MM-dd"));
+                          handleSave();
+                        }
+                      }}
+                      disabled={(date) => formData.date_debut ? date < parseISO(formData.date_debut) : false}
+                      locale={fr}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
