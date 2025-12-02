@@ -57,8 +57,13 @@ export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) =>
 
         {/* Info */}
         <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold">{title || chantier.nom}</h1>
+            {chantier.code_chantier && (
+              <span className="text-lg text-muted-foreground font-medium">
+                ({chantier.code_chantier})
+              </span>
+            )}
             <Badge variant={chantier.actif ? "default" : "secondary"}>
               {chantier.actif ? "En cours" : "Terminé"}
             </Badge>
