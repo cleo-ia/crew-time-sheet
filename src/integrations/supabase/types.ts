@@ -173,6 +173,7 @@ export type Database = {
           actif: boolean | null
           adresse: string | null
           chef_id: string | null
+          client: string | null
           code_chantier: string | null
           conducteur_id: string | null
           created_at: string
@@ -190,6 +191,7 @@ export type Database = {
           actif?: boolean | null
           adresse?: string | null
           chef_id?: string | null
+          client?: string | null
           code_chantier?: string | null
           conducteur_id?: string | null
           created_at?: string
@@ -207,6 +209,7 @@ export type Database = {
           actif?: boolean | null
           adresse?: string | null
           chef_id?: string | null
+          client?: string | null
           code_chantier?: string | null
           conducteur_id?: string | null
           created_at?: string

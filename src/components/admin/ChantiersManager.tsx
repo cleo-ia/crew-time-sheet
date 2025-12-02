@@ -25,6 +25,7 @@ export const ChantiersManager = () => {
   const [formData, setFormData] = useState({
     nom: "",
     code_chantier: "",
+    client: "",
     ville: "",
     adresse: "",
     conducteur_id: "",
@@ -62,6 +63,7 @@ export const ChantiersManager = () => {
     setFormData({
       nom: "",
       code_chantier: "",
+      client: "",
       ville: "",
       adresse: "",
       conducteur_id: "",
@@ -84,6 +86,7 @@ export const ChantiersManager = () => {
     setFormData({
       nom: chantier.nom,
       code_chantier: chantier.code_chantier || "",
+      client: chantier.client || "",
       ville: chantier.ville || "",
       adresse: chantier.adresse || "",
       conducteur_id: chantier.conducteur_id || "",
@@ -232,6 +235,15 @@ export const ChantiersManager = () => {
                   onChange={(e) => setFormData({ ...formData, code_chantier: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Client</Label>
+              <Input 
+                placeholder="Ex: Bouygues Immobilier" 
+                value={formData.client}
+                onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
