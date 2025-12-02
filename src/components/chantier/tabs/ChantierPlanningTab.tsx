@@ -54,6 +54,14 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
     ganttRef.current?.scrollToToday();
   };
 
+  const goBackOneWeek = () => {
+    ganttRef.current?.scrollByDays(-7);
+  };
+
+  const goForwardOneWeek = () => {
+    ganttRef.current?.scrollByDays(7);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4 p-4">
@@ -71,11 +79,15 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-muted/30 rounded-lg">
         {/* Left side - Navigation */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={goToToday} className="text-primary font-medium">
-            <ChevronLeft className="h-4 w-4 mr-1" />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={goBackOneWeek} className="h-9 w-9">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" onClick={goToToday} className="text-primary font-medium px-3">
             Aujourd'hui
-            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={goForwardOneWeek} className="h-9 w-9">
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 

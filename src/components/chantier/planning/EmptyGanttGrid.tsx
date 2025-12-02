@@ -15,6 +15,7 @@ interface EmptyGanttGridProps {
 
 export interface EmptyGanttGridRef {
   scrollToToday: () => void;
+  scrollByDays: (days: number) => void;
   getScrollContainer: () => HTMLDivElement | null;
 }
 
@@ -158,9 +159,18 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
       }
     }, [todayIndex, dayWidth]);
 
+    const scrollByDays = useCallback((days: number) => {
+      if (containerRef.current) {
+        const currentScroll = containerRef.current.scrollLeft;
+        const newScroll = currentScroll + days * dayWidth;
+        containerRef.current.scrollTo({ left: Math.max(0, newScroll), behavior: "smooth" });
+      }
+    }, [dayWidth]);
+
     // Expose scrollToToday and getScrollContainer to parent
     useImperativeHandle(ref, () => ({
       scrollToToday,
+      scrollByDays,
       getScrollContainer: () => containerRef.current,
     }));
 
