@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CalendarIcon, Building2, MapPin, User, FileText } from "lucide-react";
+import { CalendarIcon, Building2, MapPin, User, FileText, Paperclip } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useUpdateChantier } from "@/hooks/useChantiers";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { ChantierCoverImageUpload } from "./ChantierCoverImageUpload";
+import { ChantierDocumentsUpload } from "@/components/admin/ChantierDocumentsUpload";
 import { ChantierDetail } from "@/hooks/useChantierDetail";
 
 interface ChantierEditDialogProps {
@@ -99,7 +100,7 @@ export const ChantierEditDialog = ({
         </DialogHeader>
 
         <Tabs defaultValue="recap" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
             <TabsTrigger value="recap" className="gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Récap</span>
@@ -115,6 +116,10 @@ export const ChantierEditDialog = ({
             <TabsTrigger value="note" className="gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Note</span>
+            </TabsTrigger>
+            <TabsTrigger value="fichiers" className="gap-2">
+              <Paperclip className="h-4 w-4" />
+              <span className="hidden sm:inline">Fichiers</span>
             </TabsTrigger>
           </TabsList>
 
@@ -318,6 +323,11 @@ export const ChantierEditDialog = ({
                   rows={8}
                 />
               </div>
+            </TabsContent>
+
+            {/* Fichiers Tab */}
+            <TabsContent value="fichiers" className="mt-0">
+              <ChantierDocumentsUpload chantierId={chantier.id} />
             </TabsContent>
           </div>
         </Tabs>
