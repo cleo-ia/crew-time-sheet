@@ -10,6 +10,7 @@ interface EmptyGanttGridProps {
   zoomLevel?: ZoomLevel;
   showDates?: boolean;
   onScrollChange?: (scrollLeft: number, containerWidth: number) => void;
+  children?: React.ReactNode;
 }
 
 export interface EmptyGanttGridRef {
@@ -37,7 +38,7 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
 };
 
 export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>(
-  ({ startDate, numDays = 90, zoomLevel = "month", showDates = true, onScrollChange }, ref) => {
+  ({ startDate, numDays = 90, zoomLevel = "month", showDates = true, onScrollChange, children }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scrollLeft, setScrollLeft] = useState(0);
     const [containerWidth, setContainerWidth] = useState(1200);
@@ -214,6 +215,9 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
                 <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
               </div>
             ))}
+
+            {/* Task bars overlay - rendered as children */}
+            {children}
 
             {/* Today's vertical red line */}
             {todayIndex >= 0 && (
