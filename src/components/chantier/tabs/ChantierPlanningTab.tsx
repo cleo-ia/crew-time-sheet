@@ -79,23 +79,17 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
     toast.info("Export en cours...");
 
     try {
-      // Save current scroll position
-      const currentScrollLeft = scrollContainer.scrollLeft;
-      
-      // Temporarily expand to show visible area properly
+      // Capture only the visible area
       const canvas = await html2canvas(scrollContainer, {
         backgroundColor: "#ffffff",
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
+        allowTaint: true,
         logging: false,
-        width: scrollContainer.scrollWidth,
-        height: scrollContainer.scrollHeight,
-        x: currentScrollLeft,
-        windowWidth: scrollContainer.scrollWidth,
       });
 
       // Create PDF in landscape mode
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
@@ -117,7 +111,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       const x = (pdfWidth - finalWidth) / 2;
       const y = (pdfHeight - finalHeight) / 2;
 
-      pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+      pdf.addImage(imgData, "JPEG", x, y, finalWidth, finalHeight);
       pdf.save(`planning-${new Date().toISOString().split("T")[0]}.pdf`);
 
       toast.success("Planning exporté en PDF");
