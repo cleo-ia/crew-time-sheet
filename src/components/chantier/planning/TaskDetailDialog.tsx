@@ -28,11 +28,26 @@ interface TaskDetailDialogProps {
 }
 
 const STATUTS = [
-  { value: "A_FAIRE", label: "À faire", color: "bg-gray-400", textColor: "text-gray-700", badgeBg: "bg-gray-100" },
+  { value: "A_FAIRE", label: "À venir", color: "bg-gray-400", textColor: "text-gray-700", badgeBg: "bg-gray-100" },
   { value: "EN_COURS", label: "En cours", color: "bg-orange-400", textColor: "text-orange-700", badgeBg: "bg-orange-100" },
   { value: "TERMINE", label: "Terminé", color: "bg-green-500", textColor: "text-green-700", badgeBg: "bg-green-100" },
   { value: "EN_RETARD", label: "En retard", color: "bg-red-500", textColor: "text-red-700", badgeBg: "bg-red-100" },
 ];
+
+// Compute effective status based on dates (same logic as TaskBars)
+const getComputedStatus = (statut: string, dateDebut: string, dateFin: string) => {
+  const today = startOfDay(new Date());
+  const startDate = parseISO(dateDebut);
+  const endDate = parseISO(dateFin);
+  
+  const isLate = isAfter(today, endDate) && statut !== "TERMINE";
+  const isOngoing = !isAfter(startDate, today) && !isAfter(today, endDate) && statut !== "TERMINE";
+  
+  if (isLate || statut === "EN_RETARD") return "EN_RETARD";
+  if (statut === "TERMINE") return "TERMINE";
+  if (isOngoing || statut === "EN_COURS") return "EN_COURS";
+  return "A_FAIRE";
+};
 
 export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: TaskDetailDialogProps) => {
   const updateTache = useUpdateTache();
@@ -101,12 +116,10 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
   if (!tache) return null;
 
-  // Calculate status info
-  const today = startOfDay(new Date());
-  const endDate = parseISO(formData.date_fin);
-  const isLate = isAfter(today, endDate) && formData.statut !== "TERMINE";
-  const effectiveStatus = isLate ? "EN_RETARD" : formData.statut;
-  const statusInfo = STATUTS.find(s => s.value === effectiveStatus) || STATUTS[0];
+  // Calculate computed status (same as planning view)
+  const computedStatus = getComputedStatus(formData.statut, formData.date_debut, formData.date_fin);
+  const statusInfo = STATUTS.find(s => s.value === computedStatus) || STATUTS[0];
+  const isLate = computedStatus === "EN_RETARD";
 
   // Progress calculation
   const heuresRealisees = parseFloat(formData.heures_realisees) || 0;
@@ -127,6 +140,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
   const getLateMessage = () => {
     if (!isLate) return null;
     try {
+      const endDate = parseISO(formData.date_fin);
       return `Devait se terminer le ${format(endDate, "d MMMM", { locale: fr })}`;
     } catch {
       return null;
