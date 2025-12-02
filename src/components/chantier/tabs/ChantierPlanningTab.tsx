@@ -113,6 +113,17 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
       
+      // Define base columns
+      const baseColumns = [
+        { header: "Tâche", key: "nom", width: 25 },
+        { header: "Statut", key: "statut", width: 12 },
+        { header: "Début", key: "date_debut", width: 12 },
+        { header: "Fin", key: "date_fin", width: 12 },
+        { header: "Durée", key: "duree", width: 10 },
+        { header: "H. Est.", key: "heures_estimees", width: 10 },
+        { header: "H. Réal.", key: "heures_realisees", width: 10 },
+      ];
+
       // Generate all days between min and max date
       const days: Date[] = [];
       const currentDay = new Date(minDate);
@@ -133,17 +144,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           monthGroups[monthGroups.length - 1].count++;
         }
       });
-
-      // Define base columns
-      const baseColumns = [
-        { header: "Tâche", key: "nom", width: 25 },
-        { header: "Statut", key: "statut", width: 12 },
-        { header: "Début", key: "date_debut", width: 12 },
-        { header: "Fin", key: "date_fin", width: 12 },
-        { header: "Durée", key: "duree", width: 10 },
-        { header: "H. Est.", key: "heures_estimees", width: 10 },
-        { header: "H. Réal.", key: "heures_realisees", width: 10 },
-      ];
 
       // Add day columns for Gantt visualization
       const dayColumns = days.map((day, i) => ({
