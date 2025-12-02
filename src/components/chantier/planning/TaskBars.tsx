@@ -17,7 +17,7 @@ interface TaskBarsProps {
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
   switch (zoomLevel) {
     case "month": return 32;
-    case "quarter": return 12;
+    case "quarter": return 20;
     case "semester": return 6;
     case "year": return 3;
     default: return 32;

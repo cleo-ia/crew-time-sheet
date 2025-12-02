@@ -27,7 +27,7 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
     case "month":
       return 32;
     case "quarter":
-      return 12;
+      return 20;
     case "semester":
       return 6;
     case "year":
