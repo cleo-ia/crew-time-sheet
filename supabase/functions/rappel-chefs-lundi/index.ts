@@ -257,6 +257,7 @@ Deno.serve(async (req) => {
         chef_email: chef.chef_email,
         nb_fiches: chef.nb_fiches,
         items: chef.chantiers,
+        appBaseUrl: 'https://crew-time-sheet.lovable.app/',
         timestamp: new Date().toISOString(),
       }
 
