@@ -265,13 +265,15 @@ export const TaskBars = ({
         
         let labelOffset = 0;
         if (isPartiallyHidden && isStillVisible && !isDragging) {
-          labelOffset = Math.min(scrollLeft - barStart, width - 80); // Keep at least 80px for content
+          // Offset = how much the bar is hidden + small padding
+          labelOffset = Math.min(scrollLeft - barStart, width - 120); // Keep at least 120px for content
+          labelOffset = Math.max(0, labelOffset);
         }
 
         return (
           <div
             key={tache.id}
-            className={`absolute rounded-md pointer-events-auto transition-shadow ${statusInfo.color} ${
+            className={`absolute rounded-md pointer-events-auto transition-shadow overflow-hidden ${statusInfo.color} ${
               isDragging ? "opacity-80 shadow-lg z-50 cursor-grabbing" : "cursor-grab hover:brightness-95 hover:shadow-md"
             }`}
             style={{
@@ -285,10 +287,9 @@ export const TaskBars = ({
             onClick={(e) => handleClick(e, tache)}
           >
             <div 
-              className="flex items-center gap-2 h-full overflow-hidden select-none"
+              className="flex items-center gap-2 h-full select-none whitespace-nowrap px-2"
               style={{ 
-                paddingLeft: `${Math.max(8, labelOffset + 8)}px`,
-                paddingRight: '8px',
+                transform: labelOffset > 0 ? `translateX(${labelOffset}px)` : undefined,
               }}
             >
               <span className="text-white text-sm font-medium truncate">
