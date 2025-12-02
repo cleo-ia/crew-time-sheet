@@ -1,34 +1,31 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Building2, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { ChantierDetail } from "@/hooks/useChantierDetail";
+import { ChantierDetail } from "@/hooks/useChantierDetail";
 
 interface ChantierDetailHeaderProps {
   chantier: ChantierDetail;
+  onImageClick?: () => void;
 }
 
-export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) => {
+export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailHeaderProps) => {
   const navigate = useNavigate();
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return null;
-    return format(new Date(dateStr), "d MMMM yyyy", { locale: fr });
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    return format(new Date(dateString), "dd MMM yyyy", { locale: fr });
   };
 
-  const title = [chantier.ville, chantier.nom]
-    .filter(Boolean)
-    .join("-")
-    .toUpperCase();
-
-  const dateRange = chantier.date_debut || chantier.date_fin
-    ? `du ${formatDate(chantier.date_debut) || "?"} au ${formatDate(chantier.date_fin) || "?"}`
-    : null;
+  const title = chantier.nom;
+  const startDate = formatDate(chantier.date_debut);
+  const endDate = formatDate(chantier.date_fin);
 
   return (
     <div className="space-y-4">
+      {/* Back button */}
       <Button
         variant="ghost"
         size="sm"
@@ -36,21 +33,33 @@ export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) =>
         className="gap-2"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour
+        Retour aux chantiers
       </Button>
 
-      <div className="flex items-start gap-6">
-        {/* Cover Image */}
-        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+      {/* Header content */}
+      <div className="flex gap-6 items-start">
+        {/* Image/Icon - Clickable */}
+        <div
+          onClick={onImageClick}
+          className="w-32 h-32 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all group"
+        >
           {chantier.cover_image ? (
-            <img
-              src={chantier.cover_image}
-              alt={chantier.nom}
-              className="h-full w-full object-cover"
-            />
+            <div className="relative w-full h-full">
+              <img
+                src={chantier.cover_image}
+                alt={chantier.nom}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <span className="text-white text-xs font-medium">Modifier</span>
+              </div>
+            </div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Building2 className="h-10 w-10 text-muted-foreground" />
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Building2 className="h-12 w-12 text-muted-foreground" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <span className="text-white text-xs font-medium">Modifier</span>
+              </div>
             </div>
           )}
         </div>
@@ -69,15 +78,21 @@ export const ChantierDetailHeader = ({ chantier }: ChantierDetailHeaderProps) =>
             </Badge>
           </div>
 
-          {dateRange && (
-            <p className="text-sm text-muted-foreground">{dateRange}</p>
+          {(startDate || endDate) && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="h-4 w-4" />
+              <span>
+                {startDate && endDate
+                  ? `${startDate} → ${endDate}`
+                  : startDate
+                  ? `Début: ${startDate}`
+                  : `Fin: ${endDate}`}
+              </span>
+            </div>
           )}
 
           {chantier.client && (
-            <p className="text-sm">
-              <span className="text-muted-foreground">Client : </span>
-              <span className="font-medium">{chantier.client}</span>
-            </p>
+            <p className="text-muted-foreground">Client: {chantier.client}</p>
           )}
         </div>
       </div>

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChantierDetail } from "@/hooks/useChantierDetail";
 import { ChantierDetailHeader } from "@/components/chantier/ChantierDetailHeader";
+import { ChantierEditDialog } from "@/components/chantier/ChantierEditDialog";
 import { ChantierPlanningTab } from "@/components/chantier/tabs/ChantierPlanningTab";
 import { ChantierRecapTab } from "@/components/chantier/tabs/ChantierRecapTab";
 import { ChantierFichiersTab } from "@/components/chantier/tabs/ChantierFichiersTab";
@@ -13,6 +15,7 @@ import { CalendarDays, FileText, Info, LayoutList, Users } from "lucide-react";
 const ChantierDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: chantier, isLoading, error } = useChantierDetail(id);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -50,7 +53,10 @@ const ChantierDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 space-y-6">
-        <ChantierDetailHeader chantier={chantier} />
+        <ChantierDetailHeader 
+          chantier={chantier} 
+          onImageClick={() => setShowEditDialog(true)}
+        />
 
         <Tabs defaultValue="planning" className="w-full">
           <TabsList className="w-full justify-start">
@@ -94,6 +100,13 @@ const ChantierDetail = () => {
             </TabsContent>
           </div>
         </Tabs>
+
+        {/* Edit Dialog */}
+        <ChantierEditDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          chantier={chantier}
+        />
       </div>
     </div>
   );
