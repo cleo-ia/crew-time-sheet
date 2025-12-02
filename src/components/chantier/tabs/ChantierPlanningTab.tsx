@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar, FileDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,9 @@ import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialo
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import ExcelJS from "exceljs";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface ChantierPlanningTabProps {
   chantierId: string;
@@ -41,7 +42,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   // Show dates by default for month and quarter views
   const [showDates, setShowDates] = useState(true);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-enable dates for month/quarter zoom levels
   const handleZoomChange = (newZoom: ZoomLevel) => {
@@ -68,10 +68,16 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
     ganttRef.current?.scrollByDays(7);
   };
 
-  const exportToPDF = async () => {
-    const scrollContainer = ganttRef.current?.getScrollContainer();
-    if (!scrollContainer) {
-      toast.error("Impossible d'exporter le planning");
+  const STATUS_LABELS: Record<string, string> = {
+    A_FAIRE: "À faire",
+    EN_COURS: "En cours",
+    TERMINE: "Terminé",
+    EN_RETARD: "En retard",
+  };
+
+  const exportToExcel = async () => {
+    if (taches.length === 0) {
+      toast.error("Aucune tâche à exporter");
       return;
     }
 
@@ -79,42 +85,83 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
     toast.info("Export en cours...");
 
     try {
-      // Capture only the visible area
-      const canvas = await html2canvas(scrollContainer, {
-        backgroundColor: "#ffffff",
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Planning");
+
+      // Define columns
+      worksheet.columns = [
+        { header: "Tâche", key: "nom", width: 30 },
+        { header: "Statut", key: "statut", width: 15 },
+        { header: "Date début", key: "date_debut", width: 15 },
+        { header: "Date fin", key: "date_fin", width: 15 },
+        { header: "Durée (jours)", key: "duree", width: 15 },
+        { header: "Heures estimées", key: "heures_estimees", width: 18 },
+        { header: "Heures réalisées", key: "heures_realisees", width: 18 },
+        { header: "Description", key: "description", width: 40 },
+      ];
+
+      // Style header row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF97316" }, // Orange
+      };
+      headerRow.alignment = { horizontal: "center", vertical: "middle" };
+      headerRow.height = 25;
+
+      // Add data rows
+      taches.forEach((tache) => {
+        const dateDebut = new Date(tache.date_debut);
+        const dateFin = new Date(tache.date_fin);
+        const duree = Math.ceil((dateFin.getTime() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        worksheet.addRow({
+          nom: tache.nom,
+          statut: STATUS_LABELS[tache.statut] || tache.statut,
+          date_debut: format(dateDebut, "dd/MM/yyyy", { locale: fr }),
+          date_fin: format(dateFin, "dd/MM/yyyy", { locale: fr }),
+          duree,
+          heures_estimees: tache.heures_estimees || "-",
+          heures_realisees: tache.heures_realisees || "-",
+          description: tache.description || "",
+        });
       });
 
-      // Create PDF in landscape mode
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
+      // Style data rows
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FFE5E5E5" } },
+              bottom: { style: "thin", color: { argb: "FFE5E5E5" } },
+              left: { style: "thin", color: { argb: "FFE5E5E5" } },
+              right: { style: "thin", color: { argb: "FFE5E5E5" } },
+            };
+          });
+          // Alternate row colors
+          if (rowNumber % 2 === 0) {
+            row.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF9FAFB" },
+            };
+          }
+        }
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calculate dimensions to fit the page
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      
-      const finalWidth = imgWidth * ratio;
-      const finalHeight = imgHeight * ratio;
-      
-      // Center the image
-      const x = (pdfWidth - finalWidth) / 2;
-      const y = (pdfHeight - finalHeight) / 2;
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `planning-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
 
-      pdf.addImage(imgData, "JPEG", x, y, finalWidth, finalHeight);
-      pdf.save(`planning-${new Date().toISOString().split("T")[0]}.pdf`);
-
-      toast.success("Planning exporté en PDF");
+      toast.success("Planning exporté en Excel");
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Erreur lors de l'export");
@@ -199,21 +246,21 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             </Tooltip>
           </TooltipProvider>
 
-          {/* Export PDF button */}
+          {/* Export Excel button */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
-                  onClick={exportToPDF} 
+                  onClick={exportToExcel} 
                   size="sm"
                   variant="outline"
                   disabled={isExporting}
                 >
-                  <FileDown className="h-4 w-4" />
+                  <FileSpreadsheet className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Exporter en PDF</p>
+                <p>Exporter en Excel</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
