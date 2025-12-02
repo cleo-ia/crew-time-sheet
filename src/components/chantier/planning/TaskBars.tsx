@@ -59,6 +59,7 @@ export const TaskBars = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef<{ x: number; y: number; taskLeft: number; taskRow: number } | null>(null);
   const isDraggingRef = useRef(false);
+  const justDraggedRef = useRef(false); // Persists slightly longer to block click
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sort tasks by ordre field first, then by start date
@@ -208,12 +209,21 @@ export const TaskBars = ({
     setDraggedTaskId(null);
     setDragOffset({ x: 0, y: 0 });
     dragStartRef.current = null;
+    
+    // Keep justDraggedRef true briefly to block click event
+    if (isDraggingRef.current) {
+      justDraggedRef.current = true;
+      setTimeout(() => {
+        justDraggedRef.current = false;
+      }, 100);
+    }
     isDraggingRef.current = false;
   }, [draggedTaskId, dragOffset, taches, sortedTaches, dayWidth, chantierId, updateTache]);
 
   // Handle click separately to avoid triggering on drag
   const handleClick = useCallback((e: React.MouseEvent, tache: TacheChantier) => {
-    if (!isDraggingRef.current) {
+    // Block click if we just finished dragging
+    if (!justDraggedRef.current) {
       onTaskClick(tache);
     }
   }, [onTaskClick]);
