@@ -147,10 +147,10 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               className="text-4xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
               placeholder="Nom de la tâche"
             />
-            <div className="flex items-center gap-1 shrink-0 mr-6">
+            <div className="flex items-center gap-2 shrink-0 mr-8">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-transparent hover:ring-2 hover:ring-orange-500">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
