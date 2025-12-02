@@ -346,13 +346,16 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
             </div>
 
             {/* Description */}
-            <Textarea
-              value={formData.description}
-              onChange={(e) => handleFieldChange("description", e.target.value)}
-              onBlur={handleFieldBlur}
-              placeholder="Insérez une description ici ..."
-              className="min-h-[100px] resize-none bg-muted/30 text-sm"
-            />
+            <div className="space-y-2">
+              <span className="text-sm text-muted-foreground">Description</span>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => handleFieldChange("description", e.target.value)}
+                onBlur={handleFieldBlur}
+                placeholder="Insérez une description ici ..."
+                className="min-h-[100px] resize-none bg-muted/30 text-sm"
+              />
+            </div>
           </TabsContent>
 
           {/* Date Tab */}
