@@ -1,5 +1,5 @@
-import { useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { format, addDays, isWeekend, isToday, startOfMonth, differenceInDays } from "date-fns";
+import { useMemo, useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
+import { format, addDays, isWeekend, isToday, startOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export type ZoomLevel = "month" | "quarter" | "semester" | "year";
@@ -17,6 +17,7 @@ export interface EmptyGanttGridRef {
 
 const ROW_HEIGHT = 48;
 const NUM_ROWS = 8;
+const BUFFER_DAYS = 60; // Days to render outside visible area
 
 // Day width based on zoom level
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -37,111 +38,157 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
 export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>(
   ({ startDate, numDays = 90, zoomLevel = "month", showDates = true }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [containerWidth, setContainerWidth] = useState(1200);
     const dayWidth = getDayWidth(zoomLevel);
+    const totalWidth = numDays * dayWidth;
 
-    const days = useMemo(() => {
-      const result = [];
-      for (let i = 0; i < numDays; i++) {
-        result.push(addDays(startDate, i));
-      }
-      return result;
-    }, [startDate, numDays]);
-
-    // Find today's position
+    // Find today's index
     const todayIndex = useMemo(() => {
       const today = new Date();
-      return days.findIndex((day) => isToday(day));
-    }, [days]);
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const diffTime = today.getTime() - start.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays < numDays ? diffDays : -1;
+    }, [startDate, numDays]);
 
-    // Group days by month
-    const months = useMemo(() => {
-      const result: { month: Date; days: Date[] }[] = [];
+    // Calculate visible range with buffer
+    const { startIdx, endIdx } = useMemo(() => {
+      const visibleStart = Math.floor(scrollLeft / dayWidth);
+      const visibleDays = Math.ceil(containerWidth / dayWidth);
+      const start = Math.max(0, visibleStart - BUFFER_DAYS);
+      const end = Math.min(numDays, visibleStart + visibleDays + BUFFER_DAYS);
+      return { startIdx: start, endIdx: end };
+    }, [scrollLeft, containerWidth, dayWidth, numDays]);
+
+    // Generate only visible days
+    const visibleDays = useMemo(() => {
+      const result = [];
+      for (let i = startIdx; i < endIdx; i++) {
+        result.push({ date: addDays(startDate, i), index: i });
+      }
+      return result;
+    }, [startDate, startIdx, endIdx]);
+
+    // Group visible days by month for header
+    const visibleMonths = useMemo(() => {
+      const result: { month: Date; startIdx: number; count: number }[] = [];
       let currentMonth: Date | null = null;
-      let currentDays: Date[] = [];
+      let currentStartIdx = 0;
+      let currentCount = 0;
 
-      days.forEach((day) => {
-        const monthStart = startOfMonth(day);
+      visibleDays.forEach(({ date, index }) => {
+        const monthStart = startOfMonth(date);
         if (!currentMonth || monthStart.getTime() !== currentMonth.getTime()) {
           if (currentMonth) {
-            result.push({ month: currentMonth, days: currentDays });
+            result.push({ month: currentMonth, startIdx: currentStartIdx, count: currentCount });
           }
           currentMonth = monthStart;
-          currentDays = [day];
+          currentStartIdx = index;
+          currentCount = 1;
         } else {
-          currentDays.push(day);
+          currentCount++;
         }
       });
 
-      if (currentMonth && currentDays.length > 0) {
-        result.push({ month: currentMonth, days: currentDays });
+      if (currentMonth && currentCount > 0) {
+        result.push({ month: currentMonth, startIdx: currentStartIdx, count: currentCount });
       }
 
       return result;
-    }, [days]);
+    }, [visibleDays]);
 
-    const scrollToToday = () => {
+    // Throttled scroll handler
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLDivElement;
+      setScrollLeft(target.scrollLeft);
+    }, []);
+
+    const scrollToToday = useCallback(() => {
       if (containerRef.current && todayIndex >= 0) {
         const scrollPosition = todayIndex * dayWidth - containerRef.current.clientWidth / 2 + dayWidth / 2;
         containerRef.current.scrollTo({ left: Math.max(0, scrollPosition), behavior: "smooth" });
       }
-    };
+    }, [todayIndex, dayWidth]);
 
     // Expose scrollToToday to parent
     useImperativeHandle(ref, () => ({
       scrollToToday,
     }));
 
+    // Update container width on resize
+    useEffect(() => {
+      const updateWidth = () => {
+        if (containerRef.current) {
+          setContainerWidth(containerRef.current.clientWidth);
+        }
+      };
+      updateWidth();
+      window.addEventListener("resize", updateWidth);
+      return () => window.removeEventListener("resize", updateWidth);
+    }, []);
+
     // Scroll to today on mount
     useEffect(() => {
       if (containerRef.current && todayIndex >= 0) {
         const scrollPosition = todayIndex * dayWidth - containerRef.current.clientWidth / 2 + dayWidth / 2;
         containerRef.current.scrollLeft = Math.max(0, scrollPosition);
+        setScrollLeft(Math.max(0, scrollPosition));
       }
     }, [todayIndex, dayWidth]);
 
     // Determine if we should show day numbers based on zoom level
     const showDayNumbers = zoomLevel === "month" && showDates;
 
+    const leftSpacerWidth = startIdx * dayWidth;
+    const rightSpacerWidth = Math.max(0, (numDays - endIdx) * dayWidth);
+
     return (
-      <div ref={containerRef} className="overflow-x-auto relative">
-        <div className="min-w-max relative">
+      <div ref={containerRef} className="overflow-x-auto relative" onScroll={handleScroll}>
+        <div style={{ width: totalWidth }} className="relative">
           {/* Month header row */}
           <div className="flex border-b border-border/50">
-            {months.map((monthGroup, idx) => (
+            <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
+            {visibleMonths.map((monthGroup, idx) => (
               <div
-                key={idx}
+                key={`${monthGroup.month.getTime()}-${idx}`}
                 className="text-xs font-medium text-muted-foreground px-2 py-1.5 border-r border-border/30 capitalize truncate"
-                style={{ width: monthGroup.days.length * dayWidth }}
+                style={{ width: monthGroup.count * dayWidth, flexShrink: 0 }}
               >
                 {format(monthGroup.month, "MMM yy", { locale: fr })}
               </div>
             ))}
+            <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
           </div>
 
           {/* Day header row - only show if showDates and zoom allows */}
           {showDayNumbers && (
             <div className="flex border-b border-border">
-              {days.map((day, idx) => {
-                const weekend = isWeekend(day);
-                const today = isToday(day);
+              <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
+              {visibleDays.map(({ date, index }) => {
+                const weekend = isWeekend(date);
+                const today = isToday(date);
                 return (
                   <div
-                    key={idx}
+                    key={index}
                     className={`flex items-center justify-center text-xs py-1 border-r border-border/20 ${
                       weekend ? "text-red-400" : "text-muted-foreground"
                     }`}
-                    style={{ width: dayWidth }}
+                    style={{ width: dayWidth, flexShrink: 0 }}
                   >
                     {today ? (
                       <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white font-bold text-xs">
-                        {format(day, "d")}
+                        {format(date, "d")}
                       </span>
                     ) : (
-                      format(day, "d")
+                      format(date, "d")
                     )}
                   </div>
                 );
               })}
+              <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
             </div>
           )}
 
@@ -150,16 +197,18 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
             {/* Grid rows */}
             {Array.from({ length: NUM_ROWS }).map((_, rowIdx) => (
               <div key={rowIdx} className="flex border-b border-border/20">
-                {days.map((day, idx) => {
-                  const weekend = isWeekend(day);
+                <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
+                {visibleDays.map(({ date, index }) => {
+                  const weekend = isWeekend(date);
                   return (
                     <div
-                      key={idx}
+                      key={index}
                       className={`border-r border-border/10 ${weekend ? "bg-muted/40" : ""}`}
-                      style={{ width: dayWidth, height: ROW_HEIGHT }}
+                      style={{ width: dayWidth, height: ROW_HEIGHT, flexShrink: 0 }}
                     />
                   );
                 })}
+                <div style={{ width: rightSpacerWidth, flexShrink: 0 }} />
               </div>
             ))}
 
