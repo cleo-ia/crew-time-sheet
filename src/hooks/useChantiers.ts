@@ -12,6 +12,8 @@ export interface Chantier {
   actif: boolean | null;
   chef_id: string | null;
   conducteur_id: string | null;
+  date_debut: string | null;
+  date_fin: string | null;
   created_at: string;
   updated_at: string;
 }

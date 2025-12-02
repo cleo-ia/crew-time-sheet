@@ -177,6 +177,8 @@ export type Database = {
           conducteur_id: string | null
           created_at: string
           created_by: string
+          date_debut: string | null
+          date_fin: string | null
           description: string | null
           id: string
           libelle: string | null
@@ -192,6 +194,8 @@ export type Database = {
           conducteur_id?: string | null
           created_at?: string
           created_by: string
+          date_debut?: string | null
+          date_fin?: string | null
           description?: string | null
           id?: string
           libelle?: string | null
@@ -207,6 +211,8 @@ export type Database = {
           conducteur_id?: string | null
           created_at?: string
           created_by?: string
+          date_debut?: string | null
+          date_fin?: string | null
           description?: string | null
           id?: string
           libelle?: string | null
