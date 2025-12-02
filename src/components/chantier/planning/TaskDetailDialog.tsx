@@ -132,16 +132,16 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 pb-3">
+        <div className="p-5 pb-4 border-b border-border/50">
           {/* Top row: title + actions */}
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-3">
             <Input
               value={formData.nom}
               onChange={(e) => handleFieldChange("nom", e.target.value)}
               onBlur={handleFieldBlur}
-              className="text-xl font-semibold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+              className="text-2xl font-semibold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
               placeholder="Nom de la tâche"
             />
             <div className="flex items-center gap-1 shrink-0">
@@ -183,9 +183,9 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </div>
 
           {/* Status badge + late message */}
-          <div className="flex items-center gap-2 mt-2">
-            <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 gap-1`}>
-              {isLate && <Clock className="h-3 w-3" />}
+          <div className="flex items-center gap-3 mt-3">
+            <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 gap-1.5 px-3 py-1`}>
+              {isLate && <Clock className="h-3.5 w-3.5" />}
               {statusInfo.label}
             </Badge>
             {getLateMessage() && (
@@ -194,57 +194,55 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </div>
 
           {/* Progress bar */}
-          {heuresEstimees > 0 && (
-            <div className="flex items-center gap-3 mt-4">
-              <span className="text-sm text-muted-foreground shrink-0">{heuresRealisees}h</span>
-              <Progress value={progressPercent} className="h-2 flex-1" />
-              <span className="text-sm text-muted-foreground shrink-0">{heuresEstimees}h</span>
-            </div>
-          )}
+          <div className="flex items-center gap-4 mt-5">
+            <span className="text-sm font-medium text-muted-foreground shrink-0 w-12">{heuresRealisees}h</span>
+            <Progress value={progressPercent} className="h-2.5 flex-1" />
+            <span className="text-sm font-medium text-muted-foreground shrink-0 w-12 text-right">{heuresEstimees}h</span>
+          </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="recap" className="flex-1">
-          <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 px-4">
+        <Tabs defaultValue="recap" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 px-5 shrink-0">
             <TabsTrigger 
               value="recap" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm font-medium"
             >
               Récap
             </TabsTrigger>
             <TabsTrigger 
               value="date" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm font-medium"
             >
               Date
             </TabsTrigger>
             <TabsTrigger 
               value="rentabilite" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm font-medium"
             >
               Rentabilité
             </TabsTrigger>
             <TabsTrigger 
               value="fichiers" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm font-medium"
             >
               Fichiers
             </TabsTrigger>
           </TabsList>
 
           {/* Récap Tab */}
-          <TabsContent value="recap" className="p-4 pt-3 space-y-4 mt-0">
+          <TabsContent value="recap" className="p-5 space-y-5 mt-0 flex-1 overflow-y-auto">
             {/* Assignée à */}
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground w-24">Assignée à</span>
-              <Button variant="outline" size="icon" className="h-7 w-7">
+              <span className="text-sm text-muted-foreground w-28">Assignée à</span>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Statut + Lot */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Statut</span>
                 <Select 
                   value={formData.statut} 
@@ -254,8 +252,8 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                     setTimeout(() => handleSave(), 0);
                   }}
                 >
-                  <SelectTrigger className="w-auto h-7 border-0 bg-transparent shadow-none p-0 gap-1">
-                    <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0`}>
+                  <SelectTrigger className="w-auto h-8 border-0 bg-transparent shadow-none p-0 gap-1.5">
+                    <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 px-3 py-1`}>
                       {STATUTS.find(s => s.value === formData.statut)?.label}
                     </Badge>
                   </SelectTrigger>
@@ -263,7 +261,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                     {STATUTS.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${s.color}`} />
+                          <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
                           {s.label}
                         </div>
                       </SelectItem>
@@ -273,20 +271,20 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Lot</span>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
-                <span className="text-sm text-muted-foreground">Vide</span>
+                <HelpCircle className="h-4 w-4 text-muted-foreground/50" />
+                <span className="text-sm text-muted-foreground italic">Vide</span>
               </div>
             </div>
 
             {/* Dates display */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de début</span>
-                <p className="text-sm font-medium mt-0.5">{formatDateDisplay(formData.date_debut)}</p>
+                <p className="text-base font-medium">{formatDateDisplay(formData.date_debut)}</p>
               </div>
-              <div>
+              <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de fin</span>
-                <p className="text-sm font-medium mt-0.5">{formatDateDisplay(formData.date_fin)}</p>
+                <p className="text-base font-medium">{formatDateDisplay(formData.date_fin)}</p>
               </div>
             </div>
 
@@ -296,25 +294,25 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               onChange={(e) => handleFieldChange("description", e.target.value)}
               onBlur={handleFieldBlur}
               placeholder="Insérez une description ici ..."
-              className="min-h-[80px] resize-none bg-muted/30"
+              className="min-h-[100px] resize-none bg-muted/30 text-sm"
             />
           </TabsContent>
 
           {/* Date Tab */}
-          <TabsContent value="date" className="p-4 pt-3 space-y-4 mt-0">
-            <h4 className="font-medium">Date estimée</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
+          <TabsContent value="date" className="p-5 space-y-5 mt-0 flex-1 overflow-y-auto">
+            <h4 className="font-semibold text-base">Date estimée</h4>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Date de début</span>
                 <Input
                   type="date"
                   value={formData.date_debut}
                   onChange={(e) => handleFieldChange("date_debut", e.target.value)}
                   onBlur={handleFieldBlur}
-                  className="h-9"
+                  className="h-10"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Date de fin</span>
                 <Input
                   type="date"
@@ -322,15 +320,15 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   onChange={(e) => handleFieldChange("date_fin", e.target.value)}
                   onBlur={handleFieldBlur}
                   min={formData.date_debut}
-                  className="h-9"
+                  className="h-10"
                 />
               </div>
             </div>
 
             {/* Hours */}
-            <h4 className="font-medium pt-2">Heures</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
+            <h4 className="font-semibold text-base pt-2">Heures</h4>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Heures estimées</span>
                 <Input
                   type="number"
@@ -338,11 +336,11 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   onChange={(e) => handleFieldChange("heures_estimees", e.target.value)}
                   onBlur={handleFieldBlur}
                   min={0}
-                  className="h-9"
+                  className="h-10"
                   placeholder="0"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Heures réalisées</span>
                 <Input
                   type="number"
@@ -350,7 +348,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   onChange={(e) => handleFieldChange("heures_realisees", e.target.value)}
                   onBlur={handleFieldBlur}
                   min={0}
-                  className="h-9"
+                  className="h-10"
                   placeholder="0"
                 />
               </div>
@@ -358,18 +356,18 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </TabsContent>
 
           {/* Rentabilité Tab */}
-          <TabsContent value="rentabilite" className="p-4 pt-3 space-y-4 mt-0">
+          <TabsContent value="rentabilite" className="p-5 space-y-6 mt-0 flex-1 overflow-y-auto">
             {/* Coûts summary */}
             <div>
-              <h4 className="font-medium mb-2">Coûts</h4>
+              <h4 className="font-semibold text-base mb-3">Coûts</h4>
               <div className="border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
-                  <span>MAIN D'OEUVRE</span>
-                  <span>ACHATS</span>
-                  <span>SOUS-TRAITANCE</span>
-                  <span>TOTAL</span>
+                <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase bg-muted/50 px-3 py-2.5">
+                  <span>Main d'oeuvre</span>
+                  <span>Achats</span>
+                  <span>Sous-traitance</span>
+                  <span>Total</span>
                 </div>
-                <div className="grid grid-cols-4 p-2 text-sm font-medium">
+                <div className="grid grid-cols-4 px-3 py-3 text-sm font-semibold">
                   <span>0€</span>
                   <span>0€</span>
                   <span>0€</span>
@@ -380,20 +378,20 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
             {/* Feuilles heures */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">Feuilles heures</h4>
-                <Button variant="default" size="icon" className="h-7 w-7 bg-orange-500 hover:bg-orange-600">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-base">Feuilles heures</h4>
+                <Button variant="default" size="icon" className="h-8 w-8 rounded-lg bg-orange-500 hover:bg-orange-600">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
-                  <span>DATE</span>
-                  <span>OUVRIER</span>
-                  <span>HEURES</span>
-                  <span>COÛT</span>
+                <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase bg-muted/50 px-3 py-2.5">
+                  <span>Date</span>
+                  <span>Ouvrier</span>
+                  <span>Heures</span>
+                  <span>Coût</span>
                 </div>
-                <div className="p-4 text-center text-sm text-muted-foreground">
+                <div className="p-6 text-center text-sm text-muted-foreground">
                   Aucune entrée
                 </div>
               </div>
@@ -401,26 +399,26 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
 
             {/* Achats et sous-traitance */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">Achats et sous-traitance</h4>
-                <Button variant="default" size="icon" className="h-7 w-7 bg-orange-500 hover:bg-orange-600">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-base">Achats et sous-traitance</h4>
+                <Button variant="default" size="icon" className="h-8 w-8 rounded-lg bg-orange-500 hover:bg-orange-600">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
-                  <span>DATE</span>
-                  <span>ACHAT</span>
-                  <span>QTÉ</span>
-                  <span>COÛT</span>
+                <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase bg-muted/50 px-3 py-2.5">
+                  <span>Date</span>
+                  <span>Achat</span>
+                  <span>Qté</span>
+                  <span>Coût</span>
                 </div>
-                <div className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">Aucun achat ajouté</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600">
+                <div className="p-8 text-center">
+                  <p className="text-sm text-muted-foreground mb-4">Aucun achat ajouté</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
                       Ajouter un achat
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1">
+                    <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
                       <span className="text-muted-foreground">⏵</span>
                       Tutoriel vidéo
                     </Button>
@@ -431,16 +429,17 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </TabsContent>
 
           {/* Fichiers Tab */}
-          <TabsContent value="fichiers" className="p-4 pt-3 mt-0">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium">Fichiers</h4>
-              <Button variant="outline" size="icon" className="h-7 w-7">
+          <TabsContent value="fichiers" className="p-5 mt-0 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-base">Fichiers</h4>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <div className="border rounded-lg p-8 text-center">
-              <p className="text-sm text-muted-foreground mb-3">Aucun fichier</p>
-              <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600">
+            <div className="border rounded-lg p-10 text-center">
+              <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground mb-4">Aucun fichier</p>
+              <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
                 Ajouter un fichier
               </Button>
             </div>
@@ -448,17 +447,17 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
         </Tabs>
 
         {/* Footer - Comment section */}
-        <div className="border-t p-3 flex items-center gap-2">
+        <div className="border-t p-4 flex items-center gap-3 shrink-0 bg-muted/20">
           <Input
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Commentez ici ..."
-            className="flex-1 h-9"
+            className="flex-1 h-10 bg-background"
           />
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-lg">
             <Plus className="h-4 w-4" />
           </Button>
-          <Button size="icon" className="h-9 w-9 shrink-0 bg-orange-500 hover:bg-orange-600">
+          <Button size="icon" className="h-10 w-10 shrink-0 rounded-lg bg-orange-500 hover:bg-orange-600">
             <Send className="h-4 w-4" />
           </Button>
         </div>
