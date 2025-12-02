@@ -270,10 +270,14 @@ export const TaskBars = ({
           labelOffset = Math.max(0, labelOffset);
         }
 
+        // Calculate visible portion of the bar
+        const visibleLeft = Math.max(0, scrollLeft - barStart);
+        const visibleWidth = Math.max(0, Math.min(width - visibleLeft, barEnd - scrollLeft));
+        
         return (
           <div
             key={tache.id}
-            className={`absolute rounded-md pointer-events-auto transition-shadow overflow-hidden ${statusInfo.color} ${
+            className={`absolute rounded-md pointer-events-auto transition-shadow ${statusInfo.color} ${
               isDragging ? "opacity-80 shadow-lg z-50 cursor-grabbing" : "cursor-grab hover:brightness-95 hover:shadow-md"
             }`}
             style={{
@@ -286,10 +290,14 @@ export const TaskBars = ({
             onMouseDown={(e) => handleMouseDown(e, tache, left, row)}
             onClick={(e) => handleClick(e, tache)}
           >
+            {/* Label container with sticky behavior */}
             <div 
-              className="flex items-center gap-2 h-full select-none whitespace-nowrap px-2"
+              className="absolute inset-y-0 flex items-center gap-2 select-none whitespace-nowrap overflow-hidden"
               style={{ 
-                transform: labelOffset > 0 ? `translateX(${labelOffset}px)` : undefined,
+                left: `${labelOffset}px`,
+                right: 0,
+                paddingLeft: '8px',
+                paddingRight: '8px',
               }}
             >
               <span className="text-white text-sm font-medium truncate">
