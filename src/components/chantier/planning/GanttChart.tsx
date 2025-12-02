@@ -1,15 +1,15 @@
-import { useMemo, useState } from "react";
-import { Gantt, Task, ViewMode, StylingOption } from "gantt-task-react";
+import { useMemo } from "react";
+import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { TacheChantier } from "@/hooks/useTachesChantier";
 import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { format, parseISO, isAfter, startOfDay } from "date-fns";
-import { fr } from "date-fns/locale";
+import { ZoomLevel } from "./EmptyGanttGrid";
 
 interface GanttChartProps {
   taches: TacheChantier[];
   chantierId: string;
-  viewMode: ViewMode;
+  zoomLevel: ZoomLevel;
   onTaskClick: (tache: TacheChantier) => void;
   showDates?: boolean;
 }
@@ -45,9 +45,42 @@ const getBarStyles = (tache: TacheChantier): { backgroundColor: string; progress
   return { backgroundColor: baseColor, progressColor: baseColor };
 };
 
-export const GanttChart = ({ taches, chantierId, viewMode, onTaskClick, showDates = true }: GanttChartProps) => {
+// Convert our zoom level to gantt-task-react ViewMode
+const getViewModeFromZoom = (zoomLevel: ZoomLevel): ViewMode => {
+  switch (zoomLevel) {
+    case "month":
+      return ViewMode.Day;
+    case "quarter":
+      return ViewMode.Week;
+    case "semester":
+      return ViewMode.Month;
+    case "year":
+      return ViewMode.Month;
+    default:
+      return ViewMode.Day;
+  }
+};
+
+// Get column width based on zoom level
+const getColumnWidth = (zoomLevel: ZoomLevel): number => {
+  switch (zoomLevel) {
+    case "month":
+      return 32;
+    case "quarter":
+      return 80;
+    case "semester":
+      return 150;
+    case "year":
+      return 300;
+    default:
+      return 32;
+  }
+};
+
+export const GanttChart = ({ taches, chantierId, zoomLevel, onTaskClick, showDates = true }: GanttChartProps) => {
   const updateTache = useUpdateTache();
-  const [columnWidth, setColumnWidth] = useState(viewMode === ViewMode.Day ? 65 : viewMode === ViewMode.Week ? 250 : 300);
+  const viewMode = getViewModeFromZoom(zoomLevel);
+  const columnWidth = getColumnWidth(zoomLevel);
 
   // Convert our taches to gantt-task-react format
   const tasks: Task[] = useMemo(() => {
@@ -112,7 +145,7 @@ export const GanttChart = ({ taches, chantierId, viewMode, onTaskClick, showDate
         listCellWidth=""
         rowHeight={50}
         barCornerRadius={4}
-        todayColor="rgba(59, 130, 246, 0.1)"
+        todayColor="rgba(239, 68, 68, 0.1)"
         locale="fr"
         barFill={60}
       />
