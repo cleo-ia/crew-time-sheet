@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -34,8 +34,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDates, setShowDates] = useState(false);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [containerWidth, setContainerWidth] = useState(1200);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
 
   const handleTaskClick = (tache: TacheChantier) => {
@@ -46,11 +44,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const goToToday = () => {
     ganttRef.current?.scrollToToday();
   };
-
-  const handleScrollChange = useCallback((newScrollLeft: number, newContainerWidth: number) => {
-    setScrollLeft(newScrollLeft);
-    setContainerWidth(newContainerWidth);
-  }, []);
 
   if (isLoading) {
     return (
@@ -125,7 +118,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           numDays={NUM_DAYS} 
           zoomLevel={zoomLevel}
           showDates={showDates}
-          onScrollChange={handleScrollChange}
         />
         {taches.length > 0 && (
           <TaskBars
@@ -133,8 +125,6 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             startDate={START_DATE}
             zoomLevel={zoomLevel}
             onTaskClick={handleTaskClick}
-            scrollLeft={scrollLeft}
-            containerWidth={containerWidth}
           />
         )}
       </div>
