@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Save, FileText, Calendar, ClipboardList } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Clock, X, MoreHorizontal, Plus, Send, Trash2, HelpCircle, FileText } from "lucide-react";
 import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { useDeleteTache } from "@/hooks/useDeleteTache";
 import { TacheChantier } from "@/hooks/useTachesChantier";
 import { toast } from "sonner";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface TaskDetailDialogProps {
   open: boolean;
@@ -21,26 +25,17 @@ interface TaskDetailDialogProps {
 }
 
 const STATUTS = [
-  { value: "A_FAIRE", label: "À faire", color: "bg-orange-500" },
-  { value: "EN_COURS", label: "En cours", color: "bg-blue-500" },
-  { value: "TERMINE", label: "Terminé", color: "bg-green-500" },
-  { value: "EN_RETARD", label: "En retard", color: "bg-red-500" },
-];
-
-const COULEURS = [
-  { value: "#3b82f6", label: "Bleu" },
-  { value: "#22c55e", label: "Vert" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#ef4444", label: "Rouge" },
-  { value: "#8b5cf6", label: "Violet" },
-  { value: "#06b6d4", label: "Cyan" },
-  { value: "#ec4899", label: "Rose" },
-  { value: "#eab308", label: "Jaune" },
+  { value: "A_FAIRE", label: "À faire", color: "bg-gray-400", textColor: "text-gray-700", badgeBg: "bg-gray-100" },
+  { value: "EN_COURS", label: "En cours", color: "bg-orange-400", textColor: "text-orange-700", badgeBg: "bg-orange-100" },
+  { value: "TERMINE", label: "Terminé", color: "bg-green-500", textColor: "text-green-700", badgeBg: "bg-green-100" },
+  { value: "EN_RETARD", label: "En retard", color: "bg-red-500", textColor: "text-red-700", badgeBg: "bg-red-100" },
 ];
 
 export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: TaskDetailDialogProps) => {
   const updateTache = useUpdateTache();
   const deleteTache = useDeleteTache();
+  const [comment, setComment] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     nom: "",
@@ -50,7 +45,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
     heures_estimees: "",
     heures_realisees: "",
     statut: "A_FAIRE" as TacheChantier["statut"],
-    couleur: "#3b82f6",
   });
 
   useEffect(() => {
@@ -63,7 +57,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
         heures_estimees: tache.heures_estimees?.toString() || "",
         heures_realisees: tache.heures_realisees?.toString() || "",
         statut: tache.statut,
-        couleur: tache.couleur || "#3b82f6",
       });
     }
   }, [tache]);
@@ -81,11 +74,9 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
       heures_estimees: formData.heures_estimees ? parseInt(formData.heures_estimees) : null,
       heures_realisees: formData.heures_realisees ? parseInt(formData.heures_realisees) : null,
       statut: formData.statut,
-      couleur: formData.couleur,
     });
 
     toast.success("Tâche mise à jour");
-    onOpenChange(false);
   };
 
   const handleDelete = async () => {
@@ -94,198 +85,382 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
     onOpenChange(false);
   };
 
+  // Auto-save on field change (debounced via blur or select change)
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFieldBlur = () => {
+    if (tache) {
+      handleSave();
+    }
+  };
+
   if (!tache) return null;
+
+  // Calculate status info
+  const today = startOfDay(new Date());
+  const endDate = parseISO(formData.date_fin);
+  const isLate = isAfter(today, endDate) && formData.statut !== "TERMINE";
+  const effectiveStatus = isLate ? "EN_RETARD" : formData.statut;
+  const statusInfo = STATUTS.find(s => s.value === effectiveStatus) || STATUTS[0];
+
+  // Progress calculation
+  const heuresRealisees = parseFloat(formData.heures_realisees) || 0;
+  const heuresEstimees = parseFloat(formData.heures_estimees) || 0;
+  const progressPercent = heuresEstimees > 0 ? Math.min(100, (heuresRealisees / heuresEstimees) * 100) : 0;
+
+  // Format dates for display
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return "-";
+    try {
+      return format(parseISO(dateStr), "dd/MM/yy", { locale: fr });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Late message
+  const getLateMessage = () => {
+    if (!isLate) return null;
+    try {
+      return `Devait se terminer le ${format(endDate, "d MMMM", { locale: fr })}`;
+    } catch {
+      return null;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: formData.couleur }} />
-            {formData.nom || "Détail de la tâche"}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 pb-3">
+          {/* Top row: title + actions */}
+          <div className="flex items-start justify-between gap-2">
+            <Input
+              value={formData.nom}
+              onChange={(e) => handleFieldChange("nom", e.target.value)}
+              onBlur={handleFieldBlur}
+              className="text-xl font-semibold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+              placeholder="Nom de la tâche"
+            />
+            <div className="flex items-center gap-1 shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer la tâche ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action est irréversible. La tâche "{tache.nom}" sera définitivement supprimée.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-        <Tabs defaultValue="recap" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="recap" className="gap-1">
-              <ClipboardList className="h-4 w-4" />
+          {/* Status badge + late message */}
+          <div className="flex items-center gap-2 mt-2">
+            <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 gap-1`}>
+              {isLate && <Clock className="h-3 w-3" />}
+              {statusInfo.label}
+            </Badge>
+            {getLateMessage() && (
+              <span className="text-sm text-muted-foreground">{getLateMessage()}</span>
+            )}
+          </div>
+
+          {/* Progress bar */}
+          {heuresEstimees > 0 && (
+            <div className="flex items-center gap-3 mt-4">
+              <span className="text-sm text-muted-foreground shrink-0">{heuresRealisees}h</span>
+              <Progress value={progressPercent} className="h-2 flex-1" />
+              <span className="text-sm text-muted-foreground shrink-0">{heuresEstimees}h</span>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="recap" className="flex-1">
+          <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 px-4">
+            <TabsTrigger 
+              value="recap" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+            >
               Récap
             </TabsTrigger>
-            <TabsTrigger value="dates" className="gap-1">
-              <Calendar className="h-4 w-4" />
-              Dates
+            <TabsTrigger 
+              value="date" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+            >
+              Date
             </TabsTrigger>
-            <TabsTrigger value="fichiers" className="gap-1">
-              <FileText className="h-4 w-4" />
+            <TabsTrigger 
+              value="rentabilite" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+            >
+              Rentabilité
+            </TabsTrigger>
+            <TabsTrigger 
+              value="fichiers" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2"
+            >
               Fichiers
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="recap" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="nom">Nom de la tâche</Label>
-              <Input
-                id="nom"
-                value={formData.nom}
-                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-              />
+          {/* Récap Tab */}
+          <TabsContent value="recap" className="p-4 pt-3 space-y-4 mt-0">
+            {/* Assignée à */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground w-24">Assignée à</span>
+              <Button variant="outline" size="icon" className="h-7 w-7">
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="statut">Statut</Label>
-              <Select 
-                value={formData.statut} 
-                onValueChange={(v) => setFormData({ ...formData, statut: v as TacheChantier["statut"] })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUTS.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${s.color}`} />
-                        {s.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Statut + Lot */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Statut</span>
+                <Select 
+                  value={formData.statut} 
+                  onValueChange={(v) => {
+                    handleFieldChange("statut", v);
+                    // Auto-save immediately for select
+                    setTimeout(() => handleSave(), 0);
+                  }}
+                >
+                  <SelectTrigger className="w-auto h-7 border-0 bg-transparent shadow-none p-0 gap-1">
+                    <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0`}>
+                      {STATUTS.find(s => s.value === formData.statut)?.label}
+                    </Badge>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUTS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${s.color}`} />
+                          {s.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Lot</span>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-sm text-muted-foreground">Vide</span>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Couleur</Label>
-              <Select value={formData.couleur} onValueChange={(v) => setFormData({ ...formData, couleur: v })}>
-                <SelectTrigger>
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: formData.couleur }} />
-                      {COULEURS.find(c => c.value === formData.couleur)?.label}
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {COULEURS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
-                        {c.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Dates display */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-sm text-muted-foreground">Date de début</span>
+                <p className="text-sm font-medium mt-0.5">{formatDateDisplay(formData.date_debut)}</p>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">Date de fin</span>
+                <p className="text-sm font-medium mt-0.5">{formatDateDisplay(formData.date_fin)}</p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
+            {/* Description */}
+            <Textarea
+              value={formData.description}
+              onChange={(e) => handleFieldChange("description", e.target.value)}
+              onBlur={handleFieldBlur}
+              placeholder="Insérez une description ici ..."
+              className="min-h-[80px] resize-none bg-muted/30"
+            />
           </TabsContent>
 
-          <TabsContent value="dates" className="space-y-4 mt-4">
+          {/* Date Tab */}
+          <TabsContent value="date" className="p-4 pt-3 space-y-4 mt-0">
+            <h4 className="font-medium">Date estimée</h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date_debut">Date début</Label>
+              <div className="space-y-1.5">
+                <span className="text-sm text-muted-foreground">Date de début</span>
                 <Input
-                  id="date_debut"
                   type="date"
                   value={formData.date_debut}
-                  onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
+                  onChange={(e) => handleFieldChange("date_debut", e.target.value)}
+                  onBlur={handleFieldBlur}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="date_fin">Date fin</Label>
+              <div className="space-y-1.5">
+                <span className="text-sm text-muted-foreground">Date de fin</span>
                 <Input
-                  id="date_fin"
                   type="date"
                   value={formData.date_fin}
-                  onChange={(e) => setFormData({ ...formData, date_fin: e.target.value })}
+                  onChange={(e) => handleFieldChange("date_fin", e.target.value)}
+                  onBlur={handleFieldBlur}
                   min={formData.date_debut}
+                  className="h-9"
                 />
               </div>
             </div>
 
+            {/* Hours */}
+            <h4 className="font-medium pt-2">Heures</h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="heures_estimees">Heures estimées</Label>
+              <div className="space-y-1.5">
+                <span className="text-sm text-muted-foreground">Heures estimées</span>
                 <Input
-                  id="heures_estimees"
                   type="number"
                   value={formData.heures_estimees}
-                  onChange={(e) => setFormData({ ...formData, heures_estimees: e.target.value })}
+                  onChange={(e) => handleFieldChange("heures_estimees", e.target.value)}
+                  onBlur={handleFieldBlur}
                   min={0}
+                  className="h-9"
+                  placeholder="0"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="heures_realisees">Heures réalisées</Label>
+              <div className="space-y-1.5">
+                <span className="text-sm text-muted-foreground">Heures réalisées</span>
                 <Input
-                  id="heures_realisees"
                   type="number"
                   value={formData.heures_realisees}
-                  onChange={(e) => setFormData({ ...formData, heures_realisees: e.target.value })}
+                  onChange={(e) => handleFieldChange("heures_realisees", e.target.value)}
+                  onBlur={handleFieldBlur}
                   min={0}
+                  className="h-9"
+                  placeholder="0"
                 />
               </div>
             </div>
-
-            {formData.heures_estimees && formData.heures_realisees && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Progression : {Math.round((parseInt(formData.heures_realisees) / parseInt(formData.heures_estimees)) * 100)}%
-                </p>
-              </div>
-            )}
           </TabsContent>
 
-          <TabsContent value="fichiers" className="mt-4">
-            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-              <FileText className="h-12 w-12 mb-2 opacity-50" />
-              <p className="text-sm">Aucun fichier attaché</p>
-              <p className="text-xs">Cette fonctionnalité sera disponible prochainement</p>
+          {/* Rentabilité Tab */}
+          <TabsContent value="rentabilite" className="p-4 pt-3 space-y-4 mt-0">
+            {/* Coûts summary */}
+            <div>
+              <h4 className="font-medium mb-2">Coûts</h4>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
+                  <span>MAIN D'OEUVRE</span>
+                  <span>ACHATS</span>
+                  <span>SOUS-TRAITANCE</span>
+                  <span>TOTAL</span>
+                </div>
+                <div className="grid grid-cols-4 p-2 text-sm font-medium">
+                  <span>0€</span>
+                  <span>0€</span>
+                  <span>0€</span>
+                  <span>0€</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Feuilles heures */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Feuilles heures</h4>
+                <Button variant="default" size="icon" className="h-7 w-7 bg-orange-500 hover:bg-orange-600">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
+                  <span>DATE</span>
+                  <span>OUVRIER</span>
+                  <span>HEURES</span>
+                  <span>COÛT</span>
+                </div>
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Aucune entrée
+                </div>
+              </div>
+            </div>
+
+            {/* Achats et sous-traitance */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Achats et sous-traitance</h4>
+                <Button variant="default" size="icon" className="h-7 w-7 bg-orange-500 hover:bg-orange-600">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-4 text-xs text-muted-foreground bg-muted/50 p-2">
+                  <span>DATE</span>
+                  <span>ACHAT</span>
+                  <span>QTÉ</span>
+                  <span>COÛT</span>
+                </div>
+                <div className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">Aucun achat ajouté</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600">
+                      Ajouter un achat
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <span className="text-muted-foreground">⏵</span>
+                      Tutoriel vidéo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Fichiers Tab */}
+          <TabsContent value="fichiers" className="p-4 pt-3 mt-0">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">Fichiers</h4>
+              <Button variant="outline" size="icon" className="h-7 w-7">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="border rounded-lg p-8 text-center">
+              <p className="text-sm text-muted-foreground mb-3">Aucun fichier</p>
+              <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600">
+                Ajouter un fichier
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between pt-4 border-t">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-1" />
-                Supprimer
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Supprimer la tâche ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Cette action est irréversible. La tâche "{tache.nom}" sera définitivement supprimée.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                  Supprimer
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSave} disabled={updateTache.isPending}>
-              <Save className="h-4 w-4 mr-1" />
-              {updateTache.isPending ? "Enregistrement..." : "Enregistrer"}
-            </Button>
-          </div>
+        {/* Footer - Comment section */}
+        <div className="border-t p-3 flex items-center gap-2">
+          <Input
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Commentez ici ..."
+            className="flex-1 h-9"
+          />
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button size="icon" className="h-9 w-9 shrink-0 bg-orange-500 hover:bg-orange-600">
+            <Send className="h-4 w-4" />
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
