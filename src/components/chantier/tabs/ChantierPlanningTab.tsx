@@ -33,8 +33,17 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [showDates, setShowDates] = useState(false);
+  // Show dates by default for month and quarter views
+  const [showDates, setShowDates] = useState(true);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
+
+  // Auto-enable dates for month/quarter zoom levels
+  const handleZoomChange = (newZoom: ZoomLevel) => {
+    setZoomLevel(newZoom);
+    if (newZoom === "month" || newZoom === "quarter") {
+      setShowDates(true);
+    }
+  };
 
   const handleTaskClick = (tache: TacheChantier) => {
     setSelectedTache(tache);
@@ -85,7 +94,7 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
           </div>
 
           {/* Zoom level selector */}
-          <Select value={zoomLevel} onValueChange={(v) => setZoomLevel(v as ZoomLevel)}>
+          <Select value={zoomLevel} onValueChange={(v) => handleZoomChange(v as ZoomLevel)}>
             <SelectTrigger className="w-[140px] bg-background">
               <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue />
