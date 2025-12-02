@@ -57,6 +57,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     nom: "",
@@ -368,7 +369,17 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   {documents.map((doc) => {
                     const isImage = doc.file_type.startsWith("image/");
                     const url = getPublicUrl(doc.file_path);
-                    return (
+                    return isImage ? (
+                      <button
+                        key={doc.id}
+                        onClick={() => setLightboxImage(url)}
+                        className="group relative cursor-pointer"
+                      >
+                        <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
+                          <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
+                        </div>
+                      </button>
+                    ) : (
                       <a
                         key={doc.id}
                         href={url}
@@ -376,16 +387,10 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                         rel="noopener noreferrer"
                         className="group relative"
                       >
-                        {isImage ? (
-                          <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
-                            <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
-                            <FileText className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground mt-1">PDF</span>
-                          </div>
-                        )}
+                        <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
+                          <FileText className="h-6 w-6 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground mt-1">PDF</span>
+                        </div>
                       </a>
                     );
                   })}
@@ -579,9 +584,12 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                       className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       {isImage ? (
-                        <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
+                        <button 
+                          onClick={() => setLightboxImage(url)}
+                          className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0 cursor-pointer hover:ring-2 hover:ring-orange-500 transition-all"
+                        >
                           <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
-                        </div>
+                        </button>
                       ) : (
                         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
                           <FileText className="h-5 w-5 text-muted-foreground" />
@@ -594,6 +602,16 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
+                        {isImage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setLightboxImage(url)}
+                          >
+                            <Image className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -635,6 +653,27 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
           </Button>
         </div>
       </DialogContent>
+
+      {/* Lightbox for images */}
+      {lightboxImage && (
+        <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/95 border-none">
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="h-6 w-6 text-white" />
+            </button>
+            <div className="flex items-center justify-center w-full h-full p-4">
+              <img 
+                src={lightboxImage} 
+                alt="Aperçu" 
+                className="max-w-full max-h-[85vh] object-contain rounded-lg"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 };
