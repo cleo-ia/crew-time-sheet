@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, MapPin, CalendarIcon, Building2, User, Users, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, CalendarIcon, Building2, User, Users, FileText, Paperclip } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useChantiers, useCreateChantier, useUpdateChantier, useDeleteChantier } from "@/hooks/useChantiers";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
+import { ChantierDocumentsUpload } from "./ChantierDocumentsUpload";
 
 export const ChantiersManager = () => {
   const { toast } = useToast();
@@ -425,6 +426,20 @@ export const ChantiersManager = () => {
                 />
               </div>
             </div>
+
+            {/* Section Documents - only in edit mode */}
+            {editingChantier && (
+              <>
+                <Separator className="bg-border/50" />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Paperclip className="h-4 w-4" />
+                    <span>Documents</span>
+                  </div>
+                  <ChantierDocumentsUpload chantierId={editingChantier.id} />
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>

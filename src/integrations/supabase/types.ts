@@ -254,6 +254,47 @@ export type Database = {
           },
         ]
       }
+      chantiers_documents: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          nom: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          nom: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          nom?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chantiers_documents_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conducteurs_chefs: {
         Row: {
           chef_id: string
