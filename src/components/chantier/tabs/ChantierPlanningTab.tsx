@@ -75,6 +75,26 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
     EN_RETARD: "En retard",
   };
 
+  const STATUS_COLORS: Record<string, string> = {
+    A_FAIRE: "FF9CA3AF", // gray
+    EN_COURS: "FFFB923C", // orange
+    TERMINE: "FF22C55E", // green
+    EN_RETARD: "FFEF4444", // red
+  };
+
+  // Calculate dynamic status like in the planning view
+  const getComputedStatus = (tache: TacheChantier): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateDebut = new Date(tache.date_debut);
+    const dateFin = new Date(tache.date_fin);
+    
+    if (tache.statut === "TERMINE") return "TERMINE";
+    if (dateFin < today) return "EN_RETARD";
+    if (dateDebut <= today && today <= dateFin) return "EN_COURS";
+    return "A_FAIRE";
+  };
+
   const exportToExcel = async () => {
     if (taches.length === 0) {
       toast.error("Aucune tâche à exporter");
@@ -88,67 +108,150 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Planning");
 
-      // Define columns
-      worksheet.columns = [
-        { header: "Tâche", key: "nom", width: 30 },
-        { header: "Statut", key: "statut", width: 15 },
-        { header: "Date début", key: "date_debut", width: 15 },
-        { header: "Date fin", key: "date_fin", width: 15 },
-        { header: "Durée (jours)", key: "duree", width: 15 },
-        { header: "Heures estimées", key: "heures_estimees", width: 18 },
-        { header: "Heures réalisées", key: "heures_realisees", width: 18 },
-        { header: "Description", key: "description", width: 40 },
+      // Find date range for Gantt visualization
+      const allDates = taches.flatMap(t => [new Date(t.date_debut), new Date(t.date_fin)]);
+      const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+      const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+      
+      // Generate weeks between min and max date
+      const weeks: Date[] = [];
+      const currentWeek = new Date(minDate);
+      currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay() + 1); // Start of week (Monday)
+      while (currentWeek <= maxDate) {
+        weeks.push(new Date(currentWeek));
+        currentWeek.setDate(currentWeek.getDate() + 7);
+      }
+
+      // Define base columns
+      const baseColumns = [
+        { header: "Tâche", key: "nom", width: 25 },
+        { header: "Statut", key: "statut", width: 12 },
+        { header: "Début", key: "date_debut", width: 12 },
+        { header: "Fin", key: "date_fin", width: 12 },
+        { header: "Durée", key: "duree", width: 10 },
+        { header: "H. Est.", key: "heures_estimees", width: 10 },
+        { header: "H. Réal.", key: "heures_realisees", width: 10 },
       ];
+
+      // Add week columns for Gantt visualization
+      const weekColumns = weeks.map((week, i) => ({
+        header: `S${format(week, "w")}`,
+        key: `week_${i}`,
+        width: 5,
+      }));
+
+      worksheet.columns = [...baseColumns, ...weekColumns];
 
       // Style header row
       const headerRow = worksheet.getRow(1);
-      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      headerRow.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF97316" }, // Orange
-      };
+      headerRow.font = { bold: true, size: 10 };
       headerRow.alignment = { horizontal: "center", vertical: "middle" };
-      headerRow.height = 25;
+      headerRow.height = 22;
+      
+      // Style base header cells
+      for (let i = 1; i <= baseColumns.length; i++) {
+        const cell = headerRow.getCell(i);
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF97316" },
+        };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+      }
+      
+      // Style week header cells
+      for (let i = baseColumns.length + 1; i <= baseColumns.length + weeks.length; i++) {
+        const cell = headerRow.getCell(i);
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF374151" },
+        };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
+      }
 
       // Add data rows
-      taches.forEach((tache) => {
+      taches.forEach((tache, rowIndex) => {
         const dateDebut = new Date(tache.date_debut);
         const dateFin = new Date(tache.date_fin);
         const duree = Math.ceil((dateFin.getTime() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const computedStatus = getComputedStatus(tache);
 
-        worksheet.addRow({
+        const rowData: Record<string, any> = {
           nom: tache.nom,
-          statut: STATUS_LABELS[tache.statut] || tache.statut,
+          statut: STATUS_LABELS[computedStatus],
           date_debut: format(dateDebut, "dd/MM/yyyy", { locale: fr }),
           date_fin: format(dateFin, "dd/MM/yyyy", { locale: fr }),
-          duree,
+          duree: `${duree}j`,
           heures_estimees: tache.heures_estimees || "-",
           heures_realisees: tache.heures_realisees || "-",
-          description: tache.description || "",
-        });
-      });
+        };
 
-      // Style data rows
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber > 1) {
-          row.eachCell((cell) => {
-            cell.border = {
-              top: { style: "thin", color: { argb: "FFE5E5E5" } },
-              bottom: { style: "thin", color: { argb: "FFE5E5E5" } },
-              left: { style: "thin", color: { argb: "FFE5E5E5" } },
-              right: { style: "thin", color: { argb: "FFE5E5E5" } },
-            };
-          });
-          // Alternate row colors
-          if (rowNumber % 2 === 0) {
-            row.fill = {
+        // Fill week cells based on task dates
+        weeks.forEach((weekStart, weekIndex) => {
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          
+          // Check if task overlaps with this week
+          const overlaps = dateDebut <= weekEnd && dateFin >= weekStart;
+          rowData[`week_${weekIndex}`] = overlaps ? "●" : "";
+        });
+
+        const row = worksheet.addRow(rowData);
+        
+        // Style status cell with color
+        const statusCell = row.getCell(2);
+        statusCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: STATUS_COLORS[computedStatus] },
+        };
+        statusCell.font = { color: { argb: "FFFFFFFF" }, bold: true, size: 9 };
+        statusCell.alignment = { horizontal: "center" };
+
+        // Style week cells with task color
+        weeks.forEach((weekStart, weekIndex) => {
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          const overlaps = dateDebut <= weekEnd && dateFin >= weekStart;
+          
+          if (overlaps) {
+            const cell = row.getCell(baseColumns.length + 1 + weekIndex);
+            cell.fill = {
               type: "pattern",
               pattern: "solid",
-              fgColor: { argb: "FFF9FAFB" },
+              fgColor: { argb: STATUS_COLORS[computedStatus] },
             };
+            cell.font = { color: { argb: STATUS_COLORS[computedStatus] }, size: 9 };
+            cell.alignment = { horizontal: "center" };
+          }
+        });
+
+        // Alternate row background for base columns
+        if (rowIndex % 2 === 1) {
+          for (let i = 1; i <= baseColumns.length; i++) {
+            const cell = row.getCell(i);
+            if (i !== 2) { // Skip status cell
+              cell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: { argb: "FFF9FAFB" },
+              };
+            }
           }
         }
+      });
+
+      // Add borders to all cells
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFE5E5E5" } },
+            bottom: { style: "thin", color: { argb: "FFE5E5E5" } },
+            left: { style: "thin", color: { argb: "FFE5E5E5" } },
+            right: { style: "thin", color: { argb: "FFE5E5E5" } },
+          };
+        });
       });
 
       // Generate and download file
