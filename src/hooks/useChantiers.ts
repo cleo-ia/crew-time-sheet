@@ -6,6 +6,7 @@ export interface Chantier {
   id: string;
   nom: string;
   code_chantier: string | null;
+  client: string | null;
   ville: string | null;
   adresse: string | null;
   description: string | null;
