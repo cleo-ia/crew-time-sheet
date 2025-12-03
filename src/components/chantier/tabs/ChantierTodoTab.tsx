@@ -11,6 +11,30 @@ interface ChantierTodoTabProps {
 }
 
 type TodoStatus = "A_FAIRE" | "EN_COURS" | "TERMINE";
+type ComputedTodoStatus = "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD";
+
+// Calcule le statut dynamique d'un todo basé sur sa date d'échéance
+const getComputedTodoStatus = (todo: TodoChantier): ComputedTodoStatus => {
+  // Si terminé, toujours terminé
+  if (todo.statut === "TERMINE") return "TERMINE";
+  
+  // Si pas de date d'échéance, utiliser le statut stocké
+  if (!todo.date_echeance) return todo.statut;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(todo.date_echeance);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  // Date d'échéance passée → En retard
+  if (dueDate < today) return "EN_RETARD";
+  
+  // Date d'échéance = aujourd'hui → En cours
+  if (dueDate.getTime() === today.getTime()) return "EN_COURS";
+  
+  // Date d'échéance dans le futur → À faire
+  return "A_FAIRE";
+};
 
 interface KanbanColumn {
   id: TodoStatus;
@@ -36,7 +60,10 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       colorClass: "text-blue-600 dark:text-blue-400",
       bgClass: "bg-blue-50/50 dark:bg-blue-950/20",
       headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/5",
-      todos: todos.filter((t) => t.statut === "A_FAIRE"),
+      todos: todos.filter((t) => {
+        const computed = getComputedTodoStatus(t);
+        return computed === "A_FAIRE" || computed === "EN_RETARD";
+      }),
     },
     {
       id: "EN_COURS",
@@ -45,7 +72,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       colorClass: "text-amber-600 dark:text-amber-400",
       bgClass: "bg-amber-50/50 dark:bg-amber-950/20",
       headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
-      todos: todos.filter((t) => t.statut === "EN_COURS"),
+      todos: todos.filter((t) => getComputedTodoStatus(t) === "EN_COURS"),
     },
     {
       id: "TERMINE",
@@ -54,7 +81,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       colorClass: "text-green-600 dark:text-green-400",
       bgClass: "bg-green-50/50 dark:bg-green-950/20",
       headerBg: "bg-gradient-to-r from-green-500/10 to-green-500/5",
-      todos: todos.filter((t) => t.statut === "TERMINE"),
+      todos: todos.filter((t) => getComputedTodoStatus(t) === "TERMINE"),
     },
   ];
 
@@ -64,8 +91,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
   };
 
   const isOverdue = (todo: TodoChantier) => {
-    if (!todo.date_echeance || todo.statut === "TERMINE") return false;
-    return new Date(todo.date_echeance) < new Date();
+    return getComputedTodoStatus(todo) === "EN_RETARD";
   };
 
   if (isLoading) {
