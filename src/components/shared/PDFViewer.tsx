@@ -13,7 +13,7 @@ interface PDFViewerProps {
 export function PDFViewer({ url }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number | null>(null); // null = auto-fit au chargement
+  const [scale, setScale] = useState<number>(0.1); // 10% par défaut - pas d'auto-fit
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfWidth, setPdfWidth] = useState<number>(0);
@@ -35,16 +35,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
   const onPageLoadSuccess = ({ originalWidth, originalHeight }: { originalWidth: number; originalHeight: number }) => {
     setPdfWidth(originalWidth);
     setPdfHeight(originalHeight);
-    // Auto-fit au premier chargement - ajuster pour voir le document EN ENTIER
-    if (scale === null && containerRef.current && originalWidth > 0 && originalHeight > 0) {
-      const containerWidth = containerRef.current.clientWidth - 32;
-      const containerHeight = containerRef.current.clientHeight - 32;
-      const scaleToFitWidth = containerWidth / originalWidth;
-      const scaleToFitHeight = containerHeight / originalHeight;
-      // Prendre le plus petit pour que le document tienne entièrement - PAS de limite minimum
-      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight, 2);
-      setScale(newScale);
-    }
+    // Pas d'auto-fit - zoom initial fixe à 10%
   };
 
   // Calcule le scale pour ajuster à la page entière
@@ -67,17 +58,17 @@ export function PDFViewer({ url }: PDFViewerProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setScale(s => Math.max(0.25, (s || 0.5) - 0.1))}
-            disabled={(scale || 0.5) <= 0.25}
+            onClick={() => setScale(s => Math.max(0.05, s - 0.1))}
+            disabled={scale <= 0.05}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm min-w-[50px] text-center">{Math.round((scale || 0.5) * 100)}%</span>
+          <span className="text-sm min-w-[50px] text-center">{Math.round(scale * 100)}%</span>
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setScale(s => Math.min(2, (s || 0.5) + 0.1))}
-            disabled={(scale || 0.5) >= 2}
+            onClick={() => setScale(s => Math.min(2, s + 0.1))}
+            disabled={scale >= 2}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -97,7 +88,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(0.5)} 
-              className={Math.round((scale || 0) * 100) === 50 ? "bg-muted" : ""}
+              className={Math.round(scale * 100) === 50 ? "bg-muted" : ""}
             >
               50%
             </Button>
@@ -105,7 +96,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(0.75)} 
-              className={Math.round((scale || 0) * 100) === 75 ? "bg-muted" : ""}
+              className={Math.round(scale * 100) === 75 ? "bg-muted" : ""}
             >
               75%
             </Button>
@@ -113,7 +104,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(1)} 
-              className={Math.round((scale || 0) * 100) === 100 ? "bg-muted" : ""}
+              className={Math.round(scale * 100) === 100 ? "bg-muted" : ""}
             >
               100%
             </Button>
@@ -163,7 +154,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
           >
             <Page 
               pageNumber={pageNumber} 
-              scale={scale || 0.5}
+              scale={scale}
               onLoadSuccess={onPageLoadSuccess}
               loading={
                 <div className="flex items-center justify-center p-8">
