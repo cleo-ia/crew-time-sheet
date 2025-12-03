@@ -18,7 +18,10 @@ type TodoStatus = "A_FAIRE" | "EN_COURS" | "TERMINE";
 interface KanbanColumn {
   id: TodoStatus;
   title: string;
-  icon: React.ElementType;
+  icon: React.ReactNode;
+  colorClass: string;
+  bgClass: string;
+  headerBg: string;
   todos: TodoChantier[];
 }
 
@@ -38,19 +41,28 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
     {
       id: "A_FAIRE",
       title: "À faire",
-      icon: ListTodo,
+      icon: <ListTodo className="h-4 w-4" />,
+      colorClass: "text-blue-600 dark:text-blue-400",
+      bgClass: "bg-blue-50/50 dark:bg-blue-950/20",
+      headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/5",
       todos: todos.filter((t) => t.statut === "A_FAIRE"),
     },
     {
       id: "EN_COURS",
       title: "En cours",
-      icon: Clock,
+      icon: <Clock className="h-4 w-4" />,
+      colorClass: "text-amber-600 dark:text-amber-400",
+      bgClass: "bg-amber-50/50 dark:bg-amber-950/20",
+      headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
       todos: todos.filter((t) => t.statut === "EN_COURS"),
     },
     {
       id: "TERMINE",
       title: "Terminé",
-      icon: CheckCircle2,
+      icon: <CheckCircle2 className="h-4 w-4" />,
+      colorClass: "text-green-600 dark:text-green-400",
+      bgClass: "bg-green-50/50 dark:bg-green-950/20",
+      headerBg: "bg-gradient-to-r from-green-500/10 to-green-500/5",
       todos: todos.filter((t) => t.statut === "TERMINE"),
     },
   ];
@@ -67,94 +79,136 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Chargement des todos...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {columns.map((column) => {
-          const Icon = column.icon;
-          return (
-            <div key={column.id} className="space-y-3">
-              {/* Column Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-medium">{column.title}</h3>
-                  <Badge variant="secondary" className="ml-1">
-                    {column.todos.length}
-                  </Badge>
-                </div>
-                {column.id === "A_FAIRE" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setIsFormOpen(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+  const totalTodos = todos.length;
 
-              {/* Column Content */}
-              <div className="space-y-2 min-h-[200px]">
+  return (
+    <>
+      {/* Stats header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {totalTodos} todo{totalTodos > 1 ? 's' : ''} au total
+          </span>
+        </div>
+        <Button 
+          size="sm" 
+          onClick={() => setIsFormOpen(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Nouveau todo
+        </Button>
+      </div>
+
+      {/* Kanban board */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {columns.map((column, index) => (
+          <div 
+            key={column.id} 
+            className={`flex flex-col rounded-xl border border-border/50 overflow-hidden ${column.bgClass} animate-fade-in`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
+            {/* Column header */}
+            <div className={`px-4 py-3.5 ${column.headerBg} border-b border-border/30`}>
+              <div className="flex items-center justify-between">
+                <div className={`flex items-center gap-2.5 ${column.colorClass}`}>
+                  {column.icon}
+                  <h3 className="font-semibold text-sm">{column.title}</h3>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${column.bgClass} ${column.colorClass}`}>
+                  {column.todos.length}
+                </span>
+              </div>
+            </div>
+
+            {/* Todos list */}
+            <div className="flex-1">
+              <div className="p-3 space-y-3">
                 {column.todos.length === 0 ? (
-                  <div className="flex items-center justify-center h-[100px] border-2 border-dashed rounded-lg text-muted-foreground/50 text-sm">
-                    Aucun élément
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className={`p-3 rounded-full ${column.bgClass} mb-3`}>
+                      {column.icon}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Aucun élément
+                    </p>
                   </div>
                 ) : (
-                  column.todos.map((todo) => (
-                    <Card
+                  column.todos.map((todo, todoIndex) => (
+                    <div 
                       key={todo.id}
-                      className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleTodoClick(todo)}
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${(index * 100) + (todoIndex * 50)}ms` }}
                     >
-                      <CardContent className="p-3 space-y-2">
-                        {/* Priority & Overdue */}
-                        <div className="flex items-center gap-2">
-                          {isOverdue(todo) && (
-                            <Badge variant="destructive" className="text-xs gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              En retard
-                            </Badge>
+                      <Card
+                        className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] bg-card"
+                        onClick={() => handleTodoClick(todo)}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          {/* Priority & Overdue badges */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {isOverdue(todo) && (
+                              <Badge variant="destructive" className="text-xs gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                En retard
+                              </Badge>
+                            )}
+                            {todo.priorite === "HAUTE" && (
+                              <Badge className={priorityConfig.HAUTE.className}>
+                                {priorityConfig.HAUTE.label}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Title */}
+                          <p className="font-medium text-sm line-clamp-2">{todo.nom}</p>
+
+                          {/* Description preview */}
+                          {todo.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {todo.description}
+                            </p>
                           )}
-                          {todo.priorite && todo.priorite !== "NORMALE" && (
-                            <Badge className={priorityConfig[todo.priorite].className}>
-                              {priorityConfig[todo.priorite].label}
-                            </Badge>
+
+                          {/* Due date */}
+                          {todo.date_echeance && (
+                            <p className={`text-xs ${isOverdue(todo) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                              Échéance: {format(new Date(todo.date_echeance), "d MMM yyyy", { locale: fr })}
+                            </p>
                           )}
-                        </div>
-
-                        {/* Title */}
-                        <p className="font-medium text-sm line-clamp-2">{todo.nom}</p>
-
-                        {/* Description preview */}
-                        {todo.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {todo.description}
-                          </p>
-                        )}
-
-                        {/* Due date */}
-                        {todo.date_echeance && (
-                          <p className={`text-xs ${isOverdue(todo) ? "text-destructive" : "text-muted-foreground"}`}>
-                            Échéance: {format(new Date(todo.date_echeance), "d MMM yyyy", { locale: fr })}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </div>
                   ))
                 )}
               </div>
             </div>
-          );
-        })}
+
+            {/* Add todo button - only in "À faire" column */}
+            {column.id === "A_FAIRE" && (
+              <div className="p-3 border-t border-border/30">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`w-full justify-center gap-2 hover:${column.bgClass} ${column.colorClass} hover:text-blue-700 dark:hover:text-blue-300 transition-colors`}
+                  onClick={() => setIsFormOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Ajouter un todo
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Dialogs */}
@@ -171,6 +225,6 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
           todo={selectedTodo}
         />
       )}
-    </div>
+    </>
   );
 };
