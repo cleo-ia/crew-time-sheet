@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, FolderOpen, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreHorizontal, FileText, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,14 +35,8 @@ interface ChantierDocumentsUploadProps {
   chantierId: string;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -50,7 +44,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   const [dossierToDelete, setDossierToDelete] = useState<ChantierDossier | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
 
@@ -63,44 +57,38 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   const moveDocMutation = useMoveDocumentToFolder();
 
   const isLoading = isLoadingDocs || isLoadingDossiers;
-
-  // Documents sans dossier (à la racine)
-  const rootDocuments = documents.filter(doc => !doc.dossier_id);
-  
-  // Documents groupés par dossier
-  const getDocumentsInFolder = (folderId: string) => 
-    documents.filter(doc => doc.dossier_id === folderId);
+  const currentFolder = currentFolderId ? dossiers.find(d => d.id === currentFolderId) : null;
+  const visibleDocuments = currentFolderId
+    ? documents.filter(doc => doc.dossier_id === currentFolderId)
+    : documents.filter(doc => !doc.dossier_id);
 
   const handleFiles = useCallback(
-    async (files: FileList | File[], dossierId: string | null = null) => {
+    async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
-
       for (const file of fileArray) {
-        if (!ACCEPTED_TYPES.includes(file.type)) {
-          continue;
-        }
-        if (file.size > MAX_FILE_SIZE) {
-          continue;
-        }
-        await uploadMutation.mutateAsync({ chantierId, file, dossierId });
+        if (!ACCEPTED_TYPES.includes(file.type)) continue;
+        if (file.size > MAX_FILE_SIZE) continue;
+        await uploadMutation.mutateAsync({ chantierId, file, dossierId: currentFolderId });
       }
     },
-    [chantierId, uploadMutation]
+    [chantierId, uploadMutation, currentFolderId]
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      handleFiles(e.dataTransfer.files);
+      if (e.dataTransfer.files.length > 0 && !draggedDocId) {
+        handleFiles(e.dataTransfer.files);
+      }
     },
-    [handleFiles]
+    [handleFiles, draggedDocId]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  }, []);
+    if (!draggedDocId) setIsDragging(true);
+  }, [draggedDocId]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -109,16 +97,13 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files) {
-        handleFiles(e.target.files);
-      }
+      if (e.target.files) handleFiles(e.target.files);
     },
     [handleFiles]
   );
 
   const handleDownload = (doc: ChantierDocument) => {
-    const url = getDocumentUrl(doc.file_path);
-    window.open(url, "_blank");
+    window.open(getDocumentUrl(doc.file_path), "_blank");
   };
 
   const handleDeleteConfirm = () => {
@@ -132,6 +117,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     if (dossierToDelete) {
       deleteFolderMutation.mutate({ dossier: dossierToDelete });
       setDossierToDelete(null);
+      if (currentFolderId === dossierToDelete.id) setCurrentFolderId(null);
     }
   };
 
@@ -142,19 +128,6 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     setIsCreatingFolder(false);
   };
 
-  const toggleFolder = (folderId: string) => {
-    setExpandedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
-  };
-
-  // Drag & Drop pour déplacer les documents
   const handleDocDragStart = (e: React.DragEvent, docId: string) => {
     setDraggedDocId(docId);
     e.dataTransfer.effectAllowed = "move";
@@ -165,7 +138,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     setDragOverFolderId(null);
   };
 
-  const handleFolderDragOver = (e: React.DragEvent, folderId: string | null) => {
+  const handleFolderDragOver = (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
     if (draggedDocId) {
       e.dataTransfer.dropEffect = "move";
@@ -173,22 +146,16 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     }
   };
 
-  const handleFolderDragLeave = () => {
-    setDragOverFolderId(null);
-  };
+  const handleFolderDragLeave = () => setDragOverFolderId(null);
 
-  const handleFolderDrop = async (e: React.DragEvent, folderId: string | null) => {
+  const handleFolderDrop = async (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverFolderId(null);
-    
     if (draggedDocId) {
       const doc = documents.find(d => d.id === draggedDocId);
       if (doc && doc.dossier_id !== folderId) {
-        await moveDocMutation.mutateAsync({ 
-          documentId: draggedDocId, 
-          dossierId: folderId,
-          chantierId 
-        });
+        await moveDocMutation.mutateAsync({ documentId: draggedDocId, dossierId: folderId, chantierId });
       }
       setDraggedDocId(null);
     }
@@ -196,284 +163,218 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
   const isImage = (fileType: string) => fileType.startsWith("image/");
 
-  const DocumentItem = ({ doc, inFolder = false }: { doc: ChantierDocument; inFolder?: boolean }) => (
-    <div
-      key={doc.id}
-      draggable
-      onDragStart={(e) => handleDocDragStart(e, doc.id)}
-      onDragEnd={handleDocDragEnd}
-      className={`flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-grab active:cursor-grabbing ${
-        draggedDocId === doc.id ? "opacity-50" : ""
-      } ${inFolder ? "ml-6" : ""}`}
-    >
-      {/* Thumbnail or icon */}
-      {isImage(doc.file_type) ? (
-        <div className="w-10 h-10 rounded overflow-hidden bg-background flex-shrink-0">
-          <img
-            src={getDocumentUrl(doc.file_path)}
-            alt={doc.nom}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <div className="w-10 h-10 rounded bg-background flex items-center justify-center flex-shrink-0">
-          <File className="h-5 w-5 text-muted-foreground" />
-        </div>
-      )}
-
-      {/* File info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{doc.nom}</p>
-        <p className="text-xs text-muted-foreground">
-          {formatFileSize(doc.file_size)}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => handleDownload(doc)}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive hover:text-destructive"
-          onClick={() => setDocumentToDelete(doc)}
-          disabled={deleteMutation.isPending}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
-  const FolderItem = ({ folder }: { folder: ChantierDossier }) => {
-    const isExpanded = expandedFolders.has(folder.id);
-    const folderDocs = getDocumentsInFolder(folder.id);
+  const FolderCard = ({ folder }: { folder: ChantierDossier }) => {
+    const folderDocsCount = documents.filter(d => d.dossier_id === folder.id).length;
     const isDragOver = dragOverFolderId === folder.id;
 
     return (
-      <div className="space-y-1">
-        <div
-          onDragOver={(e) => handleFolderDragOver(e, folder.id)}
-          onDragLeave={handleFolderDragLeave}
-          onDrop={(e) => handleFolderDrop(e, folder.id)}
-          className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors ${
-            isDragOver 
-              ? "bg-primary/10 border-2 border-dashed border-primary" 
-              : "bg-muted/30 hover:bg-muted/50"
-          }`}
-          onClick={() => toggleFolder(folder.id)}
-        >
-          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
+      <div
+        onClick={() => setCurrentFolderId(folder.id)}
+        onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+        onDragLeave={handleFolderDragLeave}
+        onDrop={(e) => handleFolderDrop(e, folder.id)}
+        className={`group relative flex items-center gap-3 p-4 rounded-xl cursor-pointer border transition-all duration-200 ${
+          isDragOver 
+            ? "border-primary bg-primary/10 ring-2 ring-primary/30" 
+            : "border-border bg-card hover:bg-accent/50 hover:border-accent"
+        }`}
+      >
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Folder className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{folder.nom}</p>
+          <p className="text-xs text-muted-foreground">{folderDocsCount} fichier{folderDocsCount !== 1 ? "s" : ""}</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setDossierToDelete(folder); }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
+
+  const DocumentCard = ({ doc }: { doc: ChantierDocument }) => (
+    <div
+      draggable
+      onDragStart={(e) => handleDocDragStart(e, doc.id)}
+      onDragEnd={handleDocDragEnd}
+      className={`group relative rounded-xl border border-border bg-card overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg hover:border-accent ${
+        draggedDocId === doc.id ? "opacity-50 scale-95" : ""
+      }`}
+    >
+      <div className="aspect-[4/3] bg-muted/50 flex items-center justify-center overflow-hidden">
+        {isImage(doc.file_type) ? (
+          <img src={getDocumentUrl(doc.file_path)} alt={doc.nom} className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-muted-foreground">
+            {doc.file_type === "application/pdf" ? (
+              <FileText className="h-12 w-12 text-red-500" />
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <File className="h-12 w-12" />
             )}
-          </Button>
-          {isExpanded ? (
-            <FolderOpen className="h-5 w-5 text-primary" />
-          ) : (
-            <Folder className="h-5 w-5 text-primary" />
-          )}
-          <span className="flex-1 font-medium text-sm">{folder.nom}</span>
-          <span className="text-xs text-muted-foreground">
-            {folderDocs.length} fichier{folderDocs.length !== 1 ? "s" : ""}
-          </span>
+          </div>
+        )}
+      </div>
+      <div className="p-3">
+        <div className="flex items-start gap-2">
+          <div className="flex-shrink-0 mt-0.5">
+            {isImage(doc.file_type) ? (
+              <ImageIcon className="h-4 w-4 text-green-600" />
+            ) : (
+              <FileText className="h-4 w-4 text-red-500" />
+            )}
+          </div>
+          <p className="flex-1 text-sm font-medium truncate" title={doc.nom}>{doc.nom}</p>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mt-0.5 -mr-1">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDossierToDelete(folder);
-                }}
-              >
+              <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDocumentToDelete(doc)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Supprimer
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {isExpanded && (
-          <div className="space-y-2 pl-4 border-l-2 border-muted ml-4">
-            {folderDocs.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2 pl-2">
-                Glissez des fichiers ici
-              </p>
-            ) : (
-              folderDocs.map((doc) => (
-                <DocumentItem key={doc.id} doc={doc} inFolder />
-              ))
-            )}
-          </div>
-        )}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Drop zone */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+        className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+          isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"
         }`}
       >
-        <input
-          type="file"
-          accept=".jpg,.jpeg,.png,.pdf"
-          multiple
-          onChange={handleFileSelect}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
+        <input type="file" accept=".jpg,.jpeg,.png,.pdf" multiple onChange={handleFileSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
         <p className="text-sm font-medium">Cliquez ou glissez-déposez vos fichiers</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Images JPG/PNG, PDF - Max 10 Mo par fichier
-        </p>
+        <p className="text-xs text-muted-foreground mt-1">Images JPG/PNG, PDF - Max 10 Mo par fichier</p>
         {uploadMutation.isPending && (
-          <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-xl">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         )}
       </div>
 
-      {/* Create folder button / form */}
-      {isCreatingFolder ? (
-        <div className="flex items-center gap-2">
-          <Input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Nom du dossier"
-            className="flex-1"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateFolder();
-              if (e.key === "Escape") setIsCreatingFolder(false);
-            }}
-          />
-          <Button 
-            size="sm" 
-            onClick={handleCreateFolder}
-            disabled={!newFolderName.trim() || createFolderMutation.isPending}
-          >
-            Créer
-          </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => {
-              setIsCreatingFolder(false);
-              setNewFolderName("");
-            }}
-          >
-            Annuler
-          </Button>
+      {/* Breadcrumb */}
+      {currentFolderId && (
+        <div className="flex items-center gap-2 text-sm">
+          <button onClick={() => setCurrentFolderId(null)} className="text-primary hover:underline">Fichiers</button>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-medium">{currentFolder?.nom}</span>
         </div>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsCreatingFolder(true)}
-          className="gap-2"
-        >
-          <FolderPlus className="h-4 w-4" />
-          Nouveau dossier
-        </Button>
       )}
 
-      {/* Documents and folders list */}
-      {isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : (dossiers.length > 0 || documents.length > 0) ? (
-        <div className="space-y-3">
-          {/* Dossiers */}
-          {dossiers.map((folder) => (
-            <FolderItem key={folder.id} folder={folder} />
-          ))}
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        {!currentFolderId && (
+          isCreatingFolder ? (
+            <div className="flex items-center gap-2">
+              <Input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Nom du dossier" className="h-9 w-48" autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") setIsCreatingFolder(false); }} />
+              <Button size="sm" onClick={handleCreateFolder} disabled={!newFolderName.trim() || createFolderMutation.isPending}>Créer</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }}>Annuler</Button>
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setIsCreatingFolder(true)} className="gap-2">
+              <FolderPlus className="h-4 w-4" />
+              Nouveau dossier
+            </Button>
+          )
+        )}
+      </div>
 
-          {/* Root documents (drop zone) */}
-          {rootDocuments.length > 0 && (
-            <div
-              onDragOver={(e) => handleFolderDragOver(e, null)}
-              onDragLeave={handleFolderDragLeave}
-              onDrop={(e) => handleFolderDrop(e, null)}
-              className={`space-y-2 ${
-                dragOverFolderId === null && draggedDocId 
-                  ? "p-2 rounded-lg border-2 border-dashed border-primary bg-primary/5" 
-                  : ""
-              }`}
-            >
-              <p className="text-sm font-medium text-muted-foreground">
-                Documents ({rootDocuments.length})
-              </p>
-              {rootDocuments.map((doc) => (
-                <DocumentItem key={doc.id} doc={doc} />
-              ))}
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {!currentFolderId && dossiers.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">Dossiers</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {dossiers.map((folder) => <FolderCard key={folder.id} folder={folder} />)}
+              </div>
+            </div>
+          )}
+
+          {visibleDocuments.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">Fichiers ({visibleDocuments.length})</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {visibleDocuments.map((doc) => <DocumentCard key={doc.id} doc={doc} />)}
+              </div>
+            </div>
+          )}
+
+          {!currentFolderId && dossiers.length === 0 && visibleDocuments.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <File className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Aucun fichier</p>
+              <p className="text-sm">Glissez-déposez des fichiers ou créez un dossier</p>
+            </div>
+          )}
+
+          {currentFolderId && visibleDocuments.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Folder className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Ce dossier est vide</p>
+              <p className="text-sm">Glissez des fichiers ici pour les ajouter</p>
             </div>
           )}
         </div>
-      ) : null}
+      )}
 
-      {/* Delete document confirmation dialog */}
       <AlertDialog open={!!documentToDelete} onOpenChange={() => setDocumentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer le document ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Le document "{documentToDelete?.nom}" sera définitivement supprimé.
-              Cette action est irréversible.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Le document "{documentToDelete?.nom}" sera définitivement supprimé.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete folder confirmation dialog */}
       <AlertDialog open={!!dossierToDelete} onOpenChange={() => setDossierToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer le dossier ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Le dossier "{dossierToDelete?.nom}" sera supprimé. Les fichiers qu'il contient seront déplacés à la racine.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Le dossier "{dossierToDelete?.nom}" sera supprimé. Les fichiers seront déplacés à la racine.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteFolderConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteFolderConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
