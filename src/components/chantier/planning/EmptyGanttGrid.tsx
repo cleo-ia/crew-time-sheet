@@ -274,14 +274,14 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
           <div className="relative">
             {/* Grid rows */}
             {Array.from({ length: NUM_ROWS }).map((_, rowIdx) => (
-              <div key={rowIdx} className="flex border-b border-border/20">
+              <div key={rowIdx} className="flex border-b border-border/40">
                 <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
                 {visibleDays.map(({ date, index }) => {
                   const weekend = isWeekend(date);
                   return (
                     <div
                       key={index}
-                      className={`border-r border-border/10 ${weekend ? "bg-muted/40" : ""}`}
+                      className={`border-r border-border/30 ${weekend ? "bg-muted/40" : ""}`}
                       style={{ width: dayWidth, height: ROW_HEIGHT, flexShrink: 0 }}
                     />
                   );
