@@ -26,6 +26,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -253,6 +259,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
+  const [pdfToView, setPdfToView] = useState<ChantierDocument | null>(null);
 
   const { toast } = useToast();
   const { data: documents = [], isLoading: isLoadingDocs } = useChantierDocuments(chantierId);
@@ -330,36 +337,15 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     [handleFiles]
   );
 
-  const handleOpen = async (doc: ChantierDocument) => {
-    const url = getDocumentUrl(doc.file_path);
-    
-    // Pour les PDFs, utiliser Blob URL pour contourner l'extension Adobe Acrobat
-    // Les extensions Chrome interceptent les URLs .pdf mais pas les blob: URLs
+  const handleOpen = (doc: ChantierDocument) => {
+    // Pour les PDFs, ouvrir dans une modal intégrée
     if (doc.file_type === "application/pdf") {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Erreur lors du chargement");
-        
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Ouvrir dans un nouvel onglet
-        window.open(blobUrl, "_blank");
-        
-        // Cleanup après un délai pour laisser le temps à l'onglet de charger
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-      } catch (error) {
-        console.error("Open PDF error:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible d'ouvrir le PDF.",
-          variant: "destructive",
-        });
-      }
+      setPdfToView(doc);
       return;
     }
     
     // Pour les autres fichiers (images), ouvrir directement
+    const url = getDocumentUrl(doc.file_path);
     const link = document.createElement("a");
     link.href = url;
     link.target = "_blank";
@@ -680,6 +666,34 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Viewer Modal */}
+      <Dialog open={!!pdfToView} onOpenChange={() => setPdfToView(null)}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-red-500" />
+              {pdfToView?.nom}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 p-4 pt-2">
+            <iframe
+              src={pdfToView ? getDocumentUrl(pdfToView.file_path) : ""}
+              className="w-full h-full rounded-lg border"
+              title={pdfToView?.nom}
+            />
+          </div>
+          <div className="p-4 pt-0 border-t flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPdfToView(null)}>
+              Fermer
+            </Button>
+            <Button onClick={() => pdfToView && handleDownload(pdfToView)}>
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
