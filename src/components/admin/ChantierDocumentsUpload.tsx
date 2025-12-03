@@ -27,6 +27,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -334,23 +336,52 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     [handleFiles]
   );
 
-  const handleOpen = (doc: ChantierDocument) => {
-    const url = getDocumentUrl(doc.file_path);
-    if (isImageFile(doc.file_type)) {
-      setLightboxImage(url);
-    } else if (doc.file_type === "application/pdf") {
-      setPdfViewerUrl(url);
+  const handleOpen = async (doc: ChantierDocument) => {
+    try {
+      const url = getDocumentUrl(doc.file_path);
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors du chargement");
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      if (isImageFile(doc.file_type)) {
+        setLightboxImage(blobUrl);
+      } else if (doc.file_type === "application/pdf") {
+        setPdfViewerUrl(blobUrl);
+      }
+    } catch (error) {
+      console.error("Open error:", error);
     }
   };
 
-  const handleDownload = (doc: ChantierDocument) => {
-    const url = getDocumentUrl(doc.file_path);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = doc.nom;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (doc: ChantierDocument) => {
+    try {
+      const url = getDocumentUrl(doc.file_path);
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors du téléchargement");
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = doc.nom;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
   };
 
   const handleDeleteConfirm = () => {
@@ -640,13 +671,22 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
       </AlertDialog>
 
       {/* Image Lightbox */}
-      <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-black/90 border-none">
+      <Dialog open={!!lightboxImage} onOpenChange={(open) => {
+        if (!open && lightboxImage) {
+          URL.revokeObjectURL(lightboxImage);
+          setLightboxImage(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl p-0 bg-black/90 border-none" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">Aperçu de l'image</DialogTitle>
           <Button
             variant="ghost"
             size="icon"
             className="absolute top-2 right-2 z-10 text-white hover:bg-white/20"
-            onClick={() => setLightboxImage(null)}
+            onClick={() => {
+              if (lightboxImage) URL.revokeObjectURL(lightboxImage);
+              setLightboxImage(null);
+            }}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -661,13 +701,22 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
       </Dialog>
 
       {/* PDF Viewer */}
-      <Dialog open={!!pdfViewerUrl} onOpenChange={() => setPdfViewerUrl(null)}>
-        <DialogContent className="max-w-5xl h-[90vh] p-0">
+      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => {
+        if (!open && pdfViewerUrl) {
+          URL.revokeObjectURL(pdfViewerUrl);
+          setPdfViewerUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl h-[90vh] p-0" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">Lecteur PDF</DialogTitle>
           <Button
             variant="ghost"
             size="icon"
             className="absolute top-2 right-2 z-10"
-            onClick={() => setPdfViewerUrl(null)}
+            onClick={() => {
+              if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl);
+              setPdfViewerUrl(null);
+            }}
           >
             <X className="h-5 w-5" />
           </Button>
