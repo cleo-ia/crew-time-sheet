@@ -595,20 +595,20 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
       {/* Legend */}
       <div className="flex flex-wrap gap-4 px-4 py-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-orange-400" />
-          <span>En cours</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-green-500" />
-          <span>Terminé</span>
-        </div>
-        <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-gray-400" />
           <span>À venir</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-orange-400" />
+          <span>En cours</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-red-500" />
           <span>En retard</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-green-500" />
+          <span>Terminé</span>
         </div>
         {planningTodos.length > 0 && (
           <div className="flex items-center gap-1.5">
