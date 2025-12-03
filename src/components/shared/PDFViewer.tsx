@@ -32,18 +32,18 @@ export function PDFViewer({ url }: PDFViewerProps) {
     setIsLoading(false);
   };
 
-  const onPageLoadSuccess = ({ width, height }: { width: number; height: number }) => {
-    setPdfWidth(width);
-    setPdfHeight(height);
+  const onPageLoadSuccess = ({ originalWidth, originalHeight }: { originalWidth: number; originalHeight: number }) => {
+    setPdfWidth(originalWidth);
+    setPdfHeight(originalHeight);
     // Auto-fit au premier chargement - ajuster pour voir le document EN ENTIER
-    if (scale === null && containerRef.current && width > 0 && height > 0) {
+    if (scale === null && containerRef.current && originalWidth > 0 && originalHeight > 0) {
       const containerWidth = containerRef.current.clientWidth - 32;
       const containerHeight = containerRef.current.clientHeight - 32;
-      const scaleToFitWidth = containerWidth / width;
-      const scaleToFitHeight = containerHeight / height;
+      const scaleToFitWidth = containerWidth / originalWidth;
+      const scaleToFitHeight = containerHeight / originalHeight;
       // Prendre le plus petit pour que le document tienne entièrement
       const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
-      setScale(Math.min(Math.max(newScale, 0.1), 2));
+      setScale(Math.min(Math.max(newScale, 0.05), 2)); // Min 5% pour très grands docs
     }
   };
 
@@ -55,7 +55,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
       const scaleToFitWidth = containerWidth / pdfWidth;
       const scaleToFitHeight = containerHeight / pdfHeight;
       const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
-      setScale(Math.min(Math.max(newScale, 0.1), 2));
+      setScale(Math.min(Math.max(newScale, 0.05), 2)); // Min 5% pour très grands docs
     }
   }, [pdfWidth, pdfHeight]);
 
