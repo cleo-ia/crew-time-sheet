@@ -281,7 +281,7 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
           }
         });
 
-        // Merge task bar cells and add task name
+        // Merge task bar cells (colored bar without text)
         if (startDayIndex !== -1 && endDayIndex !== -1) {
           const startCol = baseColumns.length + 1 + startDayIndex;
           const endCol = baseColumns.length + 1 + endDayIndex;
@@ -291,22 +291,12 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
             worksheet.mergeCells(actualRowNumber, startCol, actualRowNumber, endCol);
           }
           
-          // Style the merged cell (or single cell) with task name
+          // Style the merged cell (colored bar only)
           const taskBarCell = row.getCell(startCol);
-          taskBarCell.value = tache.nom;
           taskBarCell.fill = {
             type: "pattern",
             pattern: "solid",
             fgColor: { argb: STATUS_COLORS[computedStatus] },
-          };
-          taskBarCell.font = { 
-            color: { argb: "FFFFFFFF" }, 
-            bold: true, 
-            size: 9 
-          };
-          taskBarCell.alignment = { 
-            horizontal: "center", 
-            vertical: "middle" 
           };
         }
 
@@ -336,6 +326,11 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
           };
         });
       });
+
+      // Freeze panes: columns A-G (7 columns) and rows 1-3 (headers)
+      worksheet.views = [
+        { state: "frozen", xSplit: baseColumns.length, ySplit: 3, topLeftCell: "H4" }
+      ];
 
       // Generate and download file
       const buffer = await workbook.xlsx.writeBuffer();
