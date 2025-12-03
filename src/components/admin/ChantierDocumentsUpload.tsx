@@ -192,7 +192,7 @@ const FolderCard = ({
         isDragOver ? "border-primary bg-primary/10" : "border-transparent"
       }`}
     >
-      <Folder className="h-10 w-10 text-blue-500 flex-shrink-0" fill="currentColor" />
+      <Folder className="h-10 w-10 text-primary flex-shrink-0" fill="currentColor" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{folder.nom}</p>
         <p className="text-xs text-muted-foreground">
@@ -430,7 +430,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
         
         {currentFolder && (
           <div className="flex items-center gap-2 text-sm">
-            <Folder className="h-4 w-4 text-blue-500" />
+            <Folder className="h-4 w-4 text-primary" />
             <span className="font-medium">{currentFolder.nom}</span>
           </div>
         )}
