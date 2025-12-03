@@ -7,6 +7,7 @@ export type ZoomLevel = "month" | "quarter" | "semester" | "year";
 interface EmptyGanttGridProps {
   startDate: Date;
   numDays?: number;
+  numRows?: number;
   zoomLevel?: ZoomLevel;
   showDates?: boolean;
   onScrollChange?: (scrollLeft: number, containerWidth: number) => void;
@@ -20,7 +21,7 @@ export interface EmptyGanttGridRef {
 }
 
 const ROW_HEIGHT = 48;
-const NUM_ROWS = 8;
+const DEFAULT_NUM_ROWS = 8;
 const BUFFER_DAYS = 60; // Days to render outside visible area
 
 // Day width based on zoom level
@@ -40,7 +41,8 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
 };
 
 export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>(
-  ({ startDate, numDays = 90, zoomLevel = "month", showDates = true, onScrollChange, children }, ref) => {
+  ({ startDate, numDays = 90, numRows, zoomLevel = "month", showDates = true, onScrollChange, children }, ref) => {
+    const actualNumRows = Math.max(numRows ?? DEFAULT_NUM_ROWS, DEFAULT_NUM_ROWS);
     const containerRef = useRef<HTMLDivElement>(null);
     const [scrollLeft, setScrollLeft] = useState(0);
     const [containerWidth, setContainerWidth] = useState(1200);
@@ -273,7 +275,7 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
           {/* Grid body with rows */}
           <div className="relative">
             {/* Grid rows */}
-            {Array.from({ length: NUM_ROWS }).map((_, rowIdx) => (
+            {Array.from({ length: actualNumRows }).map((_, rowIdx) => (
               <div key={rowIdx} className="flex border-b border-border/40">
                 <div style={{ width: leftSpacerWidth, flexShrink: 0 }} />
                 {visibleDays.map(({ date, index }) => {
