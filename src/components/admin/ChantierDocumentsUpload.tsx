@@ -254,14 +254,24 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   // Get current folder info
   const currentFolder = currentFolderId ? dossiers.find(f => f.id === currentFolderId) : null;
 
+  // Filter folders based on current view (show subfolders of current folder)
+  const displayedFolders = currentFolderId
+    ? dossiers.filter(folder => folder.parent_id === currentFolderId)
+    : dossiers.filter(folder => !folder.parent_id);
+
   // Filter documents based on current view
   const displayedDocuments = currentFolderId
     ? documents.filter(doc => doc.dossier_id === currentFolderId)
     : documents.filter(doc => !doc.dossier_id);
 
-  // Get file count per folder
+  // Get file count per folder (including subfolders content)
   const getFileCountForFolder = (folderId: string) => {
     return documents.filter(doc => doc.dossier_id === folderId).length;
+  };
+
+  // Get subfolder count per folder
+  const getSubfolderCountForFolder = (folderId: string) => {
+    return dossiers.filter(folder => folder.parent_id === folderId).length;
   };
 
   const handleFiles = useCallback(
@@ -330,7 +340,11 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    await createFolderMutation.mutateAsync({ chantierId, nom: newFolderName.trim() });
+    await createFolderMutation.mutateAsync({ 
+      chantierId, 
+      nom: newFolderName.trim(),
+      parentId: currentFolderId 
+    });
     setNewFolderName("");
     setIsCreatingFolder(false);
   };
@@ -433,7 +447,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setCurrentFolderId(null)}
+            onClick={() => setCurrentFolderId(currentFolder?.parent_id ?? null)}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -450,65 +464,63 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
         <div className="flex-1" />
 
-        {!currentFolderId && (
-          isCreatingFolder ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Nom du dossier"
-                className="h-9 w-48"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateFolder();
-                  if (e.key === "Escape") {
-                    setIsCreatingFolder(false);
-                    setNewFolderName("");
-                  }
-                }}
-                autoFocus
-              />
-              <Button 
-                size="sm" 
-                onClick={handleCreateFolder}
-                disabled={!newFolderName.trim() || createFolderMutation.isPending}
-              >
-                Créer
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
+        {isCreatingFolder ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="Nom du dossier"
+              className="h-9 w-48"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateFolder();
+                if (e.key === "Escape") {
                   setIsCreatingFolder(false);
                   setNewFolderName("");
-                }}
-              >
-                Annuler
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreatingFolder(true)}
-              className="gap-2"
+                }
+              }}
+              autoFocus
+            />
+            <Button 
+              size="sm" 
+              onClick={handleCreateFolder}
+              disabled={!newFolderName.trim() || createFolderMutation.isPending}
             >
-              <FolderPlus className="h-4 w-4" />
-              Nouveau dossier
+              Créer
             </Button>
-          )
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setIsCreatingFolder(false);
+                setNewFolderName("");
+              }}
+            >
+              Annuler
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCreatingFolder(true)}
+            className="gap-2"
+          >
+            <FolderPlus className="h-4 w-4" />
+            Nouveau dossier
+          </Button>
         )}
       </div>
 
-      {/* Folders Grid (only at root level) */}
-      {!currentFolderId && dossiers.length > 0 && (
+      {/* Folders Grid */}
+      {displayedFolders.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-muted-foreground mb-3">Dossiers</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {dossiers.map((folder) => (
+            {displayedFolders.map((folder) => (
               <FolderCard
                 key={folder.id}
                 folder={folder}
-                fileCount={getFileCountForFolder(folder.id)}
+                fileCount={getFileCountForFolder(folder.id) + getSubfolderCountForFolder(folder.id)}
                 onOpen={() => setCurrentFolderId(folder.id)}
                 onDelete={() => setDossierToDelete(folder)}
                 onDrop={(e) => handleFolderDrop(e, folder.id)}

@@ -18,6 +18,7 @@ export interface ChantierDossier {
   id: string;
   chantier_id: string;
   nom: string;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -196,10 +197,10 @@ export function useCreateChantierDossier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ chantierId, nom }: { chantierId: string; nom: string }) => {
+    mutationFn: async ({ chantierId, nom, parentId = null }: { chantierId: string; nom: string; parentId?: string | null }) => {
       const { data, error } = await supabase
         .from("chantiers_dossiers")
-        .insert({ chantier_id: chantierId, nom })
+        .insert({ chantier_id: chantierId, nom, parent_id: parentId })
         .select()
         .single();
 
