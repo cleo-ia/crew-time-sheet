@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,6 +254,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
 
+  const { toast } = useToast();
   const { data: documents = [], isLoading: isLoadingDocs } = useChantierDocuments(chantierId);
   const { data: dossiers = [], isLoading: isLoadingDossiers } = useChantierDossiers(chantierId);
   const uploadMutation = useUploadChantierDocument();
@@ -328,16 +330,38 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     [handleFiles]
   );
 
-  const handleOpen = (doc: ChantierDocument) => {
+  const handleOpen = async (doc: ChantierDocument) => {
     const url = getDocumentUrl(doc.file_path);
     
-    // Pour les PDFs, utiliser Google Docs Viewer pour contourner l'extension Adobe Acrobat
-    const finalUrl = doc.file_type === "application/pdf"
-      ? `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
-      : url;
+    // Pour les PDFs, utiliser Blob URL pour contourner l'extension Adobe Acrobat
+    // Les extensions Chrome interceptent les URLs .pdf mais pas les blob: URLs
+    if (doc.file_type === "application/pdf") {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Erreur lors du chargement");
+        
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Ouvrir dans un nouvel onglet
+        window.open(blobUrl, "_blank");
+        
+        // Cleanup après un délai pour laisser le temps à l'onglet de charger
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      } catch (error) {
+        console.error("Open PDF error:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible d'ouvrir le PDF.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     
+    // Pour les autres fichiers (images), ouvrir directement
     const link = document.createElement("a");
-    link.href = finalUrl;
+    link.href = url;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
