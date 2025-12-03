@@ -136,33 +136,35 @@ export function PDFViewer({ url }: PDFViewerProps) {
       </div>
       
       {/* PDF Content avec ref pour mesurer */}
-      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center p-4 bg-muted/30 rounded-b-lg">
+      <div ref={containerRef} className="flex-1 overflow-auto p-4 bg-muted/30 rounded-b-lg">
         {error ? (
-          <div className="flex items-center justify-center text-destructive">
+          <div className="flex items-center justify-center h-full text-destructive">
             {error}
           </div>
         ) : (
-          <Document 
-            file={url} 
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            }
-          >
-            <Page 
-              pageNumber={pageNumber} 
-              scale={scale}
-              onLoadSuccess={onPageLoadSuccess}
+          <div className="min-w-fit min-h-fit mx-auto">
+            <Document 
+              file={url} 
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
               loading={
                 <div className="flex items-center justify-center p-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               }
-            />
-          </Document>
+            >
+              <Page 
+                pageNumber={pageNumber} 
+                scale={scale}
+                onLoadSuccess={onPageLoadSuccess}
+                loading={
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                }
+              />
+            </Document>
+          </div>
         )}
       </div>
     </div>
