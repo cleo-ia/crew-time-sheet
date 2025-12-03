@@ -6,12 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Upload, X, FileText, Image as ImageIcon, Download, ExternalLink } from "lucide-react";
+import { Trash2, Upload, FileText, Image as ImageIcon, Download, ExternalLink, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TodoChantier } from "@/hooks/useTodosChantier";
 import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 import { useDeleteTodo } from "@/hooks/useDeleteTodo";
 import { useTodoDocuments, TodoDocument } from "@/hooks/useTodoDocuments";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface TodoDetailDialogProps {
   open: boolean;
@@ -22,12 +25,40 @@ interface TodoDetailDialogProps {
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
 
+const isImageFile = (fileType: string) => fileType.startsWith("image/");
+
+const getFileIcon = (fileType: string) => {
+  if (fileType.startsWith("image/")) {
+    return <ImageIcon className="h-8 w-8 text-muted-foreground" />;
+  }
+  if (fileType === "application/pdf") {
+    return <FileText className="h-8 w-8 text-red-500" />;
+  }
+  return <FileText className="h-8 w-8 text-muted-foreground" />;
+};
+
+const getSmallFileIcon = (fileType: string) => {
+  if (fileType.startsWith("image/")) {
+    return <ImageIcon className="h-4 w-4 text-green-600 flex-shrink-0" />;
+  }
+  if (fileType === "application/pdf") {
+    return <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />;
+  }
+  return <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+};
+
+const formatFileDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return format(date, "d MMM yyyy", { locale: fr });
+};
+
 export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogProps) => {
   const [nom, setNom] = useState(todo.nom);
   const [description, setDescription] = useState(todo.description || "");
   const [statut, setStatut] = useState(todo.statut);
   const [priorite, setPriorite] = useState(todo.priorite || "NORMALE");
   const [dateEcheance, setDateEcheance] = useState(todo.date_echeance || "");
+  const [docToDelete, setDocToDelete] = useState<TodoDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateTodo = useUpdateTodo();
@@ -85,24 +116,45 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleDeleteDocument = async (doc: TodoDocument) => {
-    await deleteDocument.mutateAsync(doc);
+  const handleDeleteDocument = async () => {
+    if (docToDelete) {
+      await deleteDocument.mutateAsync(docToDelete);
+      setDocToDelete(null);
+    }
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.startsWith("image/")) return <ImageIcon className="h-4 w-4" />;
-    return <FileText className="h-4 w-4" />;
+  const handleOpenDocument = (doc: TodoDocument) => {
+    const url = getPublicUrl(doc.file_path);
+    window.open(url, "_blank");
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const handleDownload = async (doc: TodoDocument) => {
+    try {
+      const url = getPublicUrl(doc.file_path);
+      const response = await fetch(url);
+      
+      if (!response.ok) throw new Error("Erreur lors du téléchargement");
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = doc.nom;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Erreur lors du téléchargement");
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between pr-8">
             <DialogTitle>Détail du Todo</DialogTitle>
@@ -192,7 +244,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
           </div>
 
           {/* Documents section */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Documents</Label>
             
             {/* Upload zone */}
@@ -217,77 +269,89 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
               onChange={handleFileSelect}
             />
 
-            {/* Existing documents list */}
+            {/* Documents grid - card style like Fichiers tab */}
             {docsLoading ? (
-              <div className="text-sm text-muted-foreground text-center py-2">
+              <div className="text-sm text-muted-foreground text-center py-4">
                 Chargement...
               </div>
             ) : documents.length > 0 ? (
-              <div className="space-y-2 mt-3">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center gap-2 p-2 bg-muted/50 rounded-md group"
-                  >
-                    {getFileIcon(doc.file_type)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{doc.nom}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(doc.file_size)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => window.open(getPublicUrl(doc.file_path), "_blank")}
-                        title="Ouvrir"
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                {documents.map((doc) => {
+                  const publicUrl = getPublicUrl(doc.file_path);
+                  
+                  return (
+                    <div
+                      key={doc.id}
+                      className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all"
+                    >
+                      {/* Preview Area */}
+                      <div 
+                        className="h-24 bg-muted/30 flex items-center justify-center overflow-hidden relative cursor-pointer"
+                        onClick={() => handleOpenDocument(doc)}
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                      <a
-                        href={getPublicUrl(doc.file_path)}
-                        download={doc.nom}
-                        className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent"
-                        title="Télécharger"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </a>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            title="Supprimer"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer ce fichier ?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Le fichier "{doc.nom}" sera définitivement supprimé.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteDocument(doc)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Supprimer
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        {isImageFile(doc.file_type) ? (
+                          <img
+                            src={publicUrl}
+                            alt={doc.nom}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            {getFileIcon(doc.file_type)}
+                            <span className="text-xs text-muted-foreground uppercase font-medium">
+                              {doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Menu overlay */}
+                        <div 
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm">
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenDocument(doc)}>
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Ouvrir
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Télécharger
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => setDocToDelete(doc)} 
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* File Info */}
+                      <div className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          {getSmallFileIcon(doc.file_type)}
+                          <p className="text-xs font-medium truncate flex-1" title={doc.nom}>
+                            {doc.nom}
+                          </p>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                          {formatFileDate(doc.created_at)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-2">
@@ -305,6 +369,27 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
             </Button>
           </div>
         </div>
+
+        {/* Delete document confirmation */}
+        <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer ce fichier ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Le fichier "{docToDelete?.nom}" sera définitivement supprimé.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteDocument}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
