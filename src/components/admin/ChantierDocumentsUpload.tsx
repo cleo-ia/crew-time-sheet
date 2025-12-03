@@ -58,6 +58,16 @@ const getFileIcon = (fileType: string) => {
   return <File className="h-8 w-8 text-muted-foreground" />;
 };
 
+const getSmallFileIcon = (fileType: string) => {
+  if (fileType.startsWith("image/")) {
+    return <Image className="h-4 w-4 text-green-600 flex-shrink-0" />;
+  }
+  if (fileType === "application/pdf") {
+    return <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />;
+  }
+  return <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+};
+
 // File Card Component
 const FileCard = ({
   doc,
@@ -151,10 +161,13 @@ const FileCard = ({
 
       {/* File Info */}
       <div className="p-3">
-        <p className="text-sm font-medium truncate" title={doc.nom}>
-          {doc.nom}
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <div className="flex items-center gap-2">
+          {getSmallFileIcon(doc.file_type)}
+          <p className="text-sm font-medium truncate flex-1" title={doc.nom}>
+            {doc.nom}
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 pl-6">
           Ajouté le {formatFileDate(doc.created_at)}
         </p>
       </div>
