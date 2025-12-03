@@ -238,14 +238,23 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
           heures_realisees: tache.heures_realisees || "-",
         };
 
-        // Fill day cells based on task dates
+        // Find start and end day indices for this task
+        let startDayIndex = -1;
+        let endDayIndex = -1;
+        
         days.forEach((day, dayIndex) => {
           const dayTime = day.getTime();
           const overlaps = dayTime >= dateDebut.getTime() && dayTime <= dateFin.getTime();
-          rowData[`day_${dayIndex}`] = overlaps ? "●" : "";
+          if (overlaps) {
+            if (startDayIndex === -1) startDayIndex = dayIndex;
+            endDayIndex = dayIndex;
+          }
+          // Initialize all day cells as empty
+          rowData[`day_${dayIndex}`] = "";
         });
 
         const row = worksheet.addRow(rowData);
+        const actualRowNumber = row.number;
         
         // Style status cell with color
         const statusCell = row.getCell(2);
@@ -257,22 +266,13 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
         statusCell.font = { color: { argb: "FFFFFFFF" }, bold: true, size: 9 };
         statusCell.alignment = { horizontal: "center" };
 
-        // Style day cells with task color or weekend gray
+        // Style weekend cells (only for cells outside the task bar)
         days.forEach((day, dayIndex) => {
-          const dayTime = day.getTime();
-          const overlaps = dayTime >= dateDebut.getTime() && dayTime <= dateFin.getTime();
           const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-          const cell = row.getCell(baseColumns.length + 1 + dayIndex);
+          const isInTaskRange = dayIndex >= startDayIndex && dayIndex <= endDayIndex;
           
-          if (overlaps) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: STATUS_COLORS[computedStatus] },
-            };
-            cell.font = { color: { argb: STATUS_COLORS[computedStatus] }, size: 9 };
-            cell.alignment = { horizontal: "center" };
-          } else if (isWeekend) {
+          if (!isInTaskRange && isWeekend) {
+            const cell = row.getCell(baseColumns.length + 1 + dayIndex);
             cell.fill = {
               type: "pattern",
               pattern: "solid",
@@ -280,6 +280,35 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
             };
           }
         });
+
+        // Merge task bar cells and add task name
+        if (startDayIndex !== -1 && endDayIndex !== -1) {
+          const startCol = baseColumns.length + 1 + startDayIndex;
+          const endCol = baseColumns.length + 1 + endDayIndex;
+          
+          // Merge cells for the task bar
+          if (endCol > startCol) {
+            worksheet.mergeCells(actualRowNumber, startCol, actualRowNumber, endCol);
+          }
+          
+          // Style the merged cell (or single cell) with task name
+          const taskBarCell = row.getCell(startCol);
+          taskBarCell.value = tache.nom;
+          taskBarCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: STATUS_COLORS[computedStatus] },
+          };
+          taskBarCell.font = { 
+            color: { argb: "FFFFFFFF" }, 
+            bold: true, 
+            size: 9 
+          };
+          taskBarCell.alignment = { 
+            horizontal: "center", 
+            vertical: "middle" 
+          };
+        }
 
         // Alternate row background for base columns
         if (rowIndex % 2 === 1) {
