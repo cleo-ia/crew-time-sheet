@@ -13,7 +13,7 @@ interface PDFViewerProps {
 export function PDFViewer({ url }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(0.5); // Zoom initial à 50%
+  const [scale, setScale] = useState<number | null>(null); // null = auto-fit au chargement
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfWidth, setPdfWidth] = useState<number>(0);
@@ -33,6 +33,12 @@ export function PDFViewer({ url }: PDFViewerProps) {
 
   const onPageLoadSuccess = ({ width }: { width: number }) => {
     setPdfWidth(width);
+    // Auto-fit au premier chargement
+    if (scale === null && containerRef.current && width > 0) {
+      const containerWidth = containerRef.current.clientWidth - 32;
+      const newScale = containerWidth / width;
+      setScale(Math.min(Math.max(newScale, 0.1), 2));
+    }
   };
 
   // Calcule le scale pour ajuster à la largeur
@@ -52,17 +58,17 @@ export function PDFViewer({ url }: PDFViewerProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setScale(s => Math.max(0.25, s - 0.1))}
-            disabled={scale <= 0.25}
+            onClick={() => setScale(s => Math.max(0.25, (s || 0.5) - 0.1))}
+            disabled={(scale || 0.5) <= 0.25}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm min-w-[50px] text-center">{Math.round(scale * 100)}%</span>
+          <span className="text-sm min-w-[50px] text-center">{Math.round((scale || 0.5) * 100)}%</span>
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setScale(s => Math.min(2, s + 0.1))}
-            disabled={scale >= 2}
+            onClick={() => setScale(s => Math.min(2, (s || 0.5) + 0.1))}
+            disabled={(scale || 0.5) >= 2}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -82,7 +88,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(0.5)} 
-              className={scale === 0.5 ? "bg-muted" : ""}
+              className={Math.round((scale || 0) * 100) === 50 ? "bg-muted" : ""}
             >
               50%
             </Button>
@@ -90,7 +96,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(0.75)} 
-              className={scale === 0.75 ? "bg-muted" : ""}
+              className={Math.round((scale || 0) * 100) === 75 ? "bg-muted" : ""}
             >
               75%
             </Button>
@@ -98,7 +104,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => setScale(1)} 
-              className={scale === 1 ? "bg-muted" : ""}
+              className={Math.round((scale || 0) * 100) === 100 ? "bg-muted" : ""}
             >
               100%
             </Button>
@@ -148,7 +154,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
           >
             <Page 
               pageNumber={pageNumber} 
-              scale={scale}
+              scale={scale || 0.5}
               onLoadSuccess={onPageLoadSuccess}
               loading={
                 <div className="flex items-center justify-center p-8">
