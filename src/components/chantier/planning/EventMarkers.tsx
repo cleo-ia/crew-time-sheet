@@ -80,11 +80,15 @@ export const EventMarkers = ({
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragState) return;
     const deltaX = e.clientX - dragState.startX;
-    setDragOffset(deltaX);
+    
+    // Snap to grid: arrondir au jour le plus proche
+    const snappedX = Math.round(deltaX / dayWidth) * dayWidth;
+    
+    setDragOffset(snappedX);
     if (Math.abs(deltaX) > 5) {
       setJustDragged(true);
     }
-  }, [dragState]);
+  }, [dragState, dayWidth]);
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
