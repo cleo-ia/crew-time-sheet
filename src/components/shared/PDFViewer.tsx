@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 // Configuration du worker PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -13,9 +13,11 @@ interface PDFViewerProps {
 export function PDFViewer({ url }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
+  const [scale, setScale] = useState<number>(0.5); // Zoom initial à 50%
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfWidth, setPdfWidth] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -29,16 +31,29 @@ export function PDFViewer({ url }: PDFViewerProps) {
     setIsLoading(false);
   };
 
+  const onPageLoadSuccess = ({ width }: { width: number }) => {
+    setPdfWidth(width);
+  };
+
+  // Calcule le scale pour ajuster à la largeur
+  const fitToWidth = useCallback(() => {
+    if (containerRef.current && pdfWidth > 0) {
+      const containerWidth = containerRef.current.clientWidth - 32; // -32 pour le padding
+      const newScale = containerWidth / pdfWidth;
+      setScale(Math.min(Math.max(newScale, 0.25), 2)); // Entre 25% et 200%
+    }
+  }, [pdfWidth]);
+
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between p-2 border-b bg-muted/50 rounded-t-lg">
-        <div className="flex items-center gap-2">
+      {/* Toolbar améliorée */}
+      <div className="flex items-center justify-between p-2 border-b bg-muted/50 rounded-t-lg flex-wrap gap-2">
+        <div className="flex items-center gap-1">
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setScale(s => Math.max(0.5, s - 0.1))}
-            disabled={scale <= 0.5}
+            onClick={() => setScale(s => Math.max(0.25, s - 0.1))}
+            disabled={scale <= 0.25}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
@@ -51,6 +66,43 @@ export function PDFViewer({ url }: PDFViewerProps) {
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
+          {/* Bouton Ajuster à la largeur */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fitToWidth} 
+            title="Ajuster à la largeur"
+            disabled={pdfWidth === 0}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+          {/* Presets de zoom */}
+          <div className="hidden sm:flex items-center gap-1 ml-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setScale(0.5)} 
+              className={scale === 0.5 ? "bg-muted" : ""}
+            >
+              50%
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setScale(0.75)} 
+              className={scale === 0.75 ? "bg-muted" : ""}
+            >
+              75%
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setScale(1)} 
+              className={scale === 1 ? "bg-muted" : ""}
+            >
+              100%
+            </Button>
+          </div>
         </div>
         {numPages > 0 && (
           <div className="flex items-center gap-2">
@@ -77,8 +129,8 @@ export function PDFViewer({ url }: PDFViewerProps) {
         )}
       </div>
       
-      {/* PDF Content */}
-      <div className="flex-1 overflow-auto flex justify-center p-4 bg-muted/30 rounded-b-lg">
+      {/* PDF Content avec ref pour mesurer */}
+      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center p-4 bg-muted/30 rounded-b-lg">
         {error ? (
           <div className="flex items-center justify-center text-destructive">
             {error}
@@ -97,6 +149,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
             <Page 
               pageNumber={pageNumber} 
               scale={scale}
+              onLoadSuccess={onPageLoadSuccess}
               loading={
                 <div className="flex items-center justify-center p-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
