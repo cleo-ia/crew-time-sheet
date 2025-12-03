@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { differenceInDays, format } from "date-fns";
+import { useMemo, useState, useCallback } from "react";
+import { differenceInDays, format, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TodoChantier } from "@/hooks/useTodosChantier";
+import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 import { ZoomLevel } from "./EmptyGanttGrid";
 
 interface EventMarkersProps {
@@ -41,6 +42,16 @@ export const EventMarkers = ({
   tasksCount 
 }: EventMarkersProps) => {
   const dayWidth = getDayWidth(zoomLevel);
+  const updateTodo = useUpdateTodo();
+
+  // Drag state
+  const [dragState, setDragState] = useState<{
+    todoId: string;
+    startX: number;
+    originalOffset: number;
+  } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [justDragged, setJustDragged] = useState(false);
 
   // Filter todos that have date_echeance and afficher_planning
   const events = useMemo(() => {
@@ -54,27 +65,88 @@ export const EventMarkers = ({
       .sort((a, b) => a.dayOffset - b.dayOffset);
   }, [todos, startDate]);
 
+  const handleMouseDown = useCallback((e: React.MouseEvent, todoId: string, originalOffset: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragState({
+      todoId,
+      startX: e.clientX,
+      originalOffset
+    });
+    setDragOffset(0);
+    setJustDragged(false);
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragState) return;
+    const deltaX = e.clientX - dragState.startX;
+    setDragOffset(deltaX);
+    if (Math.abs(deltaX) > 5) {
+      setJustDragged(true);
+    }
+  }, [dragState]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!dragState) return;
+
+    const daysMoved = Math.round(dragOffset / dayWidth);
+    
+    if (daysMoved !== 0) {
+      const event = events.find(e => e.todo.id === dragState.todoId);
+      if (event) {
+        const newDate = addDays(event.echeanceDate, daysMoved);
+        updateTodo.mutate({
+          id: event.todo.id,
+          chantier_id: event.todo.chantier_id,
+          date_echeance: format(newDate, "yyyy-MM-dd")
+        });
+      }
+    }
+
+    setDragState(null);
+    setDragOffset(0);
+    
+    // Reset justDragged after a short delay
+    setTimeout(() => setJustDragged(false), 100);
+  }, [dragState, dragOffset, dayWidth, events, updateTodo]);
+
+  const handleClick = useCallback((e: React.MouseEvent, todo: TodoChantier) => {
+    if (justDragged) {
+      e.stopPropagation();
+      return;
+    }
+    onEventClick(todo);
+  }, [justDragged, onEventClick]);
+
   if (events.length === 0) return null;
 
   return (
     <div 
       className="absolute left-0 right-0 pointer-events-none z-20"
       style={{ top: tasksCount * ROW_HEIGHT }}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     >
       {events.map((event, idx) => {
-        const leftPosition = event.dayOffset * dayWidth + dayWidth / 2 - 10;
+        const isDragging = dragState?.todoId === event.todo.id;
+        const currentDragOffset = isDragging ? dragOffset : 0;
+        const leftPosition = event.dayOffset * dayWidth + dayWidth / 2 - 10 + currentDragOffset;
         const topPosition = idx * ROW_HEIGHT + (ROW_HEIGHT - 20) / 2;
 
         return (
           <div
             key={event.todo.id}
-            className="absolute pointer-events-auto cursor-pointer group"
+            className={`absolute pointer-events-auto group ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             style={{
               left: leftPosition,
               top: topPosition,
               height: 20,
+              opacity: isDragging ? 0.8 : 1,
+              transition: isDragging ? 'none' : 'opacity 0.2s'
             }}
-            onClick={() => onEventClick(event.todo)}
+            onMouseDown={(e) => handleMouseDown(e, event.todo.id, event.dayOffset)}
+            onClick={(e) => handleClick(e, event.todo)}
           >
             {/* Diamond marker */}
             <div 
