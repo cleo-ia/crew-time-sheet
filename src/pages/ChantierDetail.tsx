@@ -6,7 +6,7 @@ import { useChantierDetail } from "@/hooks/useChantierDetail";
 import { ChantierDetailHeader } from "@/components/chantier/ChantierDetailHeader";
 import { ChantierEditDialog } from "@/components/chantier/ChantierEditDialog";
 import { ChantierPlanningTab } from "@/components/chantier/tabs/ChantierPlanningTab";
-import { ChantierRecapTab } from "@/components/chantier/tabs/ChantierRecapTab";
+import { ChantierKanbanTab } from "@/components/chantier/tabs/ChantierKanbanTab";
 import { ChantierFichiersTab } from "@/components/chantier/tabs/ChantierFichiersTab";
 import { ChantierEquipeTab } from "@/components/chantier/tabs/ChantierEquipeTab";
 import { ChantierInfosTab } from "@/components/chantier/tabs/ChantierInfosTab";
@@ -87,7 +87,7 @@ const ChantierDetail = () => {
               <ChantierPlanningTab chantierId={chantier.id} chantierNom={chantier.nom} />
             </TabsContent>
             <TabsContent value="recap">
-              <ChantierRecapTab chantier={chantier} />
+              <ChantierKanbanTab chantierId={chantier.id} />
             </TabsContent>
             <TabsContent value="fichiers">
               <ChantierFichiersTab chantierId={chantier.id} />
