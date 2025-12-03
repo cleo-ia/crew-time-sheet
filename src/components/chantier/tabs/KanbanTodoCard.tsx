@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, AlertTriangle } from "lucide-react";
+import { Calendar, AlertTriangle, Diamond } from "lucide-react";
 import type { TodoChantier } from "@/hooks/useTodosChantier";
 
 interface KanbanTodoCardProps {
@@ -51,9 +51,14 @@ export const KanbanTodoCard = ({ todo, isOverdue, onClick }: KanbanTodoCardProps
       <CardContent className="p-4 space-y-3">
         {/* Header with badge */}
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm leading-tight text-foreground group-hover:text-primary transition-colors line-clamp-2">
-            {todo.nom}
-          </h4>
+          <div className="flex items-center gap-1.5">
+            {todo.afficher_planning && (
+              <Diamond className="h-3 w-3 text-gray-500 fill-gray-500 shrink-0" />
+            )}
+            <h4 className="font-semibold text-sm leading-tight text-foreground group-hover:text-primary transition-colors line-clamp-2">
+              {todo.nom}
+            </h4>
+          </div>
           {isOverdue && (
             <Badge variant="destructive" className="text-xs shrink-0 gap-1">
               <AlertTriangle className="h-3 w-3" />
