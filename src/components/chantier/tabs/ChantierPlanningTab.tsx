@@ -10,6 +10,7 @@ import { TaskBars } from "@/components/chantier/planning/TaskBars";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
+import { useChantierDetail } from "@/hooks/useChantierDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
@@ -35,6 +36,7 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
 
 export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
+  const { data: chantierDetail } = useChantierDetail(chantierId);
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("quarter");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
@@ -158,11 +160,20 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
 
       worksheet.columns = [...baseColumns, ...dayColumns];
 
+      // Build title with chantier info
+      const titleParts = [`Planning - ${chantierNom || "Chantier"}`];
+      if (chantierDetail?.code_chantier) {
+        titleParts.push(`(${chantierDetail.code_chantier})`);
+      }
+      if (chantierDetail?.client) {
+        titleParts.push(`• Client: ${chantierDetail.client}`);
+      }
+      
       // Add title row first (row 1)
       const titleRow = worksheet.insertRow(1, []);
       titleRow.height = 30;
       const titleCell = titleRow.getCell(1);
-      titleCell.value = `Planning - ${chantierNom || "Chantier"}`;
+      titleCell.value = titleParts.join(" ");
       titleCell.font = { bold: true, size: 14, color: { argb: "FF1F2937" } };
       titleCell.alignment = { horizontal: "left", vertical: "middle" };
       worksheet.mergeCells(1, 1, 1, baseColumns.length + days.length);
