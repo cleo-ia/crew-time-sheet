@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { Plus, ListTodo, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Plus, ListTodo, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useTodosChantier, TodoChantier } from "@/hooks/useTodosChantier";
 import { TodoFormDialog } from "./TodoFormDialog";
 import { TodoDetailDialog } from "./TodoDetailDialog";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { KanbanTodoCard } from "./KanbanTodoCard";
 
 interface ChantierTodoTabProps {
   chantierId: string;
@@ -24,12 +21,6 @@ interface KanbanColumn {
   headerBg: string;
   todos: TodoChantier[];
 }
-
-const priorityConfig = {
-  HAUTE: { label: "Haute", className: "bg-destructive/10 text-destructive border-destructive/20" },
-  NORMALE: { label: "Normale", className: "bg-muted text-muted-foreground" },
-  BASSE: { label: "Basse", className: "bg-muted/50 text-muted-foreground/70" },
-};
 
 export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
   const { data: todos = [], isLoading } = useTodosChantier(chantierId);
@@ -149,44 +140,11 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
                       className="animate-fade-in"
                       style={{ animationDelay: `${(index * 100) + (todoIndex * 50)}ms` }}
                     >
-                      <Card
-                        className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] bg-card"
+                      <KanbanTodoCard
+                        todo={todo}
+                        isOverdue={isOverdue(todo)}
                         onClick={() => handleTodoClick(todo)}
-                      >
-                        <CardContent className="p-3 space-y-2">
-                          {/* Priority & Overdue badges */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {isOverdue(todo) && (
-                              <Badge variant="destructive" className="text-xs gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                En retard
-                              </Badge>
-                            )}
-                            {todo.priorite === "HAUTE" && (
-                              <Badge className={priorityConfig.HAUTE.className}>
-                                {priorityConfig.HAUTE.label}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Title */}
-                          <p className="font-medium text-sm line-clamp-2">{todo.nom}</p>
-
-                          {/* Description preview */}
-                          {todo.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {todo.description}
-                            </p>
-                          )}
-
-                          {/* Due date */}
-                          {todo.date_echeance && (
-                            <p className={`text-xs ${isOverdue(todo) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                              Échéance: {format(new Date(todo.date_echeance), "d MMM yyyy", { locale: fr })}
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
+                      />
                     </div>
                   ))
                 )}
