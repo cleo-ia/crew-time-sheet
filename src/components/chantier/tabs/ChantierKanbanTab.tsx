@@ -49,18 +49,18 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
       id: "A_FAIRE", 
       title: "À venir", 
       icon: <CalendarClock className="h-4 w-4" />,
-      colorClass: "text-amber-600 dark:text-amber-400",
-      bgClass: "bg-amber-50/50 dark:bg-amber-950/20",
-      headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
+      colorClass: "text-blue-600 dark:text-blue-400",
+      bgClass: "bg-blue-50/50 dark:bg-blue-950/20",
+      headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/5",
       tasks: [] 
     },
     { 
       id: "EN_COURS", 
       title: "En cours", 
       icon: <Clock className="h-4 w-4" />,
-      colorClass: "text-blue-600 dark:text-blue-400",
-      bgClass: "bg-blue-50/50 dark:bg-blue-950/20",
-      headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/5",
+      colorClass: "text-amber-600 dark:text-amber-400",
+      bgClass: "bg-amber-50/50 dark:bg-amber-950/20",
+      headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
       tasks: [] 
     },
     { 
@@ -196,7 +196,7 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className={`w-full justify-center gap-2 hover:${column.bgClass} ${column.colorClass} hover:text-amber-700 dark:hover:text-amber-300 transition-colors`}
+                  className={`w-full justify-center gap-2 hover:${column.bgClass} ${column.colorClass} hover:text-blue-700 dark:hover:text-blue-300 transition-colors`}
                   onClick={() => setCreateDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4" />
