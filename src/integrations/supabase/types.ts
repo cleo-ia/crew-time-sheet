@@ -1141,6 +1141,7 @@ export type Database = {
       }
       todos_chantier: {
         Row: {
+          afficher_planning: boolean
           chantier_id: string
           created_at: string
           created_by: string | null
@@ -1153,6 +1154,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          afficher_planning?: boolean
           chantier_id: string
           created_at?: string
           created_by?: string | null
@@ -1165,6 +1167,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          afficher_planning?: boolean
           chantier_id?: string
           created_at?: string
           created_by?: string | null

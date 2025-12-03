@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Plus, Calendar, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,9 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyGanttGrid, EmptyGanttGridRef, ZoomLevel } from "@/components/chantier/planning/EmptyGanttGrid";
 import { TaskBars } from "@/components/chantier/planning/TaskBars";
+import { EventMarkers } from "@/components/chantier/planning/EventMarkers";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
+import { TodoDetailDialog } from "@/components/chantier/tabs/TodoDetailDialog";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
+import { useTodosChantier, TodoChantier } from "@/hooks/useTodosChantier";
 import { useChantierDetail } from "@/hooks/useChantierDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -36,15 +39,24 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
 
 export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
+  const { data: todos = [] } = useTodosChantier(chantierId);
   const { data: chantierDetail } = useChantierDetail(chantierId);
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("quarter");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
+  const [selectedTodo, setSelectedTodo] = useState<TodoChantier | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showTodoDetailDialog, setShowTodoDetailDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   // Show dates by default for month and quarter views
   const [showDates, setShowDates] = useState(true);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
+
+  // Filter todos to show on planning
+  const planningTodos = useMemo(() => 
+    todos.filter(t => t.afficher_planning && t.date_echeance), 
+    [todos]
+  );
 
   // Auto-enable dates for month/quarter zoom levels
   const handleZoomChange = (newZoom: ZoomLevel) => {
@@ -57,6 +69,11 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
   const handleTaskClick = (tache: TacheChantier) => {
     setSelectedTache(tache);
     setShowDetailDialog(true);
+  };
+
+  const handleEventClick = (todo: TodoChantier) => {
+    setSelectedTodo(todo);
+    setShowTodoDetailDialog(true);
   };
 
   const goToToday = () => {
@@ -99,8 +116,8 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
   };
 
   const exportToExcel = async () => {
-    if (taches.length === 0) {
-      toast.error("Aucune tâche à exporter");
+    if (taches.length === 0 && planningTodos.length === 0) {
+      toast.error("Aucune tâche ou événement à exporter");
       return;
     }
 
@@ -111,8 +128,16 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Planning");
 
-      // Find date range for Gantt visualization
-      const allDates = taches.flatMap(t => [new Date(t.date_debut), new Date(t.date_fin)]);
+      // Find date range for Gantt visualization (include events dates)
+      const taskDates = taches.flatMap(t => [new Date(t.date_debut), new Date(t.date_fin)]);
+      const eventDates = planningTodos.map(t => new Date(t.date_echeance!));
+      const allDates = [...taskDates, ...eventDates];
+      
+      if (allDates.length === 0) {
+        toast.error("Aucune date à afficher");
+        return;
+      }
+      
       const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
       
@@ -326,6 +351,82 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
         }
       });
 
+      // Add events section if there are any
+      if (planningTodos.length > 0) {
+        // Add empty row separator
+        worksheet.addRow([]);
+        
+        // Add events header
+        const eventsHeaderRow = worksheet.addRow(["◆ Événements"]);
+        eventsHeaderRow.font = { bold: true, size: 11 };
+        eventsHeaderRow.getCell(1).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF4B5563" },
+        };
+        eventsHeaderRow.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+        worksheet.mergeCells(eventsHeaderRow.number, 1, eventsHeaderRow.number, baseColumns.length);
+
+        // Add events data
+        planningTodos.forEach((todo) => {
+          const echeanceDate = new Date(todo.date_echeance!);
+          const prioriteLabels: Record<string, string> = {
+            HAUTE: "Haute",
+            NORMALE: "Normale",
+            BASSE: "Basse",
+          };
+          const statutLabels: Record<string, string> = {
+            A_FAIRE: "À faire",
+            EN_COURS: "En cours",
+            TERMINE: "Terminé",
+          };
+          
+          const rowData: Record<string, any> = {
+            nom: `◆ ${todo.nom}`,
+            statut: statutLabels[todo.statut] || todo.statut,
+            date_debut: format(echeanceDate, "dd/MM/yyyy", { locale: fr }),
+            date_fin: "-",
+            duree: "-",
+            heures_estimees: prioriteLabels[todo.priorite || "NORMALE"],
+            heures_realisees: "-",
+          };
+
+          // Find event day index
+          let eventDayIndex = -1;
+          days.forEach((day, dayIndex) => {
+            if (day.getTime() === echeanceDate.getTime()) {
+              eventDayIndex = dayIndex;
+            }
+            rowData[`day_${dayIndex}`] = "";
+          });
+
+          const row = worksheet.addRow(rowData);
+          
+          // Style the event row
+          row.getCell(1).font = { bold: true };
+          row.getCell(2).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF6B7280" },
+          };
+          row.getCell(2).font = { color: { argb: "FFFFFFFF" }, size: 9 };
+          row.getCell(2).alignment = { horizontal: "center" };
+
+          // Mark the event day with diamond symbol
+          if (eventDayIndex !== -1) {
+            const eventCell = row.getCell(baseColumns.length + 1 + eventDayIndex);
+            eventCell.value = "◆";
+            eventCell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FF4B5563" },
+            };
+            eventCell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+            eventCell.alignment = { horizontal: "center" };
+          }
+        });
+      }
+
       // Add borders to all cells
       worksheet.eachRow((row) => {
         row.eachCell((cell) => {
@@ -478,6 +579,15 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
               scrollContainerRef={ganttRef}
             />
           )}
+          {planningTodos.length > 0 && (
+            <EventMarkers
+              todos={planningTodos}
+              startDate={START_DATE}
+              zoomLevel={zoomLevel}
+              onEventClick={handleEventClick}
+              tasksCount={taches.length}
+            />
+          )}
         </EmptyGanttGrid>
       </div>
 
@@ -499,6 +609,12 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
           <div className="w-3 h-3 rounded bg-red-500" />
           <span>En retard</span>
         </div>
+        {planningTodos.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-gray-600 rotate-45" />
+            <span>Événement</span>
+          </div>
+        )}
       </div>
 
       {/* Info text when empty */}
@@ -521,6 +637,14 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
         tache={selectedTache}
         chantierId={chantierId}
       />
+
+      {selectedTodo && (
+        <TodoDetailDialog
+          open={showTodoDetailDialog}
+          onOpenChange={setShowTodoDetailDialog}
+          todo={selectedTodo}
+        />
+      )}
     </div>
   );
 };

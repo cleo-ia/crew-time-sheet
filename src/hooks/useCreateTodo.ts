@@ -8,6 +8,7 @@ interface CreateTodoInput {
   description?: string;
   priorite?: "BASSE" | "NORMALE" | "HAUTE";
   date_echeance?: string;
+  afficher_planning?: boolean;
 }
 
 export const useCreateTodo = () => {
@@ -23,6 +24,7 @@ export const useCreateTodo = () => {
           description: input.description || null,
           priorite: input.priorite || "NORMALE",
           date_echeance: input.date_echeance || null,
+          afficher_planning: input.afficher_planning ?? false,
           statut: "A_FAIRE",
         })
         .select()
