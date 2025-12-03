@@ -18,6 +18,9 @@ export function PDFViewer({ url }: PDFViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [pdfWidth, setPdfWidth] = useState<number>(0);
   const [pdfHeight, setPdfHeight] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [scrollStart, setScrollStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -49,6 +52,31 @@ export function PDFViewer({ url }: PDFViewerProps) {
       setScale(newScale);
     }
   }, [pdfWidth, pdfHeight]);
+
+  // Drag-to-pan handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Ignorer si clic sur un bouton ou contrôle
+    if ((e.target as HTMLElement).closest('button')) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setScrollStart({ 
+      x: containerRef.current?.scrollLeft || 0, 
+      y: containerRef.current?.scrollTop || 0 
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    containerRef.current.scrollLeft = scrollStart.x - deltaX;
+    containerRef.current.scrollTop = scrollStart.y - deltaY;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -136,7 +164,15 @@ export function PDFViewer({ url }: PDFViewerProps) {
       </div>
       
       {/* PDF Content avec ref pour mesurer */}
-      <div ref={containerRef} className="flex-1 overflow-auto p-4 bg-muted/30 rounded-b-lg">
+      <div 
+        ref={containerRef} 
+        className="flex-1 overflow-auto p-4 bg-muted/30 rounded-b-lg select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
         {error ? (
           <div className="flex items-center justify-center h-full text-destructive">
             {error}
