@@ -162,7 +162,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               value={formData.nom}
               onChange={(e) => handleFieldChange("nom", e.target.value)}
               onBlur={handleFieldBlur}
-              className="text-4xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+              className="text-3xl md:text-4xl lg:text-5xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent tracking-tight"
               placeholder="Nom de la tâche"
             />
             <div className="flex items-center gap-2 shrink-0 mr-8">
