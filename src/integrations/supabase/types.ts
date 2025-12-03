@@ -1139,6 +1139,53 @@ export type Database = {
           },
         ]
       }
+      todos_chantier: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          created_by: string | null
+          date_echeance: string | null
+          description: string | null
+          id: string
+          nom: string
+          priorite: string | null
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          created_by?: string | null
+          date_echeance?: string | null
+          description?: string | null
+          id?: string
+          nom: string
+          priorite?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_echeance?: string | null
+          description?: string | null
+          id?: string
+          nom?: string
+          priorite?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todos_chantier_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

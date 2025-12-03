@@ -8,9 +8,9 @@ import { ChantierEditDialog } from "@/components/chantier/ChantierEditDialog";
 import { ChantierPlanningTab } from "@/components/chantier/tabs/ChantierPlanningTab";
 import { ChantierKanbanTab } from "@/components/chantier/tabs/ChantierKanbanTab";
 import { ChantierFichiersTab } from "@/components/chantier/tabs/ChantierFichiersTab";
-import { ChantierEquipeTab } from "@/components/chantier/tabs/ChantierEquipeTab";
+import { ChantierTodoTab } from "@/components/chantier/tabs/ChantierTodoTab";
 import { ChantierInfosTab } from "@/components/chantier/tabs/ChantierInfosTab";
-import { CalendarDays, FileText, Info, LayoutList, Users } from "lucide-react";
+import { CalendarDays, FileText, Info, LayoutList, ListTodo } from "lucide-react";
 
 const ChantierDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -72,9 +72,9 @@ const ChantierDetail = () => {
               <FileText className="h-4 w-4" />
               Fichiers
             </TabsTrigger>
-            <TabsTrigger value="equipe" className="gap-2">
-              <Users className="h-4 w-4" />
-              Équipe
+            <TabsTrigger value="todo" className="gap-2">
+              <ListTodo className="h-4 w-4" />
+              Todo
             </TabsTrigger>
             <TabsTrigger value="infos" className="gap-2">
               <Info className="h-4 w-4" />
@@ -92,8 +92,8 @@ const ChantierDetail = () => {
             <TabsContent value="fichiers">
               <ChantierFichiersTab chantierId={chantier.id} />
             </TabsContent>
-            <TabsContent value="equipe">
-              <ChantierEquipeTab />
+            <TabsContent value="todo">
+              <ChantierTodoTab chantierId={chantier.id} />
             </TabsContent>
             <TabsContent value="infos">
               <ChantierInfosTab />
