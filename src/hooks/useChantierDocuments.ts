@@ -11,6 +11,15 @@ export interface ChantierDocument {
   file_size: number;
   uploaded_by: string | null;
   created_at: string;
+  dossier_id: string | null;
+}
+
+export interface ChantierDossier {
+  id: string;
+  chantier_id: string;
+  nom: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export function useChantierDocuments(chantierId: string | null) {
@@ -32,6 +41,25 @@ export function useChantierDocuments(chantierId: string | null) {
   });
 }
 
+export function useChantierDossiers(chantierId: string | null) {
+  return useQuery({
+    queryKey: ["chantier-dossiers", chantierId],
+    queryFn: async () => {
+      if (!chantierId) return [];
+      
+      const { data, error } = await supabase
+        .from("chantiers_dossiers")
+        .select("*")
+        .eq("chantier_id", chantierId)
+        .order("nom", { ascending: true });
+
+      if (error) throw error;
+      return data as ChantierDossier[];
+    },
+    enabled: !!chantierId,
+  });
+}
+
 export function useUploadChantierDocument() {
   const queryClient = useQueryClient();
 
@@ -39,9 +67,11 @@ export function useUploadChantierDocument() {
     mutationFn: async ({
       chantierId,
       file,
+      dossierId = null,
     }: {
       chantierId: string;
       file: File;
+      dossierId?: string | null;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -66,6 +96,7 @@ export function useUploadChantierDocument() {
           file_type: file.type,
           file_size: file.size,
           uploaded_by: user?.id || null,
+          dossier_id: dossierId,
         })
         .select()
         .single();
@@ -128,6 +159,97 @@ export function useDeleteChantierDocument() {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le document.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useMoveDocumentToFolder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ documentId, dossierId, chantierId }: { documentId: string; dossierId: string | null; chantierId: string }) => {
+      const { error } = await supabase
+        .from("chantiers_documents")
+        .update({ dossier_id: dossierId })
+        .eq("id", documentId);
+
+      if (error) throw error;
+      return { chantierId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["chantier-documents", data.chantierId] });
+    },
+    onError: (error) => {
+      console.error("Move error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de déplacer le document.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useCreateChantierDossier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ chantierId, nom }: { chantierId: string; nom: string }) => {
+      const { data, error } = await supabase
+        .from("chantiers_dossiers")
+        .insert({ chantier_id: chantierId, nom })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["chantier-dossiers", data.chantier_id] });
+      toast({
+        title: "Dossier créé",
+        description: "Le dossier a été créé avec succès.",
+      });
+    },
+    onError: (error) => {
+      console.error("Create folder error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le dossier.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useDeleteChantierDossier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ dossier }: { dossier: ChantierDossier }) => {
+      const { error } = await supabase
+        .from("chantiers_dossiers")
+        .delete()
+        .eq("id", dossier.id);
+
+      if (error) throw error;
+      return { chantierId: dossier.chantier_id };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["chantier-dossiers", data.chantierId] });
+      queryClient.invalidateQueries({ queryKey: ["chantier-documents", data.chantierId] });
+      toast({
+        title: "Dossier supprimé",
+        description: "Le dossier a été supprimé avec succès.",
+      });
+    },
+    onError: (error) => {
+      console.error("Delete folder error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le dossier.",
         variant: "destructive",
       });
     },
