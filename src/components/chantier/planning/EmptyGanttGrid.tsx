@@ -281,7 +281,7 @@ export const EmptyGanttGrid = forwardRef<EmptyGanttGridRef, EmptyGanttGridProps>
                   return (
                     <div
                       key={index}
-                      className={`border-r border-border/30 ${weekend ? "bg-muted/40" : ""}`}
+                      className={`border-r border-border/30 ${weekend ? "bg-muted/60" : ""}`}
                       style={{ width: dayWidth, height: ROW_HEIGHT, flexShrink: 0 }}
                     />
                   );
