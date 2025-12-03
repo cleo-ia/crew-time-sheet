@@ -60,10 +60,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       colorClass: "text-blue-600 dark:text-blue-400",
       bgClass: "bg-blue-50/50 dark:bg-blue-950/20",
       headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/5",
-      todos: todos.filter((t) => {
-        const computed = getComputedTodoStatus(t);
-        return computed === "A_FAIRE" || computed === "EN_RETARD";
-      }),
+      todos: todos.filter((t) => getComputedTodoStatus(t) === "A_FAIRE"),
     },
     {
       id: "EN_COURS",
@@ -72,7 +69,10 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       colorClass: "text-amber-600 dark:text-amber-400",
       bgClass: "bg-amber-50/50 dark:bg-amber-950/20",
       headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
-      todos: todos.filter((t) => getComputedTodoStatus(t) === "EN_COURS"),
+      todos: todos.filter((t) => {
+        const computed = getComputedTodoStatus(t);
+        return computed === "EN_COURS" || computed === "EN_RETARD";
+      }),
     },
     {
       id: "TERMINE",
