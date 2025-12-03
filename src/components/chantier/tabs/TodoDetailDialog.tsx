@@ -12,6 +12,7 @@ import { TodoChantier } from "@/hooks/useTodosChantier";
 import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 import { useDeleteTodo } from "@/hooks/useDeleteTodo";
 import { useTodoDocuments, TodoDocument } from "@/hooks/useTodoDocuments";
+import { PDFViewer } from "@/components/shared/PDFViewer";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -59,6 +60,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
   const [priorite, setPriorite] = useState(todo.priorite || "NORMALE");
   const [dateEcheance, setDateEcheance] = useState(todo.date_echeance || "");
   const [docToDelete, setDocToDelete] = useState<TodoDocument | null>(null);
+  const [pdfToView, setPdfToView] = useState<TodoDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateTodo = useUpdateTodo();
@@ -124,8 +126,21 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
   };
 
   const handleOpenDocument = (doc: TodoDocument) => {
+    // Pour les PDFs, ouvrir dans une modal intégrée
+    if (doc.file_type === "application/pdf") {
+      setPdfToView(doc);
+      return;
+    }
+    
+    // Pour les autres fichiers (images), ouvrir directement
     const url = getPublicUrl(doc.file_path);
-    window.open(url, "_blank");
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDownload = async (doc: TodoDocument) => {
@@ -153,244 +168,258 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle>Détail du Todo</DialogTitle>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action est irréversible. Le todo sera définitivement supprimé.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Supprimer
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-8">
+              <DialogTitle>Détail du Todo</DialogTitle>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action est irréversible. Le todo sera définitivement supprimé.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nom">Titre *</Label>
-            <Input
-              id="nom"
-              value={nom}
-              onChange={(e) => setNom(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Statut</Label>
-              <Select value={statut} onValueChange={(v) => setStatut(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A_FAIRE">À faire</SelectItem>
-                  <SelectItem value="EN_COURS">En cours</SelectItem>
-                  <SelectItem value="TERMINE">Terminé</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="nom">Titre *</Label>
+              <Input
+                id="nom"
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                required
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Priorité</Label>
-              <Select value={priorite} onValueChange={(v) => setPriorite(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BASSE">Basse</SelectItem>
-                  <SelectItem value="NORMALE">Normale</SelectItem>
-                  <SelectItem value="HAUTE">Haute</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="date_echeance">Échéance</Label>
-            <Input
-              id="date_echeance"
-              type="date"
-              value={dateEcheance}
-              onChange={(e) => setDateEcheance(e.target.value)}
-            />
-          </div>
-
-          {/* Documents section */}
-          <div className="space-y-3">
-            <Label>Documents</Label>
-            
-            {/* Upload zone */}
-            <div
-              className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Cliquez pour ajouter des fichiers
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF, JPG, PNG (max 10 MB)
-              </p>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
-              multiple
-              onChange={handleFileSelect}
-            />
-
-            {/* Documents grid - card style like Fichiers tab */}
-            {docsLoading ? (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                Chargement...
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Statut</Label>
+                <Select value={statut} onValueChange={(v) => setStatut(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A_FAIRE">À faire</SelectItem>
+                    <SelectItem value="EN_COURS">En cours</SelectItem>
+                    <SelectItem value="TERMINE">Terminé</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : documents.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                {documents.map((doc) => {
-                  const publicUrl = getPublicUrl(doc.file_path);
-                  
-                  return (
-                    <div
-                      key={doc.id}
-                      className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all"
-                    >
-                      {/* Preview Area */}
-                      <div 
-                        className="h-24 bg-muted/30 flex items-center justify-center overflow-hidden relative cursor-pointer"
-                        onClick={() => handleOpenDocument(doc)}
-                      >
-                        {isImageFile(doc.file_type) ? (
-                          <img
-                            src={publicUrl}
-                            alt={doc.nom}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            {getFileIcon(doc.file_type)}
-                            <span className="text-xs text-muted-foreground uppercase font-medium">
-                              {doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Menu overlay */}
-                        <div 
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleOpenDocument(doc)}>
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Ouvrir
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownload(doc)}>
-                                <Download className="h-4 w-4 mr-2" />
-                                Télécharger
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => setDocToDelete(doc)} 
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Supprimer
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
 
-                      {/* File Info */}
-                      <div className="p-2">
-                        <div className="flex items-center gap-1.5">
-                          {getSmallFileIcon(doc.file_type)}
-                          <p className="text-xs font-medium truncate flex-1" title={doc.nom}>
-                            {doc.nom}
+              <div className="space-y-2">
+                <Label>Priorité</Label>
+                <Select value={priorite} onValueChange={(v) => setPriorite(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BASSE">Basse</SelectItem>
+                    <SelectItem value="NORMALE">Normale</SelectItem>
+                    <SelectItem value="HAUTE">Haute</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date_echeance">Échéance</Label>
+              <Input
+                id="date_echeance"
+                type="date"
+                value={dateEcheance}
+                onChange={(e) => setDateEcheance(e.target.value)}
+              />
+            </div>
+
+            {/* Documents section */}
+            <div className="space-y-3">
+              <Label>Documents</Label>
+              
+              {/* Upload zone */}
+              <div
+                className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Cliquez pour ajouter des fichiers
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, JPG, PNG (max 10 MB)
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png"
+                multiple
+                onChange={handleFileSelect}
+              />
+
+              {/* Documents grid - card style like Fichiers tab */}
+              {docsLoading ? (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  Chargement...
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                  {documents.map((doc) => {
+                    const publicUrl = getPublicUrl(doc.file_path);
+                    
+                    return (
+                      <div
+                        key={doc.id}
+                        className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all"
+                      >
+                        {/* Preview Area */}
+                        <div 
+                          className="h-24 bg-muted/30 flex items-center justify-center overflow-hidden relative cursor-pointer"
+                          onClick={() => handleOpenDocument(doc)}
+                        >
+                          {isImageFile(doc.file_type) ? (
+                            <img
+                              src={publicUrl}
+                              alt={doc.nom}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              {getFileIcon(doc.file_type)}
+                              <span className="text-xs text-muted-foreground uppercase font-medium">
+                                {doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Menu overlay */}
+                          <div 
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenDocument(doc)}>
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  Ouvrir
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Télécharger
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => setDocToDelete(doc)} 
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Supprimer
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+
+                        {/* File Info */}
+                        <div className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            {getSmallFileIcon(doc.file_type)}
+                            <p className="text-xs font-medium truncate flex-1" title={doc.nom}>
+                              {doc.nom}
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                            {formatFileDate(doc.created_at)}
                           </p>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 pl-5">
-                          {formatFileDate(doc.created_at)}
-                        </p>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-2">
-                Aucun document attaché
-              </p>
-            )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Aucun document attaché
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSave} disabled={!nom.trim() || updateTodo.isPending}>
+                {updateTodo.isPending ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSave} disabled={!nom.trim() || updateTodo.isPending}>
-              {updateTodo.isPending ? "Sauvegarde..." : "Sauvegarder"}
-            </Button>
-          </div>
-        </div>
+          {/* Delete document confirmation */}
+          <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer ce fichier ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Le fichier "{docToDelete?.nom}" sera définitivement supprimé.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDeleteDocument}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </DialogContent>
+      </Dialog>
 
-        {/* Delete document confirmation */}
-        <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer ce fichier ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Le fichier "{docToDelete?.nom}" sera définitivement supprimé.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleDeleteDocument}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Supprimer
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DialogContent>
-    </Dialog>
+      {/* PDF Viewer Modal */}
+      <Dialog open={!!pdfToView} onOpenChange={(open) => !open && setPdfToView(null)}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">{pdfToView?.nom}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {pdfToView && <PDFViewer url={getPublicUrl(pdfToView.file_path)} />}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
