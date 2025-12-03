@@ -330,8 +330,14 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
   const handleOpen = (doc: ChantierDocument) => {
     const url = getDocumentUrl(doc.file_path);
+    
+    // Pour les PDFs, utiliser Google Docs Viewer pour contourner l'extension Adobe Acrobat
+    const finalUrl = doc.file_type === "application/pdf"
+      ? `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
+      : url;
+    
     const link = document.createElement("a");
-    link.href = url;
+    link.href = finalUrl;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
