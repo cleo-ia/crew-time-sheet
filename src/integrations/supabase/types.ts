@@ -311,6 +311,7 @@ export type Database = {
           created_at: string
           id: string
           nom: string
+          parent_id: string | null
           updated_at: string
         }
         Insert: {
@@ -318,6 +319,7 @@ export type Database = {
           created_at?: string
           id?: string
           nom: string
+          parent_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -325,6 +327,7 @@ export type Database = {
           created_at?: string
           id?: string
           nom?: string
+          parent_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -333,6 +336,13 @@ export type Database = {
             columns: ["chantier_id"]
             isOneToOne: false
             referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chantiers_dossiers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers_dossiers"
             referencedColumns: ["id"]
           },
         ]
