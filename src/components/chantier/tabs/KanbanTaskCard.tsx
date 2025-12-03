@@ -52,11 +52,11 @@ export const KanbanTaskCard = ({ tache, computedStatus, onClick }: KanbanTaskCar
       case "EN_RETARD":
         return "border-l-red-500";
       case "EN_COURS":
-        return "border-l-blue-500";
+        return "border-l-amber-500";
       case "TERMINE":
         return "border-l-green-500";
       default:
-        return "border-l-amber-500";
+        return "border-l-blue-500";
     }
   };
 
@@ -66,11 +66,11 @@ export const KanbanTaskCard = ({ tache, computedStatus, onClick }: KanbanTaskCar
       case "EN_RETARD":
         return "bg-red-500";
       case "EN_COURS":
-        return "bg-blue-500";
+        return "bg-amber-500";
       case "TERMINE":
         return "bg-green-500";
       default:
-        return "bg-amber-500";
+        return "bg-blue-500";
     }
   };
 
