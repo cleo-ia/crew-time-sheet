@@ -401,29 +401,37 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   {documents.map((doc) => {
                     const isImage = doc.file_type.startsWith("image/");
                     const url = getPublicUrl(doc.file_path);
-                    return isImage ? (
+                    const isPdf = doc.file_type === "application/pdf";
+                    
+                    const handleClick = () => {
+                      if (isImage) {
+                        setLightboxImage(url);
+                      } else if (isPdf) {
+                        setPdfToView(doc);
+                      } else {
+                        window.open(url, "_blank");
+                      }
+                    };
+                    
+                    return (
                       <button
                         key={doc.id}
-                        onClick={() => setLightboxImage(url)}
+                        onClick={handleClick}
                         className="group relative cursor-pointer"
                       >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
-                          <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
-                        </div>
+                        {isImage ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
+                            <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
+                            <FileText className={`h-6 w-6 ${isPdf ? "text-red-500" : "text-muted-foreground"}`} />
+                            <span className="text-[10px] text-muted-foreground mt-1">
+                              {isPdf ? "PDF" : doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
+                            </span>
+                          </div>
+                        )}
                       </button>
-                    ) : (
-                      <a
-                        key={doc.id}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative"
-                      >
-                        <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
-                          <FileText className="h-6 w-6 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground mt-1">PDF</span>
-                        </div>
-                      </a>
                     );
                   })}
                 </div>
