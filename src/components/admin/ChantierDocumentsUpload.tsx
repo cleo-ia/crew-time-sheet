@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PDFViewer } from "@/components/shared/PDFViewer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -676,12 +677,10 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
               {pdfToView?.nom}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 p-4 pt-2">
-            <iframe
-              src={pdfToView ? getDocumentUrl(pdfToView.file_path) : ""}
-              className="w-full h-full rounded-lg border"
-              title={pdfToView?.nom}
-            />
+          <div className="flex-1 min-h-0 p-2">
+            {pdfToView && (
+              <PDFViewer url={getDocumentUrl(pdfToView.file_path)} />
+            )}
           </div>
           <div className="p-4 pt-0 border-t flex justify-end gap-2">
             <Button variant="outline" onClick={() => setPdfToView(null)}>
