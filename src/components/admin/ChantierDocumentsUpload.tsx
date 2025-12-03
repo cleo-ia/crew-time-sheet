@@ -328,9 +328,24 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     [handleFiles]
   );
 
-  const handleDownload = (doc: ChantierDocument) => {
-    const url = getDocumentUrl(doc.file_path);
-    window.open(url, "_blank");
+  const handleDownload = async (doc: ChantierDocument) => {
+    try {
+      const url = getDocumentUrl(doc.file_path);
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors du téléchargement");
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+      
+      // Nettoyer le blob URL après 60 secondes pour libérer la mémoire
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
   };
 
   const handleDeleteConfirm = () => {
