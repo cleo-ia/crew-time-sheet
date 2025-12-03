@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText } from "lucide-react";
+import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -73,6 +73,7 @@ const FileCard = ({
   doc,
   onDelete,
   onDownload,
+  onOpen,
   onDragStart,
   onDragEnd,
   onMoveToFolder,
@@ -82,6 +83,7 @@ const FileCard = ({
   doc: ChantierDocument;
   onDelete: () => void;
   onDownload: () => void;
+  onOpen: () => void;
   onDragStart: (e: React.DragEvent, docId: string) => void;
   onDragEnd: () => void;
   onMoveToFolder: (folderId: string | null) => void;
@@ -99,8 +101,11 @@ const FileCard = ({
         isDragging ? "opacity-50" : ""
       }`}
     >
-      {/* Preview Area */}
-      <div className="h-32 bg-muted/30 flex items-center justify-center overflow-hidden relative">
+      {/* Preview Area - Clickable to open */}
+      <div 
+        className="h-32 bg-muted/30 flex items-center justify-center overflow-hidden relative cursor-pointer"
+        onClick={onOpen}
+      >
         {isImageFile(doc.file_type) ? (
           <img
             src={publicUrl}
@@ -117,7 +122,10 @@ const FileCard = ({
         )}
         
         {/* Menu overlay */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div 
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="h-7 w-7 shadow-sm">
@@ -125,6 +133,10 @@ const FileCard = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onOpen}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Ouvrir
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onDownload}>
                 <Download className="h-4 w-4 mr-2" />
                 Télécharger
@@ -546,6 +558,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
                 doc={doc}
                 onDelete={() => setDocumentToDelete(doc)}
                 onDownload={() => handleDownload(doc)}
+                onOpen={() => handleDownload(doc)}
                 onDragStart={handleDocDragStart}
                 onDragEnd={handleDocDragEnd}
                 onMoveToFolder={(folderId) => handleMoveToFolder(doc.id, folderId)}
