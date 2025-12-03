@@ -119,18 +119,20 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
               </div>
             </ScrollArea>
 
-            {/* Add task button */}
-            <div className="p-3 border-t border-border/50">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={() => setCreateDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Créer une tâche
-              </Button>
-            </div>
+            {/* Add task button - only in "À venir" column */}
+            {column.id === "A_FAIRE" && (
+              <div className="p-3 border-t border-border/50">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-muted-foreground hover:text-foreground"
+                  onClick={() => setCreateDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer une tâche
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
