@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Plus, Clock, CheckCircle2, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTachesChantier, type TacheChantier } from "@/hooks/useTachesChantier";
 import { KanbanTaskCard } from "./KanbanTaskCard";
 import { TaskDetailDialog } from "../planning/TaskDetailDialog";
@@ -137,7 +136,7 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
       </div>
 
       {/* Kanban board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 h-[calc(100vh-350px)] min-h-[450px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {columns.map((column, index) => (
           <div 
             key={column.id} 
@@ -158,7 +157,7 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
             </div>
 
             {/* Tasks list */}
-            <ScrollArea className="flex-1">
+            <div className="flex-1">
               <div className="p-3 space-y-3">
                 {column.tasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -188,7 +187,7 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
                   })
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Add task button - only in "À venir" column */}
             {column.id === "A_FAIRE" && (
