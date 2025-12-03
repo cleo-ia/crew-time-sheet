@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, FolderOpen, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,29 +28,203 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface ChantierDocumentsUploadProps {
   chantierId: string;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
+const formatFileDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return format(date, "d MMM yyyy", { locale: fr });
+};
+
+const isImageFile = (fileType: string) => fileType.startsWith("image/");
+
+const getFileIcon = (fileType: string) => {
+  if (fileType.startsWith("image/")) {
+    return <Image className="h-8 w-8 text-muted-foreground" />;
+  }
+  if (fileType === "application/pdf") {
+    return <FileText className="h-8 w-8 text-red-500" />;
+  }
+  return <File className="h-8 w-8 text-muted-foreground" />;
+};
+
+// File Card Component
+const FileCard = ({
+  doc,
+  onDelete,
+  onDownload,
+  onDragStart,
+  onDragEnd,
+  onMoveToFolder,
+  folders,
+  isDragging,
+}: {
+  doc: ChantierDocument;
+  onDelete: () => void;
+  onDownload: () => void;
+  onDragStart: (e: React.DragEvent, docId: string) => void;
+  onDragEnd: () => void;
+  onMoveToFolder: (folderId: string | null) => void;
+  folders: ChantierDossier[];
+  isDragging: boolean;
+}) => {
+  const publicUrl = getDocumentUrl(doc.file_path);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, doc.id)}
+      onDragEnd={onDragEnd}
+      className={`group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-50" : ""
+      }`}
+    >
+      {/* Preview Area */}
+      <div className="h-32 bg-muted/30 flex items-center justify-center overflow-hidden relative">
+        {isImageFile(doc.file_type) ? (
+          <img
+            src={publicUrl}
+            alt={doc.nom}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            {getFileIcon(doc.file_type)}
+            <span className="text-xs text-muted-foreground uppercase font-medium">
+              {doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
+            </span>
+          </div>
+        )}
+        
+        {/* Menu overlay */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon" className="h-7 w-7 shadow-sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onDownload}>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger
+              </DropdownMenuItem>
+              {folders.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {folders.map((folder) => (
+                    <DropdownMenuItem
+                      key={folder.id}
+                      onClick={() => onMoveToFolder(folder.id)}
+                    >
+                      <FolderInput className="h-4 w-4 mr-2" />
+                      Vers "{folder.nom}"
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {doc.dossier_id && (
+                <DropdownMenuItem onClick={() => onMoveToFolder(null)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retirer du dossier
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* File Info */}
+      <div className="p-3">
+        <p className="text-sm font-medium truncate" title={doc.nom}>
+          {doc.nom}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Ajouté le {formatFileDate(doc.created_at)}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Folder Card Component
+const FolderCard = ({
+  folder,
+  fileCount,
+  onOpen,
+  onDelete,
+  onDrop,
+  isDragOver,
+  onDragOver,
+  onDragLeave,
+}: {
+  folder: ChantierDossier;
+  fileCount: number;
+  onOpen: () => void;
+  onDelete: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  isDragOver: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+}) => {
+  return (
+    <div
+      onClick={onOpen}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`group flex items-center gap-3 p-3 bg-muted/30 hover:bg-muted/50 rounded-lg cursor-pointer transition-all border-2 ${
+        isDragOver ? "border-primary bg-primary/10" : "border-transparent"
+      }`}
+    >
+      <Folder className="h-10 w-10 text-blue-500 flex-shrink-0" fill="currentColor" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{folder.nom}</p>
+        <p className="text-xs text-muted-foreground">
+          {fileCount} fichier{fileCount !== 1 ? "s" : ""}
+        </p>
+      </div>
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer le dossier
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+};
 
 export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadProps) {
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ChantierDocument | null>(null);
   const [dossierToDelete, setDossierToDelete] = useState<ChantierDossier | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
 
@@ -64,47 +238,50 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
 
   const isLoading = isLoadingDocs || isLoadingDossiers;
 
-  // Documents sans dossier (à la racine)
-  const rootDocuments = documents.filter(doc => !doc.dossier_id);
-  
-  // Documents groupés par dossier
-  const getDocumentsInFolder = (folderId: string) => 
-    documents.filter(doc => doc.dossier_id === folderId);
+  // Get current folder info
+  const currentFolder = currentFolderId ? dossiers.find(f => f.id === currentFolderId) : null;
+
+  // Filter documents based on current view
+  const displayedDocuments = currentFolderId
+    ? documents.filter(doc => doc.dossier_id === currentFolderId)
+    : documents.filter(doc => !doc.dossier_id);
+
+  // Get file count per folder
+  const getFileCountForFolder = (folderId: string) => {
+    return documents.filter(doc => doc.dossier_id === folderId).length;
+  };
 
   const handleFiles = useCallback(
     async (files: FileList | File[], dossierId: string | null = null) => {
       const fileArray = Array.from(files);
-
       for (const file of fileArray) {
-        if (!ACCEPTED_TYPES.includes(file.type)) {
-          continue;
-        }
-        if (file.size > MAX_FILE_SIZE) {
-          continue;
-        }
-        await uploadMutation.mutateAsync({ chantierId, file, dossierId });
+        if (!ACCEPTED_TYPES.includes(file.type)) continue;
+        if (file.size > MAX_FILE_SIZE) continue;
+        await uploadMutation.mutateAsync({ chantierId, file, dossierId: dossierId ?? currentFolderId });
       }
     },
-    [chantierId, uploadMutation]
+    [chantierId, uploadMutation, currentFolderId]
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      setIsDragging(false);
-      handleFiles(e.dataTransfer.files);
+      setIsDraggingFile(false);
+      if (!draggedDocId) {
+        handleFiles(e.dataTransfer.files);
+      }
     },
-    [handleFiles]
+    [handleFiles, draggedDocId]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  }, []);
+    if (!draggedDocId) setIsDraggingFile(true);
+  }, [draggedDocId]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    setIsDraggingFile(false);
   }, []);
 
   const handleFileSelect = useCallback(
@@ -132,6 +309,9 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     if (dossierToDelete) {
       deleteFolderMutation.mutate({ dossier: dossierToDelete });
       setDossierToDelete(null);
+      if (currentFolderId === dossierToDelete.id) {
+        setCurrentFolderId(null);
+      }
     }
   };
 
@@ -142,19 +322,7 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     setIsCreatingFolder(false);
   };
 
-  const toggleFolder = (folderId: string) => {
-    setExpandedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
-  };
-
-  // Drag & Drop pour déplacer les documents
+  // Drag & Drop for moving documents
   const handleDocDragStart = (e: React.DragEvent, docId: string) => {
     setDraggedDocId(docId);
     e.dataTransfer.effectAllowed = "move";
@@ -165,8 +333,9 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     setDragOverFolderId(null);
   };
 
-  const handleFolderDragOver = (e: React.DragEvent, folderId: string | null) => {
+  const handleFolderDragOver = (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
+    e.stopPropagation();
     if (draggedDocId) {
       e.dataTransfer.dropEffect = "move";
       setDragOverFolderId(folderId);
@@ -177,162 +346,49 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     setDragOverFolderId(null);
   };
 
-  const handleFolderDrop = async (e: React.DragEvent, folderId: string | null) => {
+  const handleFolderDrop = async (e: React.DragEvent, targetFolderId: string) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverFolderId(null);
-    
+
     if (draggedDocId) {
       const doc = documents.find(d => d.id === draggedDocId);
-      if (doc && doc.dossier_id !== folderId) {
-        await moveDocMutation.mutateAsync({ 
-          documentId: draggedDocId, 
-          dossierId: folderId,
-          chantierId 
+      if (doc && doc.dossier_id !== targetFolderId) {
+        await moveDocMutation.mutateAsync({
+          documentId: draggedDocId,
+          dossierId: targetFolderId,
+          chantierId,
         });
       }
       setDraggedDocId(null);
     }
   };
 
-  const isImage = (fileType: string) => fileType.startsWith("image/");
-
-  const DocumentItem = ({ doc, inFolder = false }: { doc: ChantierDocument; inFolder?: boolean }) => (
-    <div
-      key={doc.id}
-      draggable
-      onDragStart={(e) => handleDocDragStart(e, doc.id)}
-      onDragEnd={handleDocDragEnd}
-      className={`flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-grab active:cursor-grabbing ${
-        draggedDocId === doc.id ? "opacity-50" : ""
-      } ${inFolder ? "ml-6" : ""}`}
-    >
-      {/* Thumbnail or icon */}
-      {isImage(doc.file_type) ? (
-        <div className="w-10 h-10 rounded overflow-hidden bg-background flex-shrink-0">
-          <img
-            src={getDocumentUrl(doc.file_path)}
-            alt={doc.nom}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <div className="w-10 h-10 rounded bg-background flex items-center justify-center flex-shrink-0">
-          <File className="h-5 w-5 text-muted-foreground" />
-        </div>
-      )}
-
-      {/* File info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{doc.nom}</p>
-        <p className="text-xs text-muted-foreground">
-          {formatFileSize(doc.file_size)}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => handleDownload(doc)}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive hover:text-destructive"
-          onClick={() => setDocumentToDelete(doc)}
-          disabled={deleteMutation.isPending}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
-  const FolderItem = ({ folder }: { folder: ChantierDossier }) => {
-    const isExpanded = expandedFolders.has(folder.id);
-    const folderDocs = getDocumentsInFolder(folder.id);
-    const isDragOver = dragOverFolderId === folder.id;
-
-    return (
-      <div className="space-y-1">
-        <div
-          onDragOver={(e) => handleFolderDragOver(e, folder.id)}
-          onDragLeave={handleFolderDragLeave}
-          onDrop={(e) => handleFolderDrop(e, folder.id)}
-          className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors ${
-            isDragOver 
-              ? "bg-primary/10 border-2 border-dashed border-primary" 
-              : "bg-muted/30 hover:bg-muted/50"
-          }`}
-          onClick={() => toggleFolder(folder.id)}
-        >
-          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
-          {isExpanded ? (
-            <FolderOpen className="h-5 w-5 text-primary" />
-          ) : (
-            <Folder className="h-5 w-5 text-primary" />
-          )}
-          <span className="flex-1 font-medium text-sm">{folder.nom}</span>
-          <span className="text-xs text-muted-foreground">
-            {folderDocs.length} fichier{folderDocs.length !== 1 ? "s" : ""}
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDossierToDelete(folder);
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {isExpanded && (
-          <div className="space-y-2 pl-4 border-l-2 border-muted ml-4">
-            {folderDocs.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2 pl-2">
-                Glissez des fichiers ici
-              </p>
-            ) : (
-              folderDocs.map((doc) => (
-                <DocumentItem key={doc.id} doc={doc} inFolder />
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const handleMoveToFolder = async (docId: string, folderId: string | null) => {
+    await moveDocMutation.mutateAsync({
+      documentId: docId,
+      dossierId: folderId,
+      chantierId,
+    });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      {/* Drop zone */}
+    <div className="space-y-6" onDragEnd={handleDocDragEnd}>
+      {/* Upload Zone */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          isDragging
+        className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          isDraggingFile
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50"
         }`}
@@ -344,10 +400,12 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
           onChange={handleFileSelect}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
-        <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-sm font-medium">Cliquez ou glissez-déposez vos fichiers</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Images JPG/PNG, PDF - Max 10 Mo par fichier
+        <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground mb-1">
+          Glissez vos fichiers ici ou cliquez pour parcourir
+        </p>
+        <p className="text-xs text-muted-foreground">
+          JPG, PNG, PDF • Max 10 Mo
         </p>
         {uploadMutation.isPending && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
@@ -356,93 +414,138 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
         )}
       </div>
 
-      {/* Create folder button / form */}
-      {isCreatingFolder ? (
-        <div className="flex items-center gap-2">
-          <Input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Nom du dossier"
-            className="flex-1"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateFolder();
-              if (e.key === "Escape") setIsCreatingFolder(false);
-            }}
-          />
-          <Button 
-            size="sm" 
-            onClick={handleCreateFolder}
-            disabled={!newFolderName.trim() || createFolderMutation.isPending}
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
+        {currentFolderId ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCurrentFolderId(null)}
+            className="gap-2"
           >
-            Créer
+            <ArrowLeft className="h-4 w-4" />
+            Retour
           </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => {
-              setIsCreatingFolder(false);
-              setNewFolderName("");
-            }}
-          >
-            Annuler
-          </Button>
+        ) : null}
+        
+        {currentFolder && (
+          <div className="flex items-center gap-2 text-sm">
+            <Folder className="h-4 w-4 text-blue-500" />
+            <span className="font-medium">{currentFolder.nom}</span>
+          </div>
+        )}
+
+        <div className="flex-1" />
+
+        {!currentFolderId && (
+          isCreatingFolder ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Nom du dossier"
+                className="h-9 w-48"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder();
+                  if (e.key === "Escape") {
+                    setIsCreatingFolder(false);
+                    setNewFolderName("");
+                  }
+                }}
+                autoFocus
+              />
+              <Button 
+                size="sm" 
+                onClick={handleCreateFolder}
+                disabled={!newFolderName.trim() || createFolderMutation.isPending}
+              >
+                Créer
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setIsCreatingFolder(false);
+                  setNewFolderName("");
+                }}
+              >
+                Annuler
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreatingFolder(true)}
+              className="gap-2"
+            >
+              <FolderPlus className="h-4 w-4" />
+              Nouveau dossier
+            </Button>
+          )
+        )}
+      </div>
+
+      {/* Folders Grid (only at root level) */}
+      {!currentFolderId && dossiers.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Dossiers</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {dossiers.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                fileCount={getFileCountForFolder(folder.id)}
+                onOpen={() => setCurrentFolderId(folder.id)}
+                onDelete={() => setDossierToDelete(folder)}
+                onDrop={(e) => handleFolderDrop(e, folder.id)}
+                isDragOver={dragOverFolderId === folder.id}
+                onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+                onDragLeave={handleFolderDragLeave}
+              />
+            ))}
+          </div>
         </div>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsCreatingFolder(true)}
-          className="gap-2"
-        >
-          <FolderPlus className="h-4 w-4" />
-          Nouveau dossier
-        </Button>
       )}
 
-      {/* Documents and folders list */}
-      {isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      {/* Files Grid */}
+      {displayedDocuments.length > 0 ? (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">
+            Fichiers {currentFolder ? `dans "${currentFolder.nom}"` : ""}
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {displayedDocuments.map((doc) => (
+              <FileCard
+                key={doc.id}
+                doc={doc}
+                onDelete={() => setDocumentToDelete(doc)}
+                onDownload={() => handleDownload(doc)}
+                onDragStart={handleDocDragStart}
+                onDragEnd={handleDocDragEnd}
+                onMoveToFolder={(folderId) => handleMoveToFolder(doc.id, folderId)}
+                folders={dossiers.filter(f => f.id !== currentFolderId)}
+                isDragging={draggedDocId === doc.id}
+              />
+            ))}
+          </div>
         </div>
-      ) : (dossiers.length > 0 || documents.length > 0) ? (
-        <div className="space-y-3">
-          {/* Dossiers */}
-          {dossiers.map((folder) => (
-            <FolderItem key={folder.id} folder={folder} />
-          ))}
+      ) : (
+        !currentFolderId && dossiers.length === 0 ? null : (
+          <div className="text-center py-12 text-muted-foreground">
+            <File className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Aucun fichier {currentFolder ? "dans ce dossier" : ""}</p>
+          </div>
+        )
+      )}
 
-          {/* Root documents (drop zone) */}
-          {rootDocuments.length > 0 && (
-            <div
-              onDragOver={(e) => handleFolderDragOver(e, null)}
-              onDragLeave={handleFolderDragLeave}
-              onDrop={(e) => handleFolderDrop(e, null)}
-              className={`space-y-2 ${
-                dragOverFolderId === null && draggedDocId 
-                  ? "p-2 rounded-lg border-2 border-dashed border-primary bg-primary/5" 
-                  : ""
-              }`}
-            >
-              <p className="text-sm font-medium text-muted-foreground">
-                Documents ({rootDocuments.length})
-              </p>
-              {rootDocuments.map((doc) => (
-                <DocumentItem key={doc.id} doc={doc} />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
-
-      {/* Delete document confirmation dialog */}
+      {/* Delete Document Dialog */}
       <AlertDialog open={!!documentToDelete} onOpenChange={() => setDocumentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le document ?</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer ce fichier ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Le document "{documentToDelete?.nom}" sera définitivement supprimé.
-              Cette action est irréversible.
+              Le fichier "{documentToDelete?.nom}" sera définitivement supprimé.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -457,11 +560,11 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete folder confirmation dialog */}
+      {/* Delete Folder Dialog */}
       <AlertDialog open={!!dossierToDelete} onOpenChange={() => setDossierToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le dossier ?</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer ce dossier ?</AlertDialogTitle>
             <AlertDialogDescription>
               Le dossier "{dossierToDelete?.nom}" sera supprimé. Les fichiers qu'il contient seront déplacés à la racine.
             </AlertDialogDescription>
