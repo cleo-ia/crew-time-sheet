@@ -17,6 +17,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfWidth, setPdfWidth] = useState<number>(0);
+  const [pdfHeight, setPdfHeight] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -31,24 +32,32 @@ export function PDFViewer({ url }: PDFViewerProps) {
     setIsLoading(false);
   };
 
-  const onPageLoadSuccess = ({ width }: { width: number }) => {
+  const onPageLoadSuccess = ({ width, height }: { width: number; height: number }) => {
     setPdfWidth(width);
-    // Auto-fit au premier chargement
-    if (scale === null && containerRef.current && width > 0) {
+    setPdfHeight(height);
+    // Auto-fit au premier chargement - ajuster pour voir le document EN ENTIER
+    if (scale === null && containerRef.current && width > 0 && height > 0) {
       const containerWidth = containerRef.current.clientWidth - 32;
-      const newScale = containerWidth / width;
+      const containerHeight = containerRef.current.clientHeight - 32;
+      const scaleToFitWidth = containerWidth / width;
+      const scaleToFitHeight = containerHeight / height;
+      // Prendre le plus petit pour que le document tienne entièrement
+      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
       setScale(Math.min(Math.max(newScale, 0.1), 2));
     }
   };
 
-  // Calcule le scale pour ajuster à la largeur
-  const fitToWidth = useCallback(() => {
-    if (containerRef.current && pdfWidth > 0) {
-      const containerWidth = containerRef.current.clientWidth - 32; // -32 pour le padding
-      const newScale = containerWidth / pdfWidth;
-      setScale(Math.min(Math.max(newScale, 0.25), 2)); // Entre 25% et 200%
+  // Calcule le scale pour ajuster à la page entière
+  const fitToPage = useCallback(() => {
+    if (containerRef.current && pdfWidth > 0 && pdfHeight > 0) {
+      const containerWidth = containerRef.current.clientWidth - 32;
+      const containerHeight = containerRef.current.clientHeight - 32;
+      const scaleToFitWidth = containerWidth / pdfWidth;
+      const scaleToFitHeight = containerHeight / pdfHeight;
+      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
+      setScale(Math.min(Math.max(newScale, 0.1), 2));
     }
-  }, [pdfWidth]);
+  }, [pdfWidth, pdfHeight]);
 
   return (
     <div className="flex flex-col h-full">
@@ -72,12 +81,12 @@ export function PDFViewer({ url }: PDFViewerProps) {
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
-          {/* Bouton Ajuster à la largeur */}
+          {/* Bouton Ajuster à la page */}
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={fitToWidth} 
-            title="Ajuster à la largeur"
+            onClick={fitToPage} 
+            title="Ajuster à la page"
             disabled={pdfWidth === 0}
           >
             <Maximize2 className="h-4 w-4" />
