@@ -258,6 +258,7 @@ export type Database = {
         Row: {
           chantier_id: string
           created_at: string
+          dossier_id: string | null
           file_path: string
           file_size: number
           file_type: string
@@ -268,6 +269,7 @@ export type Database = {
         Insert: {
           chantier_id: string
           created_at?: string
+          dossier_id?: string | null
           file_path: string
           file_size: number
           file_type: string
@@ -278,6 +280,7 @@ export type Database = {
         Update: {
           chantier_id?: string
           created_at?: string
+          dossier_id?: string | null
           file_path?: string
           file_size?: number
           file_type?: string
@@ -288,6 +291,45 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "chantiers_documents_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chantiers_documents_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers_dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chantiers_dossiers: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          id: string
+          nom: string
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          id?: string
+          nom: string
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          id?: string
+          nom?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chantiers_dossiers_chantier_id_fkey"
             columns: ["chantier_id"]
             isOneToOne: false
             referencedRelation: "chantiers"
