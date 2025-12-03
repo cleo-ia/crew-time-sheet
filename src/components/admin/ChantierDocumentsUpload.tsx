@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreHorizontal, FileText, Image as ImageIcon } from "lucide-react";
+import { PdfThumbnail } from "./PdfThumbnail";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -218,13 +219,11 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
       <div className="aspect-[4/3] bg-muted/50 flex items-center justify-center overflow-hidden">
         {isImage(doc.file_type) ? (
           <img src={getDocumentUrl(doc.file_path)} alt={doc.nom} className="w-full h-full object-cover" />
+        ) : doc.file_type === "application/pdf" ? (
+          <PdfThumbnail url={getDocumentUrl(doc.file_path)} className="w-full h-full" />
         ) : (
           <div className="flex flex-col items-center justify-center text-muted-foreground">
-            {doc.file_type === "application/pdf" ? (
-              <FileText className="h-12 w-12 text-red-500" />
-            ) : (
-              <File className="h-12 w-12" />
-            )}
+            <File className="h-12 w-12" />
           </div>
         )}
       </div>
