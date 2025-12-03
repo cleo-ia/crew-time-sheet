@@ -78,12 +78,12 @@ export const EventMarkers = ({
           >
             {/* Diamond marker */}
             <div 
-              className={`w-5 h-5 ${getPriorityColor(event.todo.priorite)} rotate-45 shadow-md group-hover:scale-110 transition-transform`}
+              className={`w-3.5 h-3.5 ${getPriorityColor(event.todo.priorite)} rotate-45 shadow-md group-hover:scale-110 transition-transform`}
             />
             
             {/* Event label */}
             <div 
-              className="absolute left-7 top-0 whitespace-nowrap flex items-center gap-2 h-5"
+              className="absolute left-5 top-0 whitespace-nowrap flex items-center gap-2 h-3.5"
               style={{ transform: "translateY(0)" }}
             >
               <span className="text-sm font-medium text-foreground bg-background/80 px-1.5 py-0.5 rounded shadow-sm">
