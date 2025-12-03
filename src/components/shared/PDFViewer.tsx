@@ -41,9 +41,9 @@ export function PDFViewer({ url }: PDFViewerProps) {
       const containerHeight = containerRef.current.clientHeight - 32;
       const scaleToFitWidth = containerWidth / originalWidth;
       const scaleToFitHeight = containerHeight / originalHeight;
-      // Prendre le plus petit pour que le document tienne entièrement
-      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
-      setScale(Math.min(Math.max(newScale, 0.05), 2)); // Min 5% pour très grands docs
+      // Prendre le plus petit pour que le document tienne entièrement - PAS de limite minimum
+      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight, 2);
+      setScale(newScale);
     }
   };
 
@@ -54,8 +54,8 @@ export function PDFViewer({ url }: PDFViewerProps) {
       const containerHeight = containerRef.current.clientHeight - 32;
       const scaleToFitWidth = containerWidth / pdfWidth;
       const scaleToFitHeight = containerHeight / pdfHeight;
-      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight);
-      setScale(Math.min(Math.max(newScale, 0.05), 2)); // Min 5% pour très grands docs
+      const newScale = Math.min(scaleToFitWidth, scaleToFitHeight, 2);
+      setScale(newScale);
     }
   }, [pdfWidth, pdfHeight]);
 
