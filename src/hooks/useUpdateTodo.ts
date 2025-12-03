@@ -10,6 +10,7 @@ interface UpdateTodoInput {
   statut?: "A_FAIRE" | "EN_COURS" | "TERMINE";
   priorite?: "BASSE" | "NORMALE" | "HAUTE" | null;
   date_echeance?: string | null;
+  afficher_planning?: boolean;
 }
 
 export const useUpdateTodo = () => {

@@ -9,6 +9,7 @@ export interface TodoChantier {
   statut: "A_FAIRE" | "EN_COURS" | "TERMINE";
   priorite: "BASSE" | "NORMALE" | "HAUTE" | null;
   date_echeance: string | null;
+  afficher_planning: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;

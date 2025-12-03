@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Upload, FileText, Image as ImageIcon, Download, ExternalLink, MoreVertical } from "lucide-react";
+import { Trash2, Upload, FileText, Image as ImageIcon, Download, ExternalLink, MoreVertical, Calendar } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TodoChantier } from "@/hooks/useTodosChantier";
 import { useUpdateTodo } from "@/hooks/useUpdateTodo";
@@ -59,6 +60,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
   const [statut, setStatut] = useState(todo.statut);
   const [priorite, setPriorite] = useState(todo.priorite || "NORMALE");
   const [dateEcheance, setDateEcheance] = useState(todo.date_echeance || "");
+  const [afficherPlanning, setAfficherPlanning] = useState(todo.afficher_planning ?? false);
   const [docToDelete, setDocToDelete] = useState<TodoDocument | null>(null);
   const [pdfToView, setPdfToView] = useState<TodoDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +76,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
     setStatut(todo.statut);
     setPriorite(todo.priorite || "NORMALE");
     setDateEcheance(todo.date_echeance || "");
+    setAfficherPlanning(todo.afficher_planning ?? false);
   }, [todo]);
 
   const handleSave = async () => {
@@ -87,6 +90,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
       statut,
       priorite: priorite as any,
       date_echeance: dateEcheance || null,
+      afficher_planning: afficherPlanning && !!dateEcheance,
     });
 
     onOpenChange(false);
@@ -256,6 +260,27 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
                 type="date"
                 value={dateEcheance}
                 onChange={(e) => setDateEcheance(e.target.value)}
+              />
+            </div>
+
+            {/* Afficher sur le planning */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label htmlFor="afficher-planning-detail" className="text-sm font-medium cursor-pointer">
+                    Afficher sur le planning
+                  </Label>
+                  {!dateEcheance && (
+                    <p className="text-xs text-muted-foreground">Nécessite une date d'échéance</p>
+                  )}
+                </div>
+              </div>
+              <Switch
+                id="afficher-planning-detail"
+                checked={afficherPlanning}
+                onCheckedChange={setAfficherPlanning}
+                disabled={!dateEcheance}
               />
             </div>
 

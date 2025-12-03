@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useCreateTodo } from "@/hooks/useCreateTodo";
 import { uploadTodoDocuments } from "@/hooks/useTodoDocuments";
-import { Upload, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Upload, X, FileText, Image as ImageIcon, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 interface TodoFormDialogProps {
@@ -58,6 +59,7 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
   const [description, setDescription] = useState("");
   const [priorite, setPriorite] = useState<"BASSE" | "NORMALE" | "HAUTE">("NORMALE");
   const [dateEcheance, setDateEcheance] = useState("");
+  const [afficherPlanning, setAfficherPlanning] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,6 +125,7 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
         description: description.trim() || undefined,
         priorite,
         date_echeance: dateEcheance || undefined,
+        afficher_planning: afficherPlanning && !!dateEcheance,
       });
 
       // Upload files if any
@@ -143,6 +146,7 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
       setDescription("");
       setPriorite("NORMALE");
       setDateEcheance("");
+      setAfficherPlanning(false);
       setPendingFiles([]);
       onOpenChange(false);
     } catch (error) {
@@ -164,6 +168,7 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
       setDescription("");
       setPriorite("NORMALE");
       setDateEcheance("");
+      setAfficherPlanning(false);
       setPendingFiles([]);
     }
     onOpenChange(isOpen);
@@ -223,6 +228,27 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
                 onChange={(e) => setDateEcheance(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Afficher sur le planning */}
+          <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label htmlFor="afficher-planning" className="text-sm font-medium cursor-pointer">
+                  Afficher sur le planning
+                </Label>
+                {!dateEcheance && (
+                  <p className="text-xs text-muted-foreground">Nécessite une date d'échéance</p>
+                )}
+              </div>
+            </div>
+            <Switch
+              id="afficher-planning"
+              checked={afficherPlanning}
+              onCheckedChange={setAfficherPlanning}
+              disabled={!dateEcheance}
+            />
           </div>
 
           {/* Documents section */}
