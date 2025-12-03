@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => ({
       
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
@@ -121,16 +121,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  
-  build: {
-    target: "esnext",
-  },
-  
-  optimizeDeps: {
-    esbuildOptions: {
-      target: "esnext",
     },
   },
 }));
