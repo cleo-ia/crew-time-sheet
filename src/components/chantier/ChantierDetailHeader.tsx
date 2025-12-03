@@ -39,6 +39,9 @@ export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailH
 
       {/* Header card */}
       <Card className="border border-border/50 shadow-sm overflow-hidden">
+        {/* Status banner */}
+        <div className={`h-1.5 ${chantier.actif ? 'bg-amber-500' : 'bg-green-500'}`} />
+        
         <CardContent className="p-0">
           <div className="flex gap-0">
             {/* Image/Icon - Clickable */}
