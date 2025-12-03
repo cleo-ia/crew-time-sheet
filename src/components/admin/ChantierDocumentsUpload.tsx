@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText, ExternalLink, X } from "lucide-react";
+import { Upload, File, Trash2, Download, Loader2, FolderPlus, Folder, MoreVertical, ArrowLeft, FolderInput, Image, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,12 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -258,8 +252,6 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
 
   const { data: documents = [], isLoading: isLoadingDocs } = useChantierDocuments(chantierId);
   const { data: dossiers = [], isLoading: isLoadingDossiers } = useChantierDossiers(chantierId);
@@ -336,26 +328,9 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
     [handleFiles]
   );
 
-  const handleOpen = async (doc: ChantierDocument) => {
-    try {
-      const url = getDocumentUrl(doc.file_path);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error("Erreur lors du chargement");
-      }
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      if (isImageFile(doc.file_type)) {
-        setLightboxImage(blobUrl);
-      } else if (doc.file_type === "application/pdf") {
-        setPdfViewerUrl(blobUrl);
-      }
-    } catch (error) {
-      console.error("Open error:", error);
-    }
+  const handleOpen = (doc: ChantierDocument) => {
+    const url = getDocumentUrl(doc.file_path);
+    window.open(url, "_blank");
   };
 
   const handleDownload = async (doc: ChantierDocument) => {
@@ -670,65 +645,6 @@ export function ChantierDocumentsUpload({ chantierId }: ChantierDocumentsUploadP
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Image Lightbox */}
-      <Dialog open={!!lightboxImage} onOpenChange={(open) => {
-        if (!open && lightboxImage) {
-          URL.revokeObjectURL(lightboxImage);
-          setLightboxImage(null);
-        }
-      }}>
-        <DialogContent className="max-w-4xl p-0 bg-black/90 border-none" aria-describedby={undefined}>
-          <DialogTitle className="sr-only">Aperçu de l'image</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 z-10 text-white hover:bg-white/20"
-            onClick={() => {
-              if (lightboxImage) URL.revokeObjectURL(lightboxImage);
-              setLightboxImage(null);
-            }}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-          {lightboxImage && (
-            <img
-              src={lightboxImage}
-              alt="Preview"
-              className="w-full h-auto max-h-[85vh] object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* PDF Viewer */}
-      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => {
-        if (!open && pdfViewerUrl) {
-          URL.revokeObjectURL(pdfViewerUrl);
-          setPdfViewerUrl(null);
-        }
-      }}>
-        <DialogContent className="max-w-5xl h-[90vh] p-0" aria-describedby={undefined}>
-          <DialogTitle className="sr-only">Lecteur PDF</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 z-10"
-            onClick={() => {
-              if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl);
-              setPdfViewerUrl(null);
-            }}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-          {pdfViewerUrl && (
-            <iframe
-              src={pdfViewerUrl}
-              className="w-full h-full rounded-lg"
-              title="PDF Viewer"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
