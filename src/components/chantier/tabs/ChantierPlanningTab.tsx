@@ -18,6 +18,7 @@ import { fr } from "date-fns/locale";
 
 interface ChantierPlanningTabProps {
   chantierId: string;
+  chantierNom?: string;
 }
 
 // Start from January 2015 to allow scrolling far back and forward
@@ -32,7 +33,7 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
   { value: "year", label: "Année" },
 ];
 
-export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) => {
+export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("quarter");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -145,25 +146,38 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         }
       });
 
+      // Day name mapping (L, M, M, J, V, S, D)
+      const dayNames = ["D", "L", "M", "M", "J", "V", "S"];
+
       // Add day columns for Gantt visualization
       const dayColumns = days.map((day, i) => ({
-        header: format(day, "d", { locale: fr }),
+        header: `${dayNames[day.getDay()]}${format(day, "d", { locale: fr })}`,
         key: `day_${i}`,
-        width: 3,
+        width: 4,
       }));
 
       worksheet.columns = [...baseColumns, ...dayColumns];
 
-      // Add month header row first
-      const monthRow = worksheet.insertRow(1, []);
+      // Add title row first (row 1)
+      const titleRow = worksheet.insertRow(1, []);
+      titleRow.height = 30;
+      const titleCell = titleRow.getCell(1);
+      titleCell.value = `Planning - ${chantierNom || "Chantier"}`;
+      titleCell.font = { bold: true, size: 14, color: { argb: "FF1F2937" } };
+      titleCell.alignment = { horizontal: "left", vertical: "middle" };
+      worksheet.mergeCells(1, 1, 1, baseColumns.length + days.length);
+
+      // Add month header row (row 2)
+      const monthRow = worksheet.insertRow(2, []);
       monthRow.height = 20;
       
       // Merge cells for base columns in month row
-      worksheet.mergeCells(1, 1, 1, baseColumns.length);
+      worksheet.mergeCells(2, 1, 2, baseColumns.length);
       
       // Add month labels and merge cells
       monthGroups.forEach(group => {
-        const startCell = monthRow.getCell(group.startCol);
+        const adjustedStartCol = group.startCol;
+        const startCell = monthRow.getCell(adjustedStartCol);
         startCell.value = group.month.charAt(0).toUpperCase() + group.month.slice(1);
         startCell.fill = {
           type: "pattern",
@@ -174,12 +188,12 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         startCell.alignment = { horizontal: "center", vertical: "middle" };
         
         if (group.count > 1) {
-          worksheet.mergeCells(1, group.startCol, 1, group.startCol + group.count - 1);
+          worksheet.mergeCells(2, adjustedStartCol, 2, adjustedStartCol + group.count - 1);
         }
       });
       
-      // Style day header row (now row 2)
-      const headerRow = worksheet.getRow(2);
+      // Style day header row (now row 3)
+      const headerRow = worksheet.getRow(3);
       headerRow.font = { bold: true, size: 10 };
       headerRow.alignment = { horizontal: "center", vertical: "middle" };
       headerRow.height = 22;
@@ -195,16 +209,17 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
       }
       
-      // Style day header cells
-      for (let i = baseColumns.length + 1; i <= baseColumns.length + days.length; i++) {
-        const cell = headerRow.getCell(i);
+      // Style day header cells (gray out weekends)
+      days.forEach((day, idx) => {
+        const cell = headerRow.getCell(baseColumns.length + 1 + idx);
+        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "FF374151" },
+          fgColor: { argb: isWeekend ? "FF9CA3AF" : "FF374151" },
         };
         cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
-      }
+      });
 
       // Add data rows
       taches.forEach((tache, rowIndex) => {
@@ -242,13 +257,14 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
         statusCell.font = { color: { argb: "FFFFFFFF" }, bold: true, size: 9 };
         statusCell.alignment = { horizontal: "center" };
 
-        // Style day cells with task color
+        // Style day cells with task color or weekend gray
         days.forEach((day, dayIndex) => {
           const dayTime = day.getTime();
           const overlaps = dayTime >= dateDebut.getTime() && dayTime <= dateFin.getTime();
+          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+          const cell = row.getCell(baseColumns.length + 1 + dayIndex);
           
           if (overlaps) {
-            const cell = row.getCell(baseColumns.length + 1 + dayIndex);
             cell.fill = {
               type: "pattern",
               pattern: "solid",
@@ -256,6 +272,12 @@ export const ChantierPlanningTab = ({ chantierId }: ChantierPlanningTabProps) =>
             };
             cell.font = { color: { argb: STATUS_COLORS[computedStatus] }, size: 9 };
             cell.alignment = { horizontal: "center" };
+          } else if (isWeekend) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFE5E7EB" },
+            };
           }
         });
 
