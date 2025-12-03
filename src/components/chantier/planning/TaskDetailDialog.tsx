@@ -393,45 +393,62 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
               />
             </div>
 
-            {/* Fichiers preview */}
+            {/* Fichiers preview - same card style as Fichiers tab */}
             {documents.length > 0 && (
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Fichiers ({documents.length})</span>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {documents.map((doc) => {
-                    const isImage = doc.file_type.startsWith("image/");
-                    const url = getPublicUrl(doc.file_path);
+                    const publicUrl = getPublicUrl(doc.file_path);
                     const isPdf = doc.file_type === "application/pdf";
                     
-                    const handleClick = () => {
-                      if (isImage) {
-                        setLightboxImage(url);
+                    const handleOpenDocument = () => {
+                      if (isImageFile(doc.file_type)) {
+                        setLightboxImage(publicUrl);
                       } else if (isPdf) {
                         setPdfToView(doc);
                       } else {
-                        window.open(url, "_blank");
+                        window.open(publicUrl, "_blank");
                       }
                     };
                     
                     return (
-                      <button
+                      <div
                         key={doc.id}
-                        onClick={handleClick}
-                        className="group relative cursor-pointer"
+                        className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all cursor-pointer"
+                        onClick={handleOpenDocument}
                       >
-                        {isImage ? (
-                          <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-orange-500 transition-all">
-                            <img src={url} alt={doc.nom} className="w-full h-full object-cover" />
+                        {/* Preview Area */}
+                        <div className="h-24 bg-muted/30 flex items-center justify-center overflow-hidden">
+                          {isImageFile(doc.file_type) ? (
+                            <img
+                              src={publicUrl}
+                              alt={doc.nom}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              {getFileIcon(doc.file_type)}
+                              <span className="text-xs text-muted-foreground uppercase font-medium">
+                                {doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* File Info */}
+                        <div className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            {getSmallFileIcon(doc.file_type)}
+                            <p className="text-xs font-medium truncate flex-1" title={doc.nom}>
+                              {doc.nom}
+                            </p>
                           </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg border bg-muted flex flex-col items-center justify-center hover:ring-2 hover:ring-orange-500 transition-all">
-                            <FileText className={`h-6 w-6 ${isPdf ? "text-red-500" : "text-muted-foreground"}`} />
-                            <span className="text-[10px] text-muted-foreground mt-1">
-                              {isPdf ? "PDF" : doc.file_type.split("/")[1]?.toUpperCase() || "FILE"}
-                            </span>
-                          </div>
-                        )}
-                      </button>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                            {formatFileDate(doc.created_at)}
+                          </p>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
