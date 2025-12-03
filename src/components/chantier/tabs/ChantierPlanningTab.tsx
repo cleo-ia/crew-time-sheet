@@ -566,6 +566,7 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
           ref={ganttRef} 
           startDate={START_DATE} 
           numDays={NUM_DAYS} 
+          numRows={taches.length + planningTodos.length}
           zoomLevel={zoomLevel}
           showDates={showDates}
         >
