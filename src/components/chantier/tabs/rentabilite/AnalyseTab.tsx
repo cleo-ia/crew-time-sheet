@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+
+interface AnalyseTabProps {
+  chantierId: string;
+  montantVendu: number;
+}
 
 const mockTasks = [
   { nom: "Fondations", heuresEstimees: 120, heuresTravaillees: 98, marge: 2450 },
@@ -11,21 +22,50 @@ const mockTasks = [
   { nom: "Menuiseries", heuresEstimees: 45, heuresTravaillees: 42, marge: 980 },
 ];
 
-// Mock data - all set to zero
-const margePercent = 0;
-const margeValue = 0;
-const venduValue = 0;
-const coutsValue = 0;
-const mainOeuvre = 0;
-const achats = 0;
-const sousTraitance = 0;
+export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
+  const queryClient = useQueryClient();
+  const [isEditingVendu, setIsEditingVendu] = useState(false);
+  const [venduInput, setVenduInput] = useState(montantVendu.toString());
+  const [isSaving, setIsSaving] = useState(false);
 
-const donutData = [
-  { name: "Marge", value: margePercent },
-  { name: "Coûts", value: 100 - margePercent },
-];
+  // Computed values (will be connected to real data later)
+  const coutsValue = 0;
+  const mainOeuvre = 0;
+  const achats = 0;
+  const sousTraitance = 0;
+  const margeValue = montantVendu - coutsValue;
+  const margePercent = montantVendu > 0 ? (margeValue / montantVendu) * 100 : 0;
 
-export const AnalyseTab = () => {
+  const donutData = [
+    { name: "Marge", value: margePercent },
+    { name: "Coûts", value: 100 - margePercent },
+  ];
+
+  const handleSaveVendu = async () => {
+    const newValue = parseFloat(venduInput.replace(/\s/g, "").replace(",", ".")) || 0;
+    setIsSaving(true);
+    
+    const { error } = await supabase
+      .from("chantiers")
+      .update({ montant_vendu: newValue })
+      .eq("id", chantierId);
+
+    if (error) {
+      toast.error("Erreur lors de la sauvegarde");
+      console.error(error);
+    } else {
+      toast.success("Montant vendu mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["chantier-detail", chantierId] });
+      setIsEditingVendu(false);
+    }
+    setIsSaving(false);
+  };
+
+  const handleCancelEdit = () => {
+    setVenduInput(montantVendu.toString());
+    setIsEditingVendu(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top section: Single card with Donut + KPIs + Costs */}
@@ -82,9 +122,38 @@ export const AnalyseTab = () => {
               {/* VENDU Column */}
               <div className="space-y-6">
                 <div>
-                  <p className="text-3xl font-bold">
-                    €{venduValue.toLocaleString("fr-FR")}
-                  </p>
+                  {isEditingVendu ? (
+                    <div className="space-y-2">
+                      <Input
+                        type="text"
+                        value={venduInput}
+                        onChange={(e) => setVenduInput(e.target.value)}
+                        className="text-2xl font-bold h-12"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveVendu} disabled={isSaving}>
+                          Valider
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                          Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="group cursor-pointer flex items-center gap-2"
+                      onClick={() => {
+                        setVenduInput(montantVendu.toString());
+                        setIsEditingVendu(true);
+                      }}
+                    >
+                      <p className="text-3xl font-bold">
+                        €{montantVendu.toLocaleString("fr-FR")}
+                      </p>
+                      <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground uppercase tracking-wide">VENDU</p>
                 </div>
                 <div>
