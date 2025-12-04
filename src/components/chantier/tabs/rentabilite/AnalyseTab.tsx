@@ -34,15 +34,15 @@ export const AnalyseTab = () => {
           <div className="flex items-center gap-12">
             {/* Donut Chart */}
             <div className="flex-shrink-0">
-              <div className="h-[180px] w-[180px] relative">
+              <div className="h-[220px] w-[220px] relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={donutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={55}
-                      outerRadius={80}
+                      innerRadius={70}
+                      outerRadius={100}
                       startAngle={90}
                       endAngle={-270}
                       dataKey="value"
