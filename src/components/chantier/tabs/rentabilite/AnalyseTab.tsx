@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { HelpCircle, Pencil, Check, Clock, TrendingUp } from "lucide-react";
+import { HelpCircle, Pencil, Check, Clock, TrendingUp, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,11 +12,14 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AnalyseTabProps {
   chantierId: string;
   montantVendu: number;
 }
+
+type ViewMode = "horaire" | "monetaire";
 
 // Compute dynamic status based on dates (same logic as Gantt planning)
 const getComputedStatus = (task: TacheChantier): TacheChantier["statut"] => {
@@ -56,6 +59,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TacheChantier | null>(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("horaire");
 
   const handleTaskDoubleClick = (task: TacheChantier) => {
     setSelectedTask(task);
@@ -236,111 +240,261 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
       {/* Tasks table - Redesigned */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Header */}
+          {/* Header with Toggle */}
           <div className="px-6 py-4 border-b bg-muted/30">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-base">Rentabilité par tâche</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-base">Rentabilité par tâche</h3>
+              </div>
+              <div className="flex items-center bg-muted rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("monetaire")}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === "monetaire"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Monétaire
+                </button>
+                <button
+                  onClick={() => setViewMode("horaire")}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === "horaire"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Horaire
+                </button>
+              </div>
             </div>
           </div>
           
-          {/* Table Header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <div className="col-span-3">Tâche</div>
-            <div className="col-span-2 text-center">Statut</div>
-            <div className="col-span-2 text-center">Estimées</div>
-            <div className="col-span-2 text-center">Réalisées</div>
-            <div className="col-span-3 text-center">Marge</div>
-          </div>
-          
-          {/* Table Body */}
-          <div className="divide-y">
-            {isLoadingTaches ? (
-              <div className="px-6 py-12 text-center text-muted-foreground">
-                <Clock className="h-8 w-8 mx-auto mb-2 animate-pulse" />
-                <p>Chargement des tâches...</p>
+          {viewMode === "horaire" ? (
+            <>
+              {/* Table Header - Horaire */}
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="col-span-3">Tâche</div>
+                <div className="col-span-2 text-center">Statut</div>
+                <div className="col-span-2 text-center">Estimées</div>
+                <div className="col-span-2 text-center">Réalisées</div>
+                <div className="col-span-3 text-center">Marge</div>
               </div>
-            ) : taches.length === 0 ? (
-              <div className="px-6 py-12 text-center text-muted-foreground">
-                <p className="text-sm">Aucune tâche définie pour ce chantier</p>
-                <p className="text-xs mt-1">Créez des tâches dans l'onglet Planning</p>
-              </div>
-            ) : (
-              taches.map((task) => {
-                const computedStatus = getComputedStatus(task);
-                const statusConfig = getStatusConfig(computedStatus);
-                const heuresEstimees = task.heures_estimees ?? 0;
-                const heuresRealisees = task.heures_realisees ?? 0;
-                const progressPercent = heuresEstimees > 0 ? Math.min((heuresRealisees / heuresEstimees) * 100, 100) : 0;
-                const isOverBudget = heuresRealisees > heuresEstimees && heuresEstimees > 0;
-                
-                return (
-                  <div 
-                    key={task.id} 
-                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
-                    onDoubleClick={() => handleTaskDoubleClick(task)}
-                  >
-                    {/* Task Name + Progress */}
-                    <div className="col-span-3 space-y-2">
-                      <p className="font-medium text-sm">{task.nom}</p>
-                      <div className="flex items-center gap-2 max-w-[140px]">
-                        <Progress 
-                          value={progressPercent} 
-                          className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
-                        />
-                        <span className={`text-xs tabular-nums ${isOverBudget ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
-                          {progressPercent.toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Status */}
-                    <div className="col-span-2 text-center">
-                      <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-xs font-medium`}>
-                        {statusConfig.label}
-                      </Badge>
-                    </div>
-                    
-                    {/* Estimated Hours */}
-                    <div className="col-span-2 text-center">
-                      <span className="text-sm font-medium tabular-nums">{heuresEstimees}h</span>
-                    </div>
-                    
-                    {/* Worked Hours */}
-                    <div className="col-span-2 text-center">
-                      <span className={`text-sm font-medium tabular-nums ${isOverBudget ? "text-red-500" : ""}`}>
-                        {heuresRealisees}h
-                      </span>
-                    </div>
-                    
-                    {/* Margin */}
-                    <div className="col-span-3 text-center">
-                      <span className="text-sm text-muted-foreground tabular-nums">0€</span>
-                    </div>
+              
+              {/* Table Body - Horaire */}
+              <div className="divide-y">
+                {isLoadingTaches ? (
+                  <div className="px-6 py-12 text-center text-muted-foreground">
+                    <Clock className="h-8 w-8 mx-auto mb-2 animate-pulse" />
+                    <p>Chargement des tâches...</p>
                   </div>
-                );
-              })
-            )}
-          </div>
-          
-          {/* Footer / Totals */}
-          {taches.length > 0 && (
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
-              <div className="col-span-3">
-                <span className="font-semibold text-sm">Total</span>
-                <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
+                ) : taches.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-muted-foreground">
+                    <p className="text-sm">Aucune tâche définie pour ce chantier</p>
+                    <p className="text-xs mt-1">Créez des tâches dans l'onglet Planning</p>
+                  </div>
+                ) : (
+                  taches.map((task) => {
+                    const computedStatus = getComputedStatus(task);
+                    const statusConfig = getStatusConfig(computedStatus);
+                    const heuresEstimees = task.heures_estimees ?? 0;
+                    const heuresRealisees = task.heures_realisees ?? 0;
+                    const progressPercent = heuresEstimees > 0 ? Math.min((heuresRealisees / heuresEstimees) * 100, 100) : 0;
+                    const isOverBudget = heuresRealisees > heuresEstimees && heuresEstimees > 0;
+                    
+                    return (
+                      <div 
+                        key={task.id} 
+                        className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
+                        onDoubleClick={() => handleTaskDoubleClick(task)}
+                      >
+                        {/* Task Name + Progress */}
+                        <div className="col-span-3 space-y-2">
+                          <p className="font-medium text-sm">{task.nom}</p>
+                          <div className="flex items-center gap-2 max-w-[140px]">
+                            <Progress 
+                              value={progressPercent} 
+                              className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
+                            />
+                            <span className={`text-xs tabular-nums ${isOverBudget ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
+                              {progressPercent.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Status */}
+                        <div className="col-span-2 text-center">
+                          <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-xs font-medium`}>
+                            {statusConfig.label}
+                          </Badge>
+                        </div>
+                        
+                        {/* Estimated Hours */}
+                        <div className="col-span-2 text-center">
+                          <span className="text-sm font-medium tabular-nums">{heuresEstimees}h</span>
+                        </div>
+                        
+                        {/* Worked Hours */}
+                        <div className="col-span-2 text-center">
+                          <span className={`text-sm font-medium tabular-nums ${isOverBudget ? "text-red-500" : ""}`}>
+                            {heuresRealisees}h
+                          </span>
+                        </div>
+                        
+                        {/* Margin */}
+                        <div className="col-span-3 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-              <div className="col-span-2" />
-              <div className="col-span-2 text-center">
-                <span className="font-semibold text-sm tabular-nums">{totalHeuresEstimees}h</span>
+              
+              {/* Footer / Totals - Horaire */}
+              {taches.length > 0 && (
+                <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
+                  <div className="col-span-3">
+                    <span className="font-semibold text-sm">Total</span>
+                    <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
+                  </div>
+                  <div className="col-span-2" />
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm tabular-nums">{totalHeuresEstimees}h</span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm tabular-nums">{totalHeuresRealisees}h</span>
+                  </div>
+                  <div className="col-span-3 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Table Header - Monétaire */}
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="col-span-3">Tâches</div>
+                <div className="col-span-2 text-center">Vendu</div>
+                <div className="col-span-2 text-center flex items-center justify-center gap-1">
+                  <span>MO</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Main d'œuvre</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="col-span-2 text-center">Achats</div>
+                <div className="col-span-1 text-center flex items-center justify-center gap-1">
+                  <span>ST</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Sous-traitance</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="col-span-2 text-center">Marge</div>
               </div>
-              <div className="col-span-2 text-center">
-                <span className="font-semibold text-sm tabular-nums">{totalHeuresRealisees}h</span>
+              
+              {/* Table Body - Monétaire */}
+              <div className="divide-y">
+                {isLoadingTaches ? (
+                  <div className="px-6 py-12 text-center text-muted-foreground">
+                    <Clock className="h-8 w-8 mx-auto mb-2 animate-pulse" />
+                    <p>Chargement des tâches...</p>
+                  </div>
+                ) : taches.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-muted-foreground">
+                    <p className="text-sm">Aucune tâche définie pour ce chantier</p>
+                    <p className="text-xs mt-1">Créez des tâches dans l'onglet Planning</p>
+                  </div>
+                ) : (
+                  taches.map((task) => {
+                    const computedStatus = getComputedStatus(task);
+                    const statusConfig = getStatusConfig(computedStatus);
+                    
+                    return (
+                      <div 
+                        key={task.id} 
+                        className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
+                        onDoubleClick={() => handleTaskDoubleClick(task)}
+                      >
+                        {/* Task Name + Status Badge */}
+                        <div className="col-span-3 space-y-1">
+                          <p className="font-medium text-sm">{task.nom}</p>
+                          <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-xs font-medium`}>
+                            {statusConfig.label}
+                          </Badge>
+                        </div>
+                        
+                        {/* Vendu */}
+                        <div className="col-span-2 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                        </div>
+                        
+                        {/* MO (Main d'œuvre) */}
+                        <div className="col-span-2 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                        </div>
+                        
+                        {/* Achats */}
+                        <div className="col-span-2 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                        </div>
+                        
+                        {/* ST (Sous-traitance) */}
+                        <div className="col-span-1 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                        </div>
+                        
+                        {/* Marge */}
+                        <div className="col-span-2 text-center">
+                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-              <div className="col-span-3 text-center">
-                <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
-              </div>
-            </div>
+              
+              {/* Footer / Totals - Monétaire */}
+              {taches.length > 0 && (
+                <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
+                  <div className="col-span-3">
+                    <span className="font-semibold text-sm">Total</span>
+                    <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
