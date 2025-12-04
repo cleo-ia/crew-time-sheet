@@ -180,7 +180,7 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {isEditing ? "Modifier l'achat" : "Ajouter un achat rapide"}
