@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { HelpCircle, Pencil } from "lucide-react";
+import { HelpCircle, Pencil, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,7 +25,7 @@ const mockTasks = [
 
 export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const queryClient = useQueryClient();
-  const [isEditingVendu, setIsEditingVendu] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [venduInput, setVenduInput] = useState(montantVendu.toString());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -56,14 +57,16 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
     } else {
       toast.success("Montant vendu mis à jour");
       queryClient.invalidateQueries({ queryKey: ["chantier-detail", chantierId] });
-      setIsEditingVendu(false);
+      setIsPopoverOpen(false);
     }
     setIsSaving(false);
   };
 
-  const handleCancelEdit = () => {
-    setVenduInput(montantVendu.toString());
-    setIsEditingVendu(false);
+  const handlePopoverOpenChange = (open: boolean) => {
+    setIsPopoverOpen(open);
+    if (open) {
+      setVenduInput(montantVendu.toString());
+    }
   };
 
   return (
@@ -122,36 +125,43 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
               {/* VENDU Column */}
               <div className="space-y-6">
                 <div>
-                  {isEditingVendu ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-bold">€</span>
-                      <Input
-                        type="text"
-                        value={venduInput}
-                        onChange={(e) => setVenduInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveVendu();
-                          if (e.key === "Escape") handleCancelEdit();
-                        }}
-                        onBlur={handleSaveVendu}
-                        className="text-3xl font-bold h-auto py-0 px-1 w-40 border-0 border-b-2 border-primary rounded-none bg-transparent focus-visible:ring-0"
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <div 
-                      className="group cursor-pointer inline-flex items-center gap-2"
-                      onClick={() => {
-                        setVenduInput(montantVendu.toString());
-                        setIsEditingVendu(true);
-                      }}
-                    >
-                      <p className="text-3xl font-bold hover:text-primary transition-colors">
-                        €{montantVendu.toLocaleString("fr-FR")}
-                      </p>
-                      <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                    </div>
-                  )}
+                  <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpenChange}>
+                    <PopoverTrigger asChild>
+                      <div className="group cursor-pointer inline-flex items-center gap-2">
+                        <p className="text-3xl font-bold hover:text-primary transition-colors">
+                          €{montantVendu.toLocaleString("fr-FR")}
+                        </p>
+                        <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-muted-foreground">Modifier le montant vendu</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">€</span>
+                          <Input
+                            type="text"
+                            value={venduInput}
+                            onChange={(e) => setVenduInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveVendu();
+                              if (e.key === "Escape") setIsPopoverOpen(false);
+                            }}
+                            className="flex-1"
+                            autoFocus
+                          />
+                          <Button 
+                            size="icon" 
+                            onClick={handleSaveVendu} 
+                            disabled={isSaving}
+                            className="shrink-0"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <p className="text-sm text-muted-foreground uppercase tracking-wide">VENDU</p>
                 </div>
                 <div>
