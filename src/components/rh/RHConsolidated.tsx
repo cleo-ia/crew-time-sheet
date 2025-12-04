@@ -84,23 +84,6 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                         </Tooltip>
                       </TooltipProvider>
                     )}
-                    {emp.nbGD > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge 
-                              variant="outline" 
-                              className="bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/50 px-2 py-0.5 text-xs font-semibold"
-                            >
-                              GD ({emp.nbGD})
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="font-semibold">{emp.nbGD} jour(s) en Grand Déplacement</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-center">
@@ -133,7 +116,24 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                 </TableCell>
                 <TableCell className="text-center">{emp.absences}j</TableCell>
                 <TableCell className="text-center">{emp.paniers}</TableCell>
-                <TableCell className="text-center">{emp.trajets}</TableCell>
+                <TableCell className="text-center">
+                  {emp.nbGD > 0 ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block border-2 border-destructive rounded px-2 py-0.5 text-destructive font-semibold">
+                            {emp.trajets}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-semibold">{emp.nbGD} jour(s) en Grand Déplacement</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    emp.trajets
+                  )}
+                </TableCell>
                 <TableCell className="text-center">{emp.trajetsPerso > 0 ? emp.trajetsPerso : '-'}</TableCell>
                 <TableCell className="text-center">
                   {emp.role === "interimaire" && emp.agence_interim ? (
