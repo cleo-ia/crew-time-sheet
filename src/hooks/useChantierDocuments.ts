@@ -147,9 +147,57 @@ export function useDeleteChantierDocument() {
         .eq("id", document.id);
 
       if (dbError) throw dbError;
+
+      // Also delete from taches_documents (find by nom and chantier link)
+      const { data: tachesDocs } = await supabase
+        .from("taches_documents")
+        .select("id, file_path, tache_id")
+        .eq("nom", document.nom);
+
+      if (tachesDocs?.length) {
+        // Filter to only taches belonging to this chantier
+        const { data: tachesOfChantier } = await supabase
+          .from("taches_chantier")
+          .select("id")
+          .eq("chantier_id", document.chantier_id);
+
+        const tacheIds = tachesOfChantier?.map(t => t.id) || [];
+        const docsToDelete = tachesDocs.filter(d => tacheIds.includes(d.tache_id));
+
+        for (const doc of docsToDelete) {
+          await supabase.storage.from("taches-documents").remove([doc.file_path]);
+          await supabase.from("taches_documents").delete().eq("id", doc.id);
+        }
+      }
+
+      // Also delete from todos_documents (find by nom and chantier link)
+      const { data: todosDocs } = await supabase
+        .from("todos_documents")
+        .select("id, file_path, todo_id")
+        .eq("nom", document.nom);
+
+      if (todosDocs?.length) {
+        // Filter to only todos belonging to this chantier
+        const { data: todosOfChantier } = await supabase
+          .from("todos_chantier")
+          .select("id")
+          .eq("chantier_id", document.chantier_id);
+
+        const todoIds = todosOfChantier?.map(t => t.id) || [];
+        const docsToDelete = todosDocs.filter(d => todoIds.includes(d.todo_id));
+
+        for (const doc of docsToDelete) {
+          await supabase.storage.from("todos-documents").remove([doc.file_path]);
+          await supabase.from("todos_documents").delete().eq("id", doc.id);
+        }
+      }
+
+      return { chantierId: document.chantier_id };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["chantier-documents", variables.document.chantier_id] });
+      queryClient.invalidateQueries({ queryKey: ["tache-documents"] });
+      queryClient.invalidateQueries({ queryKey: ["todo-documents"] });
       toast({
         title: "Document supprimé",
         description: "Le document a été supprimé avec succès.",
