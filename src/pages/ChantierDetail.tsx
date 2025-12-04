@@ -101,7 +101,7 @@ const ChantierDetail = () => {
               <ChantierTodoTab chantierId={chantier.id} />
             </TabsContent>
             <TabsContent value="rentabilite">
-              <ChantierRentabiliteTab chantierId={chantier.id} />
+              <ChantierRentabiliteTab chantierId={chantier.id} montantVendu={chantier.montant_vendu ?? 0} />
             </TabsContent>
             <TabsContent value="infos">
               <ChantierInfosTab />

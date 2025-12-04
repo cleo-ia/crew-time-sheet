@@ -183,6 +183,7 @@ export type Database = {
           description: string | null
           id: string
           libelle: string | null
+          montant_vendu: number | null
           nom: string
           updated_at: string
           ville: string | null
@@ -201,6 +202,7 @@ export type Database = {
           description?: string | null
           id?: string
           libelle?: string | null
+          montant_vendu?: number | null
           nom: string
           updated_at?: string
           ville?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           description?: string | null
           id?: string
           libelle?: string | null
+          montant_vendu?: number | null
           nom?: string
           updated_at?: string
           ville?: string | null

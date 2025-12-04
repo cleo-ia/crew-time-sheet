@@ -5,9 +5,10 @@ import { HeuresTab } from "./rentabilite/HeuresTab";
 
 interface ChantierRentabiliteTabProps {
   chantierId: string;
+  montantVendu: number;
 }
 
-export const ChantierRentabiliteTab = ({ chantierId }: ChantierRentabiliteTabProps) => {
+export const ChantierRentabiliteTab = ({ chantierId, montantVendu }: ChantierRentabiliteTabProps) => {
   return (
     <Tabs defaultValue="analyse" className="w-full">
       <TabsList>
@@ -18,7 +19,7 @@ export const ChantierRentabiliteTab = ({ chantierId }: ChantierRentabiliteTabPro
 
       <div className="mt-4">
         <TabsContent value="analyse">
-          <AnalyseTab />
+          <AnalyseTab chantierId={chantierId} montantVendu={montantVendu} />
         </TabsContent>
         <TabsContent value="achats">
           <AchatsTab />

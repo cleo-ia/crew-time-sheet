@@ -17,6 +17,7 @@ export interface ChantierDetail {
   chef?: { nom: string | null; prenom: string | null } | null;
   conducteur?: { nom: string | null; prenom: string | null } | null;
   cover_image?: string | null;
+  montant_vendu?: number | null;
 }
 
 export const useChantierDetail = (chantierId: string | undefined) => {
