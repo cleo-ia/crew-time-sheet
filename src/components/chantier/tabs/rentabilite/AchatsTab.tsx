@@ -122,15 +122,15 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
       <Card className="overflow-hidden border-0 shadow-lg">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b border-border/50">
-          <div className="grid grid-cols-[1fr_100px_120px_80px_90px_70px_120px_110px_100px_50px] gap-2 px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="grid grid-cols-[minmax(150px,1fr)_100px_130px_70px_90px_60px_100px_110px_100px_44px] gap-4 px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             <div>Nom</div>
-            <div>Date</div>
-            <div>Fournisseur</div>
-            <div className="text-right">Qté</div>
-            <div className="text-right">Prix unit.</div>
-            <div>Unité</div>
-            <div>Tâche</div>
-            <div>Type</div>
+            <div className="text-center">Date</div>
+            <div className="text-center">Fournisseur</div>
+            <div className="text-center">Qté</div>
+            <div className="text-center">Prix unit.</div>
+            <div className="text-center">Unité</div>
+            <div className="text-center">Tâche</div>
+            <div className="text-center">Type</div>
             <div className="text-right">Montant</div>
             <div></div>
           </div>
@@ -165,7 +165,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                 return (
                   <div 
                     key={achat.id}
-                    className={`grid grid-cols-[1fr_100px_120px_80px_90px_70px_120px_110px_100px_50px] gap-2 px-4 py-3 items-center hover:bg-muted/30 transition-colors ${
+                    className={`grid grid-cols-[minmax(150px,1fr)_100px_130px_70px_90px_60px_100px_110px_100px_44px] gap-4 px-6 py-3 items-center hover:bg-muted/30 transition-colors ${
                       index % 2 === 0 ? 'bg-background' : 'bg-muted/10'
                     }`}
                   >
@@ -192,34 +192,34 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                     </div>
 
                     {/* Date */}
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground text-center">
                       {format(new Date(achat.date), "dd MMM yyyy", { locale: fr })}
                     </div>
 
                     {/* Fournisseur */}
-                    <div className="text-sm truncate">
+                    <div className="text-sm truncate text-center">
                       {achat.fournisseur || <span className="text-muted-foreground/50">—</span>}
                     </div>
 
                     {/* Quantité */}
-                    <div className="text-right font-medium tabular-nums">
+                    <div className="text-center font-medium tabular-nums">
                       {achat.quantite ?? 1}
                     </div>
 
                     {/* Prix unitaire */}
-                    <div className="text-right text-sm tabular-nums">
+                    <div className="text-center text-sm tabular-nums">
                       {achat.prix_unitaire?.toLocaleString("fr-FR") ?? "—"}€
                     </div>
 
                     {/* Unité */}
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground text-center">
                       {achat.unite || <span className="opacity-50">—</span>}
                     </div>
 
                     {/* Tâche */}
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex justify-center">
                       {tacheName ? (
-                        <span className="text-xs px-2 py-1 rounded-md bg-muted truncate block">
+                        <span className="text-xs px-2 py-1 rounded-md bg-muted truncate max-w-full">
                           {tacheName}
                         </span>
                       ) : (
@@ -228,7 +228,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                     </div>
 
                     {/* Type */}
-                    <div>
+                    <div className="flex justify-center">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${typeStyle.bg} ${typeStyle.text} ${typeStyle.border}`}>
                         {achat.type_cout}
                       </span>
