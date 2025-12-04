@@ -130,7 +130,7 @@ export const TodoFormDialog = ({ open, onOpenChange, chantierId }: TodoFormDialo
 
       // Upload files if any
       if (pendingFiles.length > 0 && newTodo?.id) {
-        await uploadTodoDocuments(newTodo.id, pendingFiles.map((pf) => pf.file));
+        await uploadTodoDocuments(newTodo.id, pendingFiles.map((pf) => pf.file), chantierId);
         toast.success(`${pendingFiles.length} fichier(s) ajouté(s)`);
       }
 
