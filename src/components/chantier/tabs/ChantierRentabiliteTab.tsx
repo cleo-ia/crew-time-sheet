@@ -22,7 +22,7 @@ export const ChantierRentabiliteTab = ({ chantierId, montantVendu }: ChantierRen
           <AnalyseTab chantierId={chantierId} montantVendu={montantVendu} />
         </TabsContent>
         <TabsContent value="achats">
-          <AchatsTab />
+          <AchatsTab chantierId={chantierId} />
         </TabsContent>
         <TabsContent value="heures">
           <HeuresTab />
