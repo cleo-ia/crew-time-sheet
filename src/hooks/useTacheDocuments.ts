@@ -31,11 +31,11 @@ export const useTacheDocuments = (tacheId: string | undefined) => {
   });
 
   const uploadDocument = useMutation({
-    mutationFn: async ({ file, tacheId }: { file: File; tacheId: string }) => {
+    mutationFn: async ({ file, tacheId, chantierId }: { file: File; tacheId: string; chantierId?: string }) => {
       const fileExt = file.name.split(".").pop();
       const fileName = `${tacheId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      // Upload file to storage
+      // Upload file to taches-documents storage
       const { error: uploadError } = await supabase.storage
         .from("taches-documents")
         .upload(fileName, file);
@@ -45,7 +45,7 @@ export const useTacheDocuments = (tacheId: string | undefined) => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Create database entry
+      // Create database entry for tache document
       const { error: dbError } = await supabase.from("taches_documents").insert({
         tache_id: tacheId,
         nom: file.name,
@@ -56,9 +56,44 @@ export const useTacheDocuments = (tacheId: string | undefined) => {
       });
 
       if (dbError) throw dbError;
+
+      // Also copy to chantier documents if chantierId is provided
+      if (chantierId) {
+        const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        // Upload file to chantiers-documents storage
+        const { error: chantierUploadError } = await supabase.storage
+          .from("chantiers-documents")
+          .upload(chantierFileName, file);
+
+        if (chantierUploadError) {
+          console.error("Error uploading to chantiers-documents:", chantierUploadError);
+          // Don't fail the whole operation, just log the error
+        } else {
+          // Create database entry for chantier document
+          const { error: chantierDbError } = await supabase.from("chantiers_documents").insert({
+            chantier_id: chantierId,
+            nom: file.name,
+            file_path: chantierFileName,
+            file_type: file.type,
+            file_size: file.size,
+            uploaded_by: user?.id,
+          });
+
+          if (chantierDbError) {
+            console.error("Error inserting chantier document:", chantierDbError);
+          }
+        }
+      }
+
+      return { chantierId };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["tache-documents", tacheId] });
+      // Also invalidate chantier documents cache if chantierId was provided
+      if (data?.chantierId) {
+        queryClient.invalidateQueries({ queryKey: ["chantier-documents", data.chantierId] });
+      }
       toast.success("Fichier ajouté");
     },
     onError: (error) => {
