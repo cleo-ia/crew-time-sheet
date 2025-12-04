@@ -399,6 +399,9 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
             {showPdfViewer && facturePath && (
               <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Aperçu de la facture</DialogTitle>
+                  </DialogHeader>
                   <PDFViewer url={supabase.storage.from("chantiers-documents").getPublicUrl(facturePath).data.publicUrl} />
                 </DialogContent>
               </Dialog>
@@ -408,6 +411,9 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
             {showImageViewer && facturePath && (
               <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
                 <DialogContent className="max-w-4xl">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Aperçu de l'image</DialogTitle>
+                  </DialogHeader>
                   <img
                     src={supabase.storage.from("chantiers-documents").getPublicUrl(facturePath).data.publicUrl}
                     alt={factureName}
