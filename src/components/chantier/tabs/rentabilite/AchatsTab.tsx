@@ -122,7 +122,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
       <Card className="overflow-hidden border-0 shadow-lg">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b border-border/50">
-          <div className="grid grid-cols-[minmax(150px,1fr)_100px_130px_70px_90px_60px_100px_110px_100px_44px] gap-4 px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="grid grid-cols-[minmax(120px,1.2fr)_110px_1fr_80px_100px_70px_100px_120px_110px_44px] gap-3 px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             <div>Nom</div>
             <div className="text-center">Date</div>
             <div className="text-center">Fournisseur</div>
@@ -165,7 +165,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                 return (
                   <div 
                     key={achat.id}
-                    className={`grid grid-cols-[minmax(150px,1fr)_100px_130px_70px_90px_60px_100px_110px_100px_44px] gap-4 px-6 py-3 items-center hover:bg-muted/30 transition-colors ${
+                    className={`grid grid-cols-[minmax(120px,1.2fr)_110px_1fr_80px_100px_70px_100px_120px_110px_44px] gap-3 px-6 py-3 items-center hover:bg-muted/30 transition-colors ${
                       index % 2 === 0 ? 'bg-background' : 'bg-muted/10'
                     }`}
                   >
