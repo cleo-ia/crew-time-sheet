@@ -276,10 +276,9 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
             <>
               {/* Table Header - Horaire */}
               <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <div className="col-span-3">Tâche</div>
-                <div className="col-span-2 text-center">Statut</div>
-                <div className="col-span-2 text-center">Estimées</div>
-                <div className="col-span-2 text-center">Réalisées</div>
+                <div className="col-span-4">Tâches</div>
+                <div className="col-span-2 text-center">Est.</div>
+                <div className="col-span-3 text-center">Trav.</div>
                 <div className="col-span-3 text-center">Marge</div>
               </div>
               
@@ -301,8 +300,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     const statusConfig = getStatusConfig(computedStatus);
                     const heuresEstimees = task.heures_estimees ?? 0;
                     const heuresRealisees = task.heures_realisees ?? 0;
-                    const progressPercent = heuresEstimees > 0 ? Math.min((heuresRealisees / heuresEstimees) * 100, 100) : 0;
-                    const isOverBudget = heuresRealisees > heuresEstimees && heuresEstimees > 0;
+                    const margeHeures = heuresEstimees - heuresRealisees;
                     
                     return (
                       <div 
@@ -310,22 +308,9 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                         className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
                         onDoubleClick={() => handleTaskDoubleClick(task)}
                       >
-                        {/* Task Name + Progress */}
-                        <div className="col-span-3 space-y-2">
+                        {/* Task Name + Status Badge */}
+                        <div className="col-span-4 space-y-1">
                           <p className="font-medium text-sm">{task.nom}</p>
-                          <div className="flex items-center gap-2 max-w-[140px]">
-                            <Progress 
-                              value={progressPercent} 
-                              className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
-                            />
-                            <span className={`text-xs tabular-nums ${isOverBudget ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
-                              {progressPercent.toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Status */}
-                        <div className="col-span-2 text-center">
                           <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-xs font-medium`}>
                             {statusConfig.label}
                           </Badge>
@@ -337,15 +322,15 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                         </div>
                         
                         {/* Worked Hours */}
-                        <div className="col-span-2 text-center">
-                          <span className={`text-sm font-medium tabular-nums ${isOverBudget ? "text-red-500" : ""}`}>
-                            {heuresRealisees}h
-                          </span>
+                        <div className="col-span-3 text-center">
+                          <span className="text-sm font-medium tabular-nums">{heuresRealisees}h</span>
                         </div>
                         
-                        {/* Margin */}
+                        {/* Margin in Hours */}
                         <div className="col-span-3 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                          <span className={`text-sm font-medium tabular-nums ${margeHeures >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {margeHeures}h
+                          </span>
                         </div>
                       </div>
                     );
@@ -356,19 +341,19 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
               {/* Footer / Totals - Horaire */}
               {taches.length > 0 && (
                 <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
-                  <div className="col-span-3">
+                  <div className="col-span-4">
                     <span className="font-semibold text-sm">Total</span>
-                    <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
                   </div>
-                  <div className="col-span-2" />
                   <div className="col-span-2 text-center">
                     <span className="font-semibold text-sm tabular-nums">{totalHeuresEstimees}h</span>
                   </div>
-                  <div className="col-span-2 text-center">
+                  <div className="col-span-3 text-center">
                     <span className="font-semibold text-sm tabular-nums">{totalHeuresRealisees}h</span>
                   </div>
                   <div className="col-span-3 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+                    <span className={`font-semibold text-sm tabular-nums ${(totalHeuresEstimees - totalHeuresRealisees) >= 0 ? "text-green-600" : "text-red-500"}`}>
+                      {totalHeuresEstimees - totalHeuresRealisees}h
+                    </span>
                   </div>
                 </div>
               )}
