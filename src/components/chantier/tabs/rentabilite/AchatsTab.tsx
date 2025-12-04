@@ -165,7 +165,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                 return (
                   <div 
                     key={achat.id}
-                    onDoubleClick={() => handleEdit(achat)}
+                    onClick={() => handleEdit(achat)}
                     className={`grid grid-cols-[minmax(120px,1.2fr)_110px_1fr_80px_100px_70px_100px_120px_110px_44px] gap-3 px-6 py-3 items-center hover:bg-muted/30 transition-colors cursor-pointer ${
                       index % 2 === 0 ? 'bg-background' : 'bg-muted/10'
                     }`}
