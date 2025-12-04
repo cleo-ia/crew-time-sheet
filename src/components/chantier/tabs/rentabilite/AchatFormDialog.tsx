@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,26 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
   const [isDragOver, setIsDragOver] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
+
+  // Synchronize form state when achat changes (for edit mode)
+  useEffect(() => {
+    if (open) {
+      if (achat) {
+        setTypeCout(achat.type_cout || "Matériaux");
+        setNom(achat.nom || "");
+        setFournisseur(achat.fournisseur || "");
+        setQuantite(achat.quantite?.toString() || "1");
+        setPrixUnitaire(achat.prix_unitaire?.toString() || "");
+        setUnite(achat.unite || "m2");
+        setDate(achat.date ? new Date(achat.date) : new Date());
+        setTacheId(achat.tache_id || null);
+        setFactureName(achat.facture_name || "");
+        setFacturePath(achat.facture_path || "");
+      } else {
+        resetForm();
+      }
+    }
+  }, [achat, open]);
 
   // Calculate montant automatically
   const calculatedMontant = (parseFloat(quantite) || 0) * (parseFloat(prixUnitaire) || 0);
