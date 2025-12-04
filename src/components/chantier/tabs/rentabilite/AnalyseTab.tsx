@@ -69,6 +69,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   // Calculate totals from real tasks
   const totalHeuresEstimees = taches.reduce((sum, t) => sum + (t.heures_estimees ?? 0), 0);
   const totalHeuresRealisees = taches.reduce((sum, t) => sum + (t.heures_realisees ?? 0), 0);
+  const totalMontantVendu = taches.reduce((sum, t) => sum + (t.montant_vendu ?? 0), 0);
 
   // Computed values (will be connected to real data later)
   const coutsValue = 0;
@@ -427,7 +428,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                         
                         {/* Vendu */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                          <span className="text-sm font-medium tabular-nums">{(task.montant_vendu ?? 0).toLocaleString("fr-FR")}€</span>
                         </div>
                         
                         {/* MO (Main d'œuvre) */}
@@ -445,9 +446,11 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                           <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
-                        {/* Marge */}
+                        {/* Marge (Vendu - MO - Achats - ST, for now = Vendu) */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                          <span className={`text-sm font-medium tabular-nums ${(task.montant_vendu ?? 0) >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {(task.montant_vendu ?? 0).toLocaleString("fr-FR")}€
+                          </span>
                         </div>
                       </div>
                     );
@@ -463,7 +466,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+                    <span className="font-semibold text-sm tabular-nums">{totalMontantVendu.toLocaleString("fr-FR")}€</span>
                   </div>
                   <div className="col-span-2 text-center">
                     <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
@@ -475,7 +478,9 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+                    <span className={`font-semibold text-sm tabular-nums ${totalMontantVendu >= 0 ? "text-green-600" : "text-red-500"}`}>
+                      {totalMontantVendu.toLocaleString("fr-FR")}€
+                    </span>
                   </div>
                 </div>
               )}
