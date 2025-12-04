@@ -26,6 +26,7 @@ export interface RHEmployee {
   paniers: number;
   trajets: number;
   trajetsPerso: number;
+  nbGD: number;
   statut: string;
   anomalies: number;
   chantier_codes: string[];
@@ -118,6 +119,7 @@ export const useRHConsolidated = (filters: any) => {
         paniers: emp.paniers,
         trajets: emp.totalJoursTrajets, // ✅ NOUVEAU : somme totale
         trajetsPerso: emp.trajetsParCode?.T_PERSO || 0, // ✅ NOUVEAU : trajets perso
+        nbGD: emp.trajetsParCode?.GD || 0, // ✅ Grands Déplacements
         statut: emp.statut,
         anomalies: emp.anomalies?.length || 0,
         chantier_codes: emp.chantier_codes,
