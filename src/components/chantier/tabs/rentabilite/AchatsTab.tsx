@@ -51,7 +51,7 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
 
   const handleDelete = async (achat: Achat) => {
     if (confirm("Supprimer cet achat ?")) {
-      await deleteAchat.mutateAsync({ id: achat.id, chantierId });
+      await deleteAchat.mutateAsync({ id: achat.id, chantierId, facturePath: achat.facture_path });
     }
   };
 

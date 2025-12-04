@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { removeFactureFromDocuments } from "./useFacturesDossier";
 
 export interface Achat {
   id: string;
@@ -93,7 +94,12 @@ export const useDeleteAchat = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, chantierId }: { id: string; chantierId: string }) => {
+    mutationFn: async ({ id, chantierId, facturePath }: { id: string; chantierId: string; facturePath?: string | null }) => {
+      // Delete from central Fichiers if facture exists
+      if (facturePath) {
+        await removeFactureFromDocuments(facturePath);
+      }
+
       const { error } = await supabase
         .from("achats_chantier")
         .delete()
@@ -104,6 +110,8 @@ export const useDeleteAchat = () => {
     },
     onSuccess: ({ chantierId }) => {
       queryClient.invalidateQueries({ queryKey: ["achats-chantier", chantierId] });
+      queryClient.invalidateQueries({ queryKey: ["chantier-documents"] });
+      queryClient.invalidateQueries({ queryKey: ["chantier-dossiers"] });
       toast.success("Achat supprimé");
     },
     onError: (error) => {
