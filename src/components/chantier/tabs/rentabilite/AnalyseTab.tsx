@@ -123,32 +123,30 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
               <div className="space-y-6">
                 <div>
                   {isEditingVendu ? (
-                    <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl font-bold">€</span>
                       <Input
                         type="text"
                         value={venduInput}
                         onChange={(e) => setVenduInput(e.target.value)}
-                        className="text-2xl font-bold h-12"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveVendu();
+                          if (e.key === "Escape") handleCancelEdit();
+                        }}
+                        onBlur={handleSaveVendu}
+                        className="text-3xl font-bold h-auto py-0 px-1 w-40 border-0 border-b-2 border-primary rounded-none bg-transparent focus-visible:ring-0"
                         autoFocus
                       />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveVendu} disabled={isSaving}>
-                          Valider
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                          Annuler
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <div 
-                      className="group cursor-pointer flex items-center gap-2"
+                      className="group cursor-pointer inline-flex items-center gap-2"
                       onClick={() => {
                         setVenduInput(montantVendu.toString());
                         setIsEditingVendu(true);
                       }}
                     >
-                      <p className="text-3xl font-bold">
+                      <p className="text-3xl font-bold hover:text-primary transition-colors">
                         €{montantVendu.toLocaleString("fr-FR")}
                       </p>
                       <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
