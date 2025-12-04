@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { differenceInDays, format, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TodoChantier } from "@/hooks/useTodosChantier";
@@ -58,14 +58,12 @@ export const EventMarkers = ({
   const dayWidth = getDayWidth(zoomLevel);
   const updateTodo = useUpdateTodo();
 
-  // Drag state
-  const [dragState, setDragState] = useState<{
-    todoId: string;
-    startX: number;
-    originalOffset: number;
-  } | null>(null);
+  // Drag state - using refs like TaskBars.tsx
+  const dragStartRef = useRef<{ todoId: string; startX: number; originalOffset: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const justDraggedRef = useRef(false);
+  const [draggedTodoId, setDraggedTodoId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [justDragged, setJustDragged] = useState(false);
 
   // Filter todos that have date_echeance and afficher_planning
   const events = useMemo(() => {
@@ -82,59 +80,82 @@ export const EventMarkers = ({
   const handleMouseDown = useCallback((e: React.MouseEvent, todoId: string, originalOffset: number) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragState({
+    dragStartRef.current = {
       todoId,
       startX: e.clientX,
       originalOffset
-    });
+    };
+    isDraggingRef.current = false;
+    justDraggedRef.current = false;
+    setDraggedTodoId(todoId);
     setDragOffset(0);
-    setJustDragged(false);
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragState) return;
-    const deltaX = e.clientX - dragState.startX;
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragStartRef.current || !draggedTodoId) return;
     
-    // Snap to grid: arrondir au jour le plus proche
-    const snappedX = Math.round(deltaX / dayWidth) * dayWidth;
+    const deltaX = e.clientX - dragStartRef.current.startX;
     
-    setDragOffset(snappedX);
     if (Math.abs(deltaX) > 5) {
-      setJustDragged(true);
+      isDraggingRef.current = true;
     }
-  }, [dragState, dayWidth]);
+    
+    // Snap to grid
+    const snappedX = Math.round(deltaX / dayWidth) * dayWidth;
+    setDragOffset(snappedX);
+  }, [draggedTodoId, dayWidth]);
 
   const handleMouseUp = useCallback(() => {
-    if (!dragState) return;
-
-    const daysMoved = Math.round(dragOffset / dayWidth);
-    
-    if (daysMoved !== 0) {
-      const event = events.find(e => e.todo.id === dragState.todoId);
-      if (event) {
-        const newDate = addDays(event.echeanceDate, daysMoved);
-        updateTodo.mutate({
-          id: event.todo.id,
-          chantier_id: event.todo.chantier_id,
-          date_echeance: format(newDate, "yyyy-MM-dd")
-        });
-      }
+    if (!dragStartRef.current || !draggedTodoId) {
+      setDraggedTodoId(null);
+      setDragOffset(0);
+      return;
     }
 
-    setDragState(null);
+    if (isDraggingRef.current) {
+      const daysMoved = Math.round(dragOffset / dayWidth);
+      
+      if (daysMoved !== 0) {
+        const event = events.find(e => e.todo.id === draggedTodoId);
+        if (event) {
+          const newDate = addDays(event.echeanceDate, daysMoved);
+          updateTodo.mutate({
+            id: event.todo.id,
+            chantier_id: event.todo.chantier_id,
+            date_echeance: format(newDate, "yyyy-MM-dd")
+          });
+        }
+      }
+      
+      justDraggedRef.current = true;
+      setTimeout(() => { justDraggedRef.current = false; }, 100);
+    }
+
+    setDraggedTodoId(null);
     setDragOffset(0);
-    
-    // Reset justDragged after a short delay
-    setTimeout(() => setJustDragged(false), 100);
-  }, [dragState, dragOffset, dayWidth, events, updateTodo]);
+    dragStartRef.current = null;
+    isDraggingRef.current = false;
+  }, [draggedTodoId, dragOffset, dayWidth, events, updateTodo]);
+
+  // Global event listeners - same pattern as TaskBars.tsx
+  useEffect(() => {
+    if (draggedTodoId) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [draggedTodoId, handleMouseMove, handleMouseUp]);
 
   const handleClick = useCallback((e: React.MouseEvent, todo: TodoChantier) => {
-    if (justDragged) {
+    if (justDraggedRef.current) {
       e.stopPropagation();
       return;
     }
     onEventClick(todo);
-  }, [justDragged, onEventClick]);
+  }, [onEventClick]);
 
   if (events.length === 0) return null;
 
@@ -142,12 +163,9 @@ export const EventMarkers = ({
     <div 
       className="absolute left-0 right-0 pointer-events-none z-20"
       style={{ top: tasksCount * ROW_HEIGHT }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
     >
       {events.map((event, idx) => {
-        const isDragging = dragState?.todoId === event.todo.id;
+        const isDragging = draggedTodoId === event.todo.id;
         const currentDragOffset = isDragging ? dragOffset : 0;
         const leftPosition = event.dayOffset * dayWidth + dayWidth / 2 - 10 + currentDragOffset;
         const topPosition = idx * ROW_HEIGHT + (ROW_HEIGHT - 20) / 2;
