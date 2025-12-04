@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      achats_chantier: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          date: string
+          facture_name: string | null
+          facture_path: string | null
+          fournisseur: string | null
+          id: string
+          montant: number
+          nom: string
+          tache_id: string | null
+          type_cout: string
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          date?: string
+          facture_name?: string | null
+          facture_path?: string | null
+          fournisseur?: string | null
+          id?: string
+          montant?: number
+          nom: string
+          tache_id?: string | null
+          type_cout?: string
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          date?: string
+          facture_name?: string | null
+          facture_path?: string | null
+          fournisseur?: string | null
+          id?: string
+          montant?: number
+          nom?: string
+          tache_id?: string | null
+          type_cout?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       affectations: {
         Row: {
           chantier_id: string
