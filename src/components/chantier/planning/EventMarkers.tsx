@@ -25,13 +25,27 @@ const getDayWidth = (zoomLevel: ZoomLevel): number => {
   }
 };
 
-// Priority colors for the diamond marker
-const getPriorityColor = (priorite: string | null): string => {
-  switch (priorite) {
-    case "HAUTE": return "bg-red-500";
-    case "BASSE": return "bg-gray-400";
-    default: return "bg-gray-600";
-  }
+// Status-based colors for the diamond marker (matches task status logic)
+const getStatusColor = (todo: TodoChantier): string => {
+  // Si terminé → Vert
+  if (todo.statut === "TERMINE") return "bg-green-500";
+  
+  // Sans date d'échéance → Gris
+  if (!todo.date_echeance) return "bg-gray-400";
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(todo.date_echeance);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  // Date passée → Rouge (en retard)
+  if (dueDate < today) return "bg-red-500";
+  
+  // Date = aujourd'hui → Orange (en cours)
+  if (dueDate.getTime() === today.getTime()) return "bg-orange-400";
+  
+  // Date future → Gris (à venir)
+  return "bg-gray-400";
 };
 
 export const EventMarkers = ({ 
@@ -154,7 +168,7 @@ export const EventMarkers = ({
           >
             {/* Diamond marker */}
             <div 
-              className={`w-3.5 h-3.5 ${getPriorityColor(event.todo.priorite)} rotate-45 shadow-md group-hover:scale-110 transition-transform`}
+              className={`w-3.5 h-3.5 ${getStatusColor(event.todo)} rotate-45 shadow-md group-hover:scale-110 transition-transform`}
             />
             
             {/* Event label */}
