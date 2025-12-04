@@ -1,20 +1,51 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { HelpCircle, Pencil, Check } from "lucide-react";
+import { HelpCircle, Pencil, Check, Clock, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTachesChantier } from "@/hooks/useTachesChantier";
+import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
 
 interface AnalyseTabProps {
   chantierId: string;
   montantVendu: number;
 }
+
+// Compute dynamic status based on dates (same logic as Gantt planning)
+const getComputedStatus = (task: TacheChantier): TacheChantier["statut"] => {
+  if (task.statut === "TERMINE") return "TERMINE";
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateDebut = new Date(task.date_debut);
+  const dateFin = new Date(task.date_fin);
+  dateDebut.setHours(0, 0, 0, 0);
+  dateFin.setHours(0, 0, 0, 0);
+
+  if (today > dateFin) return "EN_RETARD";
+  if (today >= dateDebut && today <= dateFin) return "EN_COURS";
+  return "A_FAIRE";
+};
+
+const getStatusConfig = (status: TacheChantier["statut"]) => {
+  switch (status) {
+    case "TERMINE":
+      return { label: "Terminé", variant: "default" as const, className: "bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20" };
+    case "EN_COURS":
+      return { label: "En cours", variant: "default" as const, className: "bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20" };
+    case "EN_RETARD":
+      return { label: "En retard", variant: "default" as const, className: "bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20" };
+    case "A_FAIRE":
+    default:
+      return { label: "À faire", variant: "default" as const, className: "bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20" };
+  }
+};
 
 export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const queryClient = useQueryClient();
@@ -194,54 +225,114 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
         </CardContent>
       </Card>
 
-      {/* Tasks table */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-4">Par tâche</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tâches</TableHead>
-                <TableHead className="text-right">Heures estimées</TableHead>
-                <TableHead className="text-right">Heures travaillées</TableHead>
-                <TableHead className="text-right">Marge</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoadingTaches ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Chargement...
-                  </TableCell>
-                </TableRow>
-              ) : taches.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Aucune tâche définie
-                  </TableCell>
-                </TableRow>
-              ) : (
-                taches.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.nom}</TableCell>
-                    <TableCell className="text-right">{task.heures_estimees ?? 0}h</TableCell>
-                    <TableCell className="text-right">{task.heures_realisees ?? 0}h</TableCell>
-                    <TableCell className="text-right text-muted-foreground">0€</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-            {taches.length > 0 && (
-              <TableFooter>
-                <TableRow>
-                  <TableCell className="font-semibold">Total</TableCell>
-                  <TableCell className="text-right font-semibold">{totalHeuresEstimees}h</TableCell>
-                  <TableCell className="text-right font-semibold">{totalHeuresRealisees}h</TableCell>
-                  <TableCell className="text-right font-semibold text-muted-foreground">0€</TableCell>
-                </TableRow>
-              </TableFooter>
+      {/* Tasks table - Redesigned */}
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          {/* Header */}
+          <div className="px-6 py-4 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-base">Rentabilité par tâche</h3>
+            </div>
+          </div>
+          
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="col-span-4">Tâche</div>
+            <div className="col-span-2 text-center">Statut</div>
+            <div className="col-span-2 text-right">Estimées</div>
+            <div className="col-span-2 text-right">Réalisées</div>
+            <div className="col-span-2 text-right">Marge</div>
+          </div>
+          
+          {/* Table Body */}
+          <div className="divide-y">
+            {isLoadingTaches ? (
+              <div className="px-6 py-12 text-center text-muted-foreground">
+                <Clock className="h-8 w-8 mx-auto mb-2 animate-pulse" />
+                <p>Chargement des tâches...</p>
+              </div>
+            ) : taches.length === 0 ? (
+              <div className="px-6 py-12 text-center text-muted-foreground">
+                <p className="text-sm">Aucune tâche définie pour ce chantier</p>
+                <p className="text-xs mt-1">Créez des tâches dans l'onglet Planning</p>
+              </div>
+            ) : (
+              taches.map((task) => {
+                const computedStatus = getComputedStatus(task);
+                const statusConfig = getStatusConfig(computedStatus);
+                const heuresEstimees = task.heures_estimees ?? 0;
+                const heuresRealisees = task.heures_realisees ?? 0;
+                const progressPercent = heuresEstimees > 0 ? Math.min((heuresRealisees / heuresEstimees) * 100, 100) : 0;
+                const isOverBudget = heuresRealisees > heuresEstimees && heuresEstimees > 0;
+                
+                return (
+                  <div 
+                    key={task.id} 
+                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Task Name + Progress */}
+                    <div className="col-span-4 space-y-2">
+                      <p className="font-medium text-sm">{task.nom}</p>
+                      <div className="flex items-center gap-2">
+                        <Progress 
+                          value={progressPercent} 
+                          className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
+                        />
+                        <span className={`text-xs tabular-nums ${isOverBudget ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
+                          {progressPercent.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Status */}
+                    <div className="col-span-2 text-center">
+                      <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-xs font-medium`}>
+                        {statusConfig.label}
+                      </Badge>
+                    </div>
+                    
+                    {/* Estimated Hours */}
+                    <div className="col-span-2 text-right">
+                      <span className="text-sm font-medium tabular-nums">{heuresEstimees}h</span>
+                    </div>
+                    
+                    {/* Worked Hours */}
+                    <div className="col-span-2 text-right">
+                      <span className={`text-sm font-medium tabular-nums ${isOverBudget ? "text-red-500" : ""}`}>
+                        {heuresRealisees}h
+                      </span>
+                    </div>
+                    
+                    {/* Margin */}
+                    <div className="col-span-2 text-right">
+                      <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                    </div>
+                  </div>
+                );
+              })
             )}
-          </Table>
+          </div>
+          
+          {/* Footer / Totals */}
+          {taches.length > 0 && (
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
+              <div className="col-span-4">
+                <span className="font-semibold text-sm">Total</span>
+                <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
+              </div>
+              <div className="col-span-2" />
+              <div className="col-span-2 text-right">
+                <span className="font-semibold text-sm tabular-nums">{totalHeuresEstimees}h</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="font-semibold text-sm tabular-nums">{totalHeuresRealisees}h</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
