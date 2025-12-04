@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Info, Upload, X, FileText, ImageIcon } from "lucide-react";
+import { CalendarIcon, Info, Upload, X, FileText, ImageIcon, Download } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { useTachesChantier } from "@/hooks/useTachesChantier";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addFactureToDocuments, removeFactureFromDocuments } from "@/hooks/useFacturesDossier";
+import { PDFViewer } from "@/components/shared/PDFViewer";
 
 const TYPES_COUT = ["Matériaux", "Fournitures", "Locations", "Sous traitants", "Autres"];
 const UNITES = ["m2", "unité", "jour", "m3", "kg", "tonne", "mètre", "litre"];
@@ -45,6 +46,8 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
   const [facturePath, setFacturePath] = useState(achat?.facture_path || "");
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
 
   // Calculate montant automatically
   const calculatedMontant = (parseFloat(quantite) || 0) * (parseFloat(prixUnitaire) || 0);
@@ -293,22 +296,56 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
           <div className="space-y-2">
             <Label className="text-sm font-medium">Facture</Label>
             {factureName ? (
-              <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-                {factureName.toLowerCase().endsWith(".pdf") ? (
-                  <FileText className="h-5 w-5 text-red-500" />
-                ) : (
-                  <ImageIcon className="h-5 w-5 text-blue-500" />
-                )}
-                <span className="flex-1 text-sm truncate">{factureName}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={handleRemoveFile}
+              <div className="flex gap-3">
+                {/* File card */}
+                <div 
+                  className="group relative w-[140px] bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => {
+                    const isPdf = factureName.toLowerCase().endsWith(".pdf");
+                    if (isPdf) {
+                      setShowPdfViewer(true);
+                    } else {
+                      setShowImageViewer(true);
+                    }
+                  }}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  {/* Preview area */}
+                  <div className="h-24 bg-muted/30 flex items-center justify-center relative">
+                    {factureName.toLowerCase().endsWith(".pdf") ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <FileText className="h-10 w-10 text-red-500" />
+                        <span className="text-xs font-medium text-red-500">PDF</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={supabase.storage.from("chantiers-documents").getPublicUrl(facturePath).data.publicUrl}
+                        alt={factureName}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    
+                    {/* Delete button - visible on hover */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile();
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  
+                  {/* File name */}
+                  <div className="p-2 border-t border-border">
+                    <p className="text-xs truncate text-muted-foreground" title={factureName}>
+                      {factureName}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div
@@ -336,6 +373,28 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
                   }}
                 />
               </div>
+            )}
+
+            {/* PDF Viewer Modal */}
+            {showPdfViewer && facturePath && (
+              <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                  <PDFViewer url={supabase.storage.from("chantiers-documents").getPublicUrl(facturePath).data.publicUrl} />
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Image Viewer Modal */}
+            {showImageViewer && facturePath && (
+              <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
+                <DialogContent className="max-w-4xl">
+                  <img
+                    src={supabase.storage.from("chantiers-documents").getPublicUrl(facturePath).data.publicUrl}
+                    alt={factureName}
+                    className="w-full h-auto max-h-[80vh] object-contain"
+                  />
+                </DialogContent>
+              </Dialog>
             )}
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Info className="h-3 w-3" />
