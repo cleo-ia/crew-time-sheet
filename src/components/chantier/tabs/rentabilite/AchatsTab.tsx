@@ -169,26 +169,9 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                       index % 2 === 0 ? 'bg-background' : 'bg-muted/10'
                     }`}
                   >
-                    {/* Nom avec icône facture */}
-                    <div className="flex items-center gap-2 min-w-0">
-                      {achat.facture_path ? (
-                        <button
-                          onClick={() => handleOpenFacture(achat)}
-                          className="flex-shrink-0 h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
-                          title="Voir la facture"
-                        >
-                          {achat.facture_name?.toLowerCase().endsWith(".pdf") ? (
-                            <FileText className="h-4 w-4 text-red-500" />
-                          ) : (
-                            <ImageIcon className="h-4 w-4 text-blue-500" />
-                          )}
-                        </button>
-                      ) : (
-                        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-muted-foreground/50" />
-                        </div>
-                      )}
-                      <span className="font-medium truncate">{achat.nom}</span>
+                    {/* Nom */}
+                    <div className="min-w-0">
+                      <span className="font-medium truncate block">{achat.nom}</span>
                     </div>
 
                     {/* Date */}
