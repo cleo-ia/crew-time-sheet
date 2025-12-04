@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Upload, FileText, Image as ImageIcon, Download, ExternalLink, MoreVertical, Calendar } from "lucide-react";
+import { Trash2, Upload, FileText, Image as ImageIcon, Download, ExternalLink, MoreVertical, Calendar, CheckCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TodoChantier } from "@/hooks/useTodosChantier";
 import { useUpdateTodo } from "@/hooks/useUpdateTodo";
@@ -78,6 +78,29 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
     setDateEcheance(todo.date_echeance || "");
     setAfficherPlanning(todo.afficher_planning ?? false);
   }, [todo]);
+
+  // Calculer si le todo est "en cours" dynamiquement (inclut les retards)
+  const isEnCours = useMemo(() => {
+    if (statut === "TERMINE") return false;
+    if (!dateEcheance) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(dateEcheance);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    // En cours = aujourd'hui OU en retard (date passée)
+    return dueDate <= today;
+  }, [statut, dateEcheance]);
+
+  const handleValidateTodo = async () => {
+    await updateTodo.mutateAsync({
+      id: todo.id,
+      chantier_id: todo.chantier_id,
+      statut: "TERMINE"
+    });
+    onOpenChange(false);
+  };
 
   const handleSave = async () => {
     if (!nom.trim()) return;
@@ -178,27 +201,40 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
           <DialogHeader>
             <div className="flex items-center justify-between pr-8">
               <DialogTitle>Détail du Todo</DialogTitle>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                {isEnCours && (
+                  <Button
+                    size="sm"
+                    className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={handleValidateTodo}
+                    disabled={updateTodo.isPending}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Valider
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irréversible. Le todo sera définitivement supprimé.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Cette action est irréversible. Le todo sera définitivement supprimé.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </DialogHeader>
 
