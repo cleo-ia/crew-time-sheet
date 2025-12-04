@@ -57,30 +57,41 @@ export const useTodoDocuments = (todoId: string | undefined) => {
 
       if (dbError) throw dbError;
 
-      // Also copy to chantier documents if chantierId is provided
+      // Also copy to chantier documents if chantierId is provided (avoid duplicates)
       if (chantierId) {
-        const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        // Check if document with same name already exists for this chantier
+        const { data: existingDoc } = await supabase
+          .from("chantiers_documents")
+          .select("id")
+          .eq("chantier_id", chantierId)
+          .eq("nom", file.name)
+          .maybeSingle();
 
-        // Upload file to chantiers-documents storage
-        const { error: chantierUploadError } = await supabase.storage
-          .from("chantiers-documents")
-          .upload(chantierFileName, file);
+        // Only copy if document doesn't already exist
+        if (!existingDoc) {
+          const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        if (chantierUploadError) {
-          console.error("Error uploading to chantiers-documents:", chantierUploadError);
-        } else {
-          // Create database entry for chantier document
-          const { error: chantierDbError } = await supabase.from("chantiers_documents").insert({
-            chantier_id: chantierId,
-            nom: file.name,
-            file_path: chantierFileName,
-            file_type: file.type,
-            file_size: file.size,
-            uploaded_by: user?.id,
-          });
+          // Upload file to chantiers-documents storage
+          const { error: chantierUploadError } = await supabase.storage
+            .from("chantiers-documents")
+            .upload(chantierFileName, file);
 
-          if (chantierDbError) {
-            console.error("Error inserting chantier document:", chantierDbError);
+          if (chantierUploadError) {
+            console.error("Error uploading to chantiers-documents:", chantierUploadError);
+          } else {
+            // Create database entry for chantier document
+            const { error: chantierDbError } = await supabase.from("chantiers_documents").insert({
+              chantier_id: chantierId,
+              nom: file.name,
+              file_path: chantierFileName,
+              file_type: file.type,
+              file_size: file.size,
+              uploaded_by: user?.id,
+            });
+
+            if (chantierDbError) {
+              console.error("Error inserting chantier document:", chantierDbError);
+            }
           }
         }
       }
@@ -168,28 +179,39 @@ export const uploadTodoDocuments = async (todoId: string, files: File[], chantie
 
     if (dbError) throw dbError;
 
-    // Also copy to chantier documents if chantierId is provided
+    // Also copy to chantier documents if chantierId is provided (avoid duplicates)
     if (chantierId) {
-      const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      // Check if document with same name already exists for this chantier
+      const { data: existingDoc } = await supabase
+        .from("chantiers_documents")
+        .select("id")
+        .eq("chantier_id", chantierId)
+        .eq("nom", file.name)
+        .maybeSingle();
 
-      const { error: chantierUploadError } = await supabase.storage
-        .from("chantiers-documents")
-        .upload(chantierFileName, file);
+      // Only copy if document doesn't already exist
+      if (!existingDoc) {
+        const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      if (chantierUploadError) {
-        console.error("Error uploading to chantiers-documents:", chantierUploadError);
-      } else {
-        const { error: chantierDbError } = await supabase.from("chantiers_documents").insert({
-          chantier_id: chantierId,
-          nom: file.name,
-          file_path: chantierFileName,
-          file_type: file.type,
-          file_size: file.size,
-          uploaded_by: user?.id,
-        });
+        const { error: chantierUploadError } = await supabase.storage
+          .from("chantiers-documents")
+          .upload(chantierFileName, file);
 
-        if (chantierDbError) {
-          console.error("Error inserting chantier document:", chantierDbError);
+        if (chantierUploadError) {
+          console.error("Error uploading to chantiers-documents:", chantierUploadError);
+        } else {
+          const { error: chantierDbError } = await supabase.from("chantiers_documents").insert({
+            chantier_id: chantierId,
+            nom: file.name,
+            file_path: chantierFileName,
+            file_type: file.type,
+            file_size: file.size,
+            uploaded_by: user?.id,
+          });
+
+          if (chantierDbError) {
+            console.error("Error inserting chantier document:", chantierDbError);
+          }
         }
       }
     }
