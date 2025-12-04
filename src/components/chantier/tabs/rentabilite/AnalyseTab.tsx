@@ -351,6 +351,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
         onOpenChange={setIsTaskDetailOpen}
         tache={selectedTask}
         chantierId={chantierId}
+        initialTab="rentabilite"
       />
     </div>
   );
