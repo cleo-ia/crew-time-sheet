@@ -16,6 +16,7 @@ import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { useDeleteTache } from "@/hooks/useDeleteTache";
 import { useTacheDocuments, TacheDocument } from "@/hooks/useTacheDocuments";
 import { TacheChantier } from "@/hooks/useTachesChantier";
+import { useAchatsChantier } from "@/hooks/useAchatsChantier";
 import { PDFViewer } from "@/components/shared/PDFViewer";
 import { toast } from "sonner";
 import { format, parseISO, isAfter, startOfDay } from "date-fns";
@@ -84,6 +85,11 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
   const updateTache = useUpdateTache();
   const deleteTache = useDeleteTache();
   const { documents, uploadDocument, deleteDocument, getPublicUrl } = useTacheDocuments(tache?.id);
+  const { data: allAchats } = useAchatsChantier(chantierId);
+  
+  // Filter achats for this task
+  const achatsForTask = allAchats?.filter(a => a.tache_id === tache?.id) || [];
+  const totalAchats = achatsForTask.reduce((sum, a) => sum + a.montant, 0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -555,9 +561,9 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
                 </div>
                 <div className="grid grid-cols-4 px-3 py-3 text-sm font-semibold">
                   <span>0€</span>
+                  <span>{totalAchats.toLocaleString('fr-FR')}€</span>
                   <span>0€</span>
-                  <span>0€</span>
-                  <span>0€</span>
+                  <span>{totalAchats.toLocaleString('fr-FR')}€</span>
                 </div>
               </div>
             </div>
@@ -598,18 +604,31 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
                   <span>Qté</span>
                   <span>Coût</span>
                 </div>
-                <div className="p-8 text-center">
-                  <p className="text-sm text-muted-foreground mb-4">Aucun achat ajouté</p>
-                  <div className="flex items-center justify-center gap-3">
-                    <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
-                      Ajouter un achat
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
-                      <span className="text-muted-foreground">⏵</span>
-                      Tutoriel vidéo
-                    </Button>
+                {achatsForTask.length > 0 ? (
+                  <div>
+                    {achatsForTask.map((achat) => (
+                      <div key={achat.id} className="grid grid-cols-4 px-3 py-2.5 text-sm border-t border-border/50 hover:bg-muted/30">
+                        <span>{format(parseISO(achat.date), "dd/MM/yy", { locale: fr })}</span>
+                        <span className="truncate" title={achat.nom}>{achat.nom}</span>
+                        <span>{achat.quantite ?? "-"} {achat.unite || ""}</span>
+                        <span className="font-medium">{achat.montant.toLocaleString('fr-FR')}€</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <p className="text-sm text-muted-foreground mb-4">Aucun achat ajouté</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
+                        Ajouter un achat
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
+                        <span className="text-muted-foreground">⏵</span>
+                        Tutoriel vidéo
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
