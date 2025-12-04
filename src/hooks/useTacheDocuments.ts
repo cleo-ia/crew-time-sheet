@@ -113,7 +113,7 @@ export const useTacheDocuments = (tacheId: string | undefined) => {
   });
 
   const deleteDocument = useMutation({
-    mutationFn: async (document: TacheDocument) => {
+    mutationFn: async ({ document, chantierId }: { document: TacheDocument; chantierId?: string }) => {
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from("taches-documents")
@@ -128,9 +128,29 @@ export const useTacheDocuments = (tacheId: string | undefined) => {
         .eq("id", document.id);
 
       if (dbError) throw dbError;
+
+      // Also delete from chantiers_documents if chantierId is provided
+      if (chantierId) {
+        const { data: chantierDoc } = await supabase
+          .from("chantiers_documents")
+          .select("id, file_path")
+          .eq("chantier_id", chantierId)
+          .eq("nom", document.nom)
+          .maybeSingle();
+
+        if (chantierDoc) {
+          await supabase.storage.from("chantiers-documents").remove([chantierDoc.file_path]);
+          await supabase.from("chantiers_documents").delete().eq("id", chantierDoc.id);
+        }
+      }
+
+      return { chantierId };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["tache-documents", tacheId] });
+      if (data?.chantierId) {
+        queryClient.invalidateQueries({ queryKey: ["chantier-documents", data.chantierId] });
+      }
       toast.success("Fichier supprimé");
     },
     onError: (error) => {

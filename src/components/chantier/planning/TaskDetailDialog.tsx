@@ -766,7 +766,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                   <AlertDialogAction 
                     onClick={() => {
                       if (docToDelete) {
-                        deleteDocument.mutate(docToDelete);
+                        deleteDocument.mutate({ document: docToDelete, chantierId });
                         setDocToDelete(null);
                       }
                     }}

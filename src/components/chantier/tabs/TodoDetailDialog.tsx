@@ -147,7 +147,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
 
   const handleDeleteDocument = async () => {
     if (docToDelete) {
-      await deleteDocument.mutateAsync(docToDelete);
+      await deleteDocument.mutateAsync({ document: docToDelete, chantierId: todo.chantier_id });
       setDocToDelete(null);
     }
   };
