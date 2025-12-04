@@ -11,6 +11,7 @@ interface UpdateTacheInput {
   date_fin?: string;
   heures_estimees?: number | null;
   heures_realisees?: number | null;
+  montant_vendu?: number | null;
   statut?: "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD";
   ordre?: number;
   couleur?: string | null;

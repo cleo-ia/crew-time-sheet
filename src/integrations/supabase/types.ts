@@ -1056,6 +1056,7 @@ export type Database = {
           heures_estimees: number | null
           heures_realisees: number | null
           id: string
+          montant_vendu: number | null
           nom: string
           ordre: number
           statut: Database["public"]["Enums"]["statut_tache"]
@@ -1071,6 +1072,7 @@ export type Database = {
           heures_estimees?: number | null
           heures_realisees?: number | null
           id?: string
+          montant_vendu?: number | null
           nom: string
           ordre?: number
           statut?: Database["public"]["Enums"]["statut_tache"]
@@ -1086,6 +1088,7 @@ export type Database = {
           heures_estimees?: number | null
           heures_realisees?: number | null
           id?: string
+          montant_vendu?: number | null
           nom?: string
           ordre?: number
           statut?: Database["public"]["Enums"]["statut_tache"]

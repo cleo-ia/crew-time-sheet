@@ -106,6 +106,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
     date_fin: "",
     heures_estimees: "",
     heures_realisees: "",
+    montant_vendu: "",
     statut: "A_FAIRE" as TacheChantier["statut"],
   });
 
@@ -118,6 +119,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
         date_fin: tache.date_fin,
         heures_estimees: tache.heures_estimees?.toString() || "",
         heures_realisees: tache.heures_realisees?.toString() || "",
+        montant_vendu: tache.montant_vendu?.toString() || "",
         statut: tache.statut,
       });
     }
@@ -135,6 +137,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
       date_fin: formData.date_fin,
       heures_estimees: formData.heures_estimees ? parseInt(formData.heures_estimees) : null,
       heures_realisees: formData.heures_realisees ? parseInt(formData.heures_realisees) : null,
+      montant_vendu: formData.montant_vendu ? parseFloat(formData.montant_vendu) : null,
       statut: formData.statut,
     });
 
@@ -519,6 +522,22 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
                   placeholder="0"
                 />
               </div>
+            </div>
+
+            {/* Montant vendu */}
+            <h4 className="font-semibold text-base pt-2">Montant vendu</h4>
+            <div className="space-y-2">
+              <Input
+                type="number"
+                value={formData.montant_vendu}
+                onChange={(e) => handleFieldChange("montant_vendu", e.target.value)}
+                onBlur={handleFieldBlur}
+                min={0}
+                step="0.01"
+                className="h-10"
+                placeholder="0"
+              />
+              <span className="text-xs text-muted-foreground">Montant en euros (€)</span>
             </div>
           </TabsContent>
 
