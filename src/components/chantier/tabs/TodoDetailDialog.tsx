@@ -139,7 +139,7 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
         toast.error(`${file.name}: type de fichier non supporté`);
         continue;
       }
-      await uploadDocument.mutateAsync({ file, todoId: todo.id });
+      await uploadDocument.mutateAsync({ file, todoId: todo.id, chantierId: todo.chantier_id });
     }
     
     if (fileInputRef.current) fileInputRef.current.value = "";
