@@ -238,11 +238,11 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
           
           {/* Table Header */}
           <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <div className="col-span-4">Tâche</div>
+            <div className="col-span-3">Tâche</div>
             <div className="col-span-2 text-center">Statut</div>
-            <div className="col-span-2 text-right">Estimées</div>
-            <div className="col-span-2 text-right">Réalisées</div>
-            <div className="col-span-2 text-right">Marge</div>
+            <div className="col-span-2 text-center">Estimées</div>
+            <div className="col-span-2 text-center">Réalisées</div>
+            <div className="col-span-3 text-center">Marge</div>
           </div>
           
           {/* Table Body */}
@@ -272,9 +272,9 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors"
                   >
                     {/* Task Name + Progress */}
-                    <div className="col-span-4 space-y-2">
+                    <div className="col-span-3 space-y-2">
                       <p className="font-medium text-sm">{task.nom}</p>
-                      <div className="flex items-center gap-2 max-w-[160px]">
+                      <div className="flex items-center gap-2 max-w-[140px]">
                         <Progress 
                           value={progressPercent} 
                           className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
@@ -293,19 +293,19 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     </div>
                     
                     {/* Estimated Hours */}
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-2 text-center">
                       <span className="text-sm font-medium tabular-nums">{heuresEstimees}h</span>
                     </div>
                     
                     {/* Worked Hours */}
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-2 text-center">
                       <span className={`text-sm font-medium tabular-nums ${isOverBudget ? "text-red-500" : ""}`}>
                         {heuresRealisees}h
                       </span>
                     </div>
                     
                     {/* Margin */}
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-3 text-center">
                       <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                     </div>
                   </div>
@@ -317,18 +317,18 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
           {/* Footer / Totals */}
           {taches.length > 0 && (
             <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-muted/50 border-t items-center">
-              <div className="col-span-4">
+              <div className="col-span-3">
                 <span className="font-semibold text-sm">Total</span>
                 <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
               </div>
               <div className="col-span-2" />
-              <div className="col-span-2 text-right">
+              <div className="col-span-2 text-center">
                 <span className="font-semibold text-sm tabular-nums">{totalHeuresEstimees}h</span>
               </div>
-              <div className="col-span-2 text-right">
+              <div className="col-span-2 text-center">
                 <span className="font-semibold text-sm tabular-nums">{totalHeuresRealisees}h</span>
               </div>
-              <div className="col-span-2 text-right">
+              <div className="col-span-3 text-center">
                 <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
               </div>
             </div>
