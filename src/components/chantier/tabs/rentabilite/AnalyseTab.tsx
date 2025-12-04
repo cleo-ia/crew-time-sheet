@@ -11,14 +11,14 @@ const mockTasks = [
   { nom: "Menuiseries", heuresEstimees: 45, heuresTravaillees: 42, marge: 980 },
 ];
 
-// Mock data
-const margePercent = 23.45;
-const margeValue = 54232;
-const venduValue = 287000;
-const coutsValue = 232768;
-const mainOeuvre = 45700;
-const achats = 168000;
-const sousTraitance = 19068;
+// Mock data - all set to zero
+const margePercent = 0;
+const margeValue = 0;
+const venduValue = 0;
+const coutsValue = 0;
+const mainOeuvre = 0;
+const achats = 0;
+const sousTraitance = 0;
 
 const donutData = [
   { name: "Marge", value: margePercent },
