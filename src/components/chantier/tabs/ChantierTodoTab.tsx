@@ -169,7 +169,6 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
                       <KanbanTodoCard
                         todo={todo}
                         isOverdue={isOverdue(todo)}
-                        showValidateButton={column.id === "EN_COURS"}
                         onClick={() => handleTodoClick(todo)}
                       />
                     </div>

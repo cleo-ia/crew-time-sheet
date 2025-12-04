@@ -1,21 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, AlertTriangle, Diamond, CheckCircle } from "lucide-react";
+import { Calendar, AlertTriangle, Diamond } from "lucide-react";
 import type { TodoChantier } from "@/hooks/useTodosChantier";
-import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 
 interface KanbanTodoCardProps {
   todo: TodoChantier;
   isOverdue: boolean;
-  showValidateButton?: boolean;
   onClick: () => void;
 }
 
-export const KanbanTodoCard = ({ todo, isOverdue, showValidateButton, onClick }: KanbanTodoCardProps) => {
-  const updateTodo = useUpdateTodo();
+export const KanbanTodoCard = ({ todo, isOverdue, onClick }: KanbanTodoCardProps) => {
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "d MMM yyyy", { locale: fr });
@@ -44,15 +40,6 @@ export const KanbanTodoCard = ({ todo, isOverdue, showValidateButton, onClick }:
       default:
         return "border-l-blue-500";
     }
-  };
-
-  const handleValidate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateTodo.mutate({
-      id: todo.id,
-      chantier_id: todo.chantier_id,
-      statut: "TERMINE"
-    });
   };
 
   const dateMessage = getDateMessage();
@@ -96,29 +83,12 @@ export const KanbanTodoCard = ({ todo, isOverdue, showValidateButton, onClick }:
           </p>
         )}
 
-        {/* Footer with priority badge and validate button */}
-        <div className="flex items-center justify-between gap-2">
-          {todo.priorite === "HAUTE" ? (
-            <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs">
-              Priorité haute
-            </Badge>
-          ) : (
-            <div />
-          )}
-          
-          {showValidateButton && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 h-7 text-xs text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
-              onClick={handleValidate}
-              disabled={updateTodo.isPending}
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              Valider
-            </Button>
-          )}
-        </div>
+        {/* Footer with priority badge */}
+        {todo.priorite === "HAUTE" && (
+          <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs">
+            Priorité haute
+          </Badge>
+        )}
       </CardContent>
     </Card>
   );
