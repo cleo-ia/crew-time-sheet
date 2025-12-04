@@ -602,7 +602,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
                       toast.error(`${file.name} dépasse la taille maximale de 10 Mo`);
                       return;
                     }
-                    uploadDocument.mutate({ file, tacheId: tache.id });
+                    uploadDocument.mutate({ file, tacheId: tache.id, chantierId });
                   }
                 });
                 e.target.value = "";
