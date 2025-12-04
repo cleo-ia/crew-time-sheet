@@ -158,6 +158,31 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
           if (dbError) {
             console.error("DB error:", dbError);
           }
+
+          // Sync to central Fichiers (with deduplication)
+          const { data: existingDoc } = await supabase
+            .from("chantiers_documents")
+            .select("id")
+            .eq("chantier_id", chantierId)
+            .eq("nom", pendingFile.file.name)
+            .maybeSingle();
+
+          if (!existingDoc) {
+            const chantierFileName = `${chantierId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            await supabase.storage
+              .from("chantiers-documents")
+              .upload(chantierFileName, pendingFile.file);
+
+            await supabase.from("chantiers_documents").insert({
+              chantier_id: chantierId,
+              nom: pendingFile.file.name,
+              file_path: chantierFileName,
+              file_type: pendingFile.file.type,
+              file_size: pendingFile.file.size,
+              uploaded_by: user?.id,
+            });
+          }
         }
         
         if (pendingFiles.length > 0) {

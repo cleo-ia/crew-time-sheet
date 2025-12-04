@@ -572,9 +572,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-base">Feuilles heures</h4>
-                <Button variant="default" size="icon" className="h-8 w-8 rounded-lg bg-orange-500 hover:bg-orange-600">
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase bg-muted/50 px-3 py-2.5">
@@ -593,9 +590,6 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-base">Achats et sous-traitance</h4>
-                <Button variant="default" size="icon" className="h-8 w-8 rounded-lg bg-orange-500 hover:bg-orange-600">
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase bg-muted/50 px-3 py-2.5">
