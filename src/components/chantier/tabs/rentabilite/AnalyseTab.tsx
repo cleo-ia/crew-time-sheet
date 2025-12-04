@@ -30,19 +30,19 @@ export const AnalyseTab = () => {
     <div className="space-y-6">
       {/* Top section: Single card with Donut + KPIs + Costs */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-8">
+        <CardContent className="py-8 px-10">
+          <div className="flex items-center gap-12">
             {/* Donut Chart */}
             <div className="flex-shrink-0">
-              <div className="h-[140px] w-[140px] relative">
+              <div className="h-[180px] w-[180px] relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={donutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={45}
-                      outerRadius={65}
+                      innerRadius={55}
+                      outerRadius={80}
                       startAngle={90}
                       endAngle={-270}
                       dataKey="value"
@@ -53,65 +53,65 @@ export const AnalyseTab = () => {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold text-green-600">{margePercent.toFixed(2)}%</span>
-                  <span className="text-xs text-muted-foreground">de marge</span>
+                  <span className="text-xl font-bold text-green-600">{margePercent.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground">de marge</span>
                 </div>
               </div>
             </div>
 
             {/* KPIs Grid */}
-            <div className="flex-1 grid grid-cols-3 gap-8">
+            <div className="flex-1 grid grid-cols-3 gap-12">
               {/* MARGE Column */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-3xl font-bold text-green-600">
                     {margeValue.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€
                   </p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">MARGE</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wide">MARGE</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold">{mainOeuvre.toLocaleString("fr-FR")}€</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-3 h-3 rounded-sm bg-gray-400" />
-                  <span>MAIN D'OEUVRE</span>
-                  <HelpCircle className="h-3 w-3" />
+                <div>
+                  <p className="text-xl font-semibold">{mainOeuvre.toLocaleString("fr-FR")}€</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                    <span className="w-3 h-3 rounded-full bg-gray-400" />
+                    <span>MAIN D'OEUVRE</span>
+                    <HelpCircle className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
 
               {/* VENDU Column */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-3xl font-bold">
                     €{venduValue.toLocaleString("fr-FR")}
                   </p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">VENDU</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wide">VENDU</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold">{achats.toLocaleString("fr-FR")}€</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-3 h-3 rounded-sm bg-orange-500" />
-                  <span>ACHATS</span>
-                  <HelpCircle className="h-3 w-3" />
+                <div>
+                  <p className="text-xl font-semibold">{achats.toLocaleString("fr-FR")}€</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                    <span className="w-3 h-3 rounded-full bg-orange-500" />
+                    <span>ACHATS</span>
+                    <HelpCircle className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
 
               {/* COÛTS Column */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <p className="text-2xl font-bold text-destructive">
+                  <p className="text-3xl font-bold text-destructive">
                     {coutsValue.toLocaleString("fr-FR")}€
                   </p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">COÛTS</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wide">COÛTS</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold">{sousTraitance.toLocaleString("fr-FR")}€</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-3 h-3 rounded-sm bg-red-500" />
-                  <span>SOUS TRAITANCE</span>
-                  <HelpCircle className="h-3 w-3" />
+                <div>
+                  <p className="text-xl font-semibold">{sousTraitance.toLocaleString("fr-FR")}€</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                    <span className="w-3 h-3 rounded-full bg-red-500" />
+                    <span>SOUS TRAITANCE</span>
+                    <HelpCircle className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             </div>
