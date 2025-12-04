@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
+import { useAchatsChantier } from "@/hooks/useAchatsChantier";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -54,6 +55,7 @@ const getStatusConfig = (status: TacheChantier["statut"]) => {
 export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const queryClient = useQueryClient();
   const { data: taches = [], isLoading: isLoadingTaches } = useTachesChantier(chantierId);
+  const { data: achatsData = [] } = useAchatsChantier(chantierId);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [venduInput, setVenduInput] = useState(montantVendu.toString());
   const [isSaving, setIsSaving] = useState(false);
@@ -71,11 +73,27 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const totalHeuresRealisees = taches.reduce((sum, t) => sum + (t.heures_realisees ?? 0), 0);
   const totalMontantVendu = taches.reduce((sum, t) => sum + (t.montant_vendu ?? 0), 0);
 
-  // Computed values (will be connected to real data later)
-  const coutsValue = 0;
-  const mainOeuvre = 0;
-  const achats = 0;
-  const sousTraitance = 0;
+  // Calculate achats totals
+  const totalAchats = useMemo(() => 
+    achatsData.reduce((sum, a) => sum + a.montant, 0), 
+    [achatsData]
+  );
+  
+  const achatsParTache = useMemo(() => {
+    const map: Record<string, number> = {};
+    achatsData.forEach(a => {
+      if (a.tache_id) {
+        map[a.tache_id] = (map[a.tache_id] || 0) + a.montant;
+      }
+    });
+    return map;
+  }, [achatsData]);
+
+  // Computed values
+  const mainOeuvre = 0; // Future: heures × taux horaire
+  const achats = totalAchats;
+  const sousTraitance = 0; // Future
+  const coutsValue = mainOeuvre + achats + sousTraitance;
   const margeValue = montantVendu - coutsValue;
   const margePercent = montantVendu > 0 ? (margeValue / montantVendu) * 100 : 0;
 
@@ -438,7 +456,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                         
                         {/* Achats */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
+                          <span className="text-sm tabular-nums">{(achatsParTache[task.id] ?? 0).toLocaleString("fr-FR")}€</span>
                         </div>
                         
                         {/* ST (Sous-traitance) */}
@@ -446,11 +464,18 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                           <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
-                        {/* Marge (Vendu - MO - Achats - ST, for now = Vendu) */}
+                        {/* Marge (Vendu - MO - Achats - ST) */}
                         <div className="col-span-2 text-center">
-                          <span className={`text-sm font-medium tabular-nums ${(task.montant_vendu ?? 0) >= 0 ? "text-green-600" : "text-red-500"}`}>
-                            {(task.montant_vendu ?? 0).toLocaleString("fr-FR")}€
-                          </span>
+                          {(() => {
+                            const taskVendu = task.montant_vendu ?? 0;
+                            const taskAchats = achatsParTache[task.id] ?? 0;
+                            const taskMarge = taskVendu - taskAchats; // MO and ST will be added later
+                            return (
+                              <span className={`text-sm font-medium tabular-nums ${taskMarge >= 0 ? "text-green-600" : "text-red-500"}`}>
+                                {taskMarge.toLocaleString("fr-FR")}€
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -472,15 +497,20 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
+                    <span className="font-semibold text-sm tabular-nums">{totalAchats.toLocaleString("fr-FR")}€</span>
                   </div>
                   <div className="col-span-1 text-center">
                     <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className={`font-semibold text-sm tabular-nums ${totalMontantVendu >= 0 ? "text-green-600" : "text-red-500"}`}>
-                      {totalMontantVendu.toLocaleString("fr-FR")}€
-                    </span>
+                    {(() => {
+                      const totalMarge = totalMontantVendu - totalAchats;
+                      return (
+                        <span className={`font-semibold text-sm tabular-nums ${totalMarge >= 0 ? "text-green-600" : "text-red-500"}`}>
+                          {totalMarge.toLocaleString("fr-FR")}€
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
