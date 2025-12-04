@@ -121,6 +121,8 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                   <TableHead>Achats</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Fournisseur</TableHead>
+                  <TableHead className="text-right">Qté</TableHead>
+                  <TableHead className="text-right">Prix unit.</TableHead>
                   <TableHead>Tâche</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
@@ -149,6 +151,12 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                     </TableCell>
                     <TableCell>{format(new Date(achat.date), "dd/MM/yyyy", { locale: fr })}</TableCell>
                     <TableCell>{achat.fournisseur || "-"}</TableCell>
+                    <TableCell className="text-right">
+                      {achat.quantite ?? 1} {achat.unite}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {achat.prix_unitaire?.toLocaleString("fr-FR") ?? "-"}€
+                    </TableCell>
                     <TableCell>{getTacheName(achat.tache_id)}</TableCell>
                     <TableCell>
                       <span className="text-xs px-2 py-1 rounded-full bg-muted">

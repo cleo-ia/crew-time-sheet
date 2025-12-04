@@ -25,6 +25,8 @@ export type Database = {
           id: string
           montant: number
           nom: string
+          prix_unitaire: number | null
+          quantite: number | null
           tache_id: string | null
           type_cout: string
           unite: string | null
@@ -40,6 +42,8 @@ export type Database = {
           id?: string
           montant?: number
           nom: string
+          prix_unitaire?: number | null
+          quantite?: number | null
           tache_id?: string | null
           type_cout?: string
           unite?: string | null
@@ -55,6 +59,8 @@ export type Database = {
           id?: string
           montant?: number
           nom?: string
+          prix_unitaire?: number | null
+          quantite?: number | null
           tache_id?: string | null
           type_cout?: string
           unite?: string | null

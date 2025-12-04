@@ -36,7 +36,8 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
   const [typeCout, setTypeCout] = useState(achat?.type_cout || "Matériaux");
   const [nom, setNom] = useState(achat?.nom || "");
   const [fournisseur, setFournisseur] = useState(achat?.fournisseur || "");
-  const [montant, setMontant] = useState(achat?.montant?.toString() || "");
+  const [quantite, setQuantite] = useState(achat?.quantite?.toString() || "1");
+  const [prixUnitaire, setPrixUnitaire] = useState(achat?.prix_unitaire?.toString() || "");
   const [unite, setUnite] = useState(achat?.unite || "m2");
   const [date, setDate] = useState<Date | undefined>(achat?.date ? new Date(achat.date) : new Date());
   const [tacheId, setTacheId] = useState<string | null>(achat?.tache_id || null);
@@ -45,11 +46,15 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Calculate montant automatically
+  const calculatedMontant = (parseFloat(quantite) || 0) * (parseFloat(prixUnitaire) || 0);
+
   const resetForm = () => {
     setTypeCout("Matériaux");
     setNom("");
     setFournisseur("");
-    setMontant("");
+    setQuantite("1");
+    setPrixUnitaire("");
     setUnite("m2");
     setDate(new Date());
     setTacheId(null);
@@ -118,8 +123,8 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
       return;
     }
 
-    if (!montant || isNaN(parseFloat(montant))) {
-      toast.error("Le montant est requis");
+    if (!prixUnitaire || isNaN(parseFloat(prixUnitaire))) {
+      toast.error("Le prix unitaire est requis");
       return;
     }
 
@@ -128,7 +133,9 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
       tache_id: tacheId,
       nom: nom.trim(),
       fournisseur: fournisseur.trim() || null,
-      montant: parseFloat(montant),
+      quantite: parseFloat(quantite) || 1,
+      prix_unitaire: parseFloat(prixUnitaire),
+      montant: calculatedMontant,
       unite: unite,
       date: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       type_cout: typeCout,
@@ -202,33 +209,55 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
             />
           </div>
 
-          {/* Montant */}
+          {/* Quantité + Unité */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="quantite" className="text-sm font-medium">Quantité</Label>
+              <Input
+                id="quantite"
+                type="number"
+                value={quantite}
+                onChange={(e) => setQuantite(e.target.value)}
+                placeholder="1"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Unité</Label>
+              <Select value={unite} onValueChange={setUnite}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Unité" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  {UNITES.map((u) => (
+                    <SelectItem key={u} value={u}>{u}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Prix unitaire */}
           <div className="space-y-2">
-            <Label htmlFor="montant" className="text-sm font-medium">Montant</Label>
+            <Label htmlFor="prix_unitaire" className="text-sm font-medium">Prix unitaire (€/{unite})</Label>
             <Input
-              id="montant"
+              id="prix_unitaire"
               type="number"
-              value={montant}
-              onChange={(e) => setMontant(e.target.value)}
-              placeholder="Montant"
+              value={prixUnitaire}
+              onChange={(e) => setPrixUnitaire(e.target.value)}
+              placeholder="0.00"
               min="0"
               step="0.01"
             />
           </div>
 
-          {/* Unité de mesure */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Unité de mesure</Label>
-            <Select value={unite} onValueChange={setUnite}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisissez une unité" />
-              </SelectTrigger>
-              <SelectContent className="bg-background">
-                {UNITES.map((u) => (
-                  <SelectItem key={u} value={u}>{u}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Montant total calculé */}
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Montant total</span>
+              <span className="text-lg font-semibold">{calculatedMontant.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}€</span>
+            </div>
           </div>
 
           {/* Date */}

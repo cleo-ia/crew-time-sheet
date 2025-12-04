@@ -10,6 +10,8 @@ export interface Achat {
   nom: string;
   fournisseur: string | null;
   montant: number;
+  quantite: number | null;
+  prix_unitaire: number | null;
   date: string;
   type_cout: string;
   unite: string | null;
