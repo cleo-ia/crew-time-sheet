@@ -27,6 +27,7 @@ export type Database = {
           nom: string
           tache_id: string | null
           type_cout: string
+          unite: string | null
           updated_at: string
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           nom: string
           tache_id?: string | null
           type_cout?: string
+          unite?: string | null
           updated_at?: string
         }
         Update: {
@@ -55,6 +57,7 @@ export type Database = {
           nom?: string
           tache_id?: string | null
           type_cout?: string
+          unite?: string | null
           updated_at?: string
         }
         Relationships: []

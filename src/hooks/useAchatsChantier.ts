@@ -11,6 +11,7 @@ export interface Achat {
   montant: number;
   date: string;
   type_cout: string;
+  unite: string | null;
   facture_path: string | null;
   facture_name: string | null;
   created_at: string;
