@@ -60,6 +60,7 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
     date_debut: today,
     date_fin: nextWeek,
     heures_estimees: "",
+    montant_vendu: "",
   });
 
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -121,6 +122,7 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
         date_debut: formData.date_debut,
         date_fin: formData.date_fin,
         heures_estimees: formData.heures_estimees ? parseInt(formData.heures_estimees) : undefined,
+        montant_vendu: formData.montant_vendu ? parseFloat(formData.montant_vendu) : undefined,
       });
 
       // Upload pending files if any
@@ -175,6 +177,7 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
         date_debut: today,
         date_fin: nextWeek,
         heures_estimees: "",
+        montant_vendu: "",
       });
       setPendingFiles([]);
       onOpenChange(false);
@@ -245,16 +248,30 @@ export const TaskFormDialog = ({ open, onOpenChange, chantierId }: TaskFormDialo
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="heures_estimees">Heures estimées</Label>
-            <Input
-              id="heures_estimees"
-              type="number"
-              value={formData.heures_estimees}
-              onChange={(e) => setFormData({ ...formData, heures_estimees: e.target.value })}
-              placeholder="Ex: 40"
-              min={0}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="heures_estimees">Heures estimées</Label>
+              <Input
+                id="heures_estimees"
+                type="number"
+                value={formData.heures_estimees}
+                onChange={(e) => setFormData({ ...formData, heures_estimees: e.target.value })}
+                placeholder="Ex: 40"
+                min={0}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="montant_vendu">Montant vendu (€)</Label>
+              <Input
+                id="montant_vendu"
+                type="number"
+                value={formData.montant_vendu}
+                onChange={(e) => setFormData({ ...formData, montant_vendu: e.target.value })}
+                placeholder="Ex: 5000"
+                min={0}
+                step="0.01"
+              />
+            </div>
           </div>
 
           {/* Documents section */}

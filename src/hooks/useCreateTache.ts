@@ -9,6 +9,7 @@ interface CreateTacheInput {
   date_debut: string;
   date_fin: string;
   heures_estimees?: number;
+  montant_vendu?: number;
   statut?: "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD";
   couleur?: string;
 }
@@ -27,6 +28,7 @@ export const useCreateTache = () => {
           date_debut: input.date_debut,
           date_fin: input.date_fin,
           heures_estimees: input.heures_estimees || null,
+          montant_vendu: input.montant_vendu || 0,
           statut: input.statut || "A_FAIRE",
           couleur: input.couleur || null,
         })
