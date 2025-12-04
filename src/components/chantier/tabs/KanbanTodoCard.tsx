@@ -8,10 +8,16 @@ import type { TodoChantier } from "@/hooks/useTodosChantier";
 interface KanbanTodoCardProps {
   todo: TodoChantier;
   isOverdue: boolean;
+  isDraggable?: boolean;
   onClick: () => void;
 }
 
-export const KanbanTodoCard = ({ todo, isOverdue, onClick }: KanbanTodoCardProps) => {
+export const KanbanTodoCard = ({ todo, isOverdue, isDraggable = false, onClick }: KanbanTodoCardProps) => {
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("todoId", todo.id);
+    e.dataTransfer.setData("todoChanterId", todo.chantier_id);
+  };
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "d MMM yyyy", { locale: fr });
@@ -46,7 +52,9 @@ export const KanbanTodoCard = ({ todo, isOverdue, onClick }: KanbanTodoCardProps
 
   return (
     <Card 
-      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-card border-l-4 ${getBorderColor()} group`}
+      draggable={isDraggable}
+      onDragStart={isDraggable ? handleDragStart : undefined}
+      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-card border-l-4 ${getBorderColor()} group ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={onClick}
     >
       <CardContent className="p-4 space-y-3">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, ListTodo, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTodosChantier, TodoChantier } from "@/hooks/useTodosChantier";
+import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 import { TodoFormDialog } from "./TodoFormDialog";
 import { TodoDetailDialog } from "./TodoDetailDialog";
 import { KanbanTodoCard } from "./KanbanTodoCard";
@@ -48,9 +49,11 @@ interface KanbanColumn {
 
 export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
   const { data: todos = [], isLoading } = useTodosChantier(chantierId);
+  const updateTodo = useUpdateTodo();
   const [selectedTodo, setSelectedTodo] = useState<TodoChantier | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [dragOverColumn, setDragOverColumn] = useState<TodoStatus | null>(null);
 
   const columns: KanbanColumn[] = [
     {
@@ -94,6 +97,35 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
     return getComputedTodoStatus(todo) === "EN_RETARD";
   };
 
+  const handleDragOver = (e: React.DragEvent, columnId: TodoStatus) => {
+    e.preventDefault();
+    if (columnId === "EN_COURS" || columnId === "TERMINE") {
+      setDragOverColumn(columnId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: TodoStatus) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+    
+    if (targetStatus !== "EN_COURS" && targetStatus !== "TERMINE") return;
+    
+    const todoId = e.dataTransfer.getData("todoId");
+    const todoChanterId = e.dataTransfer.getData("todoChanterId");
+    
+    if (!todoId || !todoChanterId) return;
+    
+    updateTodo.mutate({
+      id: todoId,
+      chantier_id: todoChanterId,
+      statut: targetStatus
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -128,11 +160,22 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
 
       {/* Kanban board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {columns.map((column, index) => (
+        {columns.map((column, index) => {
+          const isDropTarget = column.id === "EN_COURS" || column.id === "TERMINE";
+          const isDraggedOver = dragOverColumn === column.id;
+          
+          return (
           <div 
             key={column.id} 
-            className={`flex flex-col rounded-xl border border-border/50 overflow-hidden ${column.bgClass} animate-fade-in`}
+            className={`flex flex-col rounded-xl border overflow-hidden ${column.bgClass} animate-fade-in transition-all duration-200 ${
+              isDraggedOver 
+                ? 'border-2 border-primary ring-2 ring-primary/20' 
+                : 'border-border/50'
+            }`}
             style={{ animationDelay: `${index * 100}ms` }}
+            onDragOver={isDropTarget ? (e) => handleDragOver(e, column.id) : undefined}
+            onDragLeave={isDropTarget ? handleDragLeave : undefined}
+            onDrop={isDropTarget ? (e) => handleDrop(e, column.id) : undefined}
           >
             {/* Column header */}
             <div className={`px-4 py-3.5 ${column.headerBg} border-b border-border/30`}>
@@ -169,6 +212,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
                       <KanbanTodoCard
                         todo={todo}
                         isOverdue={isOverdue(todo)}
+                        isDraggable={column.id === "EN_COURS" || column.id === "TERMINE"}
                         onClick={() => handleTodoClick(todo)}
                       />
                     </div>
@@ -192,7 +236,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
               </div>
             )}
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Dialogs */}
