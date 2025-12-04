@@ -55,6 +55,7 @@ interface TaskDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   tache: TacheChantier | null;
   chantierId: string;
+  initialTab?: "recap" | "date" | "rentabilite" | "fichiers";
 }
 
 const STATUTS = [
@@ -79,7 +80,7 @@ const getComputedStatus = (statut: string, dateDebut: string, dateFin: string) =
   return "A_FAIRE";
 };
 
-export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: TaskDetailDialogProps) => {
+export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initialTab = "recap" }: TaskDetailDialogProps) => {
   const updateTache = useUpdateTache();
   const deleteTache = useDeleteTache();
   const { documents, uploadDocument, deleteDocument, getPublicUrl } = useTacheDocuments(tache?.id);
@@ -89,6 +90,14 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<TacheDocument | null>(null);
   const [pdfToView, setPdfToView] = useState<TacheDocument | null>(null);
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Reset to initialTab when dialog opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
 
   const [formData, setFormData] = useState({
     nom: "",
@@ -248,7 +257,7 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId }: Task
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="recap" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 px-5 shrink-0">
             <TabsTrigger 
               value="recap" 
