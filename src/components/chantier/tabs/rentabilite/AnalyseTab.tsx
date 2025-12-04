@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTachesChantier, TacheChantier } from "@/hooks/useTachesChantier";
+import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
 
 interface AnalyseTabProps {
   chantierId: string;
@@ -53,6 +54,13 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [venduInput, setVenduInput] = useState(montantVendu.toString());
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TacheChantier | null>(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+
+  const handleTaskDoubleClick = (task: TacheChantier) => {
+    setSelectedTask(task);
+    setIsTaskDetailOpen(true);
+  };
 
   // Calculate totals from real tasks
   const totalHeuresEstimees = taches.reduce((sum, t) => sum + (t.heures_estimees ?? 0), 0);
@@ -269,7 +277,8 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                 return (
                   <div 
                     key={task.id} 
-                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors"
+                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
+                    onDoubleClick={() => handleTaskDoubleClick(task)}
                   >
                     {/* Task Name + Progress */}
                     <div className="col-span-3 space-y-2">
@@ -335,6 +344,14 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        open={isTaskDetailOpen}
+        onOpenChange={setIsTaskDetailOpen}
+        tache={selectedTask}
+        chantierId={chantierId}
+      />
     </div>
   );
 };
