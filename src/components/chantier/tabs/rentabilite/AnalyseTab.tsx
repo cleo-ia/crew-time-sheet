@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { HelpCircle, Pencil, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,25 +9,23 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTachesChantier } from "@/hooks/useTachesChantier";
 
 interface AnalyseTabProps {
   chantierId: string;
   montantVendu: number;
 }
 
-const mockTasks = [
-  { nom: "Fondations", heuresEstimees: 120, heuresTravaillees: 98, marge: 2450 },
-  { nom: "Gros œuvre", heuresEstimees: 340, heuresTravaillees: 312, marge: 8200 },
-  { nom: "Charpente", heuresEstimees: 80, heuresTravaillees: 75, marge: 1800 },
-  { nom: "Couverture", heuresEstimees: 60, heuresTravaillees: 58, marge: 1200 },
-  { nom: "Menuiseries", heuresEstimees: 45, heuresTravaillees: 42, marge: 980 },
-];
-
 export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
   const queryClient = useQueryClient();
+  const { data: taches = [], isLoading: isLoadingTaches } = useTachesChantier(chantierId);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [venduInput, setVenduInput] = useState(montantVendu.toString());
   const [isSaving, setIsSaving] = useState(false);
+
+  // Calculate totals from real tasks
+  const totalHeuresEstimees = taches.reduce((sum, t) => sum + (t.heures_estimees ?? 0), 0);
+  const totalHeuresRealisees = taches.reduce((sum, t) => sum + (t.heures_realisees ?? 0), 0);
 
   // Computed values (will be connected to real data later)
   const coutsValue = 0;
@@ -210,17 +208,39 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockTasks.map((task) => (
-                <TableRow key={task.nom}>
-                  <TableCell className="font-medium">{task.nom}</TableCell>
-                  <TableCell className="text-right">{task.heuresEstimees}h</TableCell>
-                  <TableCell className="text-right">{task.heuresTravaillees}h</TableCell>
-                  <TableCell className="text-right text-primary font-medium">
-                    {task.marge.toLocaleString()}€
+              {isLoadingTaches ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    Chargement...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : taches.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    Aucune tâche définie
+                  </TableCell>
+                </TableRow>
+              ) : (
+                taches.map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell className="font-medium">{task.nom}</TableCell>
+                    <TableCell className="text-right">{task.heures_estimees ?? 0}h</TableCell>
+                    <TableCell className="text-right">{task.heures_realisees ?? 0}h</TableCell>
+                    <TableCell className="text-right text-muted-foreground">0€</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
+            {taches.length > 0 && (
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-semibold">Total</TableCell>
+                  <TableCell className="text-right font-semibold">{totalHeuresEstimees}h</TableCell>
+                  <TableCell className="text-right font-semibold">{totalHeuresRealisees}h</TableCell>
+                  <TableCell className="text-right font-semibold text-muted-foreground">0€</TableCell>
+                </TableRow>
+              </TableFooter>
+            )}
           </Table>
         </CardContent>
       </Card>
