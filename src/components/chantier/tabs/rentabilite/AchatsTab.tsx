@@ -2,9 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Trash2, FileText, ImageIcon } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, FileText, ImageIcon, Package, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAchatsChantier, useDeleteAchat, Achat } from "@/hooks/useAchatsChantier";
@@ -13,6 +12,14 @@ import { AchatFormDialog } from "./AchatFormDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 const TYPES_COUT = ["Tous", "Matériaux", "Fournitures", "Locations", "Sous traitants", "Autres"];
+
+const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  "Matériaux": { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/30" },
+  "Fournitures": { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-500/30" },
+  "Locations": { bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/30" },
+  "Sous traitants": { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30" },
+  "Autres": { bg: "bg-slate-500/10", text: "text-slate-600 dark:text-slate-400", border: "border-slate-500/30" },
+};
 
 interface AchatsTabProps {
   chantierId: string;
@@ -39,9 +46,9 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
   const totalAchats = filteredAchats.reduce((sum, achat) => sum + achat.montant, 0);
 
   const getTacheName = (tacheId: string | null) => {
-    if (!tacheId) return "-";
+    if (!tacheId) return null;
     const tache = taches.find((t) => t.id === tacheId);
-    return tache?.nom || "-";
+    return tache?.nom || null;
   };
 
   const handleEdit = (achat: Achat) => {
@@ -70,106 +77,173 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
     if (!open) setEditingAchat(null);
   };
 
+  const getTypeStyle = (type: string) => {
+    return TYPE_COLORS[type] || TYPE_COLORS["Autres"];
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters and actions */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedType} onValueChange={setSelectedType}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Type de coût" />
-          </SelectTrigger>
-          <SelectContent className="bg-background">
-            {TYPES_COUT.map((type) => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3 p-1 bg-muted/50 rounded-lg">
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-[160px] border-0 bg-background shadow-sm">
+              <SelectValue placeholder="Type de coût" />
+            </SelectTrigger>
+            <SelectContent className="bg-background">
+              {TYPES_COUT.map((type) => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={selectedTache} onValueChange={setSelectedTache}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Tâche" />
-          </SelectTrigger>
-          <SelectContent className="bg-background">
-            <SelectItem value="Toutes">Toutes les tâches</SelectItem>
-            {taches.map((tache) => (
-              <SelectItem key={tache.id} value={tache.id}>{tache.nom}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={selectedTache} onValueChange={setSelectedTache}>
+            <SelectTrigger className="w-[180px] border-0 bg-background shadow-sm">
+              <SelectValue placeholder="Tâche" />
+            </SelectTrigger>
+            <SelectContent className="bg-background">
+              <SelectItem value="Toutes">Toutes les tâches</SelectItem>
+              {taches.map((tache) => (
+                <SelectItem key={tache.id} value={tache.id}>{tache.nom}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="flex-1" />
 
-        <Button className="gap-2" onClick={() => setIsFormOpen(true)}>
+        <Button className="gap-2 shadow-md" onClick={() => setIsFormOpen(true)}>
           <Plus className="h-4 w-4" />
           Ajouter un achat
         </Button>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="pt-6">
+      {/* Table Card */}
+      <Card className="overflow-hidden border-0 shadow-lg">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b border-border/50">
+          <div className="grid grid-cols-[1fr_100px_120px_80px_90px_70px_120px_110px_100px_50px] gap-2 px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div>Nom</div>
+            <div>Date</div>
+            <div>Fournisseur</div>
+            <div className="text-right">Qté</div>
+            <div className="text-right">Prix unit.</div>
+            <div>Unité</div>
+            <div>Tâche</div>
+            <div>Type</div>
+            <div className="text-right">Montant</div>
+            <div></div>
+          </div>
+        </div>
+
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="animate-pulse flex flex-col items-center gap-2">
+                <Package className="h-8 w-8 opacity-50" />
+                <span>Chargement...</span>
+              </div>
+            </div>
           ) : filteredAchats.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Aucun achat enregistré
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center">
+                  <ShoppingCart className="h-8 w-8 opacity-40" />
+                </div>
+                <div>
+                  <p className="font-medium">Aucun achat enregistré</p>
+                  <p className="text-sm opacity-70">Commencez par ajouter votre premier achat</p>
+                </div>
+              </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead className="text-right">Quantité</TableHead>
-                  <TableHead className="text-right">Prix unit.</TableHead>
-                  <TableHead>Unité</TableHead>
-                  <TableHead>Tâche</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAchats.map((achat) => (
-                  <TableRow key={achat.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {achat.facture_path && (
-                          <button
-                            onClick={() => handleOpenFacture(achat)}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            {achat.facture_name?.toLowerCase().endsWith(".pdf") ? (
-                              <FileText className="h-4 w-4 text-red-500" />
-                            ) : (
-                              <ImageIcon className="h-4 w-4 text-blue-500" />
-                            )}
-                          </button>
-                        )}
-                        {achat.nom}
-                      </div>
-                    </TableCell>
-                    <TableCell>{format(new Date(achat.date), "dd/MM/yyyy", { locale: fr })}</TableCell>
-                    <TableCell>{achat.fournisseur || "-"}</TableCell>
-                    <TableCell className="text-right">{achat.quantite ?? 1}</TableCell>
-                    <TableCell className="text-right">
-                      {achat.prix_unitaire?.toLocaleString("fr-FR") ?? "-"}€
-                    </TableCell>
-                    <TableCell>{achat.unite || "-"}</TableCell>
-                    <TableCell>{getTacheName(achat.tache_id)}</TableCell>
-                    <TableCell>
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted">
+            <div className="divide-y divide-border/50">
+              {filteredAchats.map((achat, index) => {
+                const typeStyle = getTypeStyle(achat.type_cout);
+                const tacheName = getTacheName(achat.tache_id);
+                
+                return (
+                  <div 
+                    key={achat.id}
+                    className={`grid grid-cols-[1fr_100px_120px_80px_90px_70px_120px_110px_100px_50px] gap-2 px-4 py-3 items-center hover:bg-muted/30 transition-colors ${
+                      index % 2 === 0 ? 'bg-background' : 'bg-muted/10'
+                    }`}
+                  >
+                    {/* Nom avec icône facture */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {achat.facture_path ? (
+                        <button
+                          onClick={() => handleOpenFacture(achat)}
+                          className="flex-shrink-0 h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
+                          title="Voir la facture"
+                        >
+                          {achat.facture_name?.toLowerCase().endsWith(".pdf") ? (
+                            <FileText className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-blue-500" />
+                          )}
+                        </button>
+                      ) : (
+                        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center">
+                          <Package className="h-4 w-4 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <span className="font-medium truncate">{achat.nom}</span>
+                    </div>
+
+                    {/* Date */}
+                    <div className="text-sm text-muted-foreground">
+                      {format(new Date(achat.date), "dd MMM yyyy", { locale: fr })}
+                    </div>
+
+                    {/* Fournisseur */}
+                    <div className="text-sm truncate">
+                      {achat.fournisseur || <span className="text-muted-foreground/50">—</span>}
+                    </div>
+
+                    {/* Quantité */}
+                    <div className="text-right font-medium tabular-nums">
+                      {achat.quantite ?? 1}
+                    </div>
+
+                    {/* Prix unitaire */}
+                    <div className="text-right text-sm tabular-nums">
+                      {achat.prix_unitaire?.toLocaleString("fr-FR") ?? "—"}€
+                    </div>
+
+                    {/* Unité */}
+                    <div className="text-sm text-muted-foreground">
+                      {achat.unite || <span className="opacity-50">—</span>}
+                    </div>
+
+                    {/* Tâche */}
+                    <div className="min-w-0">
+                      {tacheName ? (
+                        <span className="text-xs px-2 py-1 rounded-md bg-muted truncate block">
+                          {tacheName}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </div>
+
+                    {/* Type */}
+                    <div>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${typeStyle.bg} ${typeStyle.text} ${typeStyle.border}`}>
                         {achat.type_cout}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
+                    </div>
+
+                    {/* Montant */}
+                    <div className="text-right font-semibold tabular-nums text-primary">
                       {achat.montant.toLocaleString("fr-FR")}€
-                    </TableCell>
-                    <TableCell>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 hover:opacity-100">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -187,26 +261,33 @@ export const AchatsTab = ({ chantierId }: AchatsTabProps) => {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Total */}
-      <div className="flex justify-end">
-        <Card className="w-fit">
-          <CardContent className="py-3 px-6">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">Total achats</span>
-              <span className="text-xl font-bold">{totalAchats.toLocaleString("fr-FR")}€</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Total Card */}
+      {filteredAchats.length > 0 && (
+        <div className="flex justify-end">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardContent className="py-4 px-6">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <ShoppingCart className="h-4 w-4" />
+                  <span className="text-sm font-medium">Total achats</span>
+                </div>
+                <span className="text-2xl font-bold text-primary tabular-nums">
+                  {totalAchats.toLocaleString("fr-FR")}€
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <AchatFormDialog
