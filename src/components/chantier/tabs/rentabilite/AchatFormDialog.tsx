@@ -195,6 +195,7 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
               value={nom}
               onChange={(e) => setNom(e.target.value)}
               placeholder="Exemple : Cables électricité"
+              autoComplete="off"
             />
           </div>
 
