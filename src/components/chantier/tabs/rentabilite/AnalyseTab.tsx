@@ -442,27 +442,27 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                         
                         {/* Vendu */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
                         {/* MO (Main d'œuvre) */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
                         {/* Achats */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
                         {/* ST (Sous-traitance) */}
                         <div className="col-span-1 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                         
                         {/* Marge */}
                         <div className="col-span-2 text-center">
-                          <span className="text-sm text-muted-foreground tabular-nums">−€</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">0€</span>
                         </div>
                       </div>
                     );
@@ -478,19 +478,19 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     <span className="text-xs text-muted-foreground ml-2">({taches.length} tâches)</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-1 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">−€</span>
+                    <span className="font-semibold text-sm text-muted-foreground tabular-nums">0€</span>
                   </div>
                 </div>
               )}
