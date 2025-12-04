@@ -274,7 +274,7 @@ export const AnalyseTab = ({ chantierId, montantVendu }: AnalyseTabProps) => {
                     {/* Task Name + Progress */}
                     <div className="col-span-4 space-y-2">
                       <p className="font-medium text-sm">{task.nom}</p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 max-w-[160px]">
                         <Progress 
                           value={progressPercent} 
                           className={`h-1.5 flex-1 ${isOverBudget ? "[&>div]:bg-red-500" : ""}`}
