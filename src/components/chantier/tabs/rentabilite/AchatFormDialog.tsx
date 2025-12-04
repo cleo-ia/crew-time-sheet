@@ -14,6 +14,7 @@ import { useCreateAchat, useUpdateAchat, Achat, AchatInsert } from "@/hooks/useA
 import { useTachesChantier } from "@/hooks/useTachesChantier";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { addFactureToDocuments, removeFactureFromDocuments } from "@/hooks/useFacturesDossier";
 
 const TYPES_COUT = ["Matériaux", "Fournitures", "Locations", "Sous traitants", "Autres"];
 const UNITES = ["m2", "unité", "jour", "m3", "kg", "tonne", "mètre", "litre"];
@@ -81,6 +82,9 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
 
       if (uploadError) throw uploadError;
 
+      // Add to central Fichiers tab in "Factures" folder
+      await addFactureToDocuments(chantierId, file.name, fileName, file.type, file.size);
+
       setFacturePath(fileName);
       setFactureName(file.name);
       toast.success("Facture uploadée");
@@ -99,7 +103,11 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
     if (file) handleFileUpload(file);
   };
 
-  const handleRemoveFile = () => {
+  const handleRemoveFile = async () => {
+    // Remove from central Fichiers if file was already uploaded
+    if (facturePath) {
+      await removeFactureFromDocuments(facturePath);
+    }
     setFactureName("");
     setFacturePath("");
   };
