@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const TYPES_COUT = ["Matériaux", "Fournitures", "Locations", "Sous traitants", "Autres"];
+const UNITES = ["m2", "unité", "jour", "m3", "kg", "tonne", "mètre", "litre"];
 
 interface AchatFormDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
   const [nom, setNom] = useState(achat?.nom || "");
   const [fournisseur, setFournisseur] = useState(achat?.fournisseur || "");
   const [montant, setMontant] = useState(achat?.montant?.toString() || "");
+  const [unite, setUnite] = useState(achat?.unite || "m2");
   const [date, setDate] = useState<Date | undefined>(achat?.date ? new Date(achat.date) : new Date());
   const [tacheId, setTacheId] = useState<string | null>(achat?.tache_id || null);
   const [factureName, setFactureName] = useState(achat?.facture_name || "");
@@ -47,6 +49,7 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
     setNom("");
     setFournisseur("");
     setMontant("");
+    setUnite("m2");
     setDate(new Date());
     setTacheId(null);
     setFactureName("");
@@ -118,6 +121,7 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
       nom: nom.trim(),
       fournisseur: fournisseur.trim() || null,
       montant: parseFloat(montant),
+      unite: unite,
       date: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       type_cout: typeCout,
       facture_path: facturePath || null,
@@ -202,6 +206,21 @@ export const AchatFormDialog = ({ open, onOpenChange, chantierId, achat }: Achat
               min="0"
               step="0.01"
             />
+          </div>
+
+          {/* Unité de mesure */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Unité de mesure</Label>
+            <Select value={unite} onValueChange={setUnite}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choisissez une unité" />
+              </SelectTrigger>
+              <SelectContent className="bg-background">
+                {UNITES.map((u) => (
+                  <SelectItem key={u} value={u}>{u}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Date */}
