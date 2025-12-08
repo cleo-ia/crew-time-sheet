@@ -29,6 +29,8 @@ interface VehiculeComboboxProps {
   semaine?: string;
   excludeFinisseurId?: string;
   localVehiculeUsage?: Map<string, Map<string, string>>;
+  // Pour exclure le chantier courant de la vérification cross-chantier (mode Maçons)
+  currentChantierId?: string;
 }
 
 export const VehiculeCombobox = ({
@@ -40,6 +42,7 @@ export const VehiculeCombobox = ({
   semaine,
   excludeFinisseurId,
   localVehiculeUsage,
+  currentChantierId,
 }: VehiculeComboboxProps) => {
   const [open, setOpen] = useState(false);
   const normalizedValue = value || "";
@@ -82,9 +85,9 @@ export const VehiculeCombobox = ({
 
   // Vérification croisée : véhicules utilisés par les DEUX équipes (Maçons ↔ Finisseurs)
   const { data: vehiculesUtilisesGlobal, isLoading: isLoadingGlobal } = useQuery({
-    queryKey: ["vehicules-all-teams-used", semaine, date],
+    queryKey: ["vehicules-all-teams-used", semaine, date, currentChantierId, excludeFinisseurId],
     queryFn: async () => {
-      const usedMap = new Map<string, { type: 'macon' | 'finisseur'; nom: string }>();
+      const usedMap = new Map<string, { type: 'macon' | 'finisseur'; nom: string; chantierId?: string }>();
 
       // 1. Véhicules utilisés par les MAÇONS
       const { data: transportMacons } = await supabase
@@ -92,8 +95,10 @@ export const VehiculeCombobox = ({
         .select(`
           immatriculation,
           fiche_transport:fiches_transport!inner(
+            chantier_id,
             fiche:fiches!inner(
               semaine,
+              chantier_id,
               chantier:chantiers(nom)
             )
           )
@@ -103,10 +108,13 @@ export const VehiculeCombobox = ({
 
       transportMacons?.forEach((jour: any) => {
         if (jour.immatriculation) {
+          const chantierId = jour.fiche_transport?.chantier_id || jour.fiche_transport?.fiche?.chantier_id;
           const chantierNom = jour.fiche_transport?.fiche?.chantier?.nom || 'Chantier inconnu';
+          
           usedMap.set(jour.immatriculation, {
             type: 'macon',
-            nom: `Équipe maçons (${chantierNom})`
+            nom: `Équipe maçons (${chantierNom})`,
+            chantierId: chantierId
           });
         }
       });
@@ -222,7 +230,13 @@ export const VehiculeCombobox = ({
               // Si mode Maçons → vérifier si utilisé par finisseurs
               const isUsedByFinisseurs = !excludeFinisseurId && globalUsage?.type === 'finisseur';
               
-              const isUsed = isUsedSimple || isUsedInDB || isUsedLocally || isUsedByMacons || isUsedByFinisseurs;
+              // Mode Maçons → vérifier si utilisé par AUTRE équipe maçons sur AUTRE chantier
+              const isUsedByOtherMaconTeam = currentChantierId && 
+                globalUsage?.type === 'macon' && 
+                globalUsage?.chantierId && 
+                globalUsage.chantierId !== currentChantierId;
+              
+              const isUsed = isUsedSimple || isUsedInDB || isUsedLocally || isUsedByMacons || isUsedByFinisseurs || isUsedByOtherMaconTeam;
 
               return (
                 <CommandItem
@@ -259,8 +273,13 @@ export const VehiculeCombobox = ({
                       (Utilisée par {globalUsage?.nom})
                     </span>
                   )}
-                  {isUsedByFinisseurs && !isUsedSimple && !isUsedInDB && (
+                  {isUsedByFinisseurs && !isUsedSimple && !isUsedInDB && !isUsedByOtherMaconTeam && (
                     <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">
+                      (Utilisée par {globalUsage?.nom})
+                    </span>
+                  )}
+                  {isUsedByOtherMaconTeam && !isUsedSimple && !isUsedInDB && (
+                    <span className="text-xs text-red-600 dark:text-red-400 ml-2">
                       (Utilisée par {globalUsage?.nom})
                     </span>
                   )}

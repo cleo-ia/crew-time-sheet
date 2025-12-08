@@ -217,6 +217,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
                   onChange={(value) => updateDay(index, "immatriculation", value)}
                   date={day.date}
                   semaine={selectedWeekString}
+                  currentChantierId={chantierId}
                 />
               </TableCell>
             </TableRow>

@@ -181,6 +181,7 @@ export const TransportDayAccordion = ({
                       disabled={isReadOnly}
                       date={day.date}
                       semaine={semaine}
+                      currentChantierId={chantierId || undefined}
                       otherVehiculesPlates={
                         day.vehicules
                           .filter(v => v.id !== vehicule.id)
