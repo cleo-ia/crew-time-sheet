@@ -44,6 +44,9 @@ export interface EnterpriseFeatures {
   signatureChef: boolean;
   signatureConducteur: boolean;
   validationRH: boolean;
+  
+  // Contraintes temporelles
+  contrainteVendredi12h: boolean; // Bloque transmission avant vendredi 12h pour semaine courante
 }
 
 export interface EnterpriseRoutes {
@@ -115,6 +118,7 @@ export const defaultFeatures: EnterpriseFeatures = {
   signatureChef: true,
   signatureConducteur: true,
   validationRH: true,
+  contrainteVendredi12h: false, // Désactivé par défaut pour les tests
 };
 
 export const defaultRoutes: EnterpriseRoutes = {

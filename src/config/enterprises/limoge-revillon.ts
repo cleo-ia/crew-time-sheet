@@ -13,7 +13,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
   
   features: {
     ...defaultFeatures,
-    // Toutes les fonctionnalités activées pour Limoge Revillon
+    contrainteVendredi12h: true, // Limoge Revillon : transmission bloquée avant vendredi 12h
   },
   
   routes: {

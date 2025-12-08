@@ -1,5 +1,5 @@
 import { addDays, format } from "date-fns";
-import { parseISOWeek } from "./weekUtils";
+import { parseISOWeek, getCurrentWeek } from "./weekUtils";
 /**
  * Formate un timestamp UTC en heure de Paris (Europe/Paris)
  * Gère automatiquement le changement heure d'été/hiver
@@ -47,4 +47,39 @@ export const dayNameToDate = (
     console.error(`❌ dayNameToDate: weekId invalide (${weekId}) ou erreur de calcul`, e);
     throw e;
   }
+};
+
+/**
+ * Vérifie si l'heure actuelle à Paris est après vendredi 12h00
+ * Gère automatiquement le changement heure d'été/hiver
+ * @returns true si on est vendredi après 12h, samedi ou dimanche
+ */
+export const isAfterFriday12hParis = (): boolean => {
+  const now = new Date();
+  
+  // Obtenir les composants de la date/heure à Paris
+  const parisFormatter = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    weekday: 'long',
+    hour: 'numeric',
+    hour12: false,
+  });
+  
+  const parts = parisFormatter.formatToParts(now);
+  const weekday = parts.find(p => p.type === 'weekday')?.value?.toLowerCase();
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+  
+  // Vendredi après 12h, samedi ou dimanche = autorisé
+  if (weekday === 'vendredi') return hour >= 12;
+  if (weekday === 'samedi' || weekday === 'dimanche') return true;
+  return false;
+};
+
+/**
+ * Vérifie si la semaine donnée est la semaine courante
+ * @param weekString Format: "2025-S42"
+ * @returns true si c'est la semaine en cours
+ */
+export const isCurrentWeek = (weekString: string): boolean => {
+  return weekString === getCurrentWeek();
 };
