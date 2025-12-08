@@ -100,11 +100,24 @@ const ValidationConducteur = () => {
   const saveFiche = useSaveFiche();
   const { toast } = useToast();
 
-  // Récupérer l'ID du conducteur connecté
+  // Récupérer l'ID du conducteur connecté via utilisateurs.id (pas auth.user.id)
   useEffect(() => {
     const fetchConducteurId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (!user) return;
+
+      // Chercher l'entrée utilisateur correspondant à cet auth.user.id
+      const { data: utilisateur } = await supabase
+        .from("utilisateurs")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      
+      if (utilisateur) {
+        // Utiliser utilisateurs.id (clé étrangère valide pour affectations_finisseurs_jours)
+        setConducteurId(utilisateur.id);
+      } else {
+        // Fallback pour compatibilité (anciens comptes où id = auth_user_id)
         setConducteurId(user.id);
       }
     };
