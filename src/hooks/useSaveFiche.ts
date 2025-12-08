@@ -63,11 +63,14 @@ export const useSaveFiche = () => {
           .eq("salarie_id", employee.employeeId);
           // user_id supprimé du filtre pour éviter les doublons si plusieurs chefs modifient
 
-        if (chantierId) {
-          query = query.eq("chantier_id", chantierId);
-        } else {
+        // Pour les finisseurs (chantier_id null), filtrer explicitement
+        // Pour les maçons, ne PAS filtrer par chantier_id car un employé 
+        // n'a qu'une seule fiche par semaine (contrainte idx_fiches_unique_salarie_semaine)
+        if (!chantierId) {
           query = query.is("chantier_id", null);
         }
+        // Si chantierId est fourni, on cherche TOUTE fiche pour cet employé/semaine
+        // sans filtrer par chantier - la contrainte d'unicité garantit qu'il n'y en a qu'une
 
         const { data: existingFiche } = await query
           .order('created_at', { ascending: false })
