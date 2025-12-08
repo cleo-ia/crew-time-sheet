@@ -76,6 +76,7 @@ export const useCreateFicheJourForAffectation = () => {
           HI: 0,
           PA: true, // Panier par défaut (cohérent avec l'UI)
           T: 1, // 1 trajet par défaut (cohérent avec l'UI)
+          code_trajet: 'A_COMPLETER', // RH devra compléter le code trajet
           trajet_perso: false,
           heure_debut: null,
           heure_fin: null,

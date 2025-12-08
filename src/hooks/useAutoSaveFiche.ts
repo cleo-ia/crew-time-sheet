@@ -143,7 +143,8 @@ export const useAutoSaveFiche = () => {
               HNORM: defaultHours[index],
               heures: defaultHours[index],
               HI: 0,
-              code_trajet: null,  // Utilisateur devra choisir
+              T: 1,  // Trajet coché par défaut
+              code_trajet: 'A_COMPLETER',  // RH devra compléter
               PA: true,
               pause_minutes: 0,
             }));
@@ -213,7 +214,8 @@ export const useAutoSaveFiche = () => {
             heures: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HNORM: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HI: dayData?.heuresIntemperie || 0,
-            code_trajet: dayData?.codeTrajet || null,  // Code trajet sélectionné par l'utilisateur
+            T: 1,  // Trajet coché par défaut
+            code_trajet: dayData?.codeTrajet || 'A_COMPLETER',  // A_COMPLETER par défaut si pas déjà défini
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             pause_minutes: 0,
             commentaire: dayData?.commentaire || null,
