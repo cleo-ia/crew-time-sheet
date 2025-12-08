@@ -239,7 +239,7 @@ export const ChantiersManager = () => {
                     placeholder="Ex: Résidence Les Érables" 
                     value={formData.nom}
                     onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                    autoComplete="off"
+                    autoComplete="new-chantier-nom"
                   />
                 </div>
                 <div className="space-y-2">
@@ -248,7 +248,7 @@ export const ChantiersManager = () => {
                     placeholder="Ex: CHT-001" 
                     value={formData.code_chantier}
                     onChange={(e) => setFormData({ ...formData, code_chantier: e.target.value })}
-                    autoComplete="off"
+                    autoComplete="new-code-chantier"
                   />
                 </div>
               </div>
@@ -258,7 +258,7 @@ export const ChantiersManager = () => {
                   placeholder="Ex: Bouygues Immobilier" 
                   value={formData.client}
                   onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                  autoComplete="off"
+                  autoComplete="new-client-name"
                 />
               </div>
             </div>
@@ -278,7 +278,7 @@ export const ChantiersManager = () => {
                     placeholder="Ex: Paris" 
                     value={formData.ville}
                     onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                    autoComplete="off"
+                    autoComplete="new-city-name"
                   />
                 </div>
                 <div className="space-y-2">
@@ -287,7 +287,7 @@ export const ChantiersManager = () => {
                     placeholder="Ex: 12 Rue de la République" 
                     value={formData.adresse}
                     onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                    autoComplete="off"
+                    autoComplete="new-street-address"
                   />
                 </div>
               </div>
