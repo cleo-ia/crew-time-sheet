@@ -23,7 +23,10 @@ import { ChefFicheDetailDialog } from "@/components/chef/ChefFicheDetailDialog";
 import { TransportSheetV2 } from "@/components/transport/TransportSheetV2";
 import { useFicheId } from "@/hooks/useFicheId";
 import { parseISOWeek, getNextWeek } from "@/lib/weekUtils";
+import { isAfterFriday12hParis, isCurrentWeek } from "@/lib/date";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Clock } from "lucide-react";
 import { useTransportValidation } from "@/hooks/useTransportValidation";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -281,6 +284,20 @@ const Index = () => {
       return;
     }
 
+    // Contrainte Limoge Revillon : pas de transmission avant vendredi 12h pour la semaine en cours
+    const entrepriseSlug = localStorage.getItem('entreprise_slug');
+    if (entrepriseSlug === 'limoge-revillon') {
+      if (isCurrentWeek(selectedWeek) && !isAfterFriday12hParis()) {
+        setIsSubmitting(false);
+        toast({
+          variant: "destructive",
+          title: "⏰ Transmission non autorisée",
+          description: "Pour la semaine en cours, la transmission n'est possible qu'à partir de vendredi 12h00 (heure de Paris).",
+          duration: 5000,
+        });
+        return;
+      }
+    }
 
     const monday = parseISOWeek(selectedWeek);
     const days = [0,1,2,3,4].map((d) => format(addDays(monday, d), "yyyy-MM-dd"));
@@ -479,7 +496,18 @@ const Index = () => {
             )}
           </Card>
 
-          {/* Avertissement si la fiche n'est pas modifiable */}
+          {/* Avertissement contrainte vendredi 12h pour Limoge Revillon */}
+          {localStorage.getItem('entreprise_slug') === 'limoge-revillon' && 
+           isCurrentWeek(selectedWeek) && 
+           !isAfterFriday12hParis() && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <Clock className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-700 dark:text-amber-300">
+                La transmission pour cette semaine sera possible à partir de <strong>vendredi 12h00</strong> (heure de Paris).
+              </AlertDescription>
+            </Alert>
+          )}
+
           {!isFicheModifiable && raisonBlocage && (
             <Card className="p-4 mb-4 border-destructive bg-destructive/10">
               <div className="flex items-center gap-2 text-destructive">
