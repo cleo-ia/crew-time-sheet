@@ -1654,6 +1654,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_access_to_entreprise: {
+        Args: { _entreprise_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "rh" | "conducteur" | "chef"
