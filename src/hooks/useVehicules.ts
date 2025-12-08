@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentEntrepriseId } from "@/lib/entreprise";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Vehicule {
@@ -63,9 +64,8 @@ export const useCreateVehicule = () => {
 
   return useMutation({
     mutationFn: async (vehicule: { immatriculation: string; marque?: string; modele?: string; actif: boolean }) => {
-      // Récupérer l'entreprise_id depuis localStorage (entreprise sélectionnée)
-      const entrepriseId = localStorage.getItem("current_entreprise_id");
-      if (!entrepriseId) throw new Error("Aucune entreprise sélectionnée");
+      // Récupérer l'entreprise_id avec fallback automatique
+      const entrepriseId = await getCurrentEntrepriseId();
       
       const { data, error } = await supabase
         .from("vehicules")
