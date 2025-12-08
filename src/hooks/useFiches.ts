@@ -123,15 +123,41 @@ export interface FicheJour {
 
 export const useFichesByStatus = (status: string, filters?: { semaine?: string; chantier?: string; chef?: string }) => {
   return useQuery({
-    queryKey: ["fiches", status, filters],
+    queryKey: ["fiches", status, filters, localStorage.getItem("current_entreprise_id")],
     queryFn: async () => {
+      // 🔐 FILTRAGE CRITIQUE PAR ENTREPRISE - Isolation multi-tenant
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
+      if (!entrepriseId) {
+        console.warn("No entreprise_id found in localStorage - returning empty");
+        return [];
+      }
+
+      // Récupérer les chantiers autorisés pour cette entreprise
+      const { data: entrepriseChantiers, error: entrepriseChantiersError } = await supabase
+        .from("chantiers")
+        .select("id")
+        .eq("entreprise_id", entrepriseId);
+      
+      if (entrepriseChantiersError) {
+        console.error("Error fetching entreprise chantiers:", entrepriseChantiersError);
+        throw entrepriseChantiersError;
+      }
+
+      const allowedChantierIds = entrepriseChantiers?.map(c => c.id) || [];
+      
+      // Si l'entreprise n'a pas de chantiers, retourner vide
+      if (allowedChantierIds.length === 0) {
+        return [];
+      }
+
       // If filtering by chef, first get the chantiers for that chef
       let chantierIds: string[] | null = null;
       if (filters?.chef && filters.chef !== "all") {
         const { data: chantiers, error: chantiersError } = await supabase
           .from("chantiers")
           .select("id")
-          .eq("chef_id", filters.chef);
+          .eq("chef_id", filters.chef)
+          .eq("entreprise_id", entrepriseId);
         
         if (chantiersError) {
           console.error("Error fetching chantiers for chef:", chantiersError);
@@ -147,10 +173,12 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
       }
 
       // ÉTAPE 1: Récupérer les combinaisons chantier/semaine qui ont au moins une fiche avec le statut demandé
+      // 🔐 Filtrer uniquement les chantiers de l'entreprise courante
       let statusQuery = supabase
         .from("fiches")
         .select("chantier_id, semaine")
-        .eq("statut", status as any);
+        .eq("statut", status as any)
+        .in("chantier_id", allowedChantierIds);
 
       if (filters?.semaine) {
         statusQuery = statusQuery.eq("semaine", filters.semaine);
