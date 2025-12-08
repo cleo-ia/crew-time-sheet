@@ -239,6 +239,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       semaine,
       statut,
       salarie_id,
+      chantier_id,
       absences_export_override,
       trajets_export_override,
       acomptes,
@@ -426,9 +427,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           }
         }
 
-        // Pour les finisseurs, vérifier qu'ils sont affectés ce jour-là
-        // SEULEMENT s'ils ont des affectations journalières (finisseur autonome)
-        if (isFinisseur) {
+        // Pour les finisseurs AUTONOMES (sans chantier_id), vérifier qu'ils sont affectés ce jour-là
+        // Les finisseurs avec chantier_id sont traités comme des maçons (via affectations classiques)
+        if (isFinisseur && !fiche.chantier_id) {
           const datesAffectees = affectationsMap.get(salarieId);
           // Si le finisseur a des affectations journalières, on filtre
           if (datesAffectees && datesAffectees.size > 0) {
