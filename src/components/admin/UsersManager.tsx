@@ -83,6 +83,13 @@ export const UsersManager = () => {
   // Mutation pour mettre à jour le rôle
   const updateRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      // Récupérer l'entreprise_id actuelle de l'utilisateur
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("entreprise_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
       // D'abord supprimer l'ancien rôle
       const { error: deleteError } = await supabase
         .from("user_roles")
@@ -90,10 +97,26 @@ export const UsersManager = () => {
         .eq("user_id", userId);
       if (deleteError) throw deleteError;
 
+      // Récupérer l'entreprise_id de l'admin si pas déjà existant
+      let entrepriseId = existingRole?.entreprise_id;
+      if (!entrepriseId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: adminRole } = await supabase
+            .from("user_roles")
+            .select("entreprise_id")
+            .eq("user_id", user.id)
+            .single();
+          entrepriseId = adminRole?.entreprise_id;
+        }
+      }
+
+      if (!entrepriseId) throw new Error("Entreprise non trouvée");
+
       // Puis insérer le nouveau
       const { error: insertError } = await supabase
         .from("user_roles")
-        .insert({ user_id: userId, role: role as any });
+        .insert({ user_id: userId, role: role as any, entreprise_id: entrepriseId });
       if (insertError) throw insertError;
     },
     onSuccess: () => {

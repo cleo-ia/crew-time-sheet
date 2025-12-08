@@ -22,6 +22,8 @@ export const InviteUserDialog = ({ open, onOpenChange }: InviteUserDialogProps) 
     e.preventDefault();
     if (!email || !role) return;
 
+    // L'entreprise_id est automatiquement récupérée côté edge function
+    // à partir de l'admin connecté qui fait l'invitation
     await inviteUser.mutateAsync({
       email,
       role: role as UserRole,

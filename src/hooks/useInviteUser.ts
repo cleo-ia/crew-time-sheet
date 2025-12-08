@@ -6,15 +6,16 @@ interface InviteUserParams {
   email: string;
   role: "admin" | "rh" | "conducteur" | "chef";
   conducteur_id?: string;
+  entreprise_id?: string;
 }
 
 export const useInviteUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ email, role, conducteur_id }: InviteUserParams) => {
+    mutationFn: async ({ email, role, conducteur_id, entreprise_id }: InviteUserParams) => {
       const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: { email, role, conducteur_id },
+        body: { email, role, conducteur_id, entreprise_id },
       });
 
       if (error) throw error;

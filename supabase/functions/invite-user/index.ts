@@ -51,6 +51,7 @@ serve(async (req) => {
     // Vérifier l'authentification de l'utilisateur appelant ou activer le mode bootstrap (premier admin)
     let isBootstrap = false;
     let invitedByUserId: string | null = null;
+    let inviterEntrepriseId: string | null = null;
 
     // Tenter d'obtenir l'utilisateur seulement si un header d'auth est présent
     let user = null;
@@ -91,14 +92,56 @@ serve(async (req) => {
     } else {
       invitedByUserId = user.id;
       console.log('User authenticated:', user.id);
+      
+      // Récupérer l'entreprise_id de l'utilisateur qui invite
+      const { data: inviterRole, error: inviterRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .select('entreprise_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (inviterRoleError) {
+        console.error('Error fetching inviter entreprise:', inviterRoleError);
+      } else {
+        inviterEntrepriseId = inviterRole?.entreprise_id || null;
+        console.log('Inviter entreprise_id:', inviterEntrepriseId);
+      }
     }
 
     // La vérification du rôle admin est effectuée après le parsing de la requête
     // afin de permettre le mode bootstrap (première invitation admin) si nécessaire.
 
     // Parser les données de la requête
-    const { email, role, conducteur_id } = await req.json();
-    console.log('Invitation request:', { email, role, conducteur_id });
+    const { email, role, conducteur_id, entreprise_id: requestedEntrepriseId } = await req.json();
+    console.log('Invitation request:', { email, role, conducteur_id, requestedEntrepriseId });
+
+    // Déterminer l'entreprise_id à utiliser
+    let finalEntrepriseId: string | null = null;
+    
+    if (isBootstrap) {
+      // En mode bootstrap, on doit fournir une entreprise_id (ou utiliser Limoge Revillon par défaut)
+      if (requestedEntrepriseId) {
+        finalEntrepriseId = requestedEntrepriseId;
+      } else {
+        // Récupérer Limoge Revillon par défaut
+        const { data: defaultEntreprise } = await supabaseAdmin
+          .from('entreprises')
+          .select('id')
+          .eq('slug', 'limoge-revillon')
+          .single();
+        finalEntrepriseId = defaultEntreprise?.id || null;
+      }
+    } else {
+      // Utiliser l'entreprise de l'admin qui invite (priorité) ou celle passée en paramètre
+      finalEntrepriseId = inviterEntrepriseId || requestedEntrepriseId || null;
+    }
+
+    if (!finalEntrepriseId) {
+      return new Response(
+        JSON.stringify({ error: 'entreprise_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Validation de l'email
     if (!email || typeof email !== 'string') {
@@ -155,7 +198,7 @@ serve(async (req) => {
     }
 
     // Vérifier si l'utilisateur existe déjà dans profiles
-    const { data: existingProfile, error: profileCheckError } = await supabaseClient
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('email', email)
@@ -177,7 +220,7 @@ serve(async (req) => {
     }
 
     // Vérifier s'il y a déjà une invitation en attente
-    const { data: existingInvitation, error: invitationCheckError } = await supabaseClient
+    const { data: existingInvitation, error: invitationCheckError } = await supabaseAdmin
       .from('invitations')
       .select('id, status')
       .eq('email', email)
@@ -199,13 +242,14 @@ serve(async (req) => {
       );
     }
 
-    // Créer l'invitation dans la base de données
-    const { data: invitation, error: insertError } = await supabaseClient
+    // Créer l'invitation dans la base de données avec entreprise_id
+    const { data: invitation, error: insertError } = await supabaseAdmin
       .from('invitations')
       .insert({
         email: email.toLowerCase(),
         role,
         conducteur_id: conducteur_id || null,
+        entreprise_id: finalEntrepriseId,
         // invited_by référence utilisateurs.id (pas profiles). Comme tous les admins n'ont pas d'entrée
         // dans "utilisateurs", on évite la violation FK en le laissant à NULL et on stocke l'info dans meta.
         invited_by: null,
@@ -224,7 +268,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Invitation created in database:', invitation.id);
+    console.log('Invitation created in database:', invitation.id, 'for entreprise:', finalEntrepriseId);
 
     // Envoyer l'email d'invitation via l'API Admin de Supabase Auth
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
@@ -238,7 +282,7 @@ serve(async (req) => {
       console.error('Error sending invitation email:', inviteError);
       
       // Supprimer l'invitation de la base de données en cas d'échec
-      await supabaseClient
+      await supabaseAdmin
         .from('invitations')
         .delete()
         .eq('id', invitation.id);
@@ -258,6 +302,7 @@ serve(async (req) => {
           id: invitation.id,
           email: invitation.email,
           role: invitation.role,
+          entreprise_id: invitation.entreprise_id,
           expires_at: invitation.expires_at,
         },
         message: 'Invitation sent successfully'
