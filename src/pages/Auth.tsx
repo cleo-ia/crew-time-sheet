@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock, Shield, ChevronLeft, ChevronRight } from "lucide-react";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
-import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
-import logoSder from "@/assets/logo-sder.png";
+import logoEngoBourgogne from "@/assets/logo-sder.png";  // Fichier SDER contient logo Engo
+import logoSder from "@/assets/logo-engo-bourgogne.png"; // Fichier Engo contient logo SDER
 import bgAuth from "@/assets/bg-auth.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
