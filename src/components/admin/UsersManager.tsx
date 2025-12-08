@@ -22,13 +22,14 @@ export const UsersManager = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "", role: "" });
 
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+
   const { data: profiles, isLoading: profilesLoading } = useQuery({
-    queryKey: ["all-users-admin"],
+    queryKey: ["all-users-admin", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("utilisateurs")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let query = supabase.from("utilisateurs").select("*");
+      if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
@@ -36,11 +37,11 @@ export const UsersManager = () => {
   });
 
   const { data: userRoles, isLoading: rolesLoading } = useQuery({
-    queryKey: ["user-roles-all"],
+    queryKey: ["user-roles-all", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
+      let query = supabase.from("user_roles").select("user_id, role");
+      if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
@@ -48,13 +49,11 @@ export const UsersManager = () => {
   });
 
   const { data: invitations, isLoading: invitationsLoading } = useQuery({
-    queryKey: ["invitations"],
+    queryKey: ["invitations", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
+      let query = supabase.from("invitations").select("*").eq("status", "pending");
+      if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
