@@ -245,25 +245,25 @@ serve(async (req) => {
       // Si c'est un mode resend (utilisateur existe avec le même rôle pour cette entreprise)
       // Envoyer un email de récupération de mot de passe
       if (existingRole) {
-        console.log('User already has this role, sending recovery email');
+        console.log('User already has this role, sending password reset email');
         
-        const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: email.toLowerCase(),
-          options: {
+        // Utiliser resetPasswordForEmail qui ENVOIE réellement l'email
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+          email.toLowerCase(),
+          {
             redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
           }
-        });
+        );
 
-        if (recoveryError) {
-          console.error('Error generating recovery link:', recoveryError);
+        if (resetError) {
+          console.error('Error sending reset password email:', resetError);
           return new Response(
-            JSON.stringify({ error: 'Failed to send recovery email', details: recoveryError.message }),
+            JSON.stringify({ error: 'Failed to send reset email', details: resetError.message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log('Recovery email generated successfully');
+        console.log('Password reset email sent successfully');
 
         return new Response(
           JSON.stringify({
@@ -297,17 +297,16 @@ serve(async (req) => {
         );
       }
 
-      // Envoyer également un email de récupération pour que l'utilisateur puisse se connecter
-      const { error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: email.toLowerCase(),
-        options: {
+      // Envoyer également un email de reset pour que l'utilisateur puisse se connecter
+      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+        email.toLowerCase(),
+        {
           redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
         }
-      });
+      );
 
-      if (recoveryError) {
-        console.warn('Warning: Role added but recovery email failed:', recoveryError);
+      if (resetError) {
+        console.warn('Warning: Role added but reset email failed:', resetError);
       }
 
       console.log('Role added successfully for existing user');
