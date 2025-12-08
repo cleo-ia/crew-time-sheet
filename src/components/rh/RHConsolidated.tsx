@@ -117,7 +117,20 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                 <TableCell className="text-center">{emp.absences}j</TableCell>
                 <TableCell className="text-center">{emp.paniers}</TableCell>
                 <TableCell className="text-center">
-                  {emp.nbGD > 0 ? (
+                  {emp.nbTrajetsACompleter > 0 ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block border-2 border-orange-500 rounded px-2 py-0.5 text-orange-600 dark:text-orange-400 font-semibold">
+                            {emp.trajets}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-semibold">⚠️ {emp.nbTrajetsACompleter} trajet(s) à compléter</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : emp.nbGD > 0 ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
