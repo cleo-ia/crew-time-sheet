@@ -53,8 +53,10 @@ export interface RHPeriodeCloturee {
 }
 
 export const useRHSummary = (filters: any) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["rh-summary", filters],
+    queryKey: ["rh-summary", filters, entrepriseId],
     queryFn: async () => {
       // ✅ Utiliser la même source de vérité que le tableau "Consolidé par salarié"
       const employees = await buildRHConsolidation(filters);
@@ -92,8 +94,10 @@ export const useRHSummary = (filters: any) => {
 };
 
 export const useRHConsolidated = (filters: any) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery<RHEmployee[]>({
-    queryKey: ["rh-consolidated", filters],
+    queryKey: ["rh-consolidated", filters, entrepriseId],
     queryFn: async (): Promise<RHEmployee[]> => {
       // Assurer un mois par défaut pour le cumul
       const filtersWithPeriode = {
@@ -134,8 +138,10 @@ export const useRHConsolidated = (filters: any) => {
 };
 
 export const useRHDetails = (filters: any) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["rh-details", filters],
+    queryKey: ["rh-details", filters, entrepriseId],
     queryFn: async () => {
       // 1. Calculer les bornes du mois si période définie
       let dateDebut: Date | null = null;
@@ -158,10 +164,16 @@ export const useRHDetails = (filters: any) => {
             id,
             nom,
             conducteur_id,
+            entreprise_id,
             chef:utilisateurs!chantiers_chef_id_fkey(nom, prenom)
           )
         `)
         .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+      
+      // Filtre par entreprise
+      if (entrepriseId) {
+        query = query.eq("chantier.entreprise_id", entrepriseId);
+      }
 
       if (filters.semaine && filters.semaine !== "all") {
         query = query.eq("semaine", filters.semaine);
@@ -243,14 +255,21 @@ export const useRHDetails = (filters: any) => {
 };
 
 export const useRHHistorique = (filters: any) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["rh-historique", filters],
+    queryKey: ["rh-historique", filters, entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("periodes_cloturees")
         .select("*")
         .order("date_cloture", { ascending: false });
+      
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
 
+      const { data, error } = await query;
       if (error) throw error;
 
       return data?.map(p => ({

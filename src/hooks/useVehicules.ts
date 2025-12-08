@@ -13,14 +13,21 @@ export interface Vehicule {
 }
 
 export const useVehicules = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["vehicules"],
+    queryKey: ["vehicules", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vehicules")
         .select("*")
         .order("immatriculation");
       
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as Vehicule[];
     },
@@ -28,15 +35,22 @@ export const useVehicules = () => {
 };
 
 export const useActiveVehicules = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["vehicules", "active"],
+    queryKey: ["vehicules", "active", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vehicules")
         .select("*")
         .eq("actif", true)
         .order("immatriculation");
       
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as Vehicule[];
     },

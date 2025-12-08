@@ -172,10 +172,13 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const [year, month] = mois.split("-").map(Number);
   const dateDebut = startOfMonth(new Date(year, month - 1));
   const dateFin = endOfMonth(new Date(year, month - 1));
+  
+  // Récupérer l'entreprise_id depuis localStorage
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
 
-  console.log(`[RH Consolidation] Période: ${mois}, Filtres:`, filters);
+  console.log(`[RH Consolidation] Période: ${mois}, Entreprise: ${entrepriseId}, Filtres:`, filters);
 
-  // Récupérer toutes les fiches validées
+  // Récupérer toutes les fiches validées (filtrées par entreprise via chantiers)
   let fichesQuery = supabase
     .from("fiches")
     .select(`
@@ -199,10 +202,16 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         code_chantier,
         ville,
         conducteur_id,
-        chef_id
+        chef_id,
+        entreprise_id
       )
     `)
     .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+  
+  // Filtre par entreprise via chantiers
+  if (entrepriseId) {
+    fichesQuery = fichesQuery.eq("chantiers.entreprise_id", entrepriseId);
+  }
 
   // Filtre par chantier
   if (filters.chantier && filters.chantier !== "all") {
@@ -276,13 +285,19 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   const ficheIds = fichesDuMois.map(f => f.id);
 
-  // Récupérer les salariés
+  // Récupérer les salariés (filtrés par entreprise)
   const salarieIds = [...new Set(fichesDuMois.map(f => f.salarie_id).filter(Boolean))];
   
-  const { data: salarieData, error: salarieError } = await supabase
+  let salarieQuery = supabase
     .from("utilisateurs")
     .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, horaire, heures_supp_mensualisees, forfait_jours, salaire")
     .in("id", salarieIds);
+  
+  if (entrepriseId) {
+    salarieQuery = salarieQuery.eq("entreprise_id", entrepriseId);
+  }
+  
+  const { data: salarieData, error: salarieError } = await salarieQuery;
 
   if (salarieError) throw salarieError;
 
