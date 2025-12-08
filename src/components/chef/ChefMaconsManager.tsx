@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
 import { TeamMemberCombobox } from "./TeamMemberCombobox";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
+import { useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
 
 interface ChefMaconsManagerProps {
   chefId: string;
@@ -46,6 +47,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   
   // Récupérer toutes les affectations pour connaître le statut
   const { data: allAffectations, refetch: refetchAffectations } = useAffectations();
+  
+  // Récupérer les affectations finisseurs conducteur pour cette semaine
+  const { data: affectationsFinisseursJours } = useAffectationsFinisseursJours(semaine);
   
   // Hook pour créer une affectation
   const createAffectation = useCreateAffectation();
@@ -89,6 +93,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
     }
     
     return { type: "available", label: "Disponible" };
+  };
+
+  // Vérifier si un finisseur est déjà géré par un conducteur pour cette semaine
+  const isFinisseurManagedByConducteur = (finisseurId: string): boolean => {
+    if (!affectationsFinisseursJours) return false;
+    return affectationsFinisseursJours.some(aff => aff.finisseur_id === finisseurId);
   };
 
   // Filtrer les maçons, grutiers et intérimaires selon la recherche
@@ -762,15 +772,26 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                           const inTeam = isMaconInTeam(finisseur.id);
                           const status = getMaconStatus(finisseur.id);
                           const isAdding = addingIds.has(finisseur.id);
+                          
+                          // Vérifier si géré par un conducteur
+                          const isManagedByConducteur = isFinisseurManagedByConducteur(finisseur.id);
+                          
+                          // Calculer le statut à afficher
+                          const displayStatus = isManagedByConducteur 
+                            ? { type: "managed-conducteur", label: "Géré par conducteur" }
+                            : status;
+                          
+                          // Bloquer si géré par conducteur
+                          const isBlocked = inTeam || isAdding || status.type === "assigned" || isManagedByConducteur;
 
                           return (
                             <div 
                               key={finisseur.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !isBlocked ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "assigned") {
+                                if (!isBlocked) {
                                   handleAddMacon(finisseur.id, finisseur.nom || "", finisseur.prenom || "", "finisseur");
                                 }
                               }}
@@ -790,24 +811,26 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                               </div>
 
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                {status && !inTeam && (
+                                {displayStatus && !inTeam && (
                                   <Badge 
                                     variant="outline"
                                     className={`whitespace-nowrap ${
-                                      status.type === "available" 
+                                      displayStatus.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
-                                        : status.type === "assigned"
+                                        : displayStatus.type === "managed-conducteur"
+                                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                        : displayStatus.type === "assigned"
                                         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                         : "bg-warning/10 text-warning border-warning/20"
                                     }`}
                                   >
-                                    {status.label}
+                                    {displayStatus.label}
                                   </Badge>
                                 )}
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "assigned"}
+                                  disabled={isBlocked}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -816,6 +839,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
+                                      : isManagedByConducteur
+                                      ? "Ce finisseur est géré par un conducteur cette semaine"
                                       : status.type === "assigned"
                                       ? "Déjà affecté à un autre chantier"
                                       : "Ajouter à l'équipe"
