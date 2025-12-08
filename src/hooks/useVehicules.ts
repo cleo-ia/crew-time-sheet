@@ -63,23 +63,15 @@ export const useCreateVehicule = () => {
 
   return useMutation({
     mutationFn: async (vehicule: { immatriculation: string; marque?: string; modele?: string; actif: boolean }) => {
-      // Récupérer l'entreprise_id de l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-      
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("entreprise_id")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (!roleData?.entreprise_id) throw new Error("Entreprise non trouvée");
+      // Récupérer l'entreprise_id depuis localStorage (entreprise sélectionnée)
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
+      if (!entrepriseId) throw new Error("Aucune entreprise sélectionnée");
       
       const { data, error } = await supabase
         .from("vehicules")
         .insert({
           ...vehicule,
-          entreprise_id: roleData.entreprise_id,
+          entreprise_id: entrepriseId,
         })
         .select()
         .single();
