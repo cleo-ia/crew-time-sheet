@@ -348,8 +348,8 @@ const Auth = () => {
         <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative z-10 w-full max-w-md">
-          {/* Carrousel de sélection d'entreprise */}
-          {!isInviteMode && !hasStoredEntreprise && (
+          {/* Carrousel de sélection d'entreprise - toujours visible sauf en mode invitation */}
+          {!isInviteMode && (
             <div className="flex items-center justify-center gap-4 mb-6">
               <Button
                 variant="ghost"
