@@ -1,18 +1,42 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut } from "lucide-react";
-import logo from "@/assets/logo-limoge-revillon.png";
+import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
+import logoSder from "@/assets/logo-engo-bourgogne.png";
+import logoEngoBourgogne from "@/assets/logo-sder.png";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+
+// Map des logos par slug d'entreprise
+const LOGOS: Record<string, string> = {
+  "limoge-revillon": logoLimogeRevillon,
+  "sder": logoSder,
+  "engo-bourgogne": logoEngoBourgogne,
+};
+
+const ENTREPRISE_NAMES: Record<string, string> = {
+  "limoge-revillon": "Limoge Revillon - Groupe EN'GO",
+  "sder": "SDER - Groupe EN'GO",
+  "engo-bourgogne": "Engo Bourgogne - Groupe EN'GO",
+};
 
 export const AppNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: userRole, isLoading } = useCurrentUserRole();
 
+  // Récupérer le logo dynamiquement selon l'entreprise sélectionnée
+  const entrepriseSlug = localStorage.getItem("entreprise_slug") || "limoge-revillon";
+  const logo = LOGOS[entrepriseSlug] || logoLimogeRevillon;
+  const entrepriseName = ENTREPRISE_NAMES[entrepriseSlug] || "Groupe EN'GO";
+
   const handleLogout = async () => {
+    // Nettoyer les données d'entreprise du localStorage
+    localStorage.removeItem("entreprise_slug");
+    localStorage.removeItem("current_entreprise_id");
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Erreur lors de la déconnexion");
@@ -58,7 +82,7 @@ export const AppNav = () => {
           <Link to="/" className="flex-shrink-0">
             <img 
               src={logo} 
-              alt="Limoge Revillon - Groupe EN'GO" 
+              alt={entrepriseName}
               className="h-10 w-auto"
             />
           </Link>
