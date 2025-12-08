@@ -8,14 +8,32 @@ export const useCurrentUserRole = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Récupérer l'entreprise sélectionnée
+      const currentEntrepriseId = localStorage.getItem("current_entreprise_id");
 
+      // Requête avec filtre entreprise si disponible
+      let query = supabase
+        .from("user_roles")
+        .select("role, entreprise_id")
+        .eq("user_id", user.id);
+
+      if (currentEntrepriseId) {
+        query = query.eq("entreprise_id", currentEntrepriseId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data?.role || null;
+      if (!data || data.length === 0) return null;
+
+      // Priorité des rôles : admin > rh > conducteur > chef
+      const priority: Array<"admin" | "rh" | "conducteur" | "chef"> = ['admin', 'rh', 'conducteur', 'chef'];
+      const roles = data.map(r => r.role);
+
+      for (const role of priority) {
+        if (roles.includes(role)) return role;
+      }
+
+      return roles[0];
     },
   });
 };
