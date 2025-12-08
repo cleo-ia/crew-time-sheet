@@ -58,7 +58,7 @@ export const useSaveFiche = () => {
       // 1. Vérifier si la fiche existe
         let query = supabase
           .from("fiches")
-          .select("id, statut, user_id")
+          .select("id, statut, user_id, chantier_id")
           .eq("semaine", semaineValue)
           .eq("salarie_id", employee.employeeId);
           // user_id supprimé du filtre pour éviter les doublons si plusieurs chefs modifient
@@ -80,6 +80,13 @@ export const useSaveFiche = () => {
         // 🔒 BLOQUER SI DÉJÀ TRANSMISE AU CONDUCTEUR OU AUX RH
         const statutsBloquants = ["VALIDE_CONDUCTEUR", "ENVOYE_RH"];
         if (existingFiche && statutsBloquants.includes(existingFiche.statut)) {
+          // Si chantierId fourni et la fiche existante est sur un AUTRE chantier, 
+          // on skip cet employé (sa fiche est déjà transmise sur un autre chantier)
+          if (chantierId && existingFiche.chantier_id && existingFiche.chantier_id !== chantierId) {
+            console.log(`Skip: ${employee.employeeName} a déjà une fiche transmise sur un autre chantier`);
+            return null; // Skip this employee without error
+          }
+          
           const message = existingFiche.statut === "VALIDE_CONDUCTEUR"
             ? "Cette fiche a déjà été transmise au conducteur et ne peut plus être modifiée."
             : "Cette fiche a déjà été envoyée aux RH et ne peut plus être modifiée.";
@@ -154,7 +161,8 @@ export const useSaveFiche = () => {
       });
 
       const ficheIds = await Promise.all(fichePromises);
-      return ficheIds;
+      // Filtrer les nulls (employés skippés car fiche déjà transmise sur autre chantier)
+      return ficheIds.filter((id): id is string => id !== null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
