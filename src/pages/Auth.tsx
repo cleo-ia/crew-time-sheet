@@ -247,6 +247,9 @@ const Auth = () => {
         localStorage.setItem("current_entreprise_id", selectedEntrepriseData.id);
         setHasStoredEntreprise(true);
         
+        // Invalider tout le cache React Query pour charger les données de la bonne entreprise
+        queryClient.clear();
+        
         toast.success("Connexion réussie");
         
         // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install

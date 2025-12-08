@@ -14,13 +14,20 @@ interface ChantierSelectorProps {
 }
 
 export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compact = false, allowAll = false, disabled = false }: ChantierSelectorProps) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   const { data: chantiers, isLoading } = useQuery({
-    queryKey: ["chantiers", chefId, conducteurId],
+    queryKey: ["chantiers", chefId, conducteurId, entrepriseId],
     queryFn: async () => {
       let query = supabase
         .from("chantiers")
         .select("id, nom, code_chantier, ville, actif, chef_id, conducteur_id")
         .eq("actif", true);
+      
+      // Filtrer par entreprise
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
       
       if (chefId) {
         query = query.eq("chef_id", chefId);

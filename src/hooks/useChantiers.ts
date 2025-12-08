@@ -20,17 +20,25 @@ export interface Chantier {
 }
 
 export const useChantiers = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["chantiers"],
+    queryKey: ["chantiers", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("chantiers")
         .select(`
           *,
           chef:utilisateurs!chef_id(id, nom, prenom),
           conducteur:utilisateurs!conducteur_id(id, nom, prenom)
-        `)
-        .order("nom");
+        `);
+      
+      // Filtrer par entreprise si disponible
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
+      
+      const { data, error } = await query.order("nom");
       
       if (error) throw error;
       return data;

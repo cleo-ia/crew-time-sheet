@@ -29,64 +29,53 @@ export interface Utilisateur {
 
 // Get users with a specific role
 export const useUtilisateursByRole = (role?: string) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["utilisateurs", role],
+    queryKey: ["utilisateurs", role, entrepriseId],
     queryFn: async () => {
       if (!role) {
-        const { data, error } = await supabase
-          .from("utilisateurs")
-          .select("*")
-          .order("nom");
-        
+        let query = supabase.from("utilisateurs").select("*");
+        if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+        const { data, error } = await query.order("nom");
         if (error) throw error;
         return data;
       }
 
       // Handle "interimaire" - users with agence_interim
       if (role === "interimaire") {
-        const { data, error } = await supabase
-          .from("utilisateurs")
-          .select("*")
+        let query = supabase.from("utilisateurs").select("*")
           .not("agence_interim", "is", null)
-          .neq("agence_interim", "")
-          .order("nom");
-        
+          .neq("agence_interim", "");
+        if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+        const { data, error } = await query.order("nom");
         if (error) throw error;
         return data || [];
       }
 
       // Handle "finisseur" - users with role_metier = 'finisseur'
       if (role === "finisseur") {
-        const { data, error } = await supabase
-          .from("utilisateurs")
-          .select("*")
-          .eq("role_metier", "finisseur")
-          .order("nom");
-        
+        let query = supabase.from("utilisateurs").select("*").eq("role_metier", "finisseur");
+        if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+        const { data, error } = await query.order("nom");
         if (error) throw error;
         return data || [];
       }
 
       // Handle "macon" - users with role_metier = 'macon'
       if (role === "macon") {
-        const { data, error } = await supabase
-          .from("utilisateurs")
-          .select("*")
-          .eq("role_metier", "macon")
-          .order("nom");
-        
+        let query = supabase.from("utilisateurs").select("*").eq("role_metier", "macon");
+        if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+        const { data, error } = await query.order("nom");
         if (error) throw error;
         return data || [];
       }
 
       // Handle "grutier" - users with role_metier = 'grutier'
       if (role === "grutier") {
-        const { data, error } = await supabase
-          .from("utilisateurs")
-          .select("*")
-          .eq("role_metier", "grutier")
-          .order("nom");
-        
+        let query = supabase.from("utilisateurs").select("*").eq("role_metier", "grutier");
+        if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+        const { data, error } = await query.order("nom");
         if (error) throw error;
         return data || [];
       }
@@ -95,18 +84,16 @@ export const useUtilisateursByRole = (role?: string) => {
       // Get both users with role_metier AND users with auth role
       if (role === "chef" || role === "conducteur") {
         // 1. Get users with role_metier = 'chef' or 'conducteur'
-        const { data: roleMetierUsers, error: metierError } = await supabase
-          .from("utilisateurs")
-          .select("*")
-          .eq("role_metier", role);
+        let metierQuery = supabase.from("utilisateurs").select("*").eq("role_metier", role);
+        if (entrepriseId) metierQuery = metierQuery.eq("entreprise_id", entrepriseId);
+        const { data: roleMetierUsers, error: metierError } = await metierQuery;
         
         if (metierError) throw metierError;
 
-        // 2. Get users with auth role (via user_roles)
-        const { data: userRoles, error: roleError } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .eq("role", role as any);
+        // 2. Get users with auth role (via user_roles) - filter by entreprise_id
+        let rolesQuery = supabase.from("user_roles").select("user_id, role").eq("role", role as any);
+        if (entrepriseId) rolesQuery = rolesQuery.eq("entreprise_id", entrepriseId);
+        const { data: userRoles, error: roleError } = await rolesQuery;
         
         if (roleError) throw roleError;
 
@@ -143,22 +130,19 @@ export const useUtilisateursByRole = (role?: string) => {
       }
 
       // Handle valid roles (admin, rh)
-      // Get user IDs for this role
-      const { data: userRoles, error: roleError } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .eq("role", role as any);
+      // Get user IDs for this role - filter by entreprise_id
+      let rolesQuery = supabase.from("user_roles").select("user_id, role").eq("role", role as any);
+      if (entrepriseId) rolesQuery = rolesQuery.eq("entreprise_id", entrepriseId);
+      const { data: userRoles, error: roleError } = await rolesQuery;
 
       if (roleError) throw roleError;
       if (!userRoles || userRoles.length === 0) return [];
 
       // Get utilisateurs for these auth_user_ids (not id!)
       const userIds = userRoles.map(ur => ur.user_id);
-      const { data: users, error: usersError } = await supabase
-        .from("utilisateurs")
-        .select("*")
-        .in("auth_user_id", userIds)
-        .order("nom");
+      let usersQuery = supabase.from("utilisateurs").select("*").in("auth_user_id", userIds);
+      if (entrepriseId) usersQuery = usersQuery.eq("entreprise_id", entrepriseId);
+      const { data: users, error: usersError } = await usersQuery.order("nom");
 
       if (usersError) throw usersError;
 
@@ -170,14 +154,14 @@ export const useUtilisateursByRole = (role?: string) => {
 
 // Get all users
 export const useUtilisateurs = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["utilisateurs"],
+    queryKey: ["utilisateurs", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("utilisateurs")
-        .select("*")
-        .order("nom");
-      
+      let query = supabase.from("utilisateurs").select("*");
+      if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+      const { data, error } = await query.order("nom");
       if (error) throw error;
       return data;
     },
@@ -335,14 +319,14 @@ export const useDeleteUtilisateur = () => {
 
 // Get all employees from utilisateurs table (includes finisseurs, interimaires, chefs)
 export const useAllSalaries = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["all-salaries"],
+    queryKey: ["all-salaries", entrepriseId],
     queryFn: async () => {
-      // Get all utilisateurs (finisseurs, intérimaires, chefs)
-      const { data: users, error: usersError } = await supabase
-        .from("utilisateurs")
-        .select("id, prenom, nom, email")
-        .order("nom", { ascending: true });
+      let query = supabase.from("utilisateurs").select("id, prenom, nom, email");
+      if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+      const { data: users, error: usersError } = await query.order("nom", { ascending: true });
 
       if (usersError) throw usersError;
       return users || [];
