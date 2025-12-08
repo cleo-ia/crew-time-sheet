@@ -192,17 +192,9 @@ export const useCreateUtilisateur = () => {
       forfait_jours?: boolean;
       salaire?: number;
     }) => {
-      // Récupérer l'entreprise_id de l'utilisateur connecté
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("Non authentifié");
-      
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("entreprise_id")
-        .eq("user_id", authUser.id)
-        .single();
-      
-      if (!roleData?.entreprise_id) throw new Error("Entreprise non trouvée");
+      // Récupérer l'entreprise_id depuis localStorage (entreprise sélectionnée)
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
+      if (!entrepriseId) throw new Error("Aucune entreprise sélectionnée");
 
       // Create in utilisateurs with entreprise_id
       const { data: utilisateur, error: userError } = await supabase
@@ -226,7 +218,7 @@ export const useCreateUtilisateur = () => {
           forfait_jours: user.forfait_jours || false,
           salaire: user.salaire || null,
           id: crypto.randomUUID(),
-          entreprise_id: roleData.entreprise_id,
+          entreprise_id: entrepriseId,
         })
         .select()
         .single();
