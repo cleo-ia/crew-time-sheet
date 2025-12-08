@@ -16,14 +16,21 @@ interface FichesFiltersProps {
 }
 
 export const FichesFilters = ({ filters, onFiltersChange }: FichesFiltersProps) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+
   const { data: chantiers, isLoading } = useQuery({
-    queryKey: ["chantiers"],
+    queryKey: ["chantiers", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("chantiers")
         .select("id, nom, code_chantier, ville, actif")
-        .eq("actif", true)
-        .order("nom");
+        .eq("actif", true);
+      
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
+      
+      const { data, error } = await query.order("nom");
       
       if (error) throw error;
       return data;
