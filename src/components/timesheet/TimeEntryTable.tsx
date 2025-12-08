@@ -752,11 +752,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     });
   }, [isConducteurMode, entries]);
 
-  // Réinitialiser hasLoadedData si la semaine change
+  // Réinitialiser hasLoadedData si la semaine OU le chantier change
   useEffect(() => {
     setHasLoadedData(false);
     setHasUserEdits(false);
-  }, [weekId]);
+    setEntries([]); // Vider les données pour éviter flash de données obsolètes
+  }, [weekId, chantierId]);
 
   // Propager l'état au parent pour sauvegarde
   useEffect(() => {
