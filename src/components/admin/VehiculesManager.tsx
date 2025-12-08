@@ -181,6 +181,7 @@ export const VehiculesManager = () => {
                   setFormData({ ...formData, immatriculation: e.target.value })
                 }
                 placeholder="Ex: AB-123-CD"
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
