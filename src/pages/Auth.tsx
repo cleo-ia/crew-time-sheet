@@ -159,6 +159,7 @@ const Auth = () => {
             .single();
           if (entreprise?.slug) {
             localStorage.setItem("entreprise_slug", entreprise.slug);
+            localStorage.setItem("current_entreprise_id", roleData.entreprise_id);
           }
         }
         
@@ -243,6 +244,7 @@ const Auth = () => {
         
         // Mémoriser l'entreprise pour les prochaines connexions
         localStorage.setItem("entreprise_slug", selectedEntreprise.slug);
+        localStorage.setItem("current_entreprise_id", selectedEntrepriseData.id);
         setHasStoredEntreprise(true);
         
         toast.success("Connexion réussie");
