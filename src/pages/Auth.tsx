@@ -386,10 +386,11 @@ const Auth = () => {
             </div>
           )}
 
-          <Card className="w-full animate-fade-in-up-slow backdrop-blur-sm">
+          <Card key={selectedEntreprise.slug} className="w-full animate-fade-in-up-slow backdrop-blur-sm">
             <CardHeader className="space-y-4 text-center">
               <div className="flex justify-center mb-4">
                 <img 
+                  key={`logo-${selectedEntreprise.slug}`}
                   src={selectedEntreprise.logo} 
                   alt={selectedEntreprise.nom} 
                   className="h-28 w-auto object-contain transition-all duration-300" 
@@ -399,7 +400,7 @@ const Auth = () => {
                 <Shield className="h-5 w-5 text-primary" />
                 <CardTitle className="text-2xl">Authentification sécurisée</CardTitle>
               </div>
-              <CardDescription>
+              <CardDescription key={`desc-${selectedEntreprise.slug}`}>
                 {isInviteMode
                   ? `Bienvenue ${invitedUser?.email}! Veuillez définir votre mot de passe.`
                   : `Connectez-vous à ${selectedEntreprise.nom}`}
