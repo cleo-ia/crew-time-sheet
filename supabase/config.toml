@@ -1,7 +1,7 @@
 project_id = "rxkhtqezcyaqvjlbzzpu"
 
 [functions.invite-user]
-verify_jwt = true
+verify_jwt = false
 
 [functions.purge-all-test-data]
 verify_jwt = false
