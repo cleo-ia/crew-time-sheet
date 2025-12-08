@@ -139,8 +139,10 @@ serve(async (req) => {
       // En mode bootstrap, utiliser l'entreprise résolue depuis le slug ou l'id
       finalEntrepriseId = bootstrapEntrepriseId;
     } else {
-      // Utiliser l'entreprise de l'admin qui invite (priorité) ou celle passée en paramètre
-      finalEntrepriseId = inviterEntrepriseId || bootstrapEntrepriseId || null;
+      // Priorité à l'entreprise passée en paramètre (entreprise sélectionnée dans le frontend)
+      // Cela permet aux admins multi-entreprises d'inviter dans l'entreprise actuellement sélectionnée
+      finalEntrepriseId = bootstrapEntrepriseId || inviterEntrepriseId || null;
+      console.log('Using entreprise_id:', finalEntrepriseId, '(requested:', bootstrapEntrepriseId, ', inviter:', inviterEntrepriseId, ')');
     }
 
     if (!finalEntrepriseId) {

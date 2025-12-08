@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInviteUser } from "@/hooks/useInviteUser";
+import { getCurrentEntrepriseId } from "@/lib/entreprise";
+import { toast } from "sonner";
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -22,16 +24,23 @@ export const InviteUserDialog = ({ open, onOpenChange }: InviteUserDialogProps) 
     e.preventDefault();
     if (!email || !role) return;
 
-    // L'entreprise_id est automatiquement récupérée côté edge function
-    // à partir de l'admin connecté qui fait l'invitation
-    await inviteUser.mutateAsync({
-      email,
-      role: role as UserRole,
-    });
+    try {
+      // Récupérer l'entreprise sélectionnée depuis localStorage
+      const entrepriseId = await getCurrentEntrepriseId();
 
-    setEmail("");
-    setRole("");
-    onOpenChange(false);
+      await inviteUser.mutateAsync({
+        email,
+        role: role as UserRole,
+        entreprise_id: entrepriseId, // Passer explicitement l'entreprise sélectionnée
+      });
+
+      setEmail("");
+      setRole("");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error during invitation:", error);
+      toast.error("Erreur lors de l'invitation");
+    }
   };
 
   return (
