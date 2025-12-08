@@ -63,12 +63,36 @@ serve(async (req) => {
       userError = authResult.error;
     }
     
+    // Parser les données de la requête en premier pour le mode bootstrap par entreprise
+    const { email, role, conducteur_id, entreprise_id: requestedEntrepriseId, entreprise_slug } = await req.json();
+    console.log('Invitation request:', { email, role, conducteur_id, requestedEntrepriseId, entreprise_slug });
+
+    // Résoudre l'entreprise_id depuis le slug si fourni
+    let bootstrapEntrepriseId: string | null = requestedEntrepriseId || null;
+    if (!bootstrapEntrepriseId && entreprise_slug) {
+      const { data: entreprise } = await supabaseAdmin
+        .from('entreprises')
+        .select('id')
+        .eq('slug', entreprise_slug)
+        .single();
+      bootstrapEntrepriseId = entreprise?.id || null;
+    }
+
     if (userError || !user) {
-      // Aucun JWT utilisateur valide. Si aucun admin n'existe encore, autoriser une invitation unique pour bootstrap.
+      // Aucun JWT utilisateur valide. Vérifier si un admin existe pour l'entreprise demandée.
+      if (!bootstrapEntrepriseId) {
+        console.error('Bootstrap mode requires entreprise_id or entreprise_slug');
+        return new Response(
+          JSON.stringify({ error: 'entreprise_id or entreprise_slug is required for bootstrap' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { data: existingAdmins, error: adminsError } = await supabaseAdmin
         .from('user_roles')
         .select('id')
         .eq('role', 'admin')
+        .eq('entreprise_id', bootstrapEntrepriseId)
         .limit(1);
 
       if (adminsError) {
@@ -80,12 +104,12 @@ serve(async (req) => {
       }
 
       if (!existingAdmins || existingAdmins.length === 0) {
-        console.log('BOOTSTRAP MODE: no admin found, allowing first admin invitation');
+        console.log('BOOTSTRAP MODE: no admin found for entreprise', bootstrapEntrepriseId, ', allowing first admin invitation');
         isBootstrap = true;
       } else {
-        console.error('Authentication error:', userError);
+        console.error('Authentication error: admin already exists for this enterprise');
         return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
+          JSON.stringify({ error: 'Unauthorized: an admin already exists for this enterprise' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -108,32 +132,15 @@ serve(async (req) => {
       }
     }
 
-    // La vérification du rôle admin est effectuée après le parsing de la requête
-    // afin de permettre le mode bootstrap (première invitation admin) si nécessaire.
-
-    // Parser les données de la requête
-    const { email, role, conducteur_id, entreprise_id: requestedEntrepriseId } = await req.json();
-    console.log('Invitation request:', { email, role, conducteur_id, requestedEntrepriseId });
-
     // Déterminer l'entreprise_id à utiliser
     let finalEntrepriseId: string | null = null;
     
     if (isBootstrap) {
-      // En mode bootstrap, on doit fournir une entreprise_id (ou utiliser Limoge Revillon par défaut)
-      if (requestedEntrepriseId) {
-        finalEntrepriseId = requestedEntrepriseId;
-      } else {
-        // Récupérer Limoge Revillon par défaut
-        const { data: defaultEntreprise } = await supabaseAdmin
-          .from('entreprises')
-          .select('id')
-          .eq('slug', 'limoge-revillon')
-          .single();
-        finalEntrepriseId = defaultEntreprise?.id || null;
-      }
+      // En mode bootstrap, utiliser l'entreprise résolue depuis le slug ou l'id
+      finalEntrepriseId = bootstrapEntrepriseId;
     } else {
       // Utiliser l'entreprise de l'admin qui invite (priorité) ou celle passée en paramètre
-      finalEntrepriseId = inviterEntrepriseId || requestedEntrepriseId || null;
+      finalEntrepriseId = inviterEntrepriseId || bootstrapEntrepriseId || null;
     }
 
     if (!finalEntrepriseId) {
