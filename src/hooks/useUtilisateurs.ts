@@ -208,7 +208,19 @@ export const useCreateUtilisateur = () => {
       forfait_jours?: boolean;
       salaire?: number;
     }) => {
-      // First create in utilisateurs
+      // Récupérer l'entreprise_id de l'utilisateur connecté
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Non authentifié");
+      
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("entreprise_id")
+        .eq("user_id", authUser.id)
+        .single();
+      
+      if (!roleData?.entreprise_id) throw new Error("Entreprise non trouvée");
+
+      // Create in utilisateurs with entreprise_id
       const { data: utilisateur, error: userError } = await supabase
         .from("utilisateurs")
         .insert({
@@ -229,7 +241,8 @@ export const useCreateUtilisateur = () => {
           heures_supp_mensualisees: user.heures_supp_mensualisees || null,
           forfait_jours: user.forfait_jours || false,
           salaire: user.salaire || null,
-          id: crypto.randomUUID(), // Generate UUID for user
+          id: crypto.randomUUID(),
+          entreprise_id: roleData.entreprise_id,
         })
         .select()
         .single();

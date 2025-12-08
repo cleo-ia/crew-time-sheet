@@ -235,6 +235,7 @@ export type Database = {
           date_debut: string | null
           date_fin: string | null
           description: string | null
+          entreprise_id: string
           id: string
           libelle: string | null
           montant_vendu: number | null
@@ -254,6 +255,7 @@ export type Database = {
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
+          entreprise_id: string
           id?: string
           libelle?: string | null
           montant_vendu?: number | null
@@ -273,6 +275,7 @@ export type Database = {
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
+          entreprise_id?: string
           id?: string
           libelle?: string | null
           montant_vendu?: number | null
@@ -307,6 +310,13 @@ export type Database = {
             columns: ["conducteur_id"]
             isOneToOne: false
             referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chantiers_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
             referencedColumns: ["id"]
           },
         ]
@@ -439,6 +449,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      entreprises: {
+        Row: {
+          actif: boolean | null
+          couleur_primaire: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          nom: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          couleur_primaire?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nom: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          couleur_primaire?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nom?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       fiches: {
         Row: {
@@ -858,6 +901,7 @@ export type Database = {
           conducteur_id: string | null
           created_at: string
           email: string
+          entreprise_id: string
           expires_at: string
           id: string
           invited_by: string | null
@@ -871,6 +915,7 @@ export type Database = {
           conducteur_id?: string | null
           created_at?: string
           email: string
+          entreprise_id: string
           expires_at?: string
           id?: string
           invited_by?: string | null
@@ -884,6 +929,7 @@ export type Database = {
           conducteur_id?: string | null
           created_at?: string
           email?: string
+          entreprise_id?: string
           expires_at?: string
           id?: string
           invited_by?: string | null
@@ -908,6 +954,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invitations_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invitations_invited_by_fkey"
             columns: ["invited_by"]
             isOneToOne: false
@@ -928,6 +981,7 @@ export type Database = {
           cloturee_par: string | null
           created_at: string | null
           date_cloture: string
+          entreprise_id: string | null
           id: string
           motif: string | null
           nb_fiches: number | null
@@ -942,6 +996,7 @@ export type Database = {
           cloturee_par?: string | null
           created_at?: string | null
           date_cloture?: string
+          entreprise_id?: string | null
           id?: string
           motif?: string | null
           nb_fiches?: number | null
@@ -956,6 +1011,7 @@ export type Database = {
           cloturee_par?: string | null
           created_at?: string | null
           date_cloture?: string
+          entreprise_id?: string | null
           id?: string
           motif?: string | null
           nb_fiches?: number | null
@@ -981,6 +1037,13 @@ export type Database = {
             referencedRelation: "utilisateurs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "periodes_cloturees_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -988,6 +1051,7 @@ export type Database = {
           created_at: string
           disabled: boolean
           email: string
+          entreprise_id: string | null
           first_name: string | null
           id: string
           last_name: string | null
@@ -997,6 +1061,7 @@ export type Database = {
           created_at?: string
           disabled?: boolean
           email: string
+          entreprise_id?: string | null
           first_name?: string | null
           id: string
           last_name?: string | null
@@ -1006,12 +1071,21 @@ export type Database = {
           created_at?: string
           disabled?: boolean
           email?: string
+          entreprise_id?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rappels_historique: {
         Row: {
@@ -1293,6 +1367,7 @@ export type Database = {
       user_roles: {
         Row: {
           created_at: string
+          entreprise_id: string
           has_completed_onboarding: boolean
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -1300,6 +1375,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entreprise_id: string
           has_completed_onboarding?: boolean
           id?: string
           role: Database["public"]["Enums"]["app_role"]
@@ -1307,12 +1383,21 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entreprise_id?: string
           has_completed_onboarding?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       utilisateurs: {
         Row: {
@@ -1322,6 +1407,7 @@ export type Database = {
           degre: string | null
           echelon: string | null
           email: string | null
+          entreprise_id: string
           forfait_jours: boolean | null
           heures_supp_mensualisees: number | null
           horaire: string | null
@@ -1345,6 +1431,7 @@ export type Database = {
           degre?: string | null
           echelon?: string | null
           email?: string | null
+          entreprise_id: string
           forfait_jours?: boolean | null
           heures_supp_mensualisees?: number | null
           horaire?: string | null
@@ -1368,6 +1455,7 @@ export type Database = {
           degre?: string | null
           echelon?: string | null
           email?: string | null
+          entreprise_id?: string
           forfait_jours?: boolean | null
           heures_supp_mensualisees?: number | null
           horaire?: string | null
@@ -1384,12 +1472,21 @@ export type Database = {
           type_contrat?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "utilisateurs_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicules: {
         Row: {
           actif: boolean
           created_at: string
+          entreprise_id: string
           id: string
           immatriculation: string
           marque: string | null
@@ -1399,6 +1496,7 @@ export type Database = {
         Insert: {
           actif?: boolean
           created_at?: string
+          entreprise_id: string
           id?: string
           immatriculation: string
           marque?: string | null
@@ -1408,13 +1506,22 @@ export type Database = {
         Update: {
           actif?: boolean
           created_at?: string
+          entreprise_id?: string
           id?: string
           immatriculation?: string
           marque?: string | null
           modele?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicules_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1539,6 +1646,7 @@ export type Database = {
     }
     Functions: {
       expire_old_invitations: { Args: never; Returns: undefined }
+      get_user_entreprise_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

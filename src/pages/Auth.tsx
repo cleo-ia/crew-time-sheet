@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, Shield } from "lucide-react";
-import logo from "@/assets/logo-limoge-revillon.png";
+import { Mail, Lock, Shield, ChevronLeft, ChevronRight } from "lucide-react";
+import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
+import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
+import logoSder from "@/assets/logo-sder.png";
 import bgAuth from "@/assets/bg-auth.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -15,7 +17,42 @@ import { useRoleBasedRedirect } from "@/hooks/useRoleBasedRedirect";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Configuration des entreprises
+const ENTREPRISES = [
+  { 
+    slug: "limoge-revillon", 
+    nom: "Limoge Revillon", 
+    logo: logoLimogeRevillon,
+    couleur: "#ea580c"
+  },
+  { 
+    slug: "engo-bourgogne", 
+    nom: "Engo Bourgogne", 
+    logo: logoEngoBourgogne,
+    couleur: "#1e40af"
+  },
+  { 
+    slug: "sder", 
+    nom: "SDER", 
+    logo: logoSder,
+    couleur: "#059669"
+  },
+];
+
 const Auth = () => {
+  // Sélection entreprise
+  const [selectedIndex, setSelectedIndex] = useState(() => {
+    const savedSlug = localStorage.getItem("entreprise_slug");
+    if (savedSlug) {
+      const index = ENTREPRISES.findIndex(e => e.slug === savedSlug);
+      return index >= 0 ? index : 0;
+    }
+    return 0;
+  });
+  const [hasStoredEntreprise, setHasStoredEntreprise] = useState(() => 
+    !!localStorage.getItem("entreprise_slug")
+  );
+
   // Connexion
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -32,6 +69,24 @@ const Auth = () => {
   const location = useLocation();
   const { refetch: getRedirectPath } = useRoleBasedRedirect();
   const queryClient = useQueryClient();
+
+  const selectedEntreprise = ENTREPRISES[selectedIndex];
+
+  // Navigation carrousel
+  const goToPrevious = () => {
+    setSelectedIndex((prev) => (prev === 0 ? ENTREPRISES.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setSelectedIndex((prev) => (prev === ENTREPRISES.length - 1 ? 0 : prev + 1));
+  };
+
+  // Permet de changer d'entreprise si on a déjà mémorisé
+  const clearStoredEntreprise = () => {
+    localStorage.removeItem("entreprise_slug");
+    setHasStoredEntreprise(false);
+  };
+
   // Détecte les tokens d'invitation/récupération dans l'URL et force la session
   useEffect(() => {
     const checkInvitation = async () => {
@@ -91,9 +146,21 @@ const Auth = () => {
       if (user) {
         const { data: roleData } = await supabase
           .from("user_roles")
-          .select("role, has_completed_onboarding")
+          .select("role, has_completed_onboarding, entreprise_id")
           .eq("user_id", user.id)
           .maybeSingle();
+        
+        // Récupérer le slug de l'entreprise et le mémoriser
+        if (roleData?.entreprise_id) {
+          const { data: entreprise } = await supabase
+            .from("entreprises")
+            .select("slug")
+            .eq("id", roleData.entreprise_id)
+            .single();
+          if (entreprise?.slug) {
+            localStorage.setItem("entreprise_slug", entreprise.slug);
+          }
+        }
         
         // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install
         if (roleData?.has_completed_onboarding === false) {
@@ -139,8 +206,6 @@ const Auth = () => {
       });
       if (error) throw error;
       
-      toast.success("Connexion réussie");
-      
       // Attendre que la session soit propagée (délai augmenté pour garantir la cohérence)
       await new Promise(resolve => setTimeout(resolve, 250));
       
@@ -150,9 +215,31 @@ const Auth = () => {
       if (user) {
         const { data: roleData } = await supabase
           .from("user_roles")
-          .select("role, has_completed_onboarding")
+          .select("role, has_completed_onboarding, entreprise_id")
           .eq("user_id", user.id)
           .maybeSingle();
+        
+        // Vérifier que l'utilisateur appartient à l'entreprise sélectionnée
+        if (roleData?.entreprise_id) {
+          const { data: userEntreprise } = await supabase
+            .from("entreprises")
+            .select("slug")
+            .eq("id", roleData.entreprise_id)
+            .single();
+          
+          if (userEntreprise?.slug && userEntreprise.slug !== selectedEntreprise.slug) {
+            // L'utilisateur n'appartient pas à cette entreprise
+            await supabase.auth.signOut();
+            toast.error(`Vous n'appartenez pas à l'entreprise ${selectedEntreprise.nom}`);
+            return;
+          }
+          
+          // Mémoriser l'entreprise pour les prochaines connexions
+          localStorage.setItem("entreprise_slug", userEntreprise?.slug || selectedEntreprise.slug);
+          setHasStoredEntreprise(true);
+        }
+        
+        toast.success("Connexion réussie");
         
         // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install
         // Cela ne devrait arriver que si un utilisateur se connecte pour la première fois après avoir défini son mot de passe
@@ -255,111 +342,165 @@ const Auth = () => {
       >
         <div className="absolute inset-0 bg-black/40" />
 
-        <Card className="w-full max-w-md animate-fade-in-up-slow relative z-10 backdrop-blur-sm">
-          <CardHeader className="space-y-4 text-center">
-            <div className="flex justify-center mb-4">
-              <img src={logo} alt="Limoge Revillon" className="h-28 w-auto object-contain" />
+        <div className="relative z-10 w-full max-w-md">
+          {/* Carrousel de sélection d'entreprise */}
+          {!isInviteMode && !hasStoredEntreprise && (
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToPrevious}
+                className="h-10 w-10 rounded-full bg-white/20 hover:bg-white/30 text-white"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              
+              <div className="flex gap-2">
+                {ENTREPRISES.map((entreprise, index) => (
+                  <button
+                    key={entreprise.slug}
+                    onClick={() => setSelectedIndex(index)}
+                    className={`w-3 h-3 rounded-full transition-all ${
+                      index === selectedIndex 
+                        ? "bg-white scale-125" 
+                        : "bg-white/40 hover:bg-white/60"
+                    }`}
+                    aria-label={`Sélectionner ${entreprise.nom}`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToNext}
+                className="h-10 w-10 rounded-full bg-white/20 hover:bg-white/30 text-white"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <CardTitle className="text-2xl">Authentification sécurisée</CardTitle>
-            </div>
-            <CardDescription>
-              {isInviteMode
-                ? `Bienvenue ${invitedUser?.email}! Veuillez définir votre mot de passe.`
-                : "Connectez-vous ou créez votre compte professionnel"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isInviteMode ? (
-              <form onSubmit={handleSetPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="new-password"
-                      type="password"
-                      placeholder="Choisissez un mot de passe sécurisé"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </div>
+          )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="Confirmez votre mot de passe"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={passwordLoading}>
-                  {passwordLoading ? "En cours..." : "Définir mon mot de passe"}
+          <Card className="w-full animate-fade-in-up-slow backdrop-blur-sm">
+            <CardHeader className="space-y-4 text-center">
+              <div className="flex justify-center mb-4">
+                <img 
+                  src={selectedEntreprise.logo} 
+                  alt={selectedEntreprise.nom} 
+                  className="h-28 w-auto object-contain transition-all duration-300" 
+                />
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                <CardTitle className="text-2xl">Authentification sécurisée</CardTitle>
+              </div>
+              <CardDescription>
+                {isInviteMode
+                  ? `Bienvenue ${invitedUser?.email}! Veuillez définir votre mot de passe.`
+                  : `Connectez-vous à ${selectedEntreprise.nom}`}
+              </CardDescription>
+              {hasStoredEntreprise && !isInviteMode && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={clearStoredEntreprise}
+                  className="text-xs text-muted-foreground"
+                >
+                  Changer d'entreprise
                 </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Adresse email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="nom.prenom@entreprise.fr"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+              )}
+            </CardHeader>
+            <CardContent>
+              {isInviteMode ? (
+                <form onSubmit={handleSetPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="Choisissez un mot de passe sécurisé"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                        minLength={6}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="Votre mot de passe"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="Confirmez votre mot de passe"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                        minLength={6}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <Button type="submit" className="w-full" disabled={loginLoading}>
-                  {loginLoading ? "Connexion..." : "Se connecter"}
-                </Button>
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  <Button type="button" variant="secondary" onClick={handleMagicLink} disabled={loginLoading} className="w-full">
-                    Recevoir un lien magique par email
+                  <Button type="submit" className="w-full" disabled={passwordLoading}>
+                    {passwordLoading ? "En cours..." : "Définir mon mot de passe"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleResetPassword} disabled={loginLoading} className="w-full">
-                    Définir/Reset mon mot de passe
+                </form>
+              ) : (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Adresse email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="nom.prenom@entreprise.fr"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Mot de passe</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-password"
+                        type="password"
+                        placeholder="Votre mot de passe"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={loginLoading}>
+                    {loginLoading ? "Connexion..." : "Se connecter"}
                   </Button>
-                </div>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    <Button type="button" variant="secondary" onClick={handleMagicLink} disabled={loginLoading} className="w-full">
+                      Recevoir un lien magique par email
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleResetPassword} disabled={loginLoading} className="w-full">
+                      Définir/Reset mon mot de passe
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </PageLayout>
   );
