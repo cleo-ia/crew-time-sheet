@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
@@ -18,6 +18,7 @@ import { InviteUserDialog } from "@/components/admin/InviteUserDialog";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { RappelsManager } from "@/components/admin/RappelsManager";
 import { TransportDebugManager } from "@/components/admin/TransportDebugManager";
+import { RHAdminManager } from "@/components/admin/RHAdminManager";
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,7 +64,7 @@ const AdminPanel = () => {
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Card className="shadow-md border-border/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="w-full grid grid-cols-11 rounded-none border-b">
+            <TabsList className="w-full grid grid-cols-12 rounded-none border-b">
               <TabsTrigger value="utilisateurs" className="rounded-none gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Utilisateurs</span>
@@ -95,6 +96,10 @@ const AdminPanel = () => {
               <TabsTrigger value="finisseurs" className="rounded-none gap-2">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Finisseurs</span>
+              </TabsTrigger>
+              <TabsTrigger value="rh" className="rounded-none gap-2">
+                <FileUser className="h-4 w-4" />
+                <span className="hidden sm:inline">RH</span>
               </TabsTrigger>
               <TabsTrigger value="vehicules" className="rounded-none gap-2">
                 <Truck className="h-4 w-4" />
@@ -140,6 +145,10 @@ const AdminPanel = () => {
 
             <TabsContent value="finisseurs" className="p-6">
               <FinisseursManager />
+            </TabsContent>
+
+            <TabsContent value="rh" className="p-6">
+              <RHAdminManager />
             </TabsContent>
 
             <TabsContent value="vehicules" className="p-6">
