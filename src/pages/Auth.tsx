@@ -206,49 +206,54 @@ const Auth = () => {
       });
       if (error) throw error;
       
-      // Attendre que la session soit propagée (délai augmenté pour garantir la cohérence)
+      // Attendre que la session soit propagée
       await new Promise(resolve => setTimeout(resolve, 250));
       
-      // Récupérer le rôle et le statut d'onboarding directement
+      // Récupérer l'utilisateur
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        // 1. Récupérer l'entreprise_id depuis le slug sélectionné
+        const { data: selectedEntrepriseData } = await supabase
+          .from("entreprises")
+          .select("id")
+          .eq("slug", selectedEntreprise.slug)
+          .single();
+        
+        if (!selectedEntrepriseData) {
+          await supabase.auth.signOut();
+          toast.error("Entreprise non trouvée");
+          return;
+        }
+        
+        // 2. Récupérer le rôle de l'utilisateur pour CETTE entreprise spécifiquement
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role, has_completed_onboarding, entreprise_id")
           .eq("user_id", user.id)
+          .eq("entreprise_id", selectedEntrepriseData.id)
           .maybeSingle();
         
-        // Vérifier que l'utilisateur appartient à l'entreprise sélectionnée
-        if (roleData?.entreprise_id) {
-          const { data: userEntreprise } = await supabase
-            .from("entreprises")
-            .select("slug")
-            .eq("id", roleData.entreprise_id)
-            .single();
-          
-          if (userEntreprise?.slug && userEntreprise.slug !== selectedEntreprise.slug) {
-            // L'utilisateur n'appartient pas à cette entreprise
-            await supabase.auth.signOut();
-            toast.error(`Vous n'appartenez pas à l'entreprise ${selectedEntreprise.nom}`);
-            return;
-          }
-          
-          // Mémoriser l'entreprise pour les prochaines connexions
-          localStorage.setItem("entreprise_slug", userEntreprise?.slug || selectedEntreprise.slug);
-          setHasStoredEntreprise(true);
+        // 3. Si pas de rôle pour cette entreprise → erreur
+        if (!roleData) {
+          await supabase.auth.signOut();
+          toast.error(`Vous n'avez pas de rôle dans l'entreprise ${selectedEntreprise.nom}`);
+          return;
         }
+        
+        // Mémoriser l'entreprise pour les prochaines connexions
+        localStorage.setItem("entreprise_slug", selectedEntreprise.slug);
+        setHasStoredEntreprise(true);
         
         toast.success("Connexion réussie");
         
         // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install
-        // Cela ne devrait arriver que si un utilisateur se connecte pour la première fois après avoir défini son mot de passe
-        if (roleData?.has_completed_onboarding === false) {
+        if (roleData.has_completed_onboarding === false) {
           navigate("/install", { replace: true });
           return;
         }
         
-        const role = roleData?.role;
+        const role = roleData.role;
         
         // Déterminer la route selon le rôle
         let targetPath = "/";
@@ -269,7 +274,7 @@ const Auth = () => {
             targetPath = (location.state as any)?.from?.pathname || "/";
         }
         
-        // Forcer la cohérence du cache React Query pour éviter les conflits futurs
+        // Forcer la cohérence du cache React Query
         queryClient.setQueryData(["role-based-redirect"], targetPath);
         queryClient.setQueryData(["current-user-role"], role);
         
