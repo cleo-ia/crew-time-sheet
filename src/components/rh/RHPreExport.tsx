@@ -304,26 +304,26 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               {/* TRAJETS (20 colonnes) */}
               <TableHead className="bg-cyan-50 min-w-[100px]">TOTAL</TableHead>
               <TableHead className="bg-cyan-50 min-w-[80px]">T Perso</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T1</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T2</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T3</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T4</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T5</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T6</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T7</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T8</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T9</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T10</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T11</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T12</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T13</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T14</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T15</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T16</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T17</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T31</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">T35</TableHead>
-              <TableHead className="bg-cyan-50 min-w-[60px]">GD</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T1</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T2</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T3</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T4</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T5</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T6</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T7</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T8</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T9</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T10</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T11</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T12</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T13</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T14</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T15</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T16</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T17</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T31</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">T35</TableHead>
+              <TableHead className="bg-cyan-50 min-w-[70px]">GD</TableHead>
               
               {/* ADMINISTRATIF (6 colonnes) */}
               <TableHead className="bg-green-50 min-w-[100px]">ACOMPTES</TableHead>
