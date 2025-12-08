@@ -219,10 +219,71 @@ serve(async (req) => {
       );
     }
 
+    // Si l'utilisateur existe déjà, on ajoute directement le rôle (mode bootstrap uniquement)
     if (existingProfile) {
+      if (!isBootstrap) {
+        return new Response(
+          JSON.stringify({ error: 'User with this email already exists' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // En mode bootstrap avec utilisateur existant, ajouter le rôle directement
+      console.log('User already exists, adding role directly:', existingProfile.id);
+
+      // Vérifier si ce rôle existe déjà pour cette entreprise
+      const { data: existingRole, error: roleCheckError } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', existingProfile.id)
+        .eq('role', role)
+        .eq('entreprise_id', finalEntrepriseId)
+        .maybeSingle();
+
+      if (roleCheckError) {
+        console.error('Error checking existing role:', roleCheckError);
+        return new Response(
+          JSON.stringify({ error: 'Database error while checking existing role' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (existingRole) {
+        return new Response(
+          JSON.stringify({ error: 'User already has this role for this enterprise' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Ajouter le nouveau rôle
+      const { error: insertRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
+          user_id: existingProfile.id,
+          role: role,
+          entreprise_id: finalEntrepriseId,
+        });
+
+      if (insertRoleError) {
+        console.error('Error inserting role:', insertRoleError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to add role', details: insertRoleError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Role added successfully for existing user');
+
       return new Response(
-        JSON.stringify({ error: 'User with this email already exists' }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          mode: 'role_added',
+          message: `Role ${role} added successfully for existing user`
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
       );
     }
 

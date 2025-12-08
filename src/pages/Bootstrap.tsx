@@ -30,7 +30,7 @@ export default function Bootstrap() {
 
   const loadEntreprises = async () => {
     try {
-      // Récupérer toutes les entreprises
+      // Récupérer toutes les entreprises actives
       const { data: allEntreprises, error: entreprisesError } = await supabase
         .from('entreprises')
         .select('id, nom, slug')
@@ -38,30 +38,13 @@ export default function Bootstrap() {
 
       if (entreprisesError) throw entreprisesError;
 
-      // Récupérer les entreprises qui ont déjà un admin
-      const { data: admins, error: adminsError } = await supabase
-        .from('user_roles')
-        .select('entreprise_id')
-        .eq('role', 'admin');
-
-      if (adminsError) throw adminsError;
-
-      const entreprisesWithAdmins = new Set(admins?.map(a => a.entreprise_id) || []);
-
+      // Afficher toutes les entreprises (pas de filtre sur hasAdmin)
       const entreprisesWithStatus = (allEntreprises || []).map(e => ({
         ...e,
-        hasAdmin: entreprisesWithAdmins.has(e.id)
+        hasAdmin: false // On ne filtre plus
       }));
-
-      // Filtrer pour ne garder que celles sans admin
-      const availableEntreprises = entreprisesWithStatus.filter(e => !e.hasAdmin);
       
-      setEntreprises(availableEntreprises);
-
-      if (availableEntreprises.length === 0) {
-        toast.info("Toutes les entreprises ont déjà un administrateur");
-        navigate('/auth');
-      }
+      setEntreprises(entreprisesWithStatus);
     } catch (error) {
       console.error('Error loading entreprises:', error);
       toast.error("Erreur lors du chargement des entreprises");
@@ -108,11 +91,20 @@ export default function Bootstrap() {
         throw new Error(result.error || 'Erreur lors de la création');
       }
 
-      toast.success(`Invitation envoyée à ${email} pour ${entreprise.nom}`);
-      navigate('/auth');
+      // Vérifier si c'était un ajout de rôle ou une nouvelle invitation
+      if (result.mode === 'role_added') {
+        toast.success(`Rôle admin ajouté pour ${email} sur ${entreprise.nom}`);
+      } else {
+        toast.success(`Invitation envoyée à ${email} pour ${entreprise.nom}`);
+      }
+      
+      // Recharger les entreprises pour mettre à jour la liste
+      loadEntreprises();
+      setEmail("");
+      setSelectedEntreprise("");
     } catch (error) {
       console.error('Bootstrap error:', error);
-      toast.error(error instanceof Error ? error.message : "Erreur lors de l'envoi de l'invitation");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'opération");
     } finally {
       setSubmitting(false);
     }
@@ -135,7 +127,7 @@ export default function Bootstrap() {
           </div>
           <CardTitle className="text-2xl">Bootstrap Admin</CardTitle>
           <CardDescription>
-            Créez le premier administrateur pour une entreprise
+            Créez ou ajoutez un rôle admin pour une entreprise
           </CardDescription>
         </CardHeader>
         <CardContent>
