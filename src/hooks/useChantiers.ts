@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentEntrepriseId } from "@/lib/entreprise";
 
 export interface Chantier {
   id: string;
@@ -55,21 +56,15 @@ export const useCreateChantier = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Récupérer l'entreprise_id de l'utilisateur connecté
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("entreprise_id")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (!roleData?.entreprise_id) throw new Error("Entreprise non trouvée");
+      // Utiliser l'utilitaire centralisé pour l'entreprise sélectionnée
+      const entrepriseId = await getCurrentEntrepriseId();
 
       const { data, error } = await supabase
         .from("chantiers")
         .insert({
           ...chantier,
           created_by: user.id,
-          entreprise_id: roleData.entreprise_id,
+          entreprise_id: entrepriseId,
         })
         .select()
         .single();
