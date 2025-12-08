@@ -221,17 +221,9 @@ serve(async (req) => {
       );
     }
 
-    // Si l'utilisateur existe déjà, on ajoute directement le rôle (mode bootstrap uniquement)
+    // Si l'utilisateur existe déjà
     if (existingProfile) {
-      if (!isBootstrap) {
-        return new Response(
-          JSON.stringify({ error: 'User with this email already exists' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // En mode bootstrap avec utilisateur existant, ajouter le rôle directement
-      console.log('User already exists, adding role directly:', existingProfile.id);
+      console.log('User already exists:', existingProfile.id);
 
       // Vérifier si ce rôle existe déjà pour cette entreprise
       const { data: existingRole, error: roleCheckError } = await supabaseAdmin
@@ -250,14 +242,45 @@ serve(async (req) => {
         );
       }
 
+      // Si c'est un mode resend (utilisateur existe avec le même rôle pour cette entreprise)
+      // Envoyer un email de récupération de mot de passe
       if (existingRole) {
+        console.log('User already has this role, sending recovery email');
+        
+        const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email.toLowerCase(),
+          options: {
+            redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
+          }
+        });
+
+        if (recoveryError) {
+          console.error('Error generating recovery link:', recoveryError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to send recovery email', details: recoveryError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Recovery email generated successfully');
+
         return new Response(
-          JSON.stringify({ error: 'User already has this role for this enterprise' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: true,
+            mode: 'recovery_sent',
+            message: 'Un email de réinitialisation de mot de passe a été envoyé'
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
         );
       }
 
-      // Ajouter le nouveau rôle
+      // Si bootstrap ou admin invitant → ajouter le nouveau rôle pour cette entreprise
+      console.log('Adding new role for existing user');
+
       const { error: insertRoleError } = await supabaseAdmin
         .from('user_roles')
         .insert({
@@ -274,13 +297,26 @@ serve(async (req) => {
         );
       }
 
+      // Envoyer également un email de récupération pour que l'utilisateur puisse se connecter
+      const { error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email.toLowerCase(),
+        options: {
+          redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
+        }
+      });
+
+      if (recoveryError) {
+        console.warn('Warning: Role added but recovery email failed:', recoveryError);
+      }
+
       console.log('Role added successfully for existing user');
 
       return new Response(
         JSON.stringify({
           success: true,
           mode: 'role_added',
-          message: `Role ${role} added successfully for existing user`
+          message: `Role ${role} added successfully for existing user. Recovery email sent.`
         }),
         {
           status: 200,
