@@ -24,6 +24,7 @@ import { TransportSheetV2 } from "@/components/transport/TransportSheetV2";
 import { useFicheId } from "@/hooks/useFicheId";
 import { parseISOWeek, getNextWeek } from "@/lib/weekUtils";
 import { isAfterFriday12hParis, isCurrentWeek } from "@/lib/date";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Clock } from "lucide-react";
@@ -38,6 +39,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isContrainteVendredi12h = useFeatureEnabled('contrainteVendredi12h');
   
   const [selectedChantier, setSelectedChantier] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChantier') || ""
@@ -203,9 +205,8 @@ const Index = () => {
       return;
     }
 
-    // Contrainte Limoge Revillon : pas de transmission avant vendredi 12h pour la semaine en cours
-    const entrepriseSlug = localStorage.getItem('entreprise_slug');
-    if (entrepriseSlug === 'limoge-revillon') {
+    // Contrainte transmission : pas de transmission avant vendredi 12h pour la semaine en cours
+    if (isContrainteVendredi12h) {
       if (isCurrentWeek(selectedWeek) && !isAfterFriday12hParis()) {
         setIsSubmitting(false);
         toast({
@@ -415,8 +416,8 @@ const Index = () => {
             )}
           </Card>
 
-          {/* Avertissement contrainte vendredi 12h pour Limoge Revillon */}
-          {localStorage.getItem('entreprise_slug') === 'limoge-revillon' && 
+          {/* Avertissement contrainte vendredi 12h */}
+          {isContrainteVendredi12h && 
            isCurrentWeek(selectedWeek) && 
            !isAfterFriday12hParis() && (
             <Alert className="border-amber-500/50 bg-amber-500/10">
