@@ -51,7 +51,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
                 Clôturée
               </Badge>
             </div>
-            <Button variant="outline" onClick={() => onSelectFiche(period.id)}>
+            <Button variant="outline" onClick={() => onSelectFiche(`periode___${period.id}`)}>
               <Eye className="h-4 w-4 mr-2" />
               Consulter
             </Button>

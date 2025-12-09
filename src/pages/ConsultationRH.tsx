@@ -14,6 +14,7 @@ import { RHConsolidated } from "@/components/rh/RHConsolidated";
 import { RHDetailView } from "@/components/rh/RHDetailView";
 import { RHHistorique } from "@/components/rh/RHHistorique";
 import { RHFicheDetail } from "@/components/rh/RHFicheDetail";
+import { RHPeriodeDetail } from "@/components/rh/RHPeriodeDetail";
 import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
 import { ClotureDialog } from "@/components/rh/ClotureDialog";
 import { RHPreExport } from "@/components/rh/RHPreExport";
@@ -192,6 +193,12 @@ const ConsultationRH = () => {
               </Tabs>
             </Card>
           </div>
+        ) : selectedFiche.startsWith("periode___") ? (
+          <RHPeriodeDetail 
+            periodeId={selectedFiche.substring(10)} 
+            onBack={() => setSelectedFiche(null)}
+            onSelectEmployee={setSelectedFiche}
+          />
         ) : selectedFiche.startsWith("emp___") ? (
           <RHEmployeeDetail 
             salarieId={selectedFiche.substring(6)} 
