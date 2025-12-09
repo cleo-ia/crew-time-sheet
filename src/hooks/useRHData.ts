@@ -843,21 +843,37 @@ export const useCloturePeriode = () => {
 
       if (periodeError) throw periodeError;
 
-      // 2. Récupérer les IDs des fiches à clôturer pour ce mois
+      // 2. Récupérer les IDs des fiches à clôturer pour ce mois (FILTRÉES PAR ENTREPRISE)
       const [year, month] = filters.periode.split("-").map(Number);
       const dateDebut = startOfMonth(new Date(year, month - 1));
       const dateFin = endOfMonth(new Date(year, month - 1));
 
-      // Récupérer toutes les fiches validées du mois (via semaine qui chevauche le mois)
-      const { data: fichesToClose, error: fichesError } = await supabase
+      // Cas 1: Fiches avec chantier_id (maçons, grutiers, etc.) - filtrer via chantiers.entreprise_id
+      const { data: fichesChantier, error: fichesChantierError } = await supabase
         .from("fiches")
-        .select("id, semaine, chantier_id")
-        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+        .select("id, semaine, chantier_id, chantiers!inner(entreprise_id)")
+        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
+        .not("chantier_id", "is", null)
+        .eq("chantiers.entreprise_id", entrepriseId);
 
-      if (fichesError) throw fichesError;
+      if (fichesChantierError) throw fichesChantierError;
+
+      // Cas 2: Fiches sans chantier_id (finisseurs autonomes) - filtrer via utilisateurs.entreprise_id
+      const { data: fichesSalarie, error: fichesSalarieError } = await supabase
+        .from("fiches")
+        .select("id, semaine, salarie_id, utilisateurs!inner(entreprise_id)")
+        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
+        .is("chantier_id", null)
+        .not("salarie_id", "is", null)
+        .eq("utilisateurs.entreprise_id", entrepriseId);
+
+      if (fichesSalarieError) throw fichesSalarieError;
+
+      // Combiner les deux ensembles de fiches
+      const allFichesToClose = [...(fichesChantier || []), ...(fichesSalarie || [])];
 
       // Filtrer les fiches dont la semaine chevauche le mois
-      const ficheIdsToClose = (fichesToClose || [])
+      const ficheIdsToClose = allFichesToClose
         .filter(fiche => {
           if (!fiche.semaine) return false;
           try {
