@@ -51,6 +51,19 @@ export interface RHPeriodeCloturee {
   salaries: number;
   fiches: number;
   totalHeures: number;
+  totalHeuresNormales: number;
+  totalHeuresSupp: number;
+  totalHeuresSupp25: number;
+  totalHeuresSupp50: number;
+  totalAbsences: number;
+  totalIntemperies: number;
+  totalPaniers: number;
+  totalTrajets: number;
+  nbChantiers: number;
+  trajetsParCode: Record<string, number>;
+  fichierExcel: string | null;
+  motif: string | null;
+  clotureeParNom: string | null;
 }
 
 export const useRHSummary = (filters: any) => {
@@ -264,7 +277,10 @@ export const useRHHistorique = (filters: any) => {
     queryFn: async () => {
       let query = supabase
         .from("periodes_cloturees")
-        .select("*")
+        .select(`
+          *,
+          cloturee_par_user:utilisateurs!periodes_cloturees_cloturee_par_fkey(nom, prenom)
+        `)
         .order("date_cloture", { ascending: false });
       
       if (entrepriseId) {
@@ -278,9 +294,24 @@ export const useRHHistorique = (filters: any) => {
         id: p.id,
         periode: p.periode,
         dateCloture: p.date_cloture,
-        salaries: p.nb_salaries,
-        fiches: p.nb_fiches,
-        totalHeures: p.total_heures,
+        salaries: p.nb_salaries || 0,
+        fiches: p.nb_fiches || 0,
+        totalHeures: p.total_heures || 0,
+        totalHeuresNormales: p.total_heures_normales || 0,
+        totalHeuresSupp: p.total_heures_supp || 0,
+        totalHeuresSupp25: p.total_heures_supp_25 || 0,
+        totalHeuresSupp50: p.total_heures_supp_50 || 0,
+        totalAbsences: p.total_absences || 0,
+        totalIntemperies: p.total_intemperies || 0,
+        totalPaniers: p.total_paniers || 0,
+        totalTrajets: p.total_trajets || 0,
+        nbChantiers: p.nb_chantiers || 0,
+        trajetsParCode: (p.trajets_par_code as Record<string, number>) || {},
+        fichierExcel: p.fichier_excel || null,
+        motif: p.motif || null,
+        clotureeParNom: p.cloturee_par_user 
+          ? `${(p.cloturee_par_user as any).prenom || ''} ${(p.cloturee_par_user as any).nom || ''}`.trim() 
+          : null,
       })) || [];
     },
   });
@@ -748,29 +779,63 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
   });
 };
 
+export interface ClotureData {
+  filters: any;
+  motif: string;
+  fichierExcel: string;
+  consolidatedData: {
+    salaries: number;
+    fiches: number;
+    totalHeures: number;
+    totalHeuresNormales: number;
+    totalHeuresSupp: number;
+    totalHeuresSupp25: number;
+    totalHeuresSupp50: number;
+    totalAbsences: number;
+    totalIntemperies: number;
+    totalPaniers: number;
+    totalTrajets: number;
+    nbChantiers: number;
+    trajetsParCode: Record<string, number>;
+  };
+}
+
 export const useCloturePeriode = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ filters, motif, summary }: { filters: any; motif: string; summary: RHSummary }) => {
+    mutationFn: async ({ filters, motif, fichierExcel, consolidatedData }: ClotureData) => {
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
       const { data: userData } = await supabase.auth.getUser();
       
       const { data: user } = await supabase
         .from("utilisateurs")
         .select("id")
         .eq("auth_user_id", userData?.user?.id)
-        .single();
+        .maybeSingle();
 
+      // 1. Insérer la période clôturée avec toutes les stats
       const { data: periode, error: periodeError } = await supabase
         .from("periodes_cloturees")
         .insert({
-          periode: filters.periode || `Période ${filters.semaine}`,
-          semaine_debut: filters.semaine,
-          semaine_fin: filters.semaine,
+          periode: filters.periode,
+          semaine_debut: filters.periode, // Format YYYY-MM
+          entreprise_id: entrepriseId,
           cloturee_par: user?.id,
-          nb_salaries: summary.salaries,
-          nb_fiches: 0,
-          total_heures: summary.heuresNormales,
+          nb_salaries: consolidatedData.salaries,
+          nb_fiches: consolidatedData.fiches,
+          total_heures: consolidatedData.totalHeures,
+          total_heures_normales: consolidatedData.totalHeuresNormales,
+          total_heures_supp: consolidatedData.totalHeuresSupp,
+          total_heures_supp_25: consolidatedData.totalHeuresSupp25,
+          total_heures_supp_50: consolidatedData.totalHeuresSupp50,
+          total_absences: consolidatedData.totalAbsences,
+          total_intemperies: consolidatedData.totalIntemperies,
+          total_paniers: consolidatedData.totalPaniers,
+          total_trajets: consolidatedData.totalTrajets,
+          nb_chantiers: consolidatedData.nbChantiers,
+          trajets_par_code: consolidatedData.trajetsParCode,
+          fichier_excel: fichierExcel,
           motif,
         })
         .select()
@@ -778,16 +843,45 @@ export const useCloturePeriode = () => {
 
       if (periodeError) throw periodeError;
 
-      let updateQuery = supabase
-        .from("fiches")
-        .update({ statut: "ENVOYE_RH" });
+      // 2. Récupérer les IDs des fiches à clôturer pour ce mois
+      const [year, month] = filters.periode.split("-").map(Number);
+      const dateDebut = startOfMonth(new Date(year, month - 1));
+      const dateFin = endOfMonth(new Date(year, month - 1));
 
-      if (filters.semaine && filters.semaine !== "all") {
-        updateQuery = updateQuery.eq("semaine", filters.semaine);
+      // Récupérer toutes les fiches validées du mois (via semaine qui chevauche le mois)
+      const { data: fichesToClose, error: fichesError } = await supabase
+        .from("fiches")
+        .select("id, semaine, chantier_id")
+        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+
+      if (fichesError) throw fichesError;
+
+      // Filtrer les fiches dont la semaine chevauche le mois
+      const ficheIdsToClose = (fichesToClose || [])
+        .filter(fiche => {
+          if (!fiche.semaine) return false;
+          try {
+            const mondayOfWeek = parseISOWeek(fiche.semaine);
+            const fridayOfWeek = new Date(mondayOfWeek);
+            fridayOfWeek.setDate(fridayOfWeek.getDate() + 4);
+            return mondayOfWeek <= dateFin && fridayOfWeek >= dateDebut;
+          } catch {
+            return false;
+          }
+        })
+        .map(f => f.id);
+
+      // 3. Passer toutes ces fiches en statut CLOTURE
+      if (ficheIdsToClose.length > 0) {
+        const { error: updateError } = await supabase
+          .from("fiches")
+          .update({ statut: "CLOTURE" })
+          .in("id", ficheIdsToClose);
+
+        if (updateError) throw updateError;
       }
 
-      const { error: updateError } = await updateQuery;
-      if (updateError) throw updateError;
+      console.log(`[Clôture] ${ficheIdsToClose.length} fiches passées en CLOTURE pour ${filters.periode}`);
 
       return periode;
     },
