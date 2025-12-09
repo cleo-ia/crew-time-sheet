@@ -982,14 +982,25 @@ export type Database = {
           created_at: string | null
           date_cloture: string
           entreprise_id: string | null
+          fichier_excel: string | null
           id: string
           motif: string | null
+          nb_chantiers: number | null
           nb_fiches: number | null
           nb_salaries: number | null
           periode: string
           semaine_debut: string
           semaine_fin: string | null
+          total_absences: number | null
           total_heures: number | null
+          total_heures_normales: number | null
+          total_heures_supp: number | null
+          total_heures_supp_25: number | null
+          total_heures_supp_50: number | null
+          total_intemperies: number | null
+          total_paniers: number | null
+          total_trajets: number | null
+          trajets_par_code: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -997,14 +1008,25 @@ export type Database = {
           created_at?: string | null
           date_cloture?: string
           entreprise_id?: string | null
+          fichier_excel?: string | null
           id?: string
           motif?: string | null
+          nb_chantiers?: number | null
           nb_fiches?: number | null
           nb_salaries?: number | null
           periode: string
           semaine_debut: string
           semaine_fin?: string | null
+          total_absences?: number | null
           total_heures?: number | null
+          total_heures_normales?: number | null
+          total_heures_supp?: number | null
+          total_heures_supp_25?: number | null
+          total_heures_supp_50?: number | null
+          total_intemperies?: number | null
+          total_paniers?: number | null
+          total_trajets?: number | null
+          trajets_par_code?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -1012,14 +1034,25 @@ export type Database = {
           created_at?: string | null
           date_cloture?: string
           entreprise_id?: string | null
+          fichier_excel?: string | null
           id?: string
           motif?: string | null
+          nb_chantiers?: number | null
           nb_fiches?: number | null
           nb_salaries?: number | null
           periode?: string
           semaine_debut?: string
           semaine_fin?: string | null
+          total_absences?: number | null
           total_heures?: number | null
+          total_heures_normales?: number | null
+          total_heures_supp?: number | null
+          total_heures_supp_25?: number | null
+          total_heures_supp_50?: number | null
+          total_intemperies?: number | null
+          total_paniers?: number | null
+          total_trajets?: number | null
+          trajets_par_code?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1674,6 +1707,7 @@ export type Database = {
         | "VALIDE_CONDUCTEUR"
         | "ENVOYE_RH"
         | "AUTO_VALIDE"
+        | "CLOTURE"
       statut_tache: "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD"
       type_absence:
         | "CP"
@@ -1821,6 +1855,7 @@ export const Constants = {
         "VALIDE_CONDUCTEUR",
         "ENVOYE_RH",
         "AUTO_VALIDE",
+        "CLOTURE",
       ],
       statut_tache: ["A_FAIRE", "EN_COURS", "TERMINE", "EN_RETARD"],
       type_absence: [

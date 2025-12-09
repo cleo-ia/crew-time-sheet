@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { FileEdit, PenTool, CheckCircle, Send } from "lucide-react";
+import { FileEdit, PenTool, CheckCircle, Send, Lock } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: "BROUILLON" | "EN_SIGNATURE" | "VALIDE_CHEF" | "VALIDE_CONDUCTEUR" | "ENVOYE_RH" | "AUTO_VALIDE";
+  status: "BROUILLON" | "EN_SIGNATURE" | "VALIDE_CHEF" | "VALIDE_CONDUCTEUR" | "ENVOYE_RH" | "AUTO_VALIDE" | "CLOTURE";
 }
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
@@ -36,6 +36,11 @@ export const StatusBadge = ({ status }: StatusBadgeProps) => {
       label: "Envoyé RH",
       icon: Send,
       className: "bg-primary/10 text-primary border-primary/30",
+    },
+    CLOTURE: {
+      label: "Clôturée",
+      icon: Lock,
+      className: "bg-muted text-muted-foreground border-border",
     },
   };
 
