@@ -4,8 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2 } from "lucide-react";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { ChantierSelector } from "@/components/timesheet/ChantierSelector";
@@ -40,6 +41,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isContrainteVendredi12h = useFeatureEnabled('contrainteVendredi12h');
+  const isRatioGlobalEnabled = useFeatureEnabled('ratioGlobal');
   
   const [selectedChantier, setSelectedChantier] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChantier') || ""
@@ -61,6 +63,7 @@ const Index = () => {
     sessionStorage.getItem('timesheet_selectedChef') || ""
   );
   const [isTransportOpen, setIsTransportOpen] = useState(false);
+  const [isRatioOpen, setIsRatioOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
@@ -527,6 +530,39 @@ const Index = () => {
               ficheId={ficheId}
               isReadOnly={!isFicheModifiable}
             />
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Card>
+              )}
+
+              {/* Ratio Global Sheet - Limoge Revillon uniquement */}
+              {selectedWeek && isRatioGlobalEnabled && (
+                <Card className="p-4 shadow-md border-border/50">
+                  <Collapsible open={isRatioOpen} onOpenChange={setIsRatioOpen}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted/50 rounded-md transition-colors">
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <h3 className="text-lg font-semibold">Ratio Global</h3>
+                          <p className="text-xs text-muted-foreground">
+                            M³ béton, ML voile, M² coffrage, météo et observations
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronDown 
+                        className={`h-5 w-5 text-muted-foreground transition-transform ${
+                          isRatioOpen ? "transform rotate-180" : ""
+                        }`}
+                      />
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="pt-4">
+                      <RatioGlobalSheet
+                        selectedWeek={selectedWeek}
+                        chantierId={selectedChantier}
+                        ficheId={ficheId}
+                        isReadOnly={!isFicheModifiable}
+                      />
                     </CollapsibleContent>
                   </Collapsible>
                 </Card>
