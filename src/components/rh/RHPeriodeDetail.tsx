@@ -49,6 +49,7 @@ export const RHPeriodeDetail = ({ periodeId, onBack, onSelectEmployee }: RHPerio
         chef: "all",
         salarie: "all",
         typeSalarie: "all",
+        includeCloture: true,
       });
       return result;
     }
