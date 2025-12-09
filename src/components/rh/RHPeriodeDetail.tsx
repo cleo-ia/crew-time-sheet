@@ -271,7 +271,7 @@ export const RHPeriodeDetail = ({ periodeId, onBack, onSelectEmployee }: RHPerio
                   <TableCell className="text-center">{emp.paniers}</TableCell>
                   <TableCell className="text-center">{emp.totalJoursTrajets}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => onSelectEmployee(`emp___${emp.salarieId}`)}>
+                    <Button variant="ghost" size="sm" onClick={() => onSelectEmployee(`emp___${emp.salarieId}___periode___${periode.periode}`)}>
                       <Eye className="h-4 w-4" />
                     </Button>
                   </TableCell>
