@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,13 +35,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useFicheModifiable } from "@/hooks/useFicheModifiable";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
-
+import { WeatherButton } from "@/components/weather/WeatherButton";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isContrainteVendredi12h = useFeatureEnabled('contrainteVendredi12h');
   const isRatioGlobalEnabled = useFeatureEnabled('ratioGlobal');
+  const isPointsMeteoEnabled = useFeatureEnabled('pointsMeteo');
   
   const [selectedChantier, setSelectedChantier] = useState<string>(
     sessionStorage.getItem('timesheet_selectedChantier') || ""
@@ -155,6 +156,21 @@ const Index = () => {
     selectedWeek,
     selectedChef
   );
+
+  // Récupérer la ville du chantier sélectionné pour la météo
+  const { data: chantierVille } = useQuery({
+    queryKey: ["chantier-ville", selectedChantier],
+    queryFn: async () => {
+      if (!selectedChantier) return null;
+      const { data } = await supabase
+        .from("chantiers")
+        .select("ville")
+        .eq("id", selectedChantier)
+        .single();
+      return data?.ville || null;
+    },
+    enabled: !!selectedChantier && isPointsMeteoEnabled,
+  });
 
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
@@ -364,6 +380,7 @@ const Index = () => {
         subtitle="Chef de chantier"
         icon={FileText}
         theme="saisie-chef"
+        actions={isPointsMeteoEnabled ? <WeatherButton ville={chantierVille} /> : undefined}
       />
 
       {/* Main Content */}
