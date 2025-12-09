@@ -13,7 +13,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
   
   features: {
     ...defaultFeatures,
-    contrainteVendredi12h: true, // Limoge Revillon : transmission bloquée avant vendredi 12h
+    contrainteVendredi12h: false, // TEMPORAIRE: désactivé pour tests - remettre à true après
   },
   
   routes: {
