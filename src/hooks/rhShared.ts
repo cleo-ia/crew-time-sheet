@@ -10,6 +10,7 @@ export interface RHFilters {
   chef?: string;
   salarie?: string;
   typeSalarie?: string;
+  includeCloture?: boolean;
 }
 
 export interface EmployeeDetail {
@@ -206,7 +207,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         entreprise_id
       )
     `)
-    .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+    .in("statut", filters.includeCloture 
+      ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+      : ["ENVOYE_RH", "AUTO_VALIDE"]);
   
   // Filtre par entreprise via chantiers
   if (entrepriseId) {
@@ -252,7 +255,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       regularisation_m1_export,
       autres_elements_export
     `)
-    .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
+    .in("statut", filters.includeCloture 
+      ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+      : ["ENVOYE_RH", "AUTO_VALIDE"])
     .is("chantier_id", null);
 
   const { data: fichesFinisseurs, error: finisseursError } = await finisseursQuery;
