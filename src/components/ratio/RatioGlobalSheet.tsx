@@ -55,6 +55,12 @@ export const RatioGlobalSheet = ({
   // État local pour les données du formulaire
   const [formData, setFormData] = useState<Record<string, DayData>>({});
   
+  // Créer une clé stable pour détecter les vrais changements (évite boucle infinie)
+  const ratiosKey = useMemo(
+    () => existingRatios.map(r => `${r.date}:${r.m3_beton}:${r.ml_voile}:${r.m2_coffrage}:${r.meteo}:${r.observations}:${r.incident}`).join('|'),
+    [existingRatios]
+  );
+  
   // Initialiser les données du formulaire
   useEffect(() => {
     const newFormData: Record<string, DayData> = {};
@@ -73,7 +79,7 @@ export const RatioGlobalSheet = ({
     });
     
     setFormData(newFormData);
-  }, [weekDates, existingRatios]);
+  }, [weekDates, ratiosKey]); // Utiliser la clé stable au lieu de existingRatios
   
   // Fonction pour sauvegarder un champ
   const handleFieldChange = (date: string, field: keyof DayData, value: string) => {
