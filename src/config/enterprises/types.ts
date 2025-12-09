@@ -47,6 +47,9 @@ export interface EnterpriseFeatures {
   
   // Contraintes temporelles
   contrainteVendredi12h: boolean; // Bloque transmission avant vendredi 12h pour semaine courante
+  
+  // Ratios journaliers (M3 béton, ML voile, M2 coffrage, météo) - Limoge Revillon uniquement
+  ratioGlobal: boolean;
 }
 
 export interface EnterpriseRoutes {
@@ -119,6 +122,7 @@ export const defaultFeatures: EnterpriseFeatures = {
   signatureConducteur: true,
   validationRH: true,
   contrainteVendredi12h: false, // Désactivé par défaut pour les tests
+  ratioGlobal: false, // Désactivé par défaut, activé uniquement pour Limoge Revillon
 };
 
 export const defaultRoutes: EnterpriseRoutes = {

@@ -1165,6 +1165,56 @@ export type Database = {
         }
         Relationships: []
       }
+      ratios_journaliers: {
+        Row: {
+          created_at: string
+          date: string
+          fiche_id: string
+          id: string
+          incident: string | null
+          m2_coffrage: number | null
+          m3_beton: number | null
+          meteo: string | null
+          ml_voile: number | null
+          observations: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          fiche_id: string
+          id?: string
+          incident?: string | null
+          m2_coffrage?: number | null
+          m3_beton?: number | null
+          meteo?: string | null
+          ml_voile?: number | null
+          observations?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          fiche_id?: string
+          id?: string
+          incident?: string | null
+          m2_coffrage?: number | null
+          m3_beton?: number | null
+          meteo?: string | null
+          ml_voile?: number | null
+          observations?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratios_journaliers_fiche_id_fkey"
+            columns: ["fiche_id"]
+            isOneToOne: false
+            referencedRelation: "fiches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signatures: {
         Row: {
           created_at: string
