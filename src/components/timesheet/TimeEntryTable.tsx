@@ -205,20 +205,24 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     return true;
   };
 
-  // Charger les chantiers pour les sélecteurs
+  // Charger les chantiers pour les sélecteurs (filtré par entreprise)
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
   const { data: chantiers = [] } = useQuery({
-    queryKey: ["chantiers"],
+    queryKey: ["chantiers", entrepriseId],
     queryFn: async () => {
+      if (!entrepriseId) return [];
+      
       const { data, error } = await supabase
         .from("chantiers")
         .select("id, nom, code_chantier, ville, actif")
         .eq("actif", true)
+        .eq("entreprise_id", entrepriseId)
         .order("nom");
       
       if (error) throw error;
       return data || [];
     },
-    enabled: true,
+    enabled: !!entrepriseId,
   });
 
   // Récupérer les vrais maçons affectés au chantier (+ le chef si applicable)

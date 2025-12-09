@@ -250,6 +250,13 @@ const Auth = () => {
         // Invalider tout le cache React Query pour charger les données de la bonne entreprise
         queryClient.clear();
         
+        // Nettoyer le sessionStorage des sélections de la session précédente (isolation multi-tenant)
+        sessionStorage.removeItem('timesheet_selectedChantier');
+        sessionStorage.removeItem('timesheet_selectedChef');
+        sessionStorage.removeItem('timesheet_selectedWeek');
+        sessionStorage.removeItem('conducteur_teamWeek');
+        sessionStorage.removeItem('fromSignature');
+        
         toast.success("Connexion réussie");
         
         // Si nouvel utilisateur (has_completed_onboarding = false), redirection vers /install

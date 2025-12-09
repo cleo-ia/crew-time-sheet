@@ -34,10 +34,12 @@ export interface MaconWithFiche {
 }
 
 export const useMaconsByChantier = (chantierId: string | null, semaine: string, chefId?: string) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
   return useQuery({
-    queryKey: ["macons-chantier", chantierId, semaine, chefId],
+    queryKey: ["macons-chantier", chantierId, semaine, chefId, entrepriseId],
     queryFn: async () => {
-      if (!chantierId) return [];
+      if (!chantierId || !entrepriseId) return [];
 
       const allEmployees: MaconWithFiche[] = [];
       
@@ -47,6 +49,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
           .from("utilisateurs")
           .select("id, nom, prenom, email, agence_interim, role_metier")
           .eq("id", chefId)
+          .eq("entreprise_id", entrepriseId)
           .maybeSingle();
         
         // Récupérer le rôle du chef (role_metier pour maçon/grutier/intérimaire)
