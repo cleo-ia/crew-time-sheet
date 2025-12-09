@@ -1425,7 +1425,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                     updateDayValue(entry.employeeId, day, "grandDeplacement", checked);
                                     if (checked) {
                                       updateDayValue(entry.employeeId, day, "trajetPerso", false);
-                                      updateDayValue(entry.employeeId, day, "trajet", true);
+                                      updateDayValue(entry.employeeId, day, "trajet", false);
                                       updateDayValue(entry.employeeId, day, "codeTrajet", "GD");
                                     } else {
                                       // Si on décoche GD et que trajet est coché, revenir à A_COMPLETER
