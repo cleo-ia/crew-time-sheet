@@ -600,7 +600,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           )
         `)
         .eq("salarie_id", salarieId)
-        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
+        .in("statut", filters.includeCloture 
+          ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+          : ["ENVOYE_RH", "AUTO_VALIDE"]);
 
       // Appliquer les filtres
       if (filters.semaine && filters.semaine !== "all") {

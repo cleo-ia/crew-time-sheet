@@ -200,11 +200,35 @@ const ConsultationRH = () => {
             onSelectEmployee={setSelectedFiche}
           />
         ) : selectedFiche.startsWith("emp___") ? (
-          <RHEmployeeDetail 
-            salarieId={selectedFiche.substring(6)} 
-            filters={filters}
-            onBack={() => setSelectedFiche(null)} 
-          />
+          (() => {
+            // Parser le format : "emp___<salarieId>___periode___<yyyy-MM>" ou "emp___<salarieId>"
+            const parts = selectedFiche.split("___");
+            const salarieId = parts[1];
+            const periodeFromCloture = parts.length === 4 && parts[2] === "periode" ? parts[3] : null;
+            const periodeIdFromCloture = parts.length === 4 ? parts[3] : null;
+            
+            // Construire les filtres adaptés pour la période clôturée
+            const employeeFilters = periodeFromCloture 
+              ? { ...filters, periode: periodeFromCloture, includeCloture: true }
+              : filters;
+            
+            return (
+              <RHEmployeeDetail 
+                salarieId={salarieId} 
+                filters={employeeFilters}
+                onBack={() => {
+                  if (periodeIdFromCloture) {
+                    // Revenir au détail de la période clôturée - on doit retrouver l'ID
+                    // Pour simplifier, on retourne à la liste principale
+                    setSelectedFiche(null);
+                  } else {
+                    setSelectedFiche(null);
+                  }
+                }} 
+              />
+            );
+          })()
+        
         ) : (
           <RHFicheDetail ficheId={selectedFiche} onBack={() => setSelectedFiche(null)} />
         )}
