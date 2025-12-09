@@ -269,6 +269,20 @@ export const RatioGlobalSheet = ({
               </TableRow>
             );
           })}
+          {/* Ligne des totaux */}
+          <TableRow className="bg-muted/50 font-semibold">
+            <TableCell className="text-sm">Total</TableCell>
+            <TableCell className="text-sm">
+              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.m3_beton) || 0), 0).toFixed(2)} m³
+            </TableCell>
+            <TableCell className="text-sm">
+              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.ml_voile) || 0), 0).toFixed(2)} ml
+            </TableCell>
+            <TableCell className="text-sm">
+              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.m2_coffrage) || 0), 0).toFixed(2)} m²
+            </TableCell>
+            <TableCell colSpan={3}></TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </div>
