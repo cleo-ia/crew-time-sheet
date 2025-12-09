@@ -50,6 +50,9 @@ export interface EnterpriseFeatures {
   
   // Ratios journaliers (M3 béton, ML voile, M2 coffrage, météo) - Limoge Revillon uniquement
   ratioGlobal: boolean;
+  
+  // Points météo quotidien basé sur la ville du chantier
+  pointsMeteo: boolean;
 }
 
 export interface EnterpriseRoutes {
@@ -123,6 +126,7 @@ export const defaultFeatures: EnterpriseFeatures = {
   validationRH: true,
   contrainteVendredi12h: false, // Désactivé par défaut pour les tests
   ratioGlobal: false, // Désactivé par défaut, activé uniquement pour Limoge Revillon
+  pointsMeteo: false, // Désactivé par défaut
 };
 
 export const defaultRoutes: EnterpriseRoutes = {
