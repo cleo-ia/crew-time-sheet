@@ -78,32 +78,37 @@ const Index = () => {
     }
   }, [initialWeek]);
 
-  // Auto-sélection du chef connecté au chargement
+  // Auto-sélection du chef connecté au chargement + validation multi-tenant
   useEffect(() => {
     const fetchConnectedChef = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
+      if (!entrepriseId) return;
 
       // Vérifier si cet utilisateur est un chef
       const { data: utilisateur } = await supabase
         .from("utilisateurs")
         .select("id")
         .eq("auth_user_id", user.id)
+        .eq("entreprise_id", entrepriseId)
         .maybeSingle();
 
       if (!utilisateur) return;
 
-      // Vérifier si cet utilisateur a le rôle "chef"
+      // Vérifier si cet utilisateur a le rôle "chef" dans cette entreprise
       const { data: userRole } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
+        .eq("entreprise_id", entrepriseId)
         .maybeSingle();
 
       if (userRole?.role === "chef") {
         setSelectedChef(utilisateur.id);
 
-        // Conserver un chantier déjà choisi s'il est valide pour ce chef
+        // Validation multi-tenant : vérifier que le chantier en session appartient à cette entreprise
         if (selectedChantier) {
           const { data: chantierValide } = await supabase
             .from("chantiers")
@@ -111,20 +116,26 @@ const Index = () => {
             .eq("id", selectedChantier)
             .eq("chef_id", utilisateur.id)
             .eq("actif", true)
+            .eq("entreprise_id", entrepriseId)
             .maybeSingle();
 
           if (chantierValide) {
-            // Le chantier en session est valide, on le garde
+            // Le chantier en session est valide pour cette entreprise, on le garde
             return;
+          } else {
+            // Le chantier n'appartient pas à cette entreprise → reset
+            setSelectedChantier("");
+            sessionStorage.removeItem('timesheet_selectedChantier');
           }
         }
 
-        // Sinon, choisir le plus récent parmi les chantiers actifs du chef
+        // Choisir le plus récent parmi les chantiers actifs du chef dans cette entreprise
         const { data: chantiers } = await supabase
           .from("chantiers")
           .select("id")
           .eq("chef_id", utilisateur.id)
           .eq("actif", true)
+          .eq("entreprise_id", entrepriseId)
           .order("updated_at", { ascending: false })
           .limit(1);
 
