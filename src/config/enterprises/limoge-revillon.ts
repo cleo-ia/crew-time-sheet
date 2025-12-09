@@ -13,7 +13,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
   
   features: {
     ...defaultFeatures,
-    contrainteVendredi12h: true, // Actif: transmission bloquée avant vendredi 12h pour la semaine en cours
+    contrainteVendredi12h: false, // TEMPORAIREMENT DÉSACTIVÉ pour test - remettre à true après
     ratioGlobal: true, // Actif: saisie des ratios journaliers (M3 béton, ML voile, M2 coffrage, météo)
   },
   
