@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, CheckCircle, Edit, Save, X, Loader2, History, Truck, PenTool, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Edit, Save, X, Loader2, History, Truck, PenTool, AlertTriangle, BarChart3 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -26,6 +26,8 @@ import { EmployeeSummaryTable } from "./EmployeeSummaryTable";
 import { useTransportByChantier } from "@/hooks/useTransportByChantier";
 import { useTransportValidation } from "@/hooks/useTransportValidation";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
+import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { dayNameToDate } from "@/lib/date";
@@ -42,6 +44,9 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   const canEdit = !readOnly;
   const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  
+  // Feature toggle pour Ratio Global (Limoge Revillon uniquement)
+  const isRatioGlobalEnabled = useFeatureEnabled('ratioGlobal');
   
   const { data: ficheData, isLoading } = useFicheDetailWithJours(ficheId);
   const saveSignatureMutation = useSaveSignature();
@@ -550,6 +555,29 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         </Accordion>
       )}
 
+      {/* Ratio Global (Limoge Revillon uniquement - lecture seule pour conducteur) */}
+      {isRatioGlobalEnabled && ficheData?.id && (
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="ratio-global" className="border-none">
+            <Card className="shadow-md border-border/50">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Ratio Global
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-4">
+                <RatioGlobalSheet
+                  selectedWeek={ficheData.semaine}
+                  chantierId={chantierId}
+                  ficheId={ficheData.id}
+                  isReadOnly={true}
+                />
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        </Accordion>
+      )}
       {/* Detailed Time Entry */}
       <Card className="p-6 shadow-md border-border/50">
         <div className="flex items-center justify-between mb-4">
