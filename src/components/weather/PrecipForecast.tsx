@@ -35,11 +35,18 @@ export function PrecipForecast({ forecasts }: PrecipForecastProps) {
             const forecastHour = new Date(forecast.time).getHours();
             const isCurrentHour = forecastHour === currentHour;
             
-            // Color intensity based on probability
-            const getBarColor = () => {
-              if (prob > 60) return 'bg-blue-500';
-              if (prob > 30) return 'bg-blue-400';
-              return 'bg-blue-300/70';
+            // More distinct colors based on probability
+            const getBarStyle = () => {
+              if (prob > 60) {
+                // High probability - dark saturated blue
+                return 'bg-blue-600 dark:bg-blue-500';
+              }
+              if (prob > 30) {
+                // Medium probability - medium blue
+                return 'bg-blue-400 dark:bg-blue-400';
+              }
+              // Low probability - very light, almost transparent
+              return 'bg-blue-200/60 dark:bg-blue-700/40';
             };
             
             return (
@@ -50,7 +57,7 @@ export function PrecipForecast({ forecasts }: PrecipForecastProps) {
                 {/* Bar container */}
                 <div className="w-full h-16 flex items-end justify-center">
                   <div
-                    className={`w-full max-w-[10px] rounded-t-sm ${getBarColor()} transition-all hover:opacity-80`}
+                    className={`w-full max-w-[10px] rounded-t-sm ${getBarStyle()} transition-all hover:opacity-80`}
                     style={{ height: `${height}%` }}
                     title={`${prob}% - ${forecast.precipitation}mm`}
                   />
@@ -67,11 +74,11 @@ export function PrecipForecast({ forecasts }: PrecipForecastProps) {
           })}
         </div>
         
-        {/* Scale indicator */}
+        {/* Scale indicator with more distinct colors */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-sm bg-blue-300/70" />
+              <div className="w-2 h-2 rounded-sm bg-blue-200/60 dark:bg-blue-700/40" />
               <span className="text-[10px] text-muted-foreground">&lt;30%</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -79,7 +86,7 @@ export function PrecipForecast({ forecasts }: PrecipForecastProps) {
               <span className="text-[10px] text-muted-foreground">30-60%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-sm bg-blue-500" />
+              <div className="w-2 h-2 rounded-sm bg-blue-600 dark:bg-blue-500" />
               <span className="text-[10px] text-muted-foreground">&gt;60%</span>
             </div>
           </div>
