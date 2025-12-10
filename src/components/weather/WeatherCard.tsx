@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, Sun as SunIcon, ThermometerSun } from "lucide-react";
+import { RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, Sun as SunIcon, ThermometerSun, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { WeatherData } from "@/hooks/useWeather";
 import { getWeatherInfo, getWindDirection, getSeverityColor } from "@/lib/weatherUtils";
+import { RadarPreview } from "./RadarPreview";
+import { RadarDialog } from "./RadarDialog";
 
 interface WeatherCardProps {
   weather: WeatherData;
@@ -13,6 +16,7 @@ interface WeatherCardProps {
 }
 
 export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardProps) {
+  const [radarOpen, setRadarOpen] = useState(false);
   const weatherInfo = getWeatherInfo(weather.weatherCode);
   const WeatherIcon = weatherInfo.icon;
   const windDir = getWindDirection(weather.ventDirection);
@@ -124,6 +128,29 @@ export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardPro
           </div>
         </div>
       </div>
+      
+      <Separator />
+      
+      {/* Section Radar */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-red-500" />
+          <span className="font-medium text-sm">Radar Précipitations</span>
+        </div>
+        <RadarPreview
+          latitude={weather.latitude}
+          longitude={weather.longitude}
+          onClick={() => setRadarOpen(true)}
+        />
+      </div>
+      
+      <RadarDialog
+        open={radarOpen}
+        onOpenChange={setRadarOpen}
+        latitude={weather.latitude}
+        longitude={weather.longitude}
+        ville={weather.ville}
+      />
     </div>
   );
 }
