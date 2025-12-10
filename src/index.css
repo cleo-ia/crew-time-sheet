@@ -4,6 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth radar layer transitions */
+.radar-tile-layer img,
+.leaflet-tile-container img {
+  transition: opacity 0.2s ease-out;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

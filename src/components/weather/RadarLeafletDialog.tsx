@@ -109,7 +109,7 @@ export function RadarLeafletDialog({
     };
   }, [open, latitude, longitude, hasValidCoords]);
   
-  // Update radar layer when frame changes
+  // Update radar layer when frame changes - with smooth transition
   const updateRadarLayer = useCallback(() => {
     if (!map.current || !mapLoaded || !radarData) return;
     
@@ -117,17 +117,28 @@ export function RadarLeafletDialog({
     if (!currentFrame) return;
     
     const radarUrl = `${radarData.host}${currentFrame.path}/256/{z}/{x}/{y}/4/1_1.png`;
+    const oldLayer = radarLayer.current;
     
-    // Remove existing radar layer
-    if (radarLayer.current) {
-      map.current.removeLayer(radarLayer.current);
+    // Create new layer with opacity 0 for smooth transition
+    const newLayer = L.tileLayer(radarUrl, {
+      opacity: 0,
+      zIndex: 1000,
+      className: 'radar-tile-layer',
+    }).addTo(map.current!);
+    
+    // Fade in new layer immediately (CSS handles transition)
+    requestAnimationFrame(() => {
+      newLayer.setOpacity(0.7);
+    });
+    
+    // Remove old layer after transition
+    if (oldLayer) {
+      setTimeout(() => {
+        map.current?.removeLayer(oldLayer);
+      }, 200);
     }
     
-    // Add new radar layer
-    radarLayer.current = L.tileLayer(radarUrl, {
-      opacity: 0.7,
-      zIndex: 1000,
-    }).addTo(map.current);
+    radarLayer.current = newLayer;
   }, [radarData, currentFrameIndex, mapLoaded]);
   
   useEffect(() => {
@@ -142,7 +153,7 @@ export function RadarLeafletDialog({
       setCurrentFrameIndex((prev) => 
         prev >= radarData.allFrames.length - 1 ? 0 : prev + 1
       );
-    }, 400);
+    }, 500); // Slightly slower for smoother transitions
     
     return () => {
       if (intervalRef.current) {
