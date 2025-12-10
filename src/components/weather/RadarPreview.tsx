@@ -16,20 +16,15 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   
-  const tileSize = 256;
+  const size = 250;
   const zoom = 6;
-  const size = 200;
   
-  // Calculer la tuile pour les coordonnées
-  const lon2tile = (lon: number, z: number) => Math.floor((lon + 180) / 360 * Math.pow(2, z));
-  const lat2tile = (lat: number, z: number) => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z));
-  
-  const tileX = lon2tile(longitude, zoom);
-  const tileY = lat2tile(latitude, zoom);
+  // Vérifier que les coordonnées sont valides
+  const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
   
   // Précharger les images
   useEffect(() => {
-    if (!radarData) return;
+    if (!radarData || !hasValidCoords) return;
     
     let loadedCount = 0;
     const totalFrames = radarData.allFrames.length;
@@ -48,9 +43,10 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
           setImagesLoaded(true);
         }
       };
-      img.src = `${radarData.host}${frame.path}/${tileSize}/${zoom}/${tileX}/${tileY}/2/1_1.png`;
+      // Format URL avec coordonnées directes (lat/lon)
+      img.src = `${radarData.host}${frame.path}/${size}/${zoom}/${latitude}/${longitude}/4/1_1.png`;
     });
-  }, [radarData, tileX, tileY, zoom]);
+  }, [radarData, latitude, longitude, hasValidCoords, zoom, size]);
   
   // Animation des frames
   useEffect(() => {
@@ -69,11 +65,9 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
     };
   }, [radarData, imagesLoaded]);
   
-  if (isLoading) {
+  if (isLoading || !hasValidCoords) {
     return (
-      <div 
-        className="w-full h-[200px] rounded-lg bg-muted flex items-center justify-center"
-      >
+      <div className="w-full h-[200px] rounded-lg bg-muted flex items-center justify-center">
         <div className="text-sm text-muted-foreground">Chargement radar...</div>
       </div>
     );
@@ -81,9 +75,7 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
   
   if (error || !radarData) {
     return (
-      <div 
-        className="w-full h-[200px] rounded-lg bg-muted flex items-center justify-center"
-      >
+      <div className="w-full h-[200px] rounded-lg bg-muted flex items-center justify-center">
         <div className="text-sm text-muted-foreground">Radar non disponible</div>
       </div>
     );
@@ -93,12 +85,9 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
   const isNowcast = currentFrameIndex >= radarData.pastFrames.length;
   const frameTime = currentFrame ? new Date(currentFrame.time * 1000) : new Date();
   
-  // URL de la tuile OpenStreetMap pour le fond de carte
-  const osmUrl = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
-  
-  // URL de la tuile radar
+  // URL du radar avec coordonnées directes
   const radarUrl = currentFrame 
-    ? `${radarData.host}${currentFrame.path}/${tileSize}/${zoom}/${tileX}/${tileY}/2/1_1.png`
+    ? `${radarData.host}${currentFrame.path}/${size}/${zoom}/${latitude}/${longitude}/4/1_1.png`
     : "";
   
   return (
@@ -106,24 +95,12 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
       className="relative w-full h-[200px] rounded-lg overflow-hidden cursor-pointer group"
       onClick={onClick}
     >
-      {/* Fond de carte OSM */}
-      <img 
-        src={osmUrl}
-        alt="Carte"
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ imageRendering: "auto" }}
-      />
-      
-      {/* Overlay radar */}
+      {/* Image radar avec fond de carte intégré */}
       {radarUrl && (
         <img 
           src={radarUrl}
           alt="Radar précipitations"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ 
-            opacity: 0.7,
-            mixBlendMode: "normal",
-          }}
+          className="absolute inset-0 w-full h-full object-contain bg-slate-800"
         />
       )}
       
