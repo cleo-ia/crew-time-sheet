@@ -46,11 +46,18 @@ export function RadarLeafletDialog({
   
   // Initialize map when dialog opens
   useEffect(() => {
-    if (!open || !mapContainer.current || !hasValidCoords) return;
+    if (!open || !hasValidCoords) return;
     
-    // Small delay to ensure container is mounted
+    // Longer delay to ensure dialog container is fully mounted and sized
     const timer = setTimeout(() => {
-      if (!mapContainer.current) return;
+      if (!mapContainer.current || map.current) return;
+      
+      // Check container has dimensions
+      const rect = mapContainer.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn('[RadarDialog] Container has no dimensions, retrying...');
+        return;
+      }
       
       map.current = L.map(mapContainer.current, {
         center: [latitude, longitude],
@@ -64,14 +71,19 @@ export function RadarLeafletDialog({
         attribution: '© OpenStreetMap',
       }).addTo(map.current);
       
+      // Force map to recalculate size after a short delay
+      setTimeout(() => {
+        map.current?.invalidateSize();
+      }, 100);
+      
       // Fallback timeout in case tiles don't fire load event
-      const timeoutId = setTimeout(() => {
+      const fallbackId = setTimeout(() => {
         setMapLoaded(true);
-      }, 2000);
+      }, 3000);
       
       // Listen for tile load completion
       osmLayer.on('load', () => {
-        clearTimeout(timeoutId);
+        clearTimeout(fallbackId);
         setMapLoaded(true);
       });
       
@@ -84,16 +96,17 @@ export function RadarLeafletDialog({
       });
       
       L.marker([latitude, longitude], { icon: redIcon }).addTo(map.current);
-    }, 100);
+    }, 300);
     
     return () => {
       clearTimeout(timer);
-      map.current?.remove();
-      map.current = null;
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
       radarLayer.current = null;
       setMapLoaded(false);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, latitude, longitude, hasValidCoords]);
   
   // Update radar layer when frame changes
