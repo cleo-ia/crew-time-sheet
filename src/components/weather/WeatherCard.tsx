@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, Sun as SunIcon, ThermometerSun, Radio } from "lucide-react";
+import { RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, Sun as SunIcon, ThermometerSun, Radio, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { WeatherData } from "@/hooks/useWeather";
 import { getWeatherInfo, getWindDirection, getSeverityColor } from "@/lib/weatherUtils";
 import { RadarPreview } from "./RadarPreview";
 import { RadarDialog } from "./RadarDialog";
+import { RadarMapPreview } from "./RadarMapPreview";
+import { RadarMapDialog } from "./RadarMapDialog";
 
 interface WeatherCardProps {
   weather: WeatherData;
@@ -15,8 +19,17 @@ interface WeatherCardProps {
   isRefreshing: boolean;
 }
 
+// Storage key for Mapbox token
+const MAPBOX_TOKEN_KEY = "mapbox_public_token";
+
 export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardProps) {
   const [radarOpen, setRadarOpen] = useState(false);
+  const [mapboxToken, setMapboxToken] = useState(() => 
+    localStorage.getItem(MAPBOX_TOKEN_KEY) || ""
+  );
+  const [tokenInput, setTokenInput] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(!mapboxToken);
+  
   const weatherInfo = getWeatherInfo(weather.weatherCode);
   const WeatherIcon = weatherInfo.icon;
   const windDir = getWindDirection(weather.ventDirection);
@@ -29,6 +42,21 @@ export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardPro
     if (uv <= 7) return `${uv} (Élevé)`;
     if (uv <= 10) return `${uv} (Très élevé)`;
     return `${uv} (Extrême)`;
+  };
+  
+  const handleSaveToken = () => {
+    if (tokenInput.trim()) {
+      localStorage.setItem(MAPBOX_TOKEN_KEY, tokenInput.trim());
+      setMapboxToken(tokenInput.trim());
+      setShowTokenInput(false);
+      setTokenInput("");
+    }
+  };
+  
+  const handleClearToken = () => {
+    localStorage.removeItem(MAPBOX_TOKEN_KEY);
+    setMapboxToken("");
+    setShowTokenInput(true);
   };
 
   return (
@@ -133,24 +161,101 @@ export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardPro
       
       {/* Section Radar */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Radio className="h-4 w-4 text-red-500" />
-          <span className="font-medium text-sm">Radar Précipitations</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-red-500" />
+            <span className="font-medium text-sm">Radar Précipitations</span>
+          </div>
+          {mapboxToken && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-muted-foreground"
+              onClick={handleClearToken}
+            >
+              <Map className="h-3 w-3 mr-1" />
+              Changer token
+            </Button>
+          )}
         </div>
-        <RadarPreview
-          latitude={weather.latitude}
-          longitude={weather.longitude}
-          onClick={() => setRadarOpen(true)}
-        />
+        
+        {/* Mapbox token input */}
+        {showTokenInput && !mapboxToken ? (
+          <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+            <Label htmlFor="mapbox-token" className="text-xs text-muted-foreground">
+              Token Mapbox (pour carte interactive)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="mapbox-token"
+                type="text"
+                placeholder="pk.ey..."
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Button 
+                size="sm" 
+                onClick={handleSaveToken}
+                disabled={!tokenInput.trim()}
+                className="h-8"
+              >
+                OK
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Obtenez un token gratuit sur{" "}
+              <a 
+                href="https://account.mapbox.com/access-tokens/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary underline"
+              >
+                mapbox.com
+              </a>
+            </p>
+            {/* Fallback to simple radar */}
+            <RadarPreview
+              latitude={weather.latitude}
+              longitude={weather.longitude}
+              onClick={() => setRadarOpen(true)}
+            />
+          </div>
+        ) : mapboxToken ? (
+          <RadarMapPreview
+            latitude={weather.latitude}
+            longitude={weather.longitude}
+            mapboxToken={mapboxToken}
+            onClick={() => setRadarOpen(true)}
+          />
+        ) : (
+          <RadarPreview
+            latitude={weather.latitude}
+            longitude={weather.longitude}
+            onClick={() => setRadarOpen(true)}
+          />
+        )}
       </div>
       
-      <RadarDialog
-        open={radarOpen}
-        onOpenChange={setRadarOpen}
-        latitude={weather.latitude}
-        longitude={weather.longitude}
-        ville={weather.ville}
-      />
+      {/* Dialog - use Mapbox version if token is available */}
+      {mapboxToken ? (
+        <RadarMapDialog
+          open={radarOpen}
+          onOpenChange={setRadarOpen}
+          latitude={weather.latitude}
+          longitude={weather.longitude}
+          cityName={weather.ville}
+          mapboxToken={mapboxToken}
+        />
+      ) : (
+        <RadarDialog
+          open={radarOpen}
+          onOpenChange={setRadarOpen}
+          latitude={weather.latitude}
+          longitude={weather.longitude}
+          ville={weather.ville}
+        />
+      )}
     </div>
   );
 }
