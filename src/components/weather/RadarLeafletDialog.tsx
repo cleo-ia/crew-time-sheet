@@ -240,7 +240,7 @@ export function RadarLeafletDialog({
           </div>
           
           {/* Controls */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={handlePrevFrame}>
                 <SkipBack className="h-4 w-4" />
@@ -256,20 +256,26 @@ export function RadarLeafletDialog({
                 <SkipForward className="h-4 w-4" />
               </Button>
               
-              <Slider
-                value={[currentFrameIndex]}
-                max={radarData.allFrames.length - 1}
-                step={1}
-                onValueChange={(value) => {
-                  setIsPlaying(false);
-                  setCurrentFrameIndex(value[0]);
-                }}
-                className="flex-1"
-              />
-              
-              <span className="text-sm font-medium min-w-[50px] text-right">
-                {format(frameTime, "HH:mm", { locale: fr })}
-              </span>
+              <div className="flex-1 flex flex-col gap-1">
+                <Slider
+                  value={[currentFrameIndex]}
+                  max={radarData.allFrames.length - 1}
+                  step={1}
+                  onValueChange={(value) => {
+                    setIsPlaying(false);
+                    setCurrentFrameIndex(value[0]);
+                  }}
+                />
+                
+                {/* Time indicators below slider */}
+                <div className="flex justify-between text-xs text-muted-foreground px-1">
+                  <span>{format(new Date(radarData.allFrames[0].time * 1000), "HH:mm", { locale: fr })}</span>
+                  <span className="text-foreground font-medium">
+                    {format(frameTime, "HH:mm", { locale: fr })}
+                  </span>
+                  <span>{format(new Date(radarData.allFrames[radarData.allFrames.length - 1].time * 1000), "HH:mm", { locale: fr })}</span>
+                </div>
+              </div>
             </div>
           </div>
           
