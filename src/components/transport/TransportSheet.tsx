@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { format, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConducteurCombobox } from "@/components/transport/ConducteurCombobox";
 import { VehiculeCombobox } from "@/components/transport/VehiculeCombobox";
@@ -12,6 +10,7 @@ import { TransportDay } from "@/types/transport";
 import { useSaveTransport } from "@/hooks/useSaveTransport";
 import { useTransportData } from "@/hooks/useTransportData";
 import { useAutoSaveTransport } from "@/hooks/useAutoSaveTransport";
+import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 
 interface TransportSheetProps {
   selectedWeek: Date;
@@ -28,6 +27,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
   const saveTransport = useSaveTransport();
   const autoSave = useAutoSaveTransport();
   const { data: existingTransport } = useTransportData(ficheId || null);
+  const { data: macons = [] } = useMaconsByChantier(chantierId, selectedWeekString, chefId);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Générer les 5 jours de la semaine (lundi à vendredi) si pas de données existantes OU si fiche vide
@@ -193,9 +193,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
               </TableCell>
               <TableCell>
                 <ConducteurCombobox
-                  chantierId={chantierId}
-                  semaine={selectedWeekString}
-                  chefId={chefId}
+                  macons={macons}
                   date={day.date}
                   value={day.conducteurAllerId}
                   onChange={(value) => updateDay(index, "conducteurAllerId", value)}
@@ -203,9 +201,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
               </TableCell>
               <TableCell>
                 <ConducteurCombobox
-                  chantierId={chantierId}
-                  semaine={selectedWeekString}
-                  chefId={chefId}
+                  macons={macons}
                   date={day.date}
                   value={day.conducteurRetourId}
                   onChange={(value) => updateDay(index, "conducteurRetourId", value)}
