@@ -20,19 +20,15 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
   const [isPlaying, setIsPlaying] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  const tileSize = 256;
+  const size = 350;
   const zoom = 7;
   
-  // Calculer la tuile pour les coordonnées
-  const lon2tile = (lon: number, z: number) => Math.floor((lon + 180) / 360 * Math.pow(2, z));
-  const lat2tile = (lat: number, z: number) => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z));
-  
-  const tileX = lon2tile(longitude, zoom);
-  const tileY = lat2tile(latitude, zoom);
+  // Vérifier que les coordonnées sont valides
+  const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
   
   // Animation des frames
   useEffect(() => {
-    if (!radarData || !isPlaying || !open) {
+    if (!radarData || !isPlaying || !open || !hasValidCoords) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -51,7 +47,7 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
         clearInterval(intervalRef.current);
       }
     };
-  }, [radarData, isPlaying, open]);
+  }, [radarData, isPlaying, open, hasValidCoords]);
   
   // Reset quand on ouvre
   useEffect(() => {
@@ -61,15 +57,15 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
     }
   }, [open]);
   
-  if (!radarData) return null;
+  if (!radarData || !hasValidCoords) return null;
   
   const currentFrame = radarData.allFrames[currentFrameIndex];
   const isNowcast = currentFrameIndex >= radarData.pastFrames.length;
   const frameTime = currentFrame ? new Date(currentFrame.time * 1000) : new Date();
   
-  const osmUrl = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+  // URL du radar avec coordonnées directes (lat/lon)
   const radarUrl = currentFrame 
-    ? `${radarData.host}${currentFrame.path}/${tileSize}/${zoom}/${tileX}/${tileY}/2/1_1.png`
+    ? `${radarData.host}${currentFrame.path}/${size}/${zoom}/${latitude}/${longitude}/4/1_1.png`
     : "";
   
   const handlePrevFrame = () => {
@@ -103,18 +99,12 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
         
         <div className="space-y-4">
           {/* Carte radar */}
-          <div className="relative w-full h-[350px] rounded-lg overflow-hidden bg-muted">
-            <img 
-              src={osmUrl}
-              alt="Carte"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+          <div className="relative w-full h-[350px] rounded-lg overflow-hidden bg-slate-800">
             {radarUrl && (
               <img 
                 src={radarUrl}
-                alt="Radar"
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ opacity: 0.7 }}
+                alt="Radar précipitations"
+                className="absolute inset-0 w-full h-full object-contain"
               />
             )}
             
