@@ -18,10 +18,11 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
   const { data: radarData } = useRadarData();
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  const size = 350;
-  const zoom = 7;
+  const size = 256;
+  const zoom = 6;
   
   // Vérifier que les coordonnées sont valides
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
@@ -99,13 +100,22 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
         
         <div className="space-y-4">
           {/* Carte radar */}
-          <div className="relative w-full h-[350px] rounded-lg overflow-hidden bg-slate-800">
+          <div className="relative w-full h-[300px] rounded-lg overflow-hidden bg-slate-800">
             {radarUrl && (
               <img 
                 src={radarUrl}
                 alt="Radar précipitations"
-                className="absolute inset-0 w-full h-full object-contain"
+                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(true)}
               />
+            )}
+            
+            {/* Spinner de chargement */}
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-sm text-white/70">Chargement...</div>
+              </div>
             )}
             
             {/* Point central */}

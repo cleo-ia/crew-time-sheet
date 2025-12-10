@@ -13,44 +13,18 @@ interface RadarPreviewProps {
 export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps) {
   const { data: radarData, isLoading, error } = useRadarData();
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
   
-  const size = 250;
+  const size = 256;
   const zoom = 6;
   
   // Vérifier que les coordonnées sont valides
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
   
-  // Précharger les images
-  useEffect(() => {
-    if (!radarData || !hasValidCoords) return;
-    
-    let loadedCount = 0;
-    const totalFrames = radarData.allFrames.length;
-    
-    radarData.allFrames.forEach((frame) => {
-      const img = new Image();
-      img.onload = () => {
-        loadedCount++;
-        if (loadedCount === totalFrames) {
-          setImagesLoaded(true);
-        }
-      };
-      img.onerror = () => {
-        loadedCount++;
-        if (loadedCount === totalFrames) {
-          setImagesLoaded(true);
-        }
-      };
-      // Format URL avec coordonnées directes (lat/lon)
-      img.src = `${radarData.host}${frame.path}/${size}/${zoom}/${latitude}/${longitude}/4/1_1.png`;
-    });
-  }, [radarData, latitude, longitude, hasValidCoords, zoom, size]);
-  
   // Animation des frames
   useEffect(() => {
-    if (!radarData || !imagesLoaded) return;
+    if (!radarData) return;
     
     intervalRef.current = setInterval(() => {
       setCurrentFrameIndex((prev) => 
@@ -63,7 +37,7 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
         clearInterval(intervalRef.current);
       }
     };
-  }, [radarData, imagesLoaded]);
+  }, [radarData]);
   
   if (isLoading || !hasValidCoords) {
     return (
@@ -95,13 +69,25 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
       className="relative w-full h-[200px] rounded-lg overflow-hidden cursor-pointer group"
       onClick={onClick}
     >
-      {/* Image radar avec fond de carte intégré */}
+      {/* Fond de chargement */}
+      <div className="absolute inset-0 bg-slate-800" />
+      
+      {/* Image radar */}
       {radarUrl && (
         <img 
           src={radarUrl}
           alt="Radar précipitations"
-          className="absolute inset-0 w-full h-full object-contain bg-slate-800"
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
         />
+      )}
+      
+      {/* Spinner de chargement initial */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-sm text-white/70">Chargement...</div>
+        </div>
       )}
       
       {/* Indicateur en direct */}
