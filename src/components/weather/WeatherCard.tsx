@@ -132,19 +132,21 @@ export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardPro
       
       <Separator />
       
-      {/* Section Radar */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Radio className="h-4 w-4 text-red-500" />
-          <span className="font-medium text-sm">Radar Précipitations</span>
+      {/* Section Radar - hidden when dialog is open */}
+      {!radarOpen && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-red-500" />
+            <span className="font-medium text-sm">Radar Précipitations</span>
+          </div>
+          
+          <RadarLeafletPreview
+            latitude={weather.latitude}
+            longitude={weather.longitude}
+            onClick={() => setRadarOpen(true)}
+          />
         </div>
-        
-        <RadarLeafletPreview
-          latitude={weather.latitude}
-          longitude={weather.longitude}
-          onClick={() => setRadarOpen(true)}
-        />
-      </div>
+      )}
       
       {/* Dialog */}
       <RadarLeafletDialog
