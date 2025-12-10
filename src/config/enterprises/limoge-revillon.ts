@@ -15,6 +15,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
     ...defaultFeatures,
     contrainteVendredi12h: false, // TEMPORAIREMENT DÉSACTIVÉ pour test - remettre à true après
     ratioGlobal: true, // Actif: saisie des ratios journaliers (M3 béton, ML voile, M2 coffrage, météo)
+    pointsMeteo: true, // Actif: bouton météo avec radar et prévisions 12h
   },
   
   routes: {
