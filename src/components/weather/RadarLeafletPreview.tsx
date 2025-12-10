@@ -4,7 +4,6 @@ import { useRadarData } from "@/hooks/useRadarData";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 interface RadarLeafletPreviewProps {
   latitude: number;
@@ -39,10 +38,21 @@ export function RadarLeafletPreview({ latitude, longitude, onClick }: RadarLeafl
       touchZoom: false,
     });
     
-    // Add OpenStreetMap tile layer
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // Add OpenStreetMap tile layer with load event
+    const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
     }).addTo(map.current);
+    
+    // Fallback timeout in case tiles don't fire load event
+    const timeoutId = setTimeout(() => {
+      setMapLoaded(true);
+    }, 2000);
+    
+    // Listen for tile load completion
+    osmLayer.on('load', () => {
+      clearTimeout(timeoutId);
+      setMapLoaded(true);
+    });
     
     // Add marker for chantier location
     const redIcon = L.divIcon({
@@ -54,9 +64,8 @@ export function RadarLeafletPreview({ latitude, longitude, onClick }: RadarLeafl
     
     L.marker([latitude, longitude], { icon: redIcon }).addTo(map.current);
     
-    setMapLoaded(true);
-    
     return () => {
+      clearTimeout(timeoutId);
       map.current?.remove();
       map.current = null;
       radarLayer.current = null;
