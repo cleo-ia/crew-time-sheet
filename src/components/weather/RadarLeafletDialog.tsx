@@ -8,7 +8,6 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { PrecipForecast } from "./PrecipForecast";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 interface RadarLeafletDialogProps {
   open: boolean;
@@ -59,11 +58,22 @@ export function RadarLeafletDialog({
         zoomControl: true,
       });
       
-      // Add OpenStreetMap tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      // Add OpenStreetMap tile layer with load event
+      const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '© OpenStreetMap',
       }).addTo(map.current);
+      
+      // Fallback timeout in case tiles don't fire load event
+      const timeoutId = setTimeout(() => {
+        setMapLoaded(true);
+      }, 2000);
+      
+      // Listen for tile load completion
+      osmLayer.on('load', () => {
+        clearTimeout(timeoutId);
+        setMapLoaded(true);
+      });
       
       // Add marker for location
       const redIcon = L.divIcon({
@@ -74,8 +84,6 @@ export function RadarLeafletDialog({
       });
       
       L.marker([latitude, longitude], { icon: redIcon }).addTo(map.current);
-      
-      setMapLoaded(true);
     }, 100);
     
     return () => {
@@ -85,6 +93,7 @@ export function RadarLeafletDialog({
       radarLayer.current = null;
       setMapLoaded(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, latitude, longitude, hasValidCoords]);
   
   // Update radar layer when frame changes
