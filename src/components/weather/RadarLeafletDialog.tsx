@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Pause, Play, SkipBack, SkipForward, Radio } from "lucide-react";
 import { useRadarData } from "@/hooks/useRadarData";
 import { useHourlyForecast } from "@/hooks/useHourlyForecast";
@@ -254,15 +255,16 @@ export function RadarLeafletDialog({
                 <SkipForward className="h-4 w-4" />
               </Button>
               
-              <div 
-                className="flex-1 h-2 bg-muted rounded-full cursor-pointer overflow-hidden"
-                onClick={handleProgressClick}
-              >
-                <div 
-                  className="h-full bg-primary transition-all duration-100"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <Slider
+                value={[currentFrameIndex]}
+                max={radarData.allFrames.length - 1}
+                step={1}
+                onValueChange={(value) => {
+                  setIsPlaying(false);
+                  setCurrentFrameIndex(value[0]);
+                }}
+                className="flex-1"
+              />
               
               <span className="text-sm font-medium min-w-[50px] text-right">
                 {format(frameTime, "HH:mm", { locale: fr })}
