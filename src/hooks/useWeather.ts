@@ -12,6 +12,8 @@ export interface WeatherData {
   nuages: number;
   pression: number;
   ville: string;
+  latitude: number;
+  longitude: number;
   updatedAt: Date;
 }
 
@@ -81,6 +83,8 @@ async function fetchWeather(ville: string): Promise<WeatherData> {
     nuages: weatherData.current.cloud_cover,
     pression: Math.round(weatherData.current.surface_pressure),
     ville: name,
+    latitude,
+    longitude,
     updatedAt: new Date(),
   };
 }
