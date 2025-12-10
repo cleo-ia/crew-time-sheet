@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,6 +20,11 @@ interface ConducteurComboboxProps {
 export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, onChange, disabled = false, otherConducteursIds = [] }: ConducteurComboboxProps) => {
   const [open, setOpen] = useState(false);
   const { data: macons = [], isLoading } = useMaconsByChantier(chantierId, semaine, chefId);
+
+  // Callback stable pour éviter les re-renders parasites
+  const stableSetOpen = useCallback((value: boolean) => {
+    setOpen(value);
+  }, []);
 
   // Fonction helper pour détecter si un maçon est en trajet perso ce jour-là ou déjà affecté
   const getMaconStatus = (macon: any) => {
@@ -49,7 +54,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={stableSetOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -81,7 +86,12 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent 
+        className="w-full p-0" 
+        align="start"
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <Command>
           <CommandInput placeholder="Rechercher un conducteur..." />
           <CommandList>
@@ -99,7 +109,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
                     onSelect={() => {
                       if (!isDisabled) {
                         onChange(macon.id);
-                        setOpen(false);
+                        setTimeout(() => setOpen(false), 50);
                       }
                     }}
                   >
