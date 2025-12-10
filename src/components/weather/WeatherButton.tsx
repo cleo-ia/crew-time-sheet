@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Loader2, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,6 +11,7 @@ interface WeatherButtonProps {
 }
 
 export function WeatherButton({ ville }: WeatherButtonProps) {
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const { data: weather, isLoading, isError, refetch, isFetching } = useWeather(ville);
   
   // Si pas de ville, ne rien afficher
@@ -40,8 +42,15 @@ export function WeatherButton({ ville }: WeatherButtonProps) {
   const weatherInfo = getWeatherInfo(weather.weatherCode);
   const WeatherIcon = weatherInfo.icon;
   
+  // Close popover when radar dialog opens
+  const handleRadarDialogChange = (open: boolean) => {
+    if (open) {
+      setPopoverOpen(false);
+    }
+  };
+  
   return (
-    <Popover>
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
@@ -59,7 +68,8 @@ export function WeatherButton({ ville }: WeatherButtonProps) {
         <WeatherCard 
           weather={weather} 
           onRefresh={() => refetch()} 
-          isRefreshing={isFetching} 
+          isRefreshing={isFetching}
+          onRadarDialogChange={handleRadarDialogChange}
         />
       </PopoverContent>
     </Popover>
