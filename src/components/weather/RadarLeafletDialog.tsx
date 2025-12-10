@@ -211,7 +211,7 @@ export function RadarLeafletDialog({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto z-[60]">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto z-[60] mr-auto ml-4 sm:ml-8">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Radio className="h-5 w-5 text-red-500" />
