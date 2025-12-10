@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Lock, Users, FileText, Building2, Clock, Umbrella, Coffee, Car } from "lucide-react";
+import { Eye, Lock, Users, FileText, Building2, Clock, Umbrella, Coffee, Car, CalendarX } from "lucide-react";
 import { useRHHistorique } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -39,7 +39,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
   return (
     <div className="space-y-4">
       {closedPeriods.map((period) => (
-        <Card key={period.id} className="p-6">
+        <Card key={period.id} className="p-6 bg-gradient-to-br from-background to-muted/20">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -70,99 +70,100 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {/* Salariés */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {/* Salariés - Bleu pastel */}
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
                 <Users className="h-4 w-4" />
-                <span className="text-xs">Salariés</span>
+                <span className="text-xs font-medium">Salariés</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.salaries}</p>
+              <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">{period.salaries}</p>
             </div>
 
-            {/* Fiches */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Fiches - Indigo pastel */}
+            <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-1">
                 <FileText className="h-4 w-4" />
-                <span className="text-xs">Fiches</span>
+                <span className="text-xs font-medium">Fiches</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.fiches}</p>
+              <p className="text-lg font-semibold text-indigo-900 dark:text-indigo-100">{period.fiches}</p>
             </div>
 
-            {/* Chantiers */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Chantiers - Slate pastel */}
+            <div className="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
                 <Building2 className="h-4 w-4" />
-                <span className="text-xs">Chantiers</span>
+                <span className="text-xs font-medium">Chantiers</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.nbChantiers}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{period.nbChantiers}</p>
             </div>
 
-            {/* Heures normales */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Heures normales - Teal pastel */}
+            <div className="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-1">
                 <Clock className="h-4 w-4" />
-                <span className="text-xs">H. Normales</span>
+                <span className="text-xs font-medium">H. Normales</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.totalHeuresNormales}h</p>
+              <p className="text-lg font-semibold text-teal-900 dark:text-teal-100">{period.totalHeuresNormales}h</p>
             </div>
 
-            {/* Heures supp */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-xs">H. Supp</span>
+            {/* Heures supp - Amber pastel */}
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+                <Clock className="h-4 w-4" />
+                <span className="text-xs font-medium">H. Supp</span>
               </div>
-              <p className="text-lg font-semibold text-primary">{period.totalHeuresSupp}h</p>
+              <p className="text-lg font-semibold text-amber-700 dark:text-amber-200">{period.totalHeuresSupp}h</p>
               {(period.totalHeuresSupp25 > 0 || period.totalHeuresSupp50 > 0) && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
                   {period.totalHeuresSupp25}h à 25% / {period.totalHeuresSupp50}h à 50%
                 </p>
               )}
             </div>
 
-            {/* Absences */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <span className="text-xs">Absences</span>
+            {/* Absences - Rose pastel */}
+            <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 mb-1">
+                <CalendarX className="h-4 w-4" />
+                <span className="text-xs font-medium">Absences</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.totalAbsences}j</p>
+              <p className="text-lg font-semibold text-rose-900 dark:text-rose-100">{period.totalAbsences}j</p>
             </div>
 
-            {/* Intempéries */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Intempéries - Cyan pastel */}
+            <div className="bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 mb-1">
                 <Umbrella className="h-4 w-4" />
-                <span className="text-xs">Intempéries</span>
+                <span className="text-xs font-medium">Intempéries</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.totalIntemperies}h</p>
+              <p className="text-lg font-semibold text-cyan-900 dark:text-cyan-100">{period.totalIntemperies}h</p>
             </div>
 
-            {/* Paniers */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Paniers - Orange pastel */}
+            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
                 <Coffee className="h-4 w-4" />
-                <span className="text-xs">Paniers</span>
+                <span className="text-xs font-medium">Paniers</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.totalPaniers}</p>
+              <p className="text-lg font-semibold text-orange-900 dark:text-orange-100">{period.totalPaniers}</p>
             </div>
 
-            {/* Trajets */}
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            {/* Trajets - Violet pastel */}
+            <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 mb-1">
                 <Car className="h-4 w-4" />
-                <span className="text-xs">Trajets</span>
+                <span className="text-xs font-medium">Trajets</span>
               </div>
-              <p className="text-lg font-semibold text-foreground">{period.totalTrajets}</p>
+              <p className="text-lg font-semibold text-violet-900 dark:text-violet-100">{period.totalTrajets}</p>
             </div>
 
-            {/* Total Heures */}
-            <div className="bg-primary/10 rounded-lg p-3 border border-primary/30">
-              <div className="flex items-center gap-2 text-primary mb-1">
+            {/* Total Heures - Emerald accentué */}
+            <div className="bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs font-medium">Total Heures</span>
               </div>
-              <p className="text-lg font-bold text-primary">{period.totalHeures}h</p>
+              <p className="text-lg font-bold text-emerald-800 dark:text-emerald-200">{period.totalHeures}h</p>
             </div>
           </div>
 
