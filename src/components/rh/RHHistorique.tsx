@@ -72,7 +72,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {/* Salariés */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Users className="h-4 w-4" />
                 <span className="text-xs">Salariés</span>
@@ -81,7 +81,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Fiches */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <FileText className="h-4 w-4" />
                 <span className="text-xs">Fiches</span>
@@ -90,7 +90,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Chantiers */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Building2 className="h-4 w-4" />
                 <span className="text-xs">Chantiers</span>
@@ -99,7 +99,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Heures normales */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs">H. Normales</span>
@@ -108,7 +108,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Heures supp */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs">H. Supp</span>
@@ -122,7 +122,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Absences */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <CalendarX className="h-4 w-4" />
                 <span className="text-xs">Absences</span>
@@ -131,7 +131,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Intempéries */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Umbrella className="h-4 w-4" />
                 <span className="text-xs">Intempéries</span>
@@ -140,7 +140,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Paniers */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Coffee className="h-4 w-4" />
                 <span className="text-xs">Paniers</span>
@@ -149,7 +149,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Trajets */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Car className="h-4 w-4" />
                 <span className="text-xs">Trajets</span>
@@ -158,7 +158,7 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
             </div>
 
             {/* Total Heures */}
-            <div className="bg-muted/40 rounded-lg p-3">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'hsl(var(--theme-consultation-rh) / 0.15)' }}>
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs">Total Heures</span>
