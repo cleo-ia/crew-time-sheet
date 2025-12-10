@@ -37,13 +37,14 @@ export function RadarLeafletDialog({
   
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
   
-  // Reset state when dialog opens
+  // Reset state when dialog opens - position at live time, paused
   useEffect(() => {
-    if (open) {
-      setCurrentFrameIndex(0);
-      setIsPlaying(true);
+    if (open && radarData) {
+      const liveFrameIndex = radarData.pastFrames.length - 1;
+      setCurrentFrameIndex(Math.max(0, liveFrameIndex));
+      setIsPlaying(false);
     }
-  }, [open]);
+  }, [open, radarData]);
   
   // Initialize map when dialog opens
   useEffect(() => {
