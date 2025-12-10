@@ -1,15 +1,25 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+
+// Type simplifié pour les maçons passés en props
+interface MaconData {
+  id: string;
+  prenom: string | null;
+  nom: string | null;
+  isChef?: boolean;
+  ficheJours?: Array<{
+    date: string;
+    heures?: number;
+    trajet_perso?: boolean;
+  }>;
+}
 
 interface ConducteurComboboxProps {
-  chantierId: string | null;
-  semaine: string;
-  chefId: string;
+  macons: MaconData[];
   date: string;
   value: string;
   onChange: (value: string) => void;
@@ -17,20 +27,21 @@ interface ConducteurComboboxProps {
   otherConducteursIds?: string[];
 }
 
-export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, onChange, disabled = false, otherConducteursIds = [] }: ConducteurComboboxProps) => {
+export const ConducteurCombobox = ({ 
+  macons, 
+  date, 
+  value, 
+  onChange, 
+  disabled = false, 
+  otherConducteursIds = [] 
+}: ConducteurComboboxProps) => {
   const [open, setOpen] = useState(false);
-  const { data: macons = [], isLoading } = useMaconsByChantier(chantierId, semaine, chefId);
-
-  // Callback stable pour éviter les re-renders parasites
-  const stableSetOpen = useCallback((value: boolean) => {
-    setOpen(value);
-  }, []);
 
   // Fonction helper pour détecter si un maçon est en trajet perso ce jour-là ou déjà affecté
-  const getMaconStatus = (macon: any) => {
+  const getMaconStatus = (macon: MaconData) => {
     if (!macon.ficheJours || macon.ficheJours.length === 0) return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false };
     
-    const jourData = macon.ficheJours.find((j: any) => j.date === date);
+    const jourData = macon.ficheJours.find((j) => j.date === date);
     if (!jourData) return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false };
     
     const isDejaAffecte = otherConducteursIds.includes(macon.id);
@@ -40,21 +51,13 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
   };
 
   const selectedMacon = macons.find(macon => macon.id === value);
-  const selectedStatus = getMaconStatus(selectedMacon || {});
+  const selectedStatus = getMaconStatus(selectedMacon || { id: "", prenom: null, nom: null });
   const isSelectedInTrajetPerso = selectedStatus.isTrajetPerso;
   const isSelectedDejaAffecte = selectedStatus.isDejaAffecte;
   const isSelectedAbsent = selectedStatus.isAbsent;
 
-  if (isLoading) {
-    return (
-      <Button variant="outline" disabled className="w-full justify-between h-10">
-        <span className="text-muted-foreground">Chargement...</span>
-      </Button>
-    );
-  }
-
   return (
-    <Popover open={open} onOpenChange={stableSetOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -86,12 +89,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-full p-0" 
-        align="start"
-        onPointerDownCapture={(e) => e.stopPropagation()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput placeholder="Rechercher un conducteur..." />
           <CommandList>
@@ -109,7 +107,7 @@ export const ConducteurCombobox = ({ chantierId, semaine, chefId, date, value, o
                     onSelect={() => {
                       if (!isDisabled) {
                         onChange(macon.id);
-                        setTimeout(() => setOpen(false), 50);
+                        setOpen(false);
                       }
                     }}
                   >

@@ -213,9 +213,7 @@ export const TransportDayAccordion = ({
                       <div>
                         <Label className="text-xs">Conducteur Matin *</Label>
                         <ConducteurCombobox
-                          chantierId={chantierId}
-                          semaine={semaine}
-                          chefId={chefId}
+                          macons={macons}
                           date={day.date}
                           value={vehicule.conducteurMatinId}
                           onChange={(value) => updateVehicule(vehicule.id, "conducteurMatinId", value)}
@@ -232,9 +230,7 @@ export const TransportDayAccordion = ({
                       <div>
                         <Label className="text-xs">Conducteur Soir *</Label>
                         <ConducteurCombobox
-                          chantierId={chantierId}
-                          semaine={semaine}
-                          chefId={chefId}
+                          macons={macons}
                           date={day.date}
                           value={vehicule.conducteurSoirId}
                           onChange={(value) => updateVehicule(vehicule.id, "conducteurSoirId", value)}
