@@ -98,24 +98,24 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
               <p className="text-lg font-semibold text-foreground">{period.nbChantiers}</p>
             </div>
 
-            {/* Heures normales - léger accent teal */}
-            <div className="bg-teal-50/50 dark:bg-teal-950/20 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-1">
+            {/* Heures normales */}
+            <div className="bg-muted/40 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs">H. Normales</span>
               </div>
               <p className="text-lg font-semibold text-foreground">{period.totalHeuresNormales}h</p>
             </div>
 
-            {/* Heures supp - accent amber */}
-            <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+            {/* Heures supp */}
+            <div className="bg-muted/40 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">H. Supp</span>
+                <span className="text-xs">H. Supp</span>
               </div>
-              <p className="text-lg font-semibold text-amber-700 dark:text-amber-300">{period.totalHeuresSupp}h</p>
+              <p className="text-lg font-semibold text-foreground">{period.totalHeuresSupp}h</p>
               {(period.totalHeuresSupp25 > 0 || period.totalHeuresSupp50 > 0) && (
-                <p className="text-xs text-amber-600/70 dark:text-amber-400/70">
+                <p className="text-xs text-muted-foreground">
                   {period.totalHeuresSupp25}h à 25% / {period.totalHeuresSupp50}h à 50%
                 </p>
               )}
@@ -157,13 +157,13 @@ export const RHHistorique = ({ filters, onSelectFiche }: RHHistoriqueProps) => {
               <p className="text-lg font-semibold text-foreground">{period.totalTrajets}</p>
             </div>
 
-            {/* Total Heures - accent emerald */}
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+            {/* Total Heures */}
+            <div className="bg-muted/40 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">Total Heures</span>
+                <span className="text-xs">Total Heures</span>
               </div>
-              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{period.totalHeures}h</p>
+              <p className="text-lg font-bold text-foreground">{period.totalHeures}h</p>
             </div>
           </div>
 
