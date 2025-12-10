@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, Sun as SunIcon, ThermometerSun, Radio } from "lucide-react";
@@ -13,20 +13,14 @@ interface WeatherCardProps {
   weather: WeatherData;
   onRefresh: () => void;
   isRefreshing: boolean;
-  onRadarDialogChange?: (open: boolean) => void;
 }
 
-export function WeatherCard({ weather, onRefresh, isRefreshing, onRadarDialogChange }: WeatherCardProps) {
+export function WeatherCard({ weather, onRefresh, isRefreshing }: WeatherCardProps) {
   const [radarOpen, setRadarOpen] = useState(false);
   
   const weatherInfo = getWeatherInfo(weather.weatherCode);
   const WeatherIcon = weatherInfo.icon;
   const windDir = getWindDirection(weather.ventDirection);
-  
-  // Notify parent when radar dialog state changes
-  useEffect(() => {
-    onRadarDialogChange?.(radarOpen);
-  }, [radarOpen, onRadarDialogChange]);
   
   // UV Index description
   const getUvDescription = (uv: number | null) => {
