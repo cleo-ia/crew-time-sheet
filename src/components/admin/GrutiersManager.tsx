@@ -261,7 +261,7 @@ export const GrutiersManager = () => {
               <div className="space-y-2">
                 <Label>Échelon</Label>
                 <Input
-                  placeholder="Ex: A, B, C..."
+                  placeholder="Ex: I, II, III..."
                   value={formData.echelon}
                   onChange={(e) => setFormData({ ...formData, echelon: e.target.value })}
                 />
@@ -269,7 +269,7 @@ export const GrutiersManager = () => {
               <div className="space-y-2">
                 <Label>Niveau</Label>
                 <Input
-                  placeholder="Ex: I, II, III..."
+                  placeholder="Ex: A, B, C..."
                   value={formData.niveau}
                   onChange={(e) => setFormData({ ...formData, niveau: e.target.value })}
                 />
