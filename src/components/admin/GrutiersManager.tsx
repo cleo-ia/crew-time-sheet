@@ -269,7 +269,7 @@ export const GrutiersManager = () => {
               <div className="space-y-2">
                 <Label>Niveau</Label>
                 <Input
-                  placeholder="Ex: A, B, C..."
+                  placeholder="Ex: 1, 2, 3..."
                   value={formData.niveau}
                   onChange={(e) => setFormData({ ...formData, niveau: e.target.value })}
                 />
