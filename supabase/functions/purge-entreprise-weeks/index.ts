@@ -27,36 +27,79 @@ Deno.serve(async (req) => {
 
     console.log(`Purge entreprise ${entreprise_id} pour semaines: ${semaines.join(", ")}`);
 
-    // 1. Récupérer les IDs des fiches concernées
-    const { data: fiches, error: fichesError } = await supabase
+    const deleted: Record<string, number> = {};
+
+    // 1. Récupérer les fiches avec chantier_id (maçons, grutiers, etc.)
+    const { data: fichesChantier, error: fichesChantierError } = await supabase
       .from("fiches")
       .select("id, chantier_id, chantiers!inner(entreprise_id)")
       .eq("chantiers.entreprise_id", entreprise_id)
       .in("semaine", semaines);
 
-    if (fichesError) {
-      console.error("Erreur récupération fiches:", fichesError);
-      throw fichesError;
+    if (fichesChantierError) {
+      console.error("Erreur récupération fiches chantier:", fichesChantierError);
     }
 
-    const ficheIds = fiches?.map((f) => f.id) || [];
-    console.log(`${ficheIds.length} fiches à supprimer`);
+    const fichesChantierIds = fichesChantier?.map((f) => f.id) || [];
+    console.log(`${fichesChantierIds.length} fiches chantier à supprimer`);
 
-    if (ficheIds.length === 0) {
+    // 2. Récupérer les fiches finisseurs (sans chantier_id, liées via salarie_id)
+    const { data: fichesFinisseur, error: fichesFinisseurError } = await supabase
+      .from("fiches")
+      .select("id, salarie_id, utilisateurs!fiches_salarie_id_fkey(entreprise_id)")
+      .is("chantier_id", null)
+      .not("salarie_id", "is", null)
+      .eq("utilisateurs.entreprise_id", entreprise_id)
+      .in("semaine", semaines);
+
+    if (fichesFinisseurError) {
+      console.error("Erreur récupération fiches finisseur:", fichesFinisseurError);
+    }
+
+    const fichesFinisseurIds = fichesFinisseur?.map((f) => f.id) || [];
+    console.log(`${fichesFinisseurIds.length} fiches finisseur à supprimer`);
+
+    // Combiner tous les IDs de fiches
+    const allFicheIds = [...fichesChantierIds, ...fichesFinisseurIds];
+    console.log(`Total: ${allFicheIds.length} fiches à supprimer`);
+
+    if (allFicheIds.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "Aucune fiche à supprimer", deleted: {} }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const deleted: Record<string, number> = {};
+    // 3. Supprimer fiches_transport_finisseurs_jours
+    const { data: ftfIds } = await supabase
+      .from("fiches_transport_finisseurs")
+      .select("id")
+      .in("fiche_id", allFicheIds);
 
-    // 2. Supprimer fiches_transport_jours
+    if (ftfIds && ftfIds.length > 0) {
+      const ftfIdList = ftfIds.map((ftf) => ftf.id);
+      const { error: ftfjError } = await supabase
+        .from("fiches_transport_finisseurs_jours")
+        .delete()
+        .in("fiche_transport_finisseur_id", ftfIdList);
+      if (ftfjError) console.error("Erreur fiches_transport_finisseurs_jours:", ftfjError);
+      deleted.fiches_transport_finisseurs_jours = ftfIdList.length;
+    }
+
+    // 4. Supprimer fiches_transport_finisseurs
+    const { error: ftfError } = await supabase
+      .from("fiches_transport_finisseurs")
+      .delete()
+      .in("fiche_id", allFicheIds);
+    if (ftfError) console.error("Erreur fiches_transport_finisseurs:", ftfError);
+    deleted.fiches_transport_finisseurs = ftfIds?.length || 0;
+
+    // 5. Supprimer fiches_transport_jours (pour fiches chantier)
     const { data: ftIds } = await supabase
       .from("fiches_transport")
       .select("id")
-      .in("fiche_id", ficheIds);
-    
+      .in("fiche_id", allFicheIds);
+
     if (ftIds && ftIds.length > 0) {
       const ftIdList = ftIds.map((ft) => ft.id);
       const { error: ftjError } = await supabase
@@ -67,36 +110,38 @@ Deno.serve(async (req) => {
       deleted.fiches_transport_jours = ftIdList.length;
     }
 
-    // 3. Supprimer fiches_transport
+    // 6. Supprimer fiches_transport
     const { error: ftError } = await supabase
       .from("fiches_transport")
       .delete()
-      .in("fiche_id", ficheIds);
+      .in("fiche_id", allFicheIds);
     if (ftError) console.error("Erreur fiches_transport:", ftError);
     deleted.fiches_transport = ftIds?.length || 0;
 
-    // 4. Supprimer signatures
+    // 7. Supprimer signatures
     const { error: sigError } = await supabase
       .from("signatures")
       .delete()
-      .in("fiche_id", ficheIds);
+      .in("fiche_id", allFicheIds);
     if (sigError) console.error("Erreur signatures:", sigError);
 
-    // 5. Supprimer fiches_jours
+    // 8. Supprimer fiches_jours
     const { error: fjError } = await supabase
       .from("fiches_jours")
       .delete()
-      .in("fiche_id", ficheIds);
+      .in("fiche_id", allFicheIds);
     if (fjError) console.error("Erreur fiches_jours:", fjError);
 
-    // 6. Supprimer fiches
+    // 9. Supprimer fiches
     const { error: fError } = await supabase
       .from("fiches")
       .delete()
-      .in("id", ficheIds);
+      .in("id", allFicheIds);
     if (fError) console.error("Erreur fiches:", fError);
 
-    deleted.fiches = ficheIds.length;
+    deleted.fiches_chantier = fichesChantierIds.length;
+    deleted.fiches_finisseur = fichesFinisseurIds.length;
+    deleted.fiches_total = allFicheIds.length;
 
     console.log("Purge terminée:", deleted);
 
