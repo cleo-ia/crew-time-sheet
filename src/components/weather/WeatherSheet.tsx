@@ -199,7 +199,7 @@ export function WeatherSheet({
         side="right" 
         className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto p-0"
       >
-        <SheetHeader className="p-4 pb-2 border-b">
+        <SheetHeader className="p-4 pb-2 border-b pr-12">
           <div className="flex items-center justify-between">
             <SheetTitle className="flex items-center gap-2">
               <Radio className="h-5 w-5 text-primary" />
