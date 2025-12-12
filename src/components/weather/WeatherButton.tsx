@@ -1,15 +1,16 @@
+import { useState } from "react";
 import { Loader2, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useWeather } from "@/hooks/useWeather";
 import { getWeatherInfo, getSeverityColor } from "@/lib/weatherUtils";
-import { WeatherCard } from "./WeatherCard";
+import { WeatherSheet } from "./WeatherSheet";
 
 interface WeatherButtonProps {
   ville: string | null | undefined;
 }
 
 export function WeatherButton({ ville }: WeatherButtonProps) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const { data: weather, isLoading, isError, refetch, isFetching } = useWeather(ville);
   
   // Si pas de ville, ne rien afficher
@@ -41,27 +42,27 @@ export function WeatherButton({ ville }: WeatherButtonProps) {
   const WeatherIcon = weatherInfo.icon;
   
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={`gap-2 ${getSeverityColor(weatherInfo.severity)} border-border/50 hover:bg-muted/50`}
-        >
-          <WeatherIcon className="h-4 w-4" />
-          <span className="font-medium">{weather.temperature}°C</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            {weather.ville}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">
-        <WeatherCard 
-          weather={weather} 
-          onRefresh={() => refetch()} 
-          isRefreshing={isFetching} 
-        />
-      </PopoverContent>
-    </Popover>
+    <>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => setSheetOpen(true)}
+        className={`gap-2 ${getSeverityColor(weatherInfo.severity)} border-border/50 hover:bg-muted/50`}
+      >
+        <WeatherIcon className="h-4 w-4" />
+        <span className="font-medium">{weather.temperature}°C</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">
+          {weather.ville}
+        </span>
+      </Button>
+      
+      <WeatherSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        weather={weather}
+        onRefresh={() => refetch()}
+        isRefreshing={isFetching}
+      />
+    </>
   );
 }
