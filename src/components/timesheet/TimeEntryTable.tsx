@@ -681,11 +681,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
 
       const defaults = {
-        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0 },
-        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0 },
-        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0 },
-        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0 },
-        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, heuresIntemperie: 0 },
+        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
       } as const;
 
       const toAdd = macons
@@ -710,9 +710,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                   panierRepas: PA,
                   trajet: T > 0,
                   trajetPerso: !!j.trajet_perso,
+                  grandDeplacement: (j as any).code_trajet === "GD",
                   heuresIntemperie: HI,
                   absent: hours === 0 && !PA && T === 0 && HI === 0,
                   commentaire: (j as any).commentaire || "",
+                  codeTrajet: ((j as any).code_trajet || "A_COMPLETER") as CodeTrajet,
                 };
               }
             });
