@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthProvider from "@/contexts/AuthProvider";
 import InstallPWA from "@/components/pwa/InstallPWA";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import Index from "./pages/Index";
 import ValidationConducteur from "./pages/ValidationConducteur";
 import ConsultationRH from "./pages/ConsultationRH";
@@ -36,8 +37,9 @@ const App = () => (
       <Sonner />
       <InstallPWA />
       <AuthProvider>
-        <BrowserRouter>
-        <Routes>
+        <ErrorBoundary>
+          <BrowserRouter>
+          <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/bootstrap" element={<Bootstrap />} />
           <Route path="/install" element={<Install />} />
@@ -112,9 +114,10 @@ const App = () => (
             />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        </BrowserRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
