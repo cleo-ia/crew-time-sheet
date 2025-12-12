@@ -43,8 +43,10 @@ const ConsultationRH = () => {
   const handleExport = async (exportFormat: "csv" | "excel") => {
     if (exportFormat === "excel") {
       try {
-        // Déterminer le mois à exporter (toujours le mois complet avec les filtres actifs)
-        const mois = filters.periode || format(new Date(), "yyyy-MM");
+        // Déterminer le mois à exporter
+        const mois = (!filters.periode || filters.periode === "all") 
+          ? format(new Date(), "yyyy-MM") 
+          : filters.periode;
 
         console.log(`[Export Excel] Vérification des absences pour ${mois} avec filtres actifs:`, filters);
 
@@ -118,6 +120,8 @@ const ConsultationRH = () => {
             <Button 
               className="bg-accent hover:bg-accent-hover"
               onClick={() => setShowClotureDialog(true)}
+              disabled={!filters.periode || filters.periode === "all"}
+              title={!filters.periode || filters.periode === "all" ? "Sélectionnez un mois spécifique pour clôturer" : ""}
             >
               <Lock className="h-4 w-4 mr-2" />
               Clôturer la période

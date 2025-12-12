@@ -41,7 +41,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
 
   // Formater le nom du mois pour l'affichage
   const getMonthLabel = () => {
-    if (!filters.periode) return "N/A";
+    if (!filters.periode || filters.periode === "all") return "Toutes les périodes";
     const [year, month] = filters.periode.split("-").map(Number);
     const date = new Date(year, month - 1, 1);
     return format(date, "MMMM yyyy", { locale: fr });
@@ -49,7 +49,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
 
   // Charger les données à l'ouverture du dialog
   useEffect(() => {
-    if (open && filters.periode) {
+    if (open && filters.periode && filters.periode !== "all") {
       loadPreviewData();
     } else {
       setPreviewData(null);
@@ -116,10 +116,10 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
   };
 
   const handleCloture = async () => {
-    if (!filters.periode) {
+    if (!filters.periode || filters.periode === "all") {
       toast({
         title: "Période requise",
-        description: "Veuillez sélectionner un mois à clôturer.",
+        description: "Veuillez sélectionner un mois spécifique à clôturer.",
         variant: "destructive",
       });
       return;
