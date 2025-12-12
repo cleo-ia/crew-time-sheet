@@ -199,22 +199,22 @@ export function WeatherSheet({
         side="right" 
         className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto p-0"
       >
-        <SheetHeader className="p-4 pb-2 border-b pr-12">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2">
-              <Radio className="h-5 w-5 text-primary" />
-              Points Météo - {weather.ville}
-            </SheetTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="h-8 w-8"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+        {/* Bouton refresh positionné à côté du X */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="absolute right-12 top-4 h-4 w-4 rounded-sm opacity-70 hover:opacity-100 z-10"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
+        
+        <SheetHeader className="p-4 pb-2 border-b pr-20">
+          <SheetTitle className="flex items-center gap-2">
+            <Radio className="h-5 w-5 text-primary" />
+            Points Météo - {weather.ville}
+          </SheetTitle>
           <p className="text-xs text-muted-foreground">
             Mis à jour : {format(weather.updatedAt, "dd/MM à HH:mm", { locale: fr })}
           </p>
