@@ -34,12 +34,37 @@ export interface MaconWithFiche {
 }
 
 export const useMaconsByChantier = (chantierId: string | null, semaine: string, chefId?: string) => {
-  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  let entrepriseId = localStorage.getItem("current_entreprise_id");
   
   return useQuery({
     queryKey: ["macons-chantier", chantierId, semaine, chefId, entrepriseId],
     queryFn: async () => {
-      if (!chantierId || !entrepriseId) return [];
+      try {
+        // Tentative de restauration de l'entrepriseId si manquant
+        if (!entrepriseId) {
+          console.warn("[useMaconsByChantier] entrepriseId manquant, tentative de restauration...");
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: userRole } = await supabase
+              .from("user_roles")
+              .select("entreprise_id")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            if (userRole?.entreprise_id) {
+              entrepriseId = userRole.entreprise_id;
+              localStorage.setItem("current_entreprise_id", entrepriseId);
+              console.log("[useMaconsByChantier] entrepriseId restauré:", entrepriseId);
+            }
+          }
+        }
+
+        if (!chantierId || !entrepriseId) {
+          console.warn("[useMaconsByChantier] chantierId ou entrepriseId manquant, retour tableau vide");
+          return [];
+        }
 
       const allEmployees: MaconWithFiche[] = [];
       
@@ -241,7 +266,11 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         allEmployees.push(...maconsWithStatus.filter(Boolean) as MaconWithFiche[]);
       }
 
-      return allEmployees;
+        return allEmployees;
+      } catch (error) {
+        console.error("[useMaconsByChantier] Erreur globale:", error);
+        return [];
+      }
     },
     enabled: !!chantierId && !!semaine,
     refetchOnMount: "always",

@@ -4,7 +4,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3 } from "lucide-react";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFicheModifiable } from "@/hooks/useFicheModifiable";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { WeatherButton } from "@/components/weather/WeatherButton";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -617,7 +618,20 @@ const Index = () => {
                         ⚠️ La fiche de trajet doit être complétée avant de collecter les signatures
                       </p>
                     </div>
-                  )}
+                   )}
+                  
+                  {/* Bouton discret de purge cache */}
+                  <button
+                    onClick={() => {
+                      if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
+                        clearCacheAndReload();
+                      }
+                    }}
+                    className="mt-4 text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Problème d'affichage ? Vider le cache
+                  </button>
                 </div>
               </Card>
             </>
