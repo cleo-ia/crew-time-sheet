@@ -59,7 +59,10 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
 
   // Filtrer les semaines qui appartiennent au mois sélectionné
   const semainesFiltrees = useMemo(() => {
-    if (!filters.periode || semaines.length === 0) return semaines;
+    if (semaines.length === 0) return semaines;
+    
+    // Si "Toutes" est sélectionné, retourner toutes les semaines
+    if (!filters.periode || filters.periode === "all") return semaines;
     
     const periodeDate = parse(filters.periode, "yyyy-MM", new Date());
     const debutMois = startOfMonth(periodeDate);
@@ -97,6 +100,7 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
               <SelectValue placeholder="Mois" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Toutes</SelectItem>
               {derniersMois.map((mois) => (
                 <SelectItem key={mois.value} value={mois.value}>
                   {mois.label}

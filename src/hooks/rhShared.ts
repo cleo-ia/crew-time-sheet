@@ -169,10 +169,18 @@ export const calculateHeuresSuppBTP = (
  * Utilisée par l'écran ET l'export Excel pour garantir la cohérence
  */
 export const buildRHConsolidation = async (filters: RHFilters): Promise<EmployeeWithDetails[]> => {
-  const mois = filters.periode || format(new Date(), "yyyy-MM");
-  const [year, month] = mois.split("-").map(Number);
-  const dateDebut = startOfMonth(new Date(year, month - 1));
-  const dateFin = endOfMonth(new Date(year, month - 1));
+  const mois = filters.periode;
+  const isAllPeriodes = !mois || mois === "all";
+  
+  // Calculer les bornes de date si une période spécifique est sélectionnée
+  let dateDebut: Date | null = null;
+  let dateFin: Date | null = null;
+  
+  if (!isAllPeriodes) {
+    const [year, month] = mois.split("-").map(Number);
+    dateDebut = startOfMonth(new Date(year, month - 1));
+    dateFin = endOfMonth(new Date(year, month - 1));
+  }
   
   // Récupérer l'entreprise_id depuis localStorage
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -263,7 +271,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const { data: fichesFinisseurs, error: finisseursError } = await finisseursQuery;
   if (finisseursError) throw finisseursError;
 
-  // Combiner toutes les fiches et filtrer par mois
+  // Combiner toutes les fiches et filtrer par mois (ou toutes si période = "all")
   const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || [])];
   const fichesDuMois = toutesLesFiches.filter(fiche => {
     if (!fiche.semaine) return false;
@@ -275,10 +283,15 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         return fiche.semaine === filters.semaine;
       }
       
+      // Si "Toutes" les périodes, inclure toutes les fiches
+      if (isAllPeriodes) {
+        return true;
+      }
+      
       // Sinon filtre par mois: inclure les semaines qui chevauchent le mois
       const fridayOfWeek = new Date(mondayOfWeek);
       fridayOfWeek.setDate(fridayOfWeek.getDate() + 4);
-      return mondayOfWeek <= dateFin && fridayOfWeek >= dateDebut;
+      return mondayOfWeek <= dateFin! && fridayOfWeek >= dateDebut!;
     } catch {
       return false;
     }
@@ -327,9 +340,14 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les affectations finisseurs pour filtrage
   let affectationsQuery = supabase
     .from("affectations_finisseurs_jours")
-    .select("finisseur_id, conducteur_id, date")
-    .gte("date", format(dateDebut, "yyyy-MM-dd"))
-    .lte("date", format(dateFin, "yyyy-MM-dd"));
+    .select("finisseur_id, conducteur_id, date");
+  
+  // Appliquer les filtres de date seulement si on a une période spécifique
+  if (!isAllPeriodes && dateDebut && dateFin) {
+    affectationsQuery = affectationsQuery
+      .gte("date", format(dateDebut, "yyyy-MM-dd"))
+      .lte("date", format(dateFin, "yyyy-MM-dd"));
+  }
 
   // Filtre par conducteur pour finisseurs
   if (filters.conducteur && filters.conducteur !== "all") {
@@ -424,10 +442,10 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
 
       for (const jour of joursFiche) {
-        // 🔥 NOUVEAU : Filtre par date quand on consolide par mois
-        if (filters.periode && (!filters.semaine || filters.semaine === "all")) {
+        // 🔥 NOUVEAU : Filtre par date quand on consolide par mois (sauf si "Toutes" périodes)
+        if (!isAllPeriodes && filters.periode && (!filters.semaine || filters.semaine === "all")) {
           const jourDate = new Date(jour.date);
-          if (jourDate < dateDebut || jourDate > dateFin) {
+          if (dateDebut && dateFin && (jourDate < dateDebut || jourDate > dateFin)) {
             continue; // Ce jour n'est pas dans le mois, on l'ignore
           }
         }

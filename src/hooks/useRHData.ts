@@ -158,11 +158,12 @@ export const useRHDetails = (filters: any) => {
   return useQuery({
     queryKey: ["rh-details", filters, entrepriseId],
     queryFn: async () => {
-      // 1. Calculer les bornes du mois si période définie
+      // 1. Calculer les bornes du mois si période définie et non "all"
       let dateDebut: Date | null = null;
       let dateFin: Date | null = null;
+      const isAllPeriodes = !filters.periode || filters.periode === "all";
       
-      if (filters.periode) {
+      if (!isAllPeriodes) {
         const [year, month] = filters.periode.split("-").map(Number);
         dateDebut = startOfMonth(new Date(year, month - 1));
         dateFin = endOfMonth(new Date(year, month - 1));
@@ -206,9 +207,9 @@ export const useRHDetails = (filters: any) => {
       const { data, error } = await query;
       if (error) throw error;
 
-      // 2. Filtrer côté client par période si pas de semaine spécifique
+      // 2. Filtrer côté client par période si pas de semaine spécifique et pas "Toutes" les périodes
       let fichesFiltered = data || [];
-      if (filters.periode && (!filters.semaine || filters.semaine === "all")) {
+      if (!isAllPeriodes && (!filters.semaine || filters.semaine === "all")) {
         fichesFiltered = fichesFiltered.filter(fiche => {
           if (!fiche.semaine) return false;
           try {
