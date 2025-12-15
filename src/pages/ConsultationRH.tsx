@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -22,14 +22,20 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchRHExportData } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { supabase } from "@/integrations/supabase/client";
 
 
 const ConsultationRH = () => {
   const [selectedFiche, setSelectedFiche] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("consolide");
   const [showClotureDialog, setShowClotureDialog] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    periode: format(new Date(), "yyyy-MM"), // Mois courant par défaut
+    periode: format(new Date(), "yyyy-MM"),
     semaine: "all",
     conducteur: "all",
     chantier: "all",
@@ -39,6 +45,25 @@ const ConsultationRH = () => {
   });
 
   const { data: summary } = useRHSummary(filters);
+  const { data: unreadData } = useUnreadMessages(currentUserId);
+
+  // Récupérer l'ID de l'utilisateur connecté
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const entrepriseId = localStorage.getItem("current_entreprise_id");
+        const { data } = await supabase
+          .from("utilisateurs")
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .eq("entreprise_id", entrepriseId)
+          .maybeSingle();
+        if (data) setCurrentUserId(data.id);
+      }
+    };
+    fetchUserId();
+  }, []);
 
   const handleExport = async (exportFormat: "csv" | "excel") => {
     if (exportFormat === "excel") {
