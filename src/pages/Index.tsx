@@ -8,7 +8,7 @@ import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronD
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WeekSelector } from "@/components/timesheet/WeekSelector";
+import { WeekSelectorChef } from "@/components/timesheet/WeekSelectorChef";
 import { ChantierSelector } from "@/components/timesheet/ChantierSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { AppNav } from "@/components/navigation/AppNav";
@@ -408,7 +408,7 @@ const Index = () => {
                   <Calendar className="h-4 w-4 text-primary" />
                   Semaine sélectionnée
                 </label>
-                <WeekSelector value={selectedWeek} onChange={setSelectedWeek} />
+                <WeekSelectorChef value={selectedWeek} onChange={setSelectedWeek} chefId={selectedChef} />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
