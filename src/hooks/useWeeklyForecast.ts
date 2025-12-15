@@ -58,7 +58,7 @@ async function geocodeCity(ville: string): Promise<{ lat: number; lng: number } 
 
 async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForecast[]> {
   const response = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code&timezone=Europe/Paris&forecast_days=7`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code&timezone=Europe/Paris&forecast_days=14`
   );
   
   if (!response.ok) {
@@ -67,15 +67,22 @@ async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForec
   
   const data: ForecastApiResponse = await response.json();
   
-  return data.daily.time.map((date, index) => ({
-    date,
-    temperatureMin: Math.round(data.daily.temperature_2m_min[index]),
-    temperatureMax: Math.round(data.daily.temperature_2m_max[index]),
-    precipitationSum: Math.round(data.daily.precipitation_sum[index] * 10) / 10,
-    precipitationProbabilityMax: Math.round(data.daily.precipitation_probability_max[index]),
-    windGustsMax: Math.round(data.daily.wind_gusts_10m_max[index]),
-    weatherCode: data.daily.weather_code[index],
-  }));
+  // Filter only weekdays (Monday=1 to Friday=5)
+  return data.daily.time
+    .map((date, index) => ({
+      date,
+      temperatureMin: Math.round(data.daily.temperature_2m_min[index]),
+      temperatureMax: Math.round(data.daily.temperature_2m_max[index]),
+      precipitationSum: Math.round(data.daily.precipitation_sum[index] * 10) / 10,
+      precipitationProbabilityMax: Math.round(data.daily.precipitation_probability_max[index]),
+      windGustsMax: Math.round(data.daily.wind_gusts_10m_max[index]),
+      weatherCode: data.daily.weather_code[index],
+    }))
+    .filter(forecast => {
+      const dayOfWeek = new Date(forecast.date).getDay();
+      return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+    })
+    .slice(0, 5); // Next 5 weekdays
 }
 
 interface Chantier {
