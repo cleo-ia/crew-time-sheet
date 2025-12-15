@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, MessageCircle, Building2 } from "lucide-react";
 import { useConversation } from "@/hooks/useConversation";
 import { useMessages } from "@/hooks/useMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
@@ -93,24 +93,45 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col h-full p-0">
-        <SheetHeader className="px-4 py-3 border-b">
-          <SheetTitle className="text-lg font-semibold">
-            💬 {chantierNom}
-          </SheetTitle>
+      <SheetContent className="w-full sm:max-w-md flex flex-col h-full p-0 gap-0">
+        {/* Header amélioré */}
+        <SheetHeader className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-base font-semibold truncate">
+                {chantierNom}
+              </SheetTitle>
+              <p className="text-xs text-muted-foreground">Conversation d'équipe</p>
+            </div>
+          </div>
         </SheetHeader>
 
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="flex-1 flex items-center justify-center bg-muted/20">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary/60" />
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            </div>
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 px-4" ref={scrollRef}>
-              <div className="py-4 space-y-4">
+            {/* Zone des messages */}
+            <ScrollArea className="flex-1 bg-muted/20" ref={scrollRef}>
+              <div className="p-4 space-y-3 min-h-full">
                 {messages.length === 0 ? (
-                  <div className="text-center text-muted-foreground text-sm py-8">
-                    Aucun message. Soyez le premier à écrire !
+                  <div className="flex flex-col items-center justify-center py-16 px-4">
+                    <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                      <MessageCircle className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground text-center">
+                      Aucun message
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                      Soyez le premier à écrire !
+                    </p>
                   </div>
                 ) : (
                   messages.map((message) => (
@@ -131,20 +152,22 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
               </div>
             </ScrollArea>
 
+            {/* Zone de saisie améliorée */}
             <div className="p-4 border-t bg-background">
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Input
                   value={messageContent}
                   onChange={(e) => setMessageContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Votre message..."
+                  placeholder="Écrire un message..."
                   disabled={sendMessage.isPending}
-                  className="flex-1"
+                  className="flex-1 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl h-11"
                 />
                 <Button
                   onClick={handleSend}
                   disabled={!messageContent.trim() || sendMessage.isPending}
                   size="icon"
+                  className="h-11 w-11 rounded-xl shrink-0"
                 >
                   {sendMessage.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
