@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { startOfWeek, addWeeks, addDays, format } from "date-fns";
 
 export interface DailyForecast {
   date: string;
@@ -58,6 +59,14 @@ async function geocodeCity(ville: string): Promise<{ lat: number; lng: number } 
 }
 
 async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForecast[]> {
+  // Calculate next week's Monday (S+1)
+  const nextWeekMonday = startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 });
+  
+  // Generate the 5 dates (Monday to Friday of S+1)
+  const nextWeekDates = [0, 1, 2, 3, 4].map(offset => 
+    format(addDays(nextWeekMonday, offset), 'yyyy-MM-dd')
+  );
+  
   const response = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code&timezone=Europe/Paris&forecast_days=14`
   );
@@ -68,7 +77,7 @@ async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForec
   
   const data: ForecastApiResponse = await response.json();
   
-  // Filter only weekdays (Monday=1 to Friday=5)
+  // Filter only the 5 days of next week (S+1)
   return data.daily.time
     .map((date, index) => ({
       date,
@@ -79,11 +88,7 @@ async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForec
       windGustsMax: Math.round(data.daily.wind_gusts_10m_max[index]),
       weatherCode: data.daily.weather_code[index],
     }))
-    .filter(forecast => {
-      const dayOfWeek = new Date(forecast.date).getDay();
-      return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
-    })
-    .slice(0, 5); // Next 5 weekdays
+    .filter(forecast => nextWeekDates.includes(forecast.date));
 }
 
 interface Chantier {
