@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { startOfWeek, addWeeks, addDays, format } from "date-fns";
+import { Chantier } from "@/hooks/useChantiers";
 
 export interface DailyForecast {
   date: string;
@@ -91,14 +92,6 @@ async function fetchWeeklyForecast(lat: number, lng: number): Promise<DailyForec
     .filter(forecast => nextWeekDates.includes(forecast.date));
 }
 
-interface Chantier {
-  id: string;
-  nom: string;
-  code_chantier: string | null;
-  ville: string | null;
-  actif: boolean | null;
-  conducteur?: { id: string; nom: string | null; prenom: string | null } | null;
-}
 
 function getConducteurNom(chantier: Chantier): string | null {
   if (!chantier.conducteur) return null;
