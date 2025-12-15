@@ -1,6 +1,6 @@
 import { format, parseISO, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Cloud, Download, AlertTriangle, Loader2 } from "lucide-react";
+import { Cloud, Download, AlertTriangle, Loader2, Sun, CloudSun, CloudRain, CloudDrizzle, CloudSnow, CloudLightning, CloudFog, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,19 @@ import { useChantiers } from "@/hooks/useChantiers";
 import { useWeeklyForecast, ChantierForecast, DailyForecast } from "@/hooks/useWeeklyForecast";
 import { getWeatherInfo } from "@/lib/weatherUtils";
 import { generateWeatherPdf } from "@/lib/weatherPdfExport";
+
+// Légende des icônes météo (icônes uniques)
+const weatherIconsLegend = [
+  { icon: Sun, label: "Ensoleillé" },
+  { icon: CloudSun, label: "Partiellement nuageux" },
+  { icon: Cloud, label: "Couvert" },
+  { icon: CloudFog, label: "Brouillard" },
+  { icon: CloudDrizzle, label: "Bruine" },
+  { icon: CloudRain, label: "Pluie" },
+  { icon: CloudSnow, label: "Neige" },
+  { icon: Snowflake, label: "Grains de neige" },
+  { icon: CloudLightning, label: "Orage" },
+];
 
 interface WeeklyForecastDialogProps {
   open: boolean;
@@ -165,12 +178,28 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               </table>
 
               {/* Legend */}
-              <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-                <div className="text-xs font-medium mb-2">Légende probabilité précipitations :</div>
-                <div className="flex gap-4 text-xs">
-                  <span className="text-green-500">● 0-30% Faible</span>
-                  <span className="text-orange-500">● 30-60% Modéré</span>
-                  <span className="text-red-500">● &gt;60% Élevé</span>
+              <div className="mt-4 p-3 bg-muted/30 rounded-lg space-y-3">
+                {/* Légende icônes météo */}
+                <div>
+                  <div className="text-xs font-medium mb-2">Légende icônes météo :</div>
+                  <div className="flex flex-wrap gap-3 text-xs">
+                    {weatherIconsLegend.map(({ icon: Icon, label }) => (
+                      <span key={label} className="flex items-center gap-1 text-muted-foreground">
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Légende précipitations */}
+                <div>
+                  <div className="text-xs font-medium mb-2">Légende probabilité précipitations :</div>
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-green-500">● 0-30% Faible</span>
+                    <span className="text-orange-500">● 30-60% Modéré</span>
+                    <span className="text-red-500">● &gt;60% Élevé</span>
+                  </div>
                 </div>
               </div>
             </div>
