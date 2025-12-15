@@ -2,40 +2,124 @@ import jsPDF from "jspdf";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChantierForecast } from "@/hooks/useWeeklyForecast";
-import { getWeatherInfo } from "@/lib/weatherUtils";
 
-function getWeatherEmoji(code: number): string {
-  const emojiMap: Record<number, string> = {
-    0: "☀️",
-    1: "🌤️",
-    2: "⛅",
-    3: "☁️",
-    45: "🌫️",
-    48: "🌫️",
-    51: "🌧️",
-    53: "🌧️",
-    55: "🌧️",
-    56: "🌨️",
-    57: "🌨️",
-    61: "🌧️",
-    63: "🌧️",
-    65: "🌧️",
-    66: "🌨️",
-    67: "🌨️",
-    71: "❄️",
-    73: "❄️",
-    75: "❄️",
-    77: "❄️",
-    80: "🌦️",
-    81: "🌦️",
-    82: "🌦️",
-    85: "🌨️",
-    86: "🌨️",
-    95: "⛈️",
-    96: "⛈️",
-    99: "⛈️",
+function drawWeatherIcon(doc: jsPDF, code: number, x: number, y: number): void {
+  const resetColors = () => {
+    doc.setFillColor(0, 0, 0);
+    doc.setDrawColor(0, 0, 0);
   };
-  return emojiMap[code] || "❓";
+
+  // Soleil (codes 0-1)
+  if (code <= 1) {
+    doc.setFillColor(251, 191, 36); // Jaune
+    doc.circle(x, y, 1.5, 'F');
+    // Rayons
+    doc.setDrawColor(251, 191, 36);
+    doc.setLineWidth(0.3);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 45) * Math.PI / 180;
+      doc.line(
+        x + Math.cos(angle) * 2,
+        y + Math.sin(angle) * 2,
+        x + Math.cos(angle) * 3,
+        y + Math.sin(angle) * 3
+      );
+    }
+    doc.setLineWidth(0.2);
+  }
+  // Nuageux (codes 2-3)
+  else if (code <= 3) {
+    doc.setFillColor(156, 163, 175); // Gris
+    doc.circle(x - 1, y, 1.3, 'F');
+    doc.circle(x + 1, y, 1.5, 'F');
+    doc.circle(x, y - 0.5, 1.1, 'F');
+  }
+  // Brouillard (codes 45, 48)
+  else if (code === 45 || code === 48) {
+    doc.setDrawColor(156, 163, 175);
+    doc.setLineWidth(0.4);
+    doc.line(x - 2.5, y - 1, x + 2.5, y - 1);
+    doc.line(x - 3, y, x + 3, y);
+    doc.line(x - 2.5, y + 1, x + 2.5, y + 1);
+    doc.setLineWidth(0.2);
+  }
+  // Pluie (codes 51-67, 80-82)
+  else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+    // Nuage gris
+    doc.setFillColor(107, 114, 128);
+    doc.circle(x - 1, y - 0.8, 1.1, 'F');
+    doc.circle(x + 1, y - 0.8, 1.3, 'F');
+    doc.circle(x, y - 1.2, 0.9, 'F');
+    // Gouttes bleues
+    doc.setFillColor(59, 130, 246);
+    doc.circle(x - 1, y + 1.5, 0.5, 'F');
+    doc.circle(x + 0.5, y + 2, 0.5, 'F');
+    doc.circle(x + 1.5, y + 1.2, 0.4, 'F');
+  }
+  // Neige (codes 71-77, 85-86)
+  else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+    // Nuage bleu clair
+    doc.setFillColor(147, 197, 253);
+    doc.circle(x - 1, y - 0.8, 1.1, 'F');
+    doc.circle(x + 1, y - 0.8, 1.3, 'F');
+    doc.circle(x, y - 1.2, 0.9, 'F');
+    // Flocons (petits cercles blancs)
+    doc.setFillColor(255, 255, 255);
+    doc.circle(x - 1, y + 1.5, 0.4, 'F');
+    doc.circle(x + 0.5, y + 2, 0.4, 'F');
+    doc.circle(x + 1.5, y + 1.2, 0.4, 'F');
+  }
+  // Orage (codes 95-99)
+  else if (code >= 95) {
+    // Nuage sombre
+    doc.setFillColor(75, 85, 99);
+    doc.circle(x - 1, y - 0.8, 1.1, 'F');
+    doc.circle(x + 1, y - 0.8, 1.3, 'F');
+    doc.circle(x, y - 1.2, 0.9, 'F');
+    // Éclair jaune
+    doc.setFillColor(251, 191, 36);
+    doc.triangle(x, y + 0.5, x - 0.6, y + 2, x + 0.6, y + 2, 'F');
+  }
+  // Défaut (inconnu)
+  else {
+    doc.setFillColor(156, 163, 175);
+    doc.circle(x, y, 1.5, 'F');
+  }
+
+  resetColors();
+}
+
+function drawWeatherLegend(doc: jsPDF, x: number, y: number): void {
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.text("Légende météo :", x, y);
+  
+  doc.setFont("helvetica", "normal");
+  y += 5;
+
+  // Soleil
+  drawWeatherIcon(doc, 0, x + 3, y);
+  doc.text("Soleil", x + 8, y + 1);
+
+  // Nuageux
+  drawWeatherIcon(doc, 3, x + 28, y);
+  doc.text("Nuageux", x + 33, y + 1);
+
+  // Pluie
+  drawWeatherIcon(doc, 61, x + 58, y);
+  doc.text("Pluie", x + 63, y + 1);
+
+  // Neige
+  drawWeatherIcon(doc, 71, x + 83, y);
+  doc.text("Neige", x + 88, y + 1);
+
+  // Orage
+  drawWeatherIcon(doc, 95, x + 108, y);
+  doc.text("Orage", x + 113, y + 1);
+
+  // Brouillard
+  drawWeatherIcon(doc, 45, x + 133, y);
+  doc.text("Brouillard", x + 138, y + 1);
 }
 
 export function generateWeatherPdf(
@@ -112,7 +196,7 @@ export function generateWeatherPdf(
 
   // Data rows
   forecasts.forEach((chantier, rowIndex) => {
-    if (y + rowHeight > pageHeight - margin) {
+    if (y + rowHeight > pageHeight - margin - 15) {
       doc.addPage();
       y = margin;
     }
@@ -168,9 +252,8 @@ export function generateWeatherPdf(
       chantier.forecasts.forEach((forecast) => {
         const cellCenterX = x + colWidths.day / 2;
 
-        // Weather emoji
-        doc.setFontSize(10);
-        doc.text(getWeatherEmoji(forecast.weatherCode), cellCenterX, y + 5, { align: "center" });
+        // Weather icon (geometric shape)
+        drawWeatherIcon(doc, forecast.weatherCode, cellCenterX, y + 4);
 
         // Temperature
         doc.setFontSize(7);
@@ -181,7 +264,7 @@ export function generateWeatherPdf(
         doc.setFont("helvetica", "normal");
         doc.setFontSize(6);
         doc.setTextColor(107, 114, 128);
-        doc.text(`💨 ${forecast.windGustsMax} km/h`, cellCenterX, y + 14, { align: "center" });
+        doc.text(`Vent: ${forecast.windGustsMax} km/h`, cellCenterX, y + 14, { align: "center" });
 
         // Precipitation probability with color
         const prob = forecast.precipitationProbabilityMax;
@@ -206,13 +289,19 @@ export function generateWeatherPdf(
     y += rowHeight;
   });
 
-  // Legend
+  // Legend section
   y += 5;
-  if (y + 15 > pageHeight - margin) {
+  if (y + 20 > pageHeight - margin) {
     doc.addPage();
     y = margin;
   }
 
+  // Weather legend
+  drawWeatherLegend(doc, margin, y);
+
+  y += 12;
+
+  // Precipitation probability legend
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.text("Légende probabilité précipitations :", margin, y);
