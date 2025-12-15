@@ -25,6 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { useAffectationsByConducteur, useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
 import { WeeklyForecastDialog } from "@/components/weather/WeeklyForecastDialog";
+import { useFichesEnAttentePourConducteur } from "@/hooks/useFichesEnAttentePourConducteur";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -49,6 +50,9 @@ const ValidationConducteur = () => {
   const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
   const [showWeatherDialog, setShowWeatherDialog] = useState(false);
+  
+  // Hook pour compter les fiches en attente de validation pour CE conducteur
+  const { data: nbFichesEnAttente = 0 } = useFichesEnAttentePourConducteur(conducteurId);
   
   const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
   const urlWeek = searchParams.get("semaine");
@@ -501,10 +505,15 @@ const ValidationConducteur = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="validation"
-                className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200"
+                className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200 relative"
               >
                 <FileCheck className="h-5 w-5 mr-2" />
                 Validation des fiches
+                {nbFichesEnAttente > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1 shadow-md">
+                    {nbFichesEnAttente > 99 ? "99+" : nbFichesEnAttente}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
 
