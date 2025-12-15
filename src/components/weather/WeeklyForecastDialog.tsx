@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { format, parseISO, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Cloud, Download, AlertTriangle, Loader2, Sun, CloudSun, CloudRain, CloudDrizzle, CloudSnow, CloudLightning, CloudFog, Snowflake } from "lucide-react";
@@ -52,7 +53,7 @@ function ForecastCell({ forecast }: { forecast: DailyForecast }) {
         {forecast.temperatureMin}° / {forecast.temperatureMax}°
       </span>
       <span className="text-[10px] text-muted-foreground">
-        💨 {forecast.windGustsMax} km/h
+        Vent: {forecast.windGustsMax} km/h
       </span>
       <span className={`text-[10px] font-medium ${getPrecipProbabilityColor(forecast.precipitationProbabilityMax)}`}>
         {forecast.precipitationProbabilityMax}%
@@ -102,15 +103,22 @@ function ChantierRow({ chantier }: { chantier: ChantierForecast }) {
 }
 
 export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialogProps) {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { data: chantiers } = useChantiers();
   const { data: forecasts, isLoading, error } = useWeeklyForecast(chantiers, open);
 
   const nextWeekStart = startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 });
   const weekLabel = `S${format(nextWeekStart, "ww", { locale: fr })} - ${format(nextWeekStart, "dd MMMM yyyy", { locale: fr })}`;
 
-  const handleDownloadPdf = () => {
-    if (forecasts) {
-      generateWeatherPdf(forecasts, weekLabel);
+  const handleDownloadPdf = async () => {
+    if (tableRef.current && forecasts) {
+      setIsGeneratingPdf(true);
+      try {
+        await generateWeatherPdf(tableRef.current, weekLabel);
+      } finally {
+        setIsGeneratingPdf(false);
+      }
     }
   };
 
@@ -131,11 +139,15 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               variant="outline"
               size="sm"
               onClick={handleDownloadPdf}
-              disabled={!forecasts || forecasts.length === 0}
+              disabled={!forecasts || forecasts.length === 0 || isGeneratingPdf}
               className="mr-10"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Télécharger PDF
+              {isGeneratingPdf ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {isGeneratingPdf ? "Génération..." : "Télécharger PDF"}
             </Button>
           </div>
         </DialogHeader>
@@ -156,7 +168,7 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               Aucun chantier actif trouvé
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div ref={tableRef} className="overflow-x-auto bg-white p-4">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-orange-500 text-white">
@@ -178,13 +190,13 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               </table>
 
               {/* Legend */}
-              <div className="mt-4 p-3 bg-muted/30 rounded-lg space-y-3">
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg space-y-3">
                 {/* Légende icônes météo */}
                 <div>
-                  <div className="text-xs font-medium mb-2">Légende icônes météo :</div>
+                  <div className="text-xs font-medium mb-2 text-gray-900">Légende icônes météo :</div>
                   <div className="flex flex-wrap gap-3 text-xs">
                     {weatherIconsLegend.map(({ icon: Icon, label }) => (
-                      <span key={label} className="flex items-center gap-1 text-muted-foreground">
+                      <span key={label} className="flex items-center gap-1 text-gray-600">
                         <Icon className="h-4 w-4" />
                         {label}
                       </span>
@@ -194,11 +206,20 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
                 
                 {/* Légende précipitations */}
                 <div>
-                  <div className="text-xs font-medium mb-2">Légende probabilité précipitations :</div>
+                  <div className="text-xs font-medium mb-2 text-gray-900">Légende probabilité précipitations :</div>
                   <div className="flex gap-4 text-xs">
-                    <span className="text-green-500">● 0-30% Faible</span>
-                    <span className="text-orange-500">● 30-60% Modéré</span>
-                    <span className="text-red-500">● &gt;60% Élevé</span>
+                    <span className="text-green-600 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      0-30% Faible
+                    </span>
+                    <span className="text-orange-600 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                      30-60% Modéré
+                    </span>
+                    <span className="text-red-600 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                      &gt;60% Élevé
+                    </span>
                   </div>
                 </div>
               </div>
