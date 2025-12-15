@@ -60,7 +60,8 @@ function ChantierRow({ chantier }: { chantier: ChantierForecast }) {
           <div className="text-xs text-muted-foreground">{chantier.ville || "-"}</div>
         </td>
         <td className="p-2 text-xs text-muted-foreground">{chantier.codeChantier || "-"}</td>
-        <td colSpan={7} className="p-2">
+        <td className="p-2 text-xs text-muted-foreground">{chantier.conducteurNom || "-"}</td>
+        <td colSpan={5} className="p-2">
           <div className="flex items-center gap-2 text-destructive text-sm">
             <AlertTriangle className="h-4 w-4" />
             {chantier.error}
@@ -77,6 +78,7 @@ function ChantierRow({ chantier }: { chantier: ChantierForecast }) {
         <div className="text-xs text-muted-foreground">{chantier.ville}</div>
       </td>
       <td className="p-2 text-xs text-muted-foreground">{chantier.codeChantier || "-"}</td>
+      <td className="p-2 text-xs text-muted-foreground">{chantier.conducteurNom || "-"}</td>
       {chantier.forecasts.map((forecast, idx) => (
         <td key={idx} className="p-0 border-l">
           <ForecastCell forecast={forecast} />
@@ -146,6 +148,7 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
                   <tr className="bg-orange-500 text-white">
                     <th className="p-2 text-left text-sm font-semibold min-w-[150px]">Chantier</th>
                     <th className="p-2 text-left text-sm font-semibold min-w-[80px]">Code</th>
+                    <th className="p-2 text-left text-sm font-semibold min-w-[100px]">Conducteur</th>
                     {dates.map((date, idx) => (
                       <th key={idx} className="p-2 text-center text-sm font-semibold min-w-[80px] border-l border-orange-400">
                         {format(parseISO(date), "EEE dd/MM", { locale: fr })}

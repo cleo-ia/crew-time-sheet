@@ -76,9 +76,10 @@ export function generateWeatherPdf(
   // Table setup
   const startY = 28;
   const colWidths = {
-    chantier: 45,
-    code: 25,
-    day: (pageWidth - margin * 2 - 45 - 25) / 7,
+    chantier: 40,
+    code: 22,
+    conducteur: 30,
+    day: (pageWidth - margin * 2 - 40 - 22 - 30) / 5,
   };
   const rowHeight = 22;
 
@@ -97,6 +98,8 @@ export function generateWeatherPdf(
   x += colWidths.chantier;
   doc.text("Code", x + 2, y + 5.5);
   x += colWidths.code;
+  doc.text("Conducteur", x + 2, y + 5.5);
+  x += colWidths.conducteur;
 
   dates.forEach((date) => {
     const dayLabel = format(parseISO(date), "EEE dd/MM", { locale: fr });
@@ -146,6 +149,14 @@ export function generateWeatherPdf(
     doc.setFontSize(7);
     doc.text(chantier.codeChantier || "-", x + 2, y + 8);
     x += colWidths.code;
+
+    // Conducteur
+    doc.setFontSize(6);
+    const conducteurName = chantier.conducteurNom 
+      ? (chantier.conducteurNom.length > 15 ? chantier.conducteurNom.substring(0, 13) + "..." : chantier.conducteurNom)
+      : "-";
+    doc.text(conducteurName, x + 2, y + 8);
+    x += colWidths.conducteur;
 
     // Forecasts per day
     if (chantier.error) {

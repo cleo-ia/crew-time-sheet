@@ -14,6 +14,7 @@ export interface ChantierForecast {
   chantierId: string;
   chantierNom: string;
   codeChantier: string | null;
+  conducteurNom: string | null;
   ville: string;
   forecasts: DailyForecast[];
   error?: string;
@@ -91,6 +92,14 @@ interface Chantier {
   code_chantier: string | null;
   ville: string | null;
   actif: boolean | null;
+  conducteur?: { id: string; nom: string | null; prenom: string | null } | null;
+}
+
+function getConducteurNom(chantier: Chantier): string | null {
+  if (!chantier.conducteur) return null;
+  const { prenom, nom } = chantier.conducteur;
+  if (prenom && nom) return `${prenom} ${nom}`;
+  return prenom || nom || null;
 }
 
 async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<ChantierForecast[]> {
@@ -98,11 +107,14 @@ async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<Chantie
   
   const results = await Promise.all(
     activeChantiers.map(async (chantier): Promise<ChantierForecast> => {
+      const conducteurNom = getConducteurNom(chantier);
+      
       if (!chantier.ville) {
         return {
           chantierId: chantier.id,
           chantierNom: chantier.nom,
           codeChantier: chantier.code_chantier,
+          conducteurNom,
           ville: "",
           forecasts: [],
           error: "Ville non renseignée",
@@ -116,6 +128,7 @@ async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<Chantie
           chantierId: chantier.id,
           chantierNom: chantier.nom,
           codeChantier: chantier.code_chantier,
+          conducteurNom,
           ville: chantier.ville,
           forecasts: [],
           error: `Ville "${chantier.ville}" introuvable`,
@@ -128,6 +141,7 @@ async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<Chantie
           chantierId: chantier.id,
           chantierNom: chantier.nom,
           codeChantier: chantier.code_chantier,
+          conducteurNom,
           ville: chantier.ville,
           forecasts,
         };
@@ -136,6 +150,7 @@ async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<Chantie
           chantierId: chantier.id,
           chantierNom: chantier.nom,
           codeChantier: chantier.code_chantier,
+          conducteurNom,
           ville: chantier.ville,
           forecasts: [],
           error: "Erreur de récupération des données météo",
