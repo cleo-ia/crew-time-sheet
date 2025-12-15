@@ -34,6 +34,8 @@ export const WeekSelectorWithPending = ({ value, onChange, disabled }: WeekSelec
       return distinctWeeks;
     },
     enabled: !!entrepriseId,
+    staleTime: 0, // Always refetch to ensure fresh pending status
+    refetchOnWindowFocus: true,
   });
 
   // Generate default weeks (previous, current, next)
