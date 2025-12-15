@@ -26,6 +26,9 @@ import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { useAffectationsByConducteur, useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
 import { WeeklyForecastDialog } from "@/components/weather/WeeklyForecastDialog";
 import { useFichesEnAttentePourConducteur } from "@/hooks/useFichesEnAttentePourConducteur";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -50,9 +53,11 @@ const ValidationConducteur = () => {
   const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
   const [showWeatherDialog, setShowWeatherDialog] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
   
   // Hook pour compter les fiches en attente de validation pour CE conducteur
   const { data: nbFichesEnAttente = 0 } = useFichesEnAttentePourConducteur(conducteurId);
+  const { data: unreadData } = useUnreadMessages(conducteurId);
   
   const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
   const urlWeek = searchParams.get("semaine");
@@ -467,16 +472,28 @@ const ValidationConducteur = () => {
           icon={FileCheck}
           theme="validation-conducteur"
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWeatherDialog(true)}
-              className="flex items-center gap-2"
-            >
-              <Cloud className="h-4 w-4" />
-              Météo Semaine
-            </Button>
+            <>
+              <ConversationButton
+                onClick={() => setShowConversation(true)}
+                unreadCount={unreadData?.total || 0}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowWeatherDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Cloud className="h-4 w-4" />
+                Météo Semaine
+              </Button>
+            </>
           }
+        />
+
+        <ConversationListSheet
+          open={showConversation}
+          onOpenChange={setShowConversation}
+          currentUserId={conducteurId || ""}
         />
 
         <WeeklyForecastDialog

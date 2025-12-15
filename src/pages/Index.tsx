@@ -37,6 +37,9 @@ import { useFicheModifiable } from "@/hooks/useFicheModifiable";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { WeatherButton } from "@/components/weather/WeatherButton";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationSheet } from "@/components/chat/ConversationSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -69,9 +72,13 @@ const Index = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
+  const [showConversation, setShowConversation] = useState(false);
   const saveFiche = useSaveFiche();
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
+  
+  // Récupérer les messages non lus pour ce chantier
+  const { data: unreadData } = useUnreadMessages(selectedChef, selectedChantier ? [selectedChantier] : undefined);
 
   // Mettre à jour selectedWeek quand initialWeek change
   useEffect(() => {
@@ -158,20 +165,22 @@ const Index = () => {
     selectedChef
   );
 
-  // Récupérer la ville du chantier sélectionné pour la météo
-  const { data: chantierVille } = useQuery({
-    queryKey: ["chantier-ville", selectedChantier],
+  // Récupérer la ville et le nom du chantier sélectionné
+  const { data: chantierInfo } = useQuery({
+    queryKey: ["chantier-info-chat", selectedChantier],
     queryFn: async () => {
       if (!selectedChantier) return null;
       const { data } = await supabase
         .from("chantiers")
-        .select("ville")
+        .select("ville, nom")
         .eq("id", selectedChantier)
         .single();
-      return data?.ville || null;
+      return data || null;
     },
-    enabled: !!selectedChantier && isPointsMeteoEnabled,
+    enabled: !!selectedChantier,
   });
+  const chantierVille = chantierInfo?.ville || null;
+  const chantierNom = chantierInfo?.nom || "Chantier";
 
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
@@ -381,7 +390,26 @@ const Index = () => {
         subtitle="Chef de chantier"
         icon={FileText}
         theme="saisie-chef"
-        actions={isPointsMeteoEnabled ? <WeatherButton ville={chantierVille} /> : undefined}
+        actions={
+          <>
+            {selectedChantier && (
+              <ConversationButton
+                onClick={() => setShowConversation(true)}
+                unreadCount={unreadData?.byChantier.get(selectedChantier) || 0}
+              />
+            )}
+            {isPointsMeteoEnabled && <WeatherButton ville={chantierVille} />}
+          </>
+        }
+      />
+      
+      {/* Conversation Sheet */}
+      <ConversationSheet
+        open={showConversation}
+        onOpenChange={setShowConversation}
+        chantierId={selectedChantier || null}
+        chantierNom={chantierNom}
+        currentUserId={selectedChef}
       />
 
       {/* Main Content */}

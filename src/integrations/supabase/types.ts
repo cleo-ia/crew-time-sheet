@@ -450,6 +450,42 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          entreprise_id: string
+          id: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          entreprise_id: string
+          id?: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          entreprise_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: true
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entreprises: {
         Row: {
           actif: boolean | null
@@ -972,6 +1008,67 @@ export type Database = {
             columns: ["invited_by"]
             isOneToOne: false
             referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_read_status: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_read_status_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          author_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
