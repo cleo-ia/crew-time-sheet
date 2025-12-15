@@ -33,7 +33,7 @@ function WeatherIcon({ code }: { code: number }) {
 
 function ForecastCell({ forecast }: { forecast: DailyForecast }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 p-1 text-center min-w-[70px]">
+    <div className="flex flex-col items-center gap-0.5 p-1 text-center min-w-[85px]">
       <WeatherIcon code={forecast.weatherCode} />
       <span className="text-xs font-semibold">
         {forecast.temperatureMin}° / {forecast.temperatureMax}°
@@ -73,12 +73,12 @@ function ChantierRow({ chantier }: { chantier: ChantierForecast }) {
 
   return (
     <tr className="border-b hover:bg-muted/50">
-      <td className="p-2">
-        <div className="font-medium text-sm">{chantier.chantierNom}</div>
-        <div className="text-xs text-muted-foreground">{chantier.ville}</div>
+      <td className="px-1.5 py-2 max-w-[110px]">
+        <div className="font-medium text-sm truncate">{chantier.chantierNom}</div>
+        <div className="text-xs text-muted-foreground truncate">{chantier.ville}</div>
       </td>
-      <td className="p-2 text-xs text-muted-foreground">{chantier.codeChantier || "-"}</td>
-      <td className="p-2 text-xs text-muted-foreground">{chantier.conducteurNom || "-"}</td>
+      <td className="px-1.5 py-2 text-xs text-muted-foreground">{chantier.codeChantier || "-"}</td>
+      <td className="px-1.5 py-2 text-xs text-muted-foreground max-w-[90px] truncate">{chantier.conducteurNom || "-"}</td>
       {chantier.forecasts.map((forecast, idx) => (
         <td key={idx} className="p-0 border-l">
           <ForecastCell forecast={forecast} />
@@ -146,9 +146,9 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-orange-500 text-white">
-                    <th className="p-2 text-left text-sm font-semibold min-w-[150px]">Chantier</th>
-                    <th className="p-2 text-left text-sm font-semibold min-w-[80px]">Code</th>
-                    <th className="p-2 text-left text-sm font-semibold min-w-[100px]">Conducteur</th>
+                    <th className="px-1.5 py-2 text-left text-sm font-semibold min-w-[110px]">Chantier</th>
+                    <th className="px-1.5 py-2 text-left text-sm font-semibold min-w-[55px]">Code</th>
+                    <th className="px-1.5 py-2 text-left text-sm font-semibold min-w-[85px]">Conducteur</th>
                     {dates.map((date, idx) => (
                       <th key={idx} className="p-2 text-center text-sm font-semibold min-w-[80px] border-l border-orange-400">
                         {format(parseISO(date), "EEE dd/MM", { locale: fr })}
