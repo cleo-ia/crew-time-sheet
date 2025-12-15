@@ -109,7 +109,7 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Prévisions Météo 7 Jours - {weekLabel}
+            Prévisions Météo Semaine - {weekLabel}
           </DialogTitle>
           <div className="flex items-center gap-2">
             <Button

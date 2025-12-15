@@ -470,7 +470,7 @@ const ValidationConducteur = () => {
               className="flex items-center gap-2"
             >
               <Cloud className="h-4 w-4" />
-              Météo 7j
+              Météo Semaine
             </Button>
           }
         />
