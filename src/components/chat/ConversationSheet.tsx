@@ -13,6 +13,7 @@ import { useConversation } from "@/hooks/useConversation";
 import { useMessages } from "@/hooks/useMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
 import { useMarkMessagesAsRead } from "@/hooks/useUnreadMessages";
+import { useToast } from "@/hooks/use-toast";
 import { MessageBubble } from "./MessageBubble";
 
 interface ConversationSheetProps {
@@ -32,6 +33,9 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 }) => {
   const [messageContent, setMessageContent] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const markedAsReadRef = useRef<Set<string>>(new Set());
+
+  const { toast } = useToast();
 
   const { conversation, isLoading: isLoadingConv, createConversation } = useConversation(chantierId);
   const { messages, isLoading: isLoadingMessages } = useMessages(conversation?.id || null);
@@ -52,21 +56,47 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
     }
   }, [messages]);
 
-  // Marquer les messages comme lus quand on ouvre le chat
+  // Marquer les messages comme lus quand on ouvre le chat (sans boucle infinie)
   useEffect(() => {
-    if (open && messages.length > 0 && currentUserId) {
-      const unreadMessageIds = messages
-        .filter((m) => m.author_id !== currentUserId)
-        .map((m) => m.id);
-      
-      if (unreadMessageIds.length > 0) {
-        markAsRead.mutate({ messageIds: unreadMessageIds, userId: currentUserId });
-      }
+    if (!open || messages.length === 0 || !currentUserId) return;
+
+    const unreadMessageIds = messages
+      .filter((m) => m.author_id !== currentUserId)
+      .filter((m) => !markedAsReadRef.current.has(m.id))
+      .map((m) => m.id);
+
+    if (unreadMessageIds.length === 0) return;
+
+    unreadMessageIds.forEach((id) => markedAsReadRef.current.add(id));
+    markAsRead.mutate({ messageIds: unreadMessageIds, userId: currentUserId });
+  }, [open, messages, currentUserId]);
+
+  // Réinitialiser le cache local quand on ferme le chat
+  useEffect(() => {
+    if (!open) {
+      markedAsReadRef.current.clear();
     }
-  }, [open, messages, currentUserId, markAsRead]);
+  }, [open]);
 
   const handleSend = () => {
-    if (!messageContent.trim() || !conversation?.id || !currentUserId) return;
+    if (!messageContent.trim()) return;
+
+    if (!currentUserId) {
+      toast({
+        title: "Impossible d'envoyer",
+        description: "Utilisateur non identifié.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!conversation?.id) {
+      toast({
+        title: "Conversation en cours",
+        description: "Patientez une seconde puis réessayez.",
+      });
+      return;
+    }
 
     sendMessage.mutate(
       {
@@ -77,6 +107,13 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
       {
         onSuccess: () => {
           setMessageContent("");
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Erreur d'envoi",
+            description: error?.message || "Le message n'a pas pu être envoyé.",
+            variant: "destructive",
+          });
         },
       }
     );
