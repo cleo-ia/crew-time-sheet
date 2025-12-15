@@ -122,10 +122,20 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] max-h-[90vh]">
         <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle className="flex items-center gap-2">
-            <Cloud className="h-5 w-5" />
-            Prévisions Météo Semaine - {weekLabel}
-          </DialogTitle>
+          <div>
+            <DialogTitle className="flex items-center gap-2">
+              <Cloud className="h-5 w-5" />
+              Prévisions Météo - {weekLabel}
+            </DialogTitle>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full font-medium">
+                Semaine prochaine (S+1)
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Pour la planification des chantiers
+              </span>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
