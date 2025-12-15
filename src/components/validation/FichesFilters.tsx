@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Building2, User } from "lucide-react";
-import { WeekSelector } from "@/components/timesheet/WeekSelector";
+import { WeekSelectorWithPending } from "@/components/validation/WeekSelectorWithPending";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
@@ -47,7 +47,7 @@ export const FichesFilters = ({ filters, onFiltersChange }: FichesFiltersProps) 
             <Calendar className="h-4 w-4 text-primary" />
             Filtrer par semaine
           </label>
-          <WeekSelector
+          <WeekSelectorWithPending
             value={filters.semaine}
             onChange={(value) => onFiltersChange({ ...filters, semaine: value })}
           />
