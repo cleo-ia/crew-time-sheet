@@ -18,6 +18,8 @@ export interface Chantier {
   date_fin: string | null;
   created_at: string;
   updated_at: string;
+  chef?: { id: string; nom: string | null; prenom: string | null } | null;
+  conducteur?: { id: string; nom: string | null; prenom: string | null } | null;
 }
 
 export const useChantiers = () => {
