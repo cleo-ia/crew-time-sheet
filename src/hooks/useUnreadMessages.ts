@@ -38,7 +38,7 @@ export const useUnreadMessages = (userId: string | null, chantierIds?: string[])
       // Récupérer tous les messages de ces conversations
       const { data: messages, error: msgError } = await supabase
         .from("messages")
-        .select("id, conversation_id")
+        .select("id, conversation_id, author_id")
         .in("conversation_id", conversationIds);
 
       if (msgError || !messages || messages.length === 0) {
@@ -66,6 +66,9 @@ export const useUnreadMessages = (userId: string | null, chantierIds?: string[])
       let total = 0;
 
       for (const message of messages) {
+        // Ignorer nos propres messages
+        if (message.author_id === userId) continue;
+        
         if (!readMessageIds.has(message.id)) {
           total++;
           const chantierId = chantierByConversation.get(message.conversation_id);
