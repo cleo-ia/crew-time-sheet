@@ -97,7 +97,6 @@ interface Chantier {
   code_chantier: string | null;
   ville: string | null;
   actif: boolean | null;
-  conducteur_id?: string | null;
   conducteur?: { id: string; nom: string | null; prenom: string | null } | null;
 }
 
@@ -168,8 +167,7 @@ async function fetchAllChantierForecasts(chantiers: Chantier[]): Promise<Chantie
   return results;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useWeeklyForecast(chantiers: any[] | undefined, enabled: boolean = true) {
+export function useWeeklyForecast(chantiers: Chantier[] | undefined, enabled: boolean = true) {
   return useQuery({
     queryKey: ["weekly-forecast", chantiers?.map(c => c.id).join(",")],
     queryFn: () => fetchAllChantierForecasts(chantiers || []),
