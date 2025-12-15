@@ -119,7 +119,7 @@ export function WeeklyForecastDialog({ open, onOpenChange }: WeeklyForecastDialo
               size="sm"
               onClick={handleDownloadPdf}
               disabled={!forecasts || forecasts.length === 0}
-              className="mr-4"
+              className="mr-10"
             >
               <Download className="h-4 w-4 mr-2" />
               Télécharger PDF
