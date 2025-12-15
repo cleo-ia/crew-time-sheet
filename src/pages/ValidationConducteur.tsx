@@ -5,7 +5,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud } from "lucide-react";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { FichesFilters } from "@/components/validation/FichesFilters";
@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { useAffectationsByConducteur, useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
+import { WeeklyForecastDialog } from "@/components/weather/WeeklyForecastDialog";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -47,6 +48,7 @@ const ValidationConducteur = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conducteurId, setConducteurId] = useState<string | null>(null);
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
+  const [showWeatherDialog, setShowWeatherDialog] = useState(false);
   
   const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
   const urlWeek = searchParams.get("semaine");
@@ -460,6 +462,22 @@ const ValidationConducteur = () => {
           subtitle="Gestion des heures et validation"
           icon={FileCheck}
           theme="validation-conducteur"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWeatherDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <Cloud className="h-4 w-4" />
+              Météo 7j
+            </Button>
+          }
+        />
+
+        <WeeklyForecastDialog
+          open={showWeatherDialog}
+          onOpenChange={setShowWeatherDialog}
         />
 
         <main className="container mx-auto px-4 py-6 max-w-7xl">
