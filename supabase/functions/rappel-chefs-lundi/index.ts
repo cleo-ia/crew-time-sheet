@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0'
+import { Resend } from 'https://esm.sh/resend@2.0.0'
 import { isTargetParisHour } from '../_shared/timezone.ts'
 
 const corsHeaders = {
@@ -16,6 +17,54 @@ interface ChefWithFiches {
     chantier_nom: string
     semaine: string
   }>
+}
+
+// Template HTML professionnel pour les emails
+function generateEmailHtml(prenom: string, content: string, ctaUrl: string, ctaText: string): string {
+  const year = new Date().getFullYear()
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 24px; border-radius: 8px 8px 0 0; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { background: #ffffff; padding: 24px; border-radius: 0 0 8px 8px; }
+    .greeting { font-size: 16px; margin-bottom: 16px; }
+    .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+    .list { background: #f9fafb; padding: 16px; border-radius: 6px; margin: 16px 0; }
+    .list ul { margin: 0; padding-left: 20px; }
+    .list li { margin: 8px 0; }
+    .button { display: inline-block; background: #f97316; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+    .button:hover { background: #ea580c; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 24px; padding: 16px; }
+    .footer a { color: #f97316; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔔 DIVA - Rappel Semaine Précédente</h1>
+    </div>
+    <div class="content">
+      <p class="greeting">Bonjour ${prenom},</p>
+      ${content}
+      <div style="text-align: center;">
+        <a href="${ctaUrl}" class="button">${ctaText}</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Cet email a été envoyé automatiquement par DIVA.</p>
+      <p>© ${year} <a href="https://groupe-engo.com">Groupe Engo</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
 }
 
 Deno.serve(async (req) => {
@@ -65,10 +114,17 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Init Supabase
+    // Init Supabase et Resend
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY non configuré')
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey)
+    const resend = new Resend(resendApiKey)
 
     // Calculer la semaine précédente (S-1)
     const now = new Date()
@@ -228,71 +284,56 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Envoyer les notifications via n8n
-    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
-    const n8nSecret = Deno.env.get('N8N_WEBHOOK_SECRET')
-
-    if (!n8nWebhookUrl || !n8nSecret) {
-      throw new Error('N8N_WEBHOOK_URL ou N8N_WEBHOOK_SECRET non configuré')
-    }
-
-    // Log de l'URL cible pour diagnostic
-    try {
-      const url = new URL(n8nWebhookUrl)
-      console.log(`[${executionId}] 🎯 URL cible: ${url.host}${url.pathname}`)
-    } catch (e) {
-      console.error(`[${executionId}] ⚠️ URL webhook invalide: ${n8nWebhookUrl}`)
-    }
-
+    // 6. Envoyer les emails via Resend
     let successCount = 0
     let failureCount = 0
     const details: any[] = []
 
     for (const chef of chefsWithFiches) {
-      const payload = {
-        type: 'rappel_chef_lundi',
-        chef_id: chef.chef_id,
-        chef_nom: chef.chef_nom,
-        chef_prenom: chef.chef_prenom,
-        chef_email: chef.chef_email,
-        nb_fiches: chef.nb_fiches,
-        items: chef.chantiers,
-        appBaseUrl: 'https://crew-time-sheet.lovable.app/',
-        timestamp: new Date().toISOString(),
-      }
-
       try {
-        console.log(`[${executionId}] 📤 Payload envoyé:`, JSON.stringify(payload, null, 2))
+        const chantiersListHtml = chef.chantiers
+          .map(c => `<li>${c.chantier_nom}</li>`)
+          .join('')
 
-        const webhookResponse = await fetch(n8nWebhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-N8N-Secret': n8nSecret,
-          },
-          body: JSON.stringify(payload),
+        const emailContent = `
+          <div class="alert">
+            <strong>⚠️ Attention :</strong> Vous avez <strong>${chef.nb_fiches} fiche(s)</strong> de la semaine précédente (<strong>${previousWeek}</strong>) qui n'ont pas encore été validées.
+          </div>
+          <div class="list">
+            <p><strong>Chantiers concernés :</strong></p>
+            <ul>${chantiersListHtml}</ul>
+          </div>
+          <p>Merci de finaliser ces fiches rapidement.</p>
+        `
+
+        const emailHtml = generateEmailHtml(
+          chef.chef_prenom || 'Chef',
+          emailContent,
+          'https://crew-time-sheet.lovable.app/',
+          '📋 Finaliser mes fiches'
+        )
+
+        console.log(`[${executionId}] 📤 Envoi email à ${chef.chef_email}...`)
+
+        const { data: emailResult, error: emailError } = await resend.emails.send({
+          from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
+          to: [chef.chef_email],
+          subject: `🔔 Fiches de la semaine dernière (${previousWeek}) non validées`,
+          html: emailHtml,
         })
 
-        const responseText = await webhookResponse.text()
-        console.log(`[${executionId}] 📥 Réponse n8n: status=${webhookResponse.status}, body=${responseText}`)
-
-        if (webhookResponse.ok) {
-          console.log(`[${executionId}] ✅ Notification envoyée à ${chef.chef_email}`)
-          successCount++
-          details.push({
-            chef_email: chef.chef_email,
-            status: 'success',
-            nb_fiches: chef.nb_fiches,
-          })
-        } else {
-          console.error(`[${executionId}] ❌ Réponse n8n (${webhookResponse.status}): ${responseText}`)
-          failureCount++
-          details.push({
-            chef_email: chef.chef_email,
-            status: 'error',
-            error: responseText,
-          })
+        if (emailError) {
+          console.error(`[${executionId}] ❌ Erreur Resend pour ${chef.chef_email}:`, emailError)
+          throw emailError
         }
+
+        console.log(`[${executionId}] ✅ Email envoyé à ${chef.chef_email}`, emailResult)
+        successCount++
+        details.push({
+          chef_email: chef.chef_email,
+          status: 'success',
+          nb_fiches: chef.nb_fiches,
+        })
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error(`[${executionId}] ❌ Exception pour ${chef.chef_email}:`, error)
