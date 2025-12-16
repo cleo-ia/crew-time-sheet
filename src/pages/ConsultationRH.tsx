@@ -47,19 +47,12 @@ const ConsultationRH = () => {
   const { data: summary } = useRHSummary(filters);
   const { data: unreadData } = useUnreadMessages(currentUserId);
 
-  // Récupérer l'ID de l'utilisateur connecté
+  // Récupérer l'auth.uid() de l'utilisateur connecté (requis pour le tracking des messages lus)
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const entrepriseId = localStorage.getItem("current_entreprise_id");
-        const { data } = await supabase
-          .from("utilisateurs")
-          .select("id")
-          .eq("auth_user_id", user.id)
-          .eq("entreprise_id", entrepriseId)
-          .maybeSingle();
-        if (data) setCurrentUserId(data.id);
+        setCurrentUserId(user.id);
       }
     };
     fetchUserId();
@@ -128,6 +121,10 @@ const ConsultationRH = () => {
         theme="consultation-rh"
         actions={
           <>
+            <ConversationButton
+              onClick={() => setShowConversation(true)}
+              unreadCount={unreadData?.total || 0}
+            />
             <Button 
               variant="default"
               onClick={() => handleExport("excel")}
@@ -260,6 +257,12 @@ const ConsultationRH = () => {
         open={showClotureDialog} 
         onOpenChange={setShowClotureDialog}
         filters={filters}
+      />
+
+      <ConversationListSheet
+        open={showConversation}
+        onOpenChange={setShowConversation}
+        currentUserId={currentUserId || ""}
       />
       </div>
     </PageLayout>
