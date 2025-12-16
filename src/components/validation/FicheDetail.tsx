@@ -191,7 +191,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   const signatures = allFiches
     .map((f: any) => {
       const maconNom = f.salarie ? `${f.salarie.prenom} ${f.salarie.nom}` : "Inconnu";
-      const signature = f.signatures?.[0];
+      const signature = f.signatures?.find((s: any) => s.role !== 'conducteur');
       const isChef = f.salarie?.id === ficheData.chef?.id;
       return {
         maconNom: maconNom,
