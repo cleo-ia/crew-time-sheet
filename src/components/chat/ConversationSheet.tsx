@@ -146,7 +146,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col h-full p-0 gap-0">
+      <SheetContent className="w-full sm:max-w-md flex flex-col h-[70vh] max-h-[70vh] p-0 gap-0">
         {/* Header amélioré */}
         <SheetHeader className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
           <div className="flex items-center gap-3">
