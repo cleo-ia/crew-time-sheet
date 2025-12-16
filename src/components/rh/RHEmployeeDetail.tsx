@@ -2,12 +2,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain } from "lucide-react";
+import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, FileText, MapPin } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import { format, getISOWeek, getISOWeekYear } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useMemo } from "react";
 import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
 import { EditableTextCell } from "@/components/rh/EditableTextCell";
@@ -25,6 +26,63 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
+
+  // Grouper les jours par semaine
+  const weeklyData = useMemo(() => {
+    if (!data?.dailyDetails) return [];
+    
+    const weekMap = new Map<string, {
+      semaine: string;
+      year: number;
+      weekNumber: number;
+      chantiers: Set<string>;
+      heuresNormales: number;
+      heuresIntemperies: number;
+      paniers: number;
+      trajets: number;
+      nbJours: number;
+      absences: string[];
+    }>();
+
+    data.dailyDetails.forEach(day => {
+      const dateObj = new Date(day.date);
+      const weekNumber = getISOWeek(dateObj);
+      const year = getISOWeekYear(dateObj);
+      const semaineKey = `${year}-S${weekNumber.toString().padStart(2, '0')}`;
+      
+      if (!weekMap.has(semaineKey)) {
+        weekMap.set(semaineKey, {
+          semaine: semaineKey,
+          year,
+          weekNumber,
+          chantiers: new Set<string>(),
+          heuresNormales: 0,
+          heuresIntemperies: 0,
+          paniers: 0,
+          trajets: 0,
+          nbJours: 0,
+          absences: [],
+        });
+      }
+
+      const weekData = weekMap.get(semaineKey)!;
+      weekData.chantiers.add(day.chantier);
+      weekData.heuresNormales += day.heuresNormales || 0;
+      weekData.heuresIntemperies += day.heuresIntemperies || 0;
+      weekData.paniers += day.panier ? 1 : 0;
+      weekData.trajets += (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER' ? 1 : 0;
+      weekData.nbJours += 1;
+      
+      if ((day as any).typeAbsence) {
+        weekData.absences.push((day as any).typeAbsence);
+      }
+    });
+
+    return Array.from(weekMap.values()).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.weekNumber - b.weekNumber;
+    });
+  }, [data?.dailyDetails]);
 
   if (isLoading) {
     return (
@@ -119,6 +177,75 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
           </div>
         </div>
       </Card>
+
+      {/* Weekly Summary Cards */}
+      {weeklyData.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Récapitulatif par semaine
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {weeklyData.map((week) => (
+              <Card key={week.semaine} className="p-4 shadow-sm border-border/50 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <Badge variant="outline" className="text-sm font-semibold bg-primary/10 text-primary border-primary/30">
+                    {week.semaine}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{week.nbJours} jour{week.nbJours > 1 ? 's' : ''}</span>
+                </div>
+                
+                {/* Chantiers */}
+                <div className="flex items-start gap-2 mb-3 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from(week.chantiers).map((chantier, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {chantier}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2 p-2 rounded bg-muted/40">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{week.heuresNormales}h</span>
+                  </div>
+                  {week.heuresIntemperies > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded bg-blue-50 dark:bg-blue-900/20">
+                      <CloudRain className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{week.heuresIntemperies}h</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 p-2 rounded bg-orange-50 dark:bg-orange-900/20">
+                    <Coffee className="h-4 w-4 text-orange-500" />
+                    <span className="font-medium">{week.paniers}</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded bg-green-50 dark:bg-green-900/20">
+                    <Car className="h-4 w-4 text-green-500" />
+                    <span className="font-medium">{week.trajets}</span>
+                  </div>
+                </div>
+                
+                {/* Absences */}
+                {week.absences.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/40">
+                    <div className="flex flex-wrap gap-1">
+                      {week.absences.map((absence, idx) => (
+                        <Badge key={idx} variant="destructive" className="text-xs">
+                          {absence}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Daily Details Table */}
       <Card className="shadow-md border-border/40 overflow-hidden">
