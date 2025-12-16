@@ -33,7 +33,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
   currentUserId,
 }) => {
   const [messageContent, setMessageContent] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,12 +50,12 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
     }
   }, [open, chantierId, conversation, isLoadingConv, createConversation]);
 
-  // Scroll vers le bas quand les messages changent
+  // Scroll vers le bas quand les messages changent ou quand la conversation s'ouvre
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "instant" });
     }
-  }, [messages]);
+  }, [messages, open]);
 
   // Mettre à zéro les notifications DÈS l'ouverture de la conversation (mise à jour optimiste)
   useEffect(() => {
@@ -168,7 +168,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
         ) : (
           <>
             {/* Zone des messages */}
-            <ScrollArea className="flex-1 bg-muted/20" ref={scrollRef}>
+            <ScrollArea className="flex-1 bg-muted/20">
               <div className="p-4 space-y-3 min-h-full">
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -198,6 +198,8 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
                     />
                   ))
                 )}
+                {/* Ancre invisible pour le scroll automatique vers le bas */}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
