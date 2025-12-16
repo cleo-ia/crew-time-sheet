@@ -33,6 +33,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
   currentUserId,
 }) => {
   const [messageContent, setMessageContent] = useState("");
+  const [sheetHeight, setSheetHeight] = useState("85vh");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
@@ -60,6 +61,34 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
       return () => clearTimeout(timer);
     }
   }, [messages, open]);
+
+  // Adapter la hauteur du sheet quand le clavier apparaît (tablettes/mobiles)
+  useEffect(() => {
+    if (!open) return;
+    
+    const updateHeight = () => {
+      if (window.visualViewport) {
+        const availableHeight = window.visualViewport.height;
+        const totalHeight = window.innerHeight;
+        
+        // Si le clavier est ouvert (viewport réduit de plus de 100px)
+        if (totalHeight - availableHeight > 100) {
+          setSheetHeight(`${availableHeight * 0.95}px`);
+        } else {
+          setSheetHeight("85vh");
+        }
+      }
+    };
+
+    window.visualViewport?.addEventListener("resize", updateHeight);
+    window.visualViewport?.addEventListener("scroll", updateHeight);
+    updateHeight();
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateHeight);
+      window.visualViewport?.removeEventListener("scroll", updateHeight);
+    };
+  }, [open]);
 
   // Mettre à zéro les notifications DÈS l'ouverture de la conversation (mise à jour optimiste)
   useEffect(() => {
@@ -146,7 +175,10 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col h-[70vh] max-h-[70vh] p-0 gap-0">
+      <SheetContent 
+        className="w-full sm:max-w-md flex flex-col p-0 gap-0 transition-[height] duration-150"
+        style={{ height: sheetHeight, maxHeight: sheetHeight }}
+      >
         {/* Header amélioré */}
         <SheetHeader className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
           <div className="flex items-center gap-3">
