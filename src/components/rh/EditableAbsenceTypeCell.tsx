@@ -29,6 +29,7 @@ const ABSENCE_TYPES = [
   { value: "HI", label: "Intempéries (HI)" },
   { value: "CPSS", label: "CPSS" },
   { value: "ABS_INJ", label: "Absence injustifiée (ABS INJ)" },
+  { value: "ECOLE", label: "École (ECO)" },
 ];
 
 export const EditableAbsenceTypeCell = ({ 
