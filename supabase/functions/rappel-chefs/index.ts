@@ -265,10 +265,9 @@ Deno.serve(async (req) => {
 
         console.log(`[rappel-chefs] 📤 Envoi email à ${chef.chef_email}...`)
 
-        // ⚠️ MODE TEST - Envoyer à tom.genin@groupe-engo.com au lieu du vrai destinataire
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
-          to: ['tom.genin@groupe-engo.com'], // ORIGINAL: [chef.chef_email]
+          to: [chef.chef_email],
           subject: `⏰ Rappel - ${chef.nb_fiches_en_cours} fiche(s) en attente de validation`,
           html: emailHtml,
         })
