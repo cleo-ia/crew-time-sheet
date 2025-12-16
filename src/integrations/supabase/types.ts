@@ -1866,6 +1866,7 @@ export type Database = {
         | "HI"
         | "CPSS"
         | "ABS_INJ"
+        | "ECOLE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2015,6 +2016,7 @@ export const Constants = {
         "HI",
         "CPSS",
         "ABS_INJ",
+        "ECOLE",
       ],
     },
   },
