@@ -135,14 +135,7 @@ const ConsultationRH = () => {
               <Download className="h-4 w-4 mr-2" />
               Exporter Excel
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setActiveTab("preexport")}
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Modifier et Exporter Excel
-            </Button>
-            <Button 
+            <Button
               className="bg-accent hover:bg-accent-hover"
               onClick={() => setShowClotureDialog(true)}
               disabled={!filters.periode || filters.periode === "all"}
