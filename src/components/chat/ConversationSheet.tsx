@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, MessageCircle, Building2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConversation } from "@/hooks/useConversation";
 import { useMessages } from "@/hooks/useMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
@@ -33,9 +34,9 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 }) => {
   const [messageContent, setMessageContent] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const markedAsReadRef = useRef<Set<string>>(new Set());
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { conversation, isLoading: isLoadingConv, createConversation } = useConversation(chantierId);
   const { messages, isLoading: isLoadingMessages } = useMessages(conversation?.id || null);
@@ -56,27 +57,37 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
     }
   }, [messages]);
 
-  // Marquer les messages comme lus quand on ouvre le chat (sans boucle infinie)
+  // Mettre à zéro les notifications DÈS l'ouverture de la conversation (mise à jour optimiste)
+  useEffect(() => {
+    if (open && chantierId) {
+      queryClient.setQueryData(
+        ["unread-messages"],
+        (oldData: { total: number; byChantier: Map<string, number> } | undefined) => {
+          if (!oldData) return oldData;
+          const newByChantier = new Map(oldData.byChantier);
+          const countForThisChantier = newByChantier.get(chantierId) || 0;
+          newByChantier.delete(chantierId);
+          return {
+            total: Math.max(0, oldData.total - countForThisChantier),
+            byChantier: newByChantier,
+          };
+        }
+      );
+    }
+  }, [open, chantierId, queryClient]);
+
+  // Marquer les messages comme lus en arrière-plan (pour persister en base)
   useEffect(() => {
     if (!open || messages.length === 0 || !currentUserId) return;
 
     const unreadMessageIds = messages
       .filter((m) => m.author_id !== currentUserId)
-      .filter((m) => !markedAsReadRef.current.has(m.id))
       .map((m) => m.id);
 
-    if (unreadMessageIds.length === 0) return;
-
-    unreadMessageIds.forEach((id) => markedAsReadRef.current.add(id));
-    markAsRead.mutate({ messageIds: unreadMessageIds, userId: currentUserId });
-  }, [open, messages, currentUserId]);
-
-  // Réinitialiser le cache local quand on ferme le chat
-  useEffect(() => {
-    if (!open) {
-      markedAsReadRef.current.clear();
+    if (unreadMessageIds.length > 0) {
+      markAsRead.mutate({ messageIds: unreadMessageIds, userId: currentUserId });
     }
-  }, [open]);
+  }, [open, messages, currentUserId]);
 
   const handleSend = () => {
     if (!messageContent.trim()) return;
