@@ -5,7 +5,7 @@ import { Building2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchRHExportData } from "@/hooks/useRHExport";
-import { generateRHExcel } from "@/lib/excelExport";
+import { generateInterimaireSimplifiedExcel } from "@/lib/excelExportInterimaire";
 import { RHFilters, buildRHConsolidation } from "@/hooks/rhShared";
 
 interface InterimaireExportDialogProps {
@@ -125,8 +125,8 @@ export const InterimaireExportDialog = ({
         return;
       }
 
-      // Générer l'Excel avec nom de fichier personnalisé
-      const fileName = await generateRHExcel(data, mois, `Interimaires-${agenceName}`);
+      // Générer l'Excel simplifié format fiche de pointage
+      const fileName = await generateInterimaireSimplifiedExcel(data, mois, agenceName);
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
       console.error("Erreur lors de l'export:", error);
@@ -166,7 +166,7 @@ export const InterimaireExportDialog = ({
           continue;
         }
 
-        await generateRHExcel(data, mois, `Interimaires-${agence.name}`);
+        await generateInterimaireSimplifiedExcel(data, mois, agence.name);
         successCount++;
       } catch (error) {
         console.error(`Erreur export ${agence.name}:`, error);
