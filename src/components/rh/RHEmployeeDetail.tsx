@@ -8,7 +8,8 @@ import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, getISOWeek, getISOWeekYear } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { RHWeekDetailDialog } from "@/components/rh/RHWeekDetailDialog";
 import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
 import { EditableTextCell } from "@/components/rh/EditableTextCell";
@@ -26,6 +27,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
 
   // Grouper les jours par semaine
   const weeklyData = useMemo(() => {
@@ -187,7 +189,11 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {weeklyData.map((week) => (
-              <Card key={week.semaine} className="p-4 shadow-sm border-border/50 hover:shadow-md transition-shadow">
+              <Card 
+                key={week.semaine} 
+                className="p-4 shadow-sm border-border/50 hover:shadow-md transition-all cursor-pointer hover:border-primary/50"
+                onClick={() => setSelectedWeek(week.semaine)}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <Badge variant="outline" className="text-sm font-semibold bg-primary/10 text-primary border-primary/30">
                     {week.semaine}
@@ -469,6 +475,36 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
           <p className="text-sm mt-2">Aucun jour saisi pour cette période</p>
         </div>
       )}
+
+      {/* Week Detail Dialog */}
+      <RHWeekDetailDialog
+        open={!!selectedWeek}
+        onOpenChange={(open) => !open && setSelectedWeek(null)}
+        semaine={selectedWeek || ""}
+        days={
+          selectedWeek
+            ? data.dailyDetails
+                .filter((day) => {
+                  const dateObj = new Date(day.date);
+                  const weekNumber = getISOWeek(dateObj);
+                  const year = getISOWeekYear(dateObj);
+                  const semaineKey = `${year}-S${weekNumber.toString().padStart(2, '0')}`;
+                  return semaineKey === selectedWeek;
+                })
+                .map((day) => ({
+                  date: day.date,
+                  chantier: day.chantier,
+                  heuresNormales: day.heuresNormales,
+                  heuresIntemperies: day.heuresIntemperies,
+                  panier: day.panier,
+                  ficheJourId: day.ficheJourId,
+                  codeTrajet: (day as any).codeTrajet,
+                  typeAbsence: (day as any).typeAbsence,
+                  trajetPerso: (day as any).trajetPerso,
+                }))
+            : []
+        }
+      />
     </div>
   );
 };
