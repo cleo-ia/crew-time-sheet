@@ -82,7 +82,8 @@ export const generateInterimaireSimplifiedExcel = async (
   employees: RHExportEmployee[],
   mois: string,
   agenceName: string,
-  semaine?: string
+  semaine?: string,
+  signatures?: Map<string, string>
 ): Promise<string> => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Pointage");
@@ -113,7 +114,7 @@ export const generateInterimaireSimplifiedExcel = async (
     right: { style: "thin", color: { argb: "FF000000" } },
   };
 
-  // Largeur des colonnes
+  // Largeur des colonnes (ajout colonne Signature)
   worksheet.columns = [
     { width: 12 }, // Label (Code, HNORM, PA, T)
     { width: 10 }, // Jour 1
@@ -122,6 +123,7 @@ export const generateInterimaireSimplifiedExcel = async (
     { width: 10 }, // Jour 4
     { width: 10 }, // Jour 5
     { width: 10 }, // Total
+    { width: 18 }, // Signature
   ];
 
   let currentRow = 1;
@@ -166,7 +168,7 @@ export const generateInterimaireSimplifiedExcel = async (
     headerRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
     headerRow.getCell(1).border = borderStyle;
 
-    worksheet.mergeCells(currentRow, 4, currentRow, 7);
+    worksheet.mergeCells(currentRow, 4, currentRow, 8);
     headerRow.getCell(4).value = `${weekLabel} — Période du ${periodeStart} au ${periodeEnd}`;
     headerRow.getCell(4).font = { bold: true, color: { argb: "FFFFFFFF" } };
     headerRow.getCell(4).fill = headerFill;
@@ -183,7 +185,7 @@ export const generateInterimaireSimplifiedExcel = async (
     signatureRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
     signatureRow.getCell(1).border = borderStyle;
 
-    worksheet.mergeCells(currentRow, 4, currentRow, 7);
+    worksheet.mergeCells(currentRow, 4, currentRow, 8);
     signatureRow.getCell(4).value = "Cachet du client";
     signatureRow.getCell(4).font = { italic: true };
     signatureRow.getCell(4).fill = lightGreenFill;
@@ -196,13 +198,13 @@ export const generateInterimaireSimplifiedExcel = async (
     emptySignRow.height = 40;
     worksheet.mergeCells(currentRow, 1, currentRow, 3);
     emptySignRow.getCell(1).border = borderStyle;
-    worksheet.mergeCells(currentRow, 4, currentRow, 7);
+    worksheet.mergeCells(currentRow, 4, currentRow, 8);
     emptySignRow.getCell(4).border = borderStyle;
     currentRow++;
 
     // Ligne 4: Légende
     const legendRow = worksheet.getRow(currentRow);
-    worksheet.mergeCells(currentRow, 1, currentRow, 7);
+    worksheet.mergeCells(currentRow, 1, currentRow, 8);
     legendRow.getCell(1).value =
       "HNORM = heure normale   HI = intempérie   T = trajet   PA = panier";
     legendRow.getCell(1).font = { size: 9, italic: true };
@@ -249,6 +251,7 @@ export const generateInterimaireSimplifiedExcel = async (
 
       // Ligne titre employé
       const empTitleRow = worksheet.getRow(currentRow);
+      const empStartRow = currentRow; // Sauvegarder la ligne de début pour la signature
       worksheet.mergeCells(currentRow, 1, currentRow, 7);
       const matriculeInfo = employee.matricule ? ` (${employee.matricule})` : "";
       empTitleRow.getCell(1).value = `${employee.nom.toUpperCase()} ${employee.prenom}${matriculeInfo} — ${agenceName}`;
@@ -257,6 +260,13 @@ export const generateInterimaireSimplifiedExcel = async (
       empTitleRow.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
       empTitleRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
       empTitleRow.getCell(1).border = borderStyle;
+      
+      // En-tête colonne Signature
+      empTitleRow.getCell(8).value = "Signature";
+      empTitleRow.getCell(8).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      empTitleRow.getCell(8).fill = headerFill;
+      empTitleRow.getCell(8).alignment = { horizontal: "center", vertical: "middle" };
+      empTitleRow.getCell(8).border = borderStyle;
       currentRow++;
 
       // Ligne en-tête jours
@@ -276,6 +286,7 @@ export const generateInterimaireSimplifiedExcel = async (
       daysHeaderRow.getCell(7).fill = lightGreenFill;
       daysHeaderRow.getCell(7).alignment = { horizontal: "center" };
       daysHeaderRow.getCell(7).border = borderStyle;
+      daysHeaderRow.getCell(8).border = borderStyle;
       currentRow++;
 
       // Ligne Code chantier
@@ -291,6 +302,7 @@ export const generateInterimaireSimplifiedExcel = async (
       }
       codeRow.getCell(7).value = "";
       codeRow.getCell(7).border = borderStyle;
+      codeRow.getCell(8).border = borderStyle;
       currentRow++;
 
       // Ligne HNORM
@@ -308,6 +320,7 @@ export const generateInterimaireSimplifiedExcel = async (
       hnormRow.getCell(7).font = { bold: true };
       hnormRow.getCell(7).alignment = { horizontal: "center" };
       hnormRow.getCell(7).border = borderStyle;
+      hnormRow.getCell(8).border = borderStyle;
       currentRow++;
 
       // Ligne HI (intempéries) - seulement si il y a des intempéries
@@ -326,6 +339,7 @@ export const generateInterimaireSimplifiedExcel = async (
         hiRow.getCell(7).font = { bold: true };
         hiRow.getCell(7).alignment = { horizontal: "center" };
         hiRow.getCell(7).border = borderStyle;
+        hiRow.getCell(8).border = borderStyle;
         currentRow++;
       }
 
@@ -344,6 +358,7 @@ export const generateInterimaireSimplifiedExcel = async (
       paRow.getCell(7).font = { bold: true };
       paRow.getCell(7).alignment = { horizontal: "center" };
       paRow.getCell(7).border = borderStyle;
+      paRow.getCell(8).border = borderStyle;
       currentRow++;
 
       // Ligne T
@@ -361,7 +376,49 @@ export const generateInterimaireSimplifiedExcel = async (
       tRow.getCell(7).font = { bold: true };
       tRow.getCell(7).alignment = { horizontal: "center" };
       tRow.getCell(7).border = borderStyle;
+      tRow.getCell(8).border = borderStyle;
       currentRow++;
+
+      // Ajouter la signature de l'employé (si disponible)
+      const empEndRow = currentRow - 1; // Dernière ligne de l'employé
+      const signatureData = employee.ficheId ? signatures?.get(employee.ficheId) : null;
+      
+      if (signatureData) {
+        try {
+          // Extraire les données base64 de l'image
+          const base64Match = signatureData.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (base64Match) {
+            const extension = base64Match[1] as "png" | "jpeg" | "gif";
+            const base64Data = base64Match[2];
+            
+            // Ajouter l'image au workbook
+            const imageId = workbook.addImage({
+              base64: base64Data,
+              extension,
+            });
+            
+            // Fusionner les cellules de signature (de empStartRow+1 à empEndRow)
+            const signatureRowSpan = empEndRow - empStartRow;
+            if (signatureRowSpan > 0) {
+              worksheet.mergeCells(empStartRow + 1, 8, empEndRow, 8);
+            }
+            
+            // Positionner l'image dans la colonne H
+            worksheet.addImage(imageId, {
+              tl: { col: 7, row: empStartRow }, // Col H (index 7), ligne de début
+              ext: { width: 120, height: 50 }, // Taille fixe
+            });
+          }
+        } catch (error) {
+          console.error("Erreur lors de l'ajout de la signature:", error);
+        }
+      } else {
+        // Fusionner les cellules même sans signature
+        const signatureRowSpan = empEndRow - empStartRow;
+        if (signatureRowSpan > 0) {
+          worksheet.mergeCells(empStartRow + 1, 8, empEndRow, 8);
+        }
+      }
 
       // Espacement entre employés
       currentRow++;

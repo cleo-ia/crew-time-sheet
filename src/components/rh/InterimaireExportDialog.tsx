@@ -168,6 +168,35 @@ export const InterimaireExportDialog = ({
     fetchAgences();
   }, [open, filters]);
 
+  // Récupérer les signatures pour une liste d'employés
+  const fetchSignaturesForEmployees = async (employees: RHExportEmployee[]): Promise<Map<string, string>> => {
+    const signaturesMap = new Map<string, string>();
+    
+    // Collecter tous les ficheIds
+    const ficheIds = employees
+      .map((emp) => emp.ficheId)
+      .filter(Boolean) as string[];
+    
+    if (ficheIds.length === 0) return signaturesMap;
+    
+    // Fetch signatures from database
+    const { data: signatures } = await supabase
+      .from("signatures")
+      .select("fiche_id, signature_data")
+      .in("fiche_id", ficheIds)
+      .not("signature_data", "is", null);
+    
+    if (signatures) {
+      for (const sig of signatures) {
+        if (sig.signature_data) {
+          signaturesMap.set(sig.fiche_id, sig.signature_data);
+        }
+      }
+    }
+    
+    return signaturesMap;
+  };
+
   const handleExport = async (agenceName: string) => {
     setExporting(agenceName);
     try {
@@ -203,12 +232,16 @@ export const InterimaireExportDialog = ({
         return;
       }
 
+      // Récupérer les signatures
+      const signaturesMap = await fetchSignaturesForEmployees(data);
+
       // Générer l'Excel simplifié format fiche de pointage
       const fileName = await generateInterimaireSimplifiedExcel(
         data, 
         mois, 
         agenceName, 
-        selectedWeek !== "all" ? selectedWeek : undefined
+        selectedWeek !== "all" ? selectedWeek : undefined,
+        signaturesMap
       );
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
@@ -246,11 +279,15 @@ export const InterimaireExportDialog = ({
           continue;
         }
 
+        // Récupérer les signatures
+        const signaturesMap = await fetchSignaturesForEmployees(data);
+
         await generateInterimaireSimplifiedExcel(
           data, 
           mois, 
           agence.name,
-          selectedWeek !== "all" ? selectedWeek : undefined
+          selectedWeek !== "all" ? selectedWeek : undefined,
+          signaturesMap
         );
         successCount++;
       } catch (error) {
