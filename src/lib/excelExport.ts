@@ -161,7 +161,7 @@ const setDataFill = (cell: any, rgb: string, align: "left" | "right") => {
   };
 };
 
-export const generateRHExcel = async (data: RHExportEmployee[], mois: string): Promise<string> => {
+export const generateRHExcel = async (data: RHExportEmployee[], mois: string, filePrefix?: string): Promise<string> => {
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("Synthèse mensuelle", {
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
@@ -544,7 +544,8 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string): P
   }
 
   // Déclencher le téléchargement
-  const fileName = `RH_Export_${mois.replace("-", "_")}_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
+  const prefix = filePrefix || "RH_Export";
+  const fileName = `${prefix}_${mois.replace("-", "_")}_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

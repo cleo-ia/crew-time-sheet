@@ -11,6 +11,7 @@ export interface RHFilters {
   salarie?: string;
   typeSalarie?: string;
   includeCloture?: boolean;
+  agenceInterim?: string; // Filtre par agence d'intérim spécifique
 }
 
 export interface EmployeeDetail {
@@ -408,6 +409,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       if (filters.typeSalarie === "macon" && !isMacon) continue;
       if (filters.typeSalarie === "interimaire" && !isInterimaire) continue;
       if (filters.typeSalarie === "finisseur" && !isFinisseur) continue;
+    }
+
+    // Filtre par agence d'intérim spécifique
+    if (filters.agenceInterim && filters.agenceInterim !== "all") {
+      if (salarie.agence_interim !== filters.agenceInterim) continue;
     }
 
     // Filtre par salarié spécifique
