@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchRHExportData } from "@/hooks/useRHExport";
+import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { generateInterimaireSimplifiedExcel } from "@/lib/excelExportInterimaire";
 import { RHFilters, buildRHConsolidation } from "@/hooks/rhShared";
+import { parseISOWeek } from "@/lib/weekUtils";
+import { format, parseISO, startOfWeek, getISOWeek } from "date-fns";
 
 interface InterimaireExportDialogProps {
   open: boolean;
@@ -19,15 +22,80 @@ interface AgenceData {
   count: number;
 }
 
+// Extraire les semaines uniques depuis les données des intérimaires
+const extractWeeksFromData = (employees: RHExportEmployee[]): { value: string; label: string }[] => {
+  const weeksSet = new Set<string>();
+  
+  for (const emp of employees) {
+    if (!emp.detailJours) continue;
+    for (const jour of emp.detailJours) {
+      const date = parseISO(jour.date);
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+      const weekNumber = getISOWeek(date);
+      const year = date.getFullYear();
+      weeksSet.add(`${year}-S${weekNumber.toString().padStart(2, "0")}`);
+    }
+  }
+  
+  return Array.from(weeksSet)
+    .sort()
+    .map((week) => {
+      const weekDate = parseISOWeek(week);
+      const startLabel = format(weekDate, "dd/MM");
+      const endDate = new Date(weekDate);
+      endDate.setDate(endDate.getDate() + 4);
+      const endLabel = format(endDate, "dd/MM");
+      return {
+        value: week,
+        label: `${week.replace("-S", " - S")} (${startLabel} au ${endLabel})`,
+      };
+    });
+};
+
+// Filtrer les données par semaine
+const filterDataByWeek = (employees: RHExportEmployee[], week: string): RHExportEmployee[] => {
+  if (week === "all") return employees;
+  
+  return employees
+    .map((emp) => {
+      const filteredJours = emp.detailJours?.filter((jour) => {
+        const date = parseISO(jour.date);
+        const weekNumber = getISOWeek(date);
+        const year = date.getFullYear();
+        const jourWeek = `${year}-S${weekNumber.toString().padStart(2, "0")}`;
+        return jourWeek === week;
+      });
+      
+      return { ...emp, detailJours: filteredJours };
+    })
+    .filter((emp) => emp.detailJours && emp.detailJours.length > 0);
+};
+
 export const InterimaireExportDialog = ({
   open,
   onOpenChange,
   filters,
 }: InterimaireExportDialogProps) => {
   const [agences, setAgences] = useState<AgenceData[]>([]);
+  const [allData, setAllData] = useState<Map<string, RHExportEmployee[]>>(new Map());
+  const [availableWeeks, setAvailableWeeks] = useState<{ value: string; label: string }[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+
+  // Calculer les agences filtrées par semaine
+  const filteredAgences = useMemo(() => {
+    if (selectedWeek === "all") return agences;
+    
+    return agences
+      .map((agence) => {
+        const agenceData = allData.get(agence.name) || [];
+        const filtered = filterDataByWeek(agenceData, selectedWeek);
+        return { ...agence, count: filtered.length };
+      })
+      .filter((agence) => agence.count > 0);
+  }, [agences, allData, selectedWeek]);
 
   // Charger les agences et compter les intérimaires
   useEffect(() => {
@@ -35,6 +103,7 @@ export const InterimaireExportDialog = ({
       if (!open) return;
       
       setLoading(true);
+      setSelectedWeek("all"); // Reset on open
       try {
         const entrepriseId = localStorage.getItem("current_entreprise_id");
         
@@ -54,12 +123,17 @@ export const InterimaireExportDialog = ({
         // Extraire les agences uniques
         const uniqueAgences = [...new Set(utilisateurs?.map(u => u.agence_interim).filter(Boolean) as string[])];
         
-        // Pour chaque agence, compter les intérimaires avec fiches validées pour la période
+        // Pour chaque agence, récupérer les données complètes
         const agencesWithCount: AgenceData[] = [];
+        const dataMap = new Map<string, RHExportEmployee[]>();
+        const allEmployeesData: RHExportEmployee[] = [];
         
         for (const agence of uniqueAgences) {
-          // Utiliser buildRHConsolidation pour avoir le même filtrage que l'écran
-          const data = await buildRHConsolidation({
+          const mois = (!filters.periode || filters.periode === "all") 
+            ? new Date().toISOString().slice(0, 7) 
+            : filters.periode;
+          
+          const data = await fetchRHExportData(mois, {
             ...filters,
             typeSalarie: "interimaire",
             agenceInterim: agence,
@@ -70,8 +144,15 @@ export const InterimaireExportDialog = ({
               name: agence,
               count: data.length,
             });
+            dataMap.set(agence, data);
+            allEmployeesData.push(...data);
           }
         }
+        
+        // Extraire les semaines disponibles
+        const weeks = extractWeeksFromData(allEmployeesData);
+        setAvailableWeeks(weeks);
+        setAllData(dataMap);
         
         // Trier par nom d'agence
         agencesWithCount.sort((a, b) => a.name.localeCompare(b.name));
@@ -94,12 +175,9 @@ export const InterimaireExportDialog = ({
         ? new Date().toISOString().slice(0, 7) 
         : filters.periode;
 
-      // Récupérer les données filtrées par agence
-      const data = await fetchRHExportData(mois, {
-        ...filters,
-        typeSalarie: "interimaire",
-        agenceInterim: agenceName,
-      });
+      // Utiliser les données déjà chargées et filtrer par semaine
+      const agenceData = allData.get(agenceName) || [];
+      const data = filterDataByWeek(agenceData, selectedWeek);
 
       if (data.length === 0) {
         toast.error(`Aucune donnée à exporter pour ${agenceName}`);
@@ -126,7 +204,12 @@ export const InterimaireExportDialog = ({
       }
 
       // Générer l'Excel simplifié format fiche de pointage
-      const fileName = await generateInterimaireSimplifiedExcel(data, mois, agenceName);
+      const fileName = await generateInterimaireSimplifiedExcel(
+        data, 
+        mois, 
+        agenceName, 
+        selectedWeek !== "all" ? selectedWeek : undefined
+      );
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
       console.error("Erreur lors de l'export:", error);
@@ -141,17 +224,14 @@ export const InterimaireExportDialog = ({
     let successCount = 0;
     let errorCount = 0;
 
-    for (const agence of agences) {
+    for (const agence of filteredAgences) {
       try {
         const mois = (!filters.periode || filters.periode === "all") 
           ? new Date().toISOString().slice(0, 7) 
           : filters.periode;
 
-        const data = await fetchRHExportData(mois, {
-          ...filters,
-          typeSalarie: "interimaire",
-          agenceInterim: agence.name,
-        });
+        const agenceData = allData.get(agence.name) || [];
+        const data = filterDataByWeek(agenceData, selectedWeek);
 
         if (data.length === 0) continue;
 
@@ -166,7 +246,12 @@ export const InterimaireExportDialog = ({
           continue;
         }
 
-        await generateInterimaireSimplifiedExcel(data, mois, agence.name);
+        await generateInterimaireSimplifiedExcel(
+          data, 
+          mois, 
+          agence.name,
+          selectedWeek !== "all" ? selectedWeek : undefined
+        );
         successCount++;
       } catch (error) {
         console.error(`Erreur export ${agence.name}:`, error);
@@ -197,17 +282,38 @@ export const InterimaireExportDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="text-sm text-muted-foreground mb-4">
-          Période : <span className="font-medium text-foreground">{periodeLabel}</span>
+        <div className="space-y-3 mb-4">
+          <div className="text-sm text-muted-foreground">
+            Période : <span className="font-medium text-foreground">{periodeLabel}</span>
+          </div>
+          
+          {availableWeeks.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Semaine :</span>
+              <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue placeholder="Toutes les semaines" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les semaines</SelectItem>
+                  {availableWeeks.map((week) => (
+                    <SelectItem key={week.value} value={week.value}>
+                      {week.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : agences.length === 0 ? (
+        ) : filteredAgences.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            Aucun intérimaire avec des fiches validées pour cette période
+            Aucun intérimaire avec des fiches validées pour cette {selectedWeek !== "all" ? "semaine" : "période"}
           </div>
         ) : (
           <div className="space-y-3">
@@ -221,11 +327,11 @@ export const InterimaireExportDialog = ({
               ) : (
                 <Download className="h-4 w-4 mr-2" />
               )}
-              Tout exporter ({agences.length} fichier{agences.length > 1 ? "s" : ""})
+              Tout exporter ({filteredAgences.length} fichier{filteredAgences.length > 1 ? "s" : ""})
             </Button>
             
             <div className="border-t pt-3 space-y-3">
-            {agences.map((agence) => (
+            {filteredAgences.map((agence) => (
               <div
                 key={agence.name}
                 className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"

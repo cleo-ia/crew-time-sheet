@@ -81,7 +81,8 @@ const getEntrepriseName = (): string => {
 export const generateInterimaireSimplifiedExcel = async (
   employees: RHExportEmployee[],
   mois: string,
-  agenceName: string
+  agenceName: string,
+  semaine?: string
 ): Promise<string> => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Pointage");
@@ -375,8 +376,10 @@ export const generateInterimaireSimplifiedExcel = async (
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  // Nom du fichier
-  const fileName = `Pointage-${agenceName.replace(/\s+/g, "-")}-${mois}.xlsx`;
+  // Nom du fichier (inclut la semaine si spécifiée)
+  const fileName = semaine 
+    ? `Pointage-${agenceName.replace(/\s+/g, "-")}-${semaine}.xlsx`
+    : `Pointage-${agenceName.replace(/\s+/g, "-")}-${mois}.xlsx`;
 
   // Télécharger
   const url = URL.createObjectURL(blob);
