@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { PenLine } from "lucide-react";
+import { PenLine, Download } from "lucide-react";
+import { generateWeekDetailPdf } from "@/lib/rhWeekDetailPdfExport";
 
 interface DayDetail {
   date: string;
@@ -29,9 +31,10 @@ interface RHWeekDetailDialogProps {
   semaine: string;
   days: DayDetail[];
   signature?: SignatureData;
+  employeeName: string;
 }
 
-export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signature }: RHWeekDetailDialogProps) => {
+export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signature, employeeName }: RHWeekDetailDialogProps) => {
   // Calculer les totaux
   const totals = days.reduce(
     (acc, day) => ({
@@ -43,16 +46,26 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
     { heuresNormales: 0, heuresIntemperies: 0, paniers: 0, trajets: 0 }
   );
 
+  const handleExportPdf = () => {
+    generateWeekDetailPdf(employeeName, semaine, days, signature);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Détail semaine
-            <Badge variant="outline" className="text-sm font-semibold bg-primary/10 text-primary border-primary/30">
-              {semaine}
-            </Badge>
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              Détail semaine
+              <Badge variant="outline" className="text-sm font-semibold bg-primary/10 text-primary border-primary/30">
+                {semaine}
+              </Badge>
+            </DialogTitle>
+            <Button variant="outline" size="sm" onClick={handleExportPdf} className="mr-6">
+              <Download className="h-4 w-4 mr-2" />
+              Exporter PDF
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="overflow-x-auto">
