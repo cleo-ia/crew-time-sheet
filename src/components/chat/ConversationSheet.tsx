@@ -60,8 +60,9 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
   // Mettre à zéro les notifications DÈS l'ouverture de la conversation (mise à jour optimiste)
   useEffect(() => {
     if (open && chantierId) {
-      queryClient.setQueryData(
-        ["unread-messages"],
+      // Utiliser setQueriesData pour cibler TOUTES les queries "unread-messages" (matcher partiel)
+      queryClient.setQueriesData(
+        { queryKey: ["unread-messages"] },
         (oldData: { total: number; byChantier: Map<string, number> } | undefined) => {
           if (!oldData) return oldData;
           const newByChantier = new Map(oldData.byChantier);
