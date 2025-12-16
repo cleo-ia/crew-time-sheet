@@ -27,6 +27,7 @@ export const InterimaireExportDialog = ({
   const [agences, setAgences] = useState<AgenceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [exportingAll, setExportingAll] = useState(false);
 
   // Charger les agences et compter les intérimaires
   useEffect(() => {
@@ -135,6 +136,53 @@ export const InterimaireExportDialog = ({
     }
   };
 
+  const handleExportAll = async () => {
+    setExportingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const agence of agences) {
+      try {
+        const mois = (!filters.periode || filters.periode === "all") 
+          ? new Date().toISOString().slice(0, 7) 
+          : filters.periode;
+
+        const data = await fetchRHExportData(mois, {
+          ...filters,
+          typeSalarie: "interimaire",
+          agenceInterim: agence.name,
+        });
+
+        if (data.length === 0) continue;
+
+        const employesAvecAbsencesNonQualifiees = data.filter(emp => {
+          return emp.detailJours?.some(
+            jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
+          );
+        });
+
+        if (employesAvecAbsencesNonQualifiees.length > 0) {
+          errorCount++;
+          continue;
+        }
+
+        await generateRHExcel(data, mois, `Interimaires-${agence.name}`);
+        successCount++;
+      } catch (error) {
+        console.error(`Erreur export ${agence.name}:`, error);
+        errorCount++;
+      }
+    }
+
+    setExportingAll(false);
+    
+    if (errorCount > 0) {
+      toast.warning(`${successCount} fichier(s) exporté(s), ${errorCount} ignoré(s) (absences non qualifiées)`);
+    } else {
+      toast.success(`${successCount} fichier(s) exporté(s)`);
+    }
+  };
+
   const periodeLabel = filters.periode && filters.periode !== "all" 
     ? new Date(filters.periode + "-01").toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
     : "Toutes périodes";
@@ -163,6 +211,20 @@ export const InterimaireExportDialog = ({
           </div>
         ) : (
           <div className="space-y-3">
+            <Button
+              className="w-full"
+              onClick={handleExportAll}
+              disabled={exportingAll || exporting !== null}
+            >
+              {exportingAll ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Tout exporter ({agences.length} fichier{agences.length > 1 ? "s" : ""})
+            </Button>
+            
+            <div className="border-t pt-3 space-y-3">
             {agences.map((agence) => (
               <div
                 key={agence.name}
@@ -193,6 +255,7 @@ export const InterimaireExportDialog = ({
                 </Button>
               </div>
             ))}
+            </div>
           </div>
         )}
       </DialogContent>
