@@ -2,6 +2,9 @@ import { buildRHConsolidation, RHFilters, EmployeeDetail, calculateHeuresSuppBTP
 import { startOfWeek, format, parseISO } from "date-fns";
 
 export interface RHExportEmployee {
+  // Identifiant salarié (pour récupération signature)
+  salarieId?: string;
+  
   // Données contractuelles
   matricule: string;
   nom: string;
@@ -107,6 +110,9 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
     const trajetsOverride = (emp as any).trajets_export_override;
     
     return {
+      // Identifiant salarié
+      salarieId: (emp as any).salarieId || (emp as any).id,
+      
       // Données contractuelles
       matricule: emp.matricule || "",
       nom: emp.nom,
