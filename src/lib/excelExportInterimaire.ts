@@ -154,6 +154,7 @@ export const generateInterimaireSimplifiedExcel = async (
     const firstWeekData = weekEmployees[0].weekData;
     const periodeStart = format(firstWeekData.startDate, "dd/MM/yyyy");
     const periodeEnd = format(firstWeekData.endDate, "dd/MM/yyyy");
+    const weekLabel = `S${firstWeekData.weekNumber}`;
 
     // === EN-TÊTE DE SEMAINE ===
     // Ligne 1: Nom entreprise + Période
@@ -166,7 +167,7 @@ export const generateInterimaireSimplifiedExcel = async (
     headerRow.getCell(1).border = borderStyle;
 
     worksheet.mergeCells(currentRow, 4, currentRow, 7);
-    headerRow.getCell(4).value = `Période du ${periodeStart} au ${periodeEnd}`;
+    headerRow.getCell(4).value = `${weekLabel} — Période du ${periodeStart} au ${periodeEnd}`;
     headerRow.getCell(4).font = { bold: true, color: { argb: "FFFFFFFF" } };
     headerRow.getCell(4).fill = headerFill;
     headerRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
