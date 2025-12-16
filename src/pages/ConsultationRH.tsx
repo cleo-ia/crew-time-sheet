@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2 } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
 import { RHSummary } from "@/components/rh/RHSummary";
@@ -26,6 +26,7 @@ import { ConversationButton } from "@/components/chat/ConversationButton";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
+import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
 
 
 const ConsultationRH = () => {
@@ -33,6 +34,7 @@ const ConsultationRH = () => {
   const [activeTab, setActiveTab] = useState("consolide");
   const [showClotureDialog, setShowClotureDialog] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
+  const [showInterimaireExport, setShowInterimaireExport] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     periode: format(new Date(), "yyyy-MM"),
@@ -125,6 +127,13 @@ const ConsultationRH = () => {
               onClick={() => setShowConversation(true)}
               unreadCount={unreadData?.total || 0}
             />
+            <Button 
+              variant="outline"
+              onClick={() => setShowInterimaireExport(true)}
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Export Intérimaires
+            </Button>
             <Button 
               variant="default"
               onClick={() => handleExport("excel")}
@@ -263,6 +272,12 @@ const ConsultationRH = () => {
         open={showConversation}
         onOpenChange={setShowConversation}
         currentUserId={currentUserId || ""}
+      />
+
+      <InterimaireExportDialog
+        open={showInterimaireExport}
+        onOpenChange={setShowInterimaireExport}
+        filters={filters}
       />
       </div>
     </PageLayout>
