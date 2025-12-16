@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { PenLine } from "lucide-react";
 
 interface DayDetail {
   date: string;
@@ -16,14 +17,21 @@ interface DayDetail {
   trajetPerso?: boolean;
 }
 
+interface SignatureData {
+  signature_data: string;
+  signed_at: string;
+  role: string | null;
+}
+
 interface RHWeekDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   semaine: string;
   days: DayDetail[];
+  signature?: SignatureData;
 }
 
-export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days }: RHWeekDetailDialogProps) => {
+export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signature }: RHWeekDetailDialogProps) => {
   // Calculer les totaux
   const totals = days.reduce(
     (acc, day) => ({
@@ -145,6 +153,43 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days }: RHWeek
               </TableRow>
             </TableFooter>
           </Table>
+        </div>
+
+        {/* Section Signature */}
+        <div className="mt-6 pt-4 border-t border-border/40">
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <PenLine className="h-4 w-4 text-primary" />
+            Signature de l'employé
+          </h4>
+          
+          {signature ? (
+            <div className="flex items-start gap-4">
+              <div className="bg-background border border-border rounded-lg p-3 w-48 h-24 flex items-center justify-center">
+                <img 
+                  src={signature.signature_data} 
+                  alt="Signature" 
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Badge className="bg-success/10 text-success border-success/30 w-fit">
+                  ✓ Signé
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  Signé le {format(new Date(signature.signed_at), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="w-48 h-24 bg-muted/30 rounded-lg border border-dashed border-border flex items-center justify-center">
+                <span className="text-sm text-muted-foreground">Non signé</span>
+              </div>
+              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
+                ✗ Non signé
+              </Badge>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

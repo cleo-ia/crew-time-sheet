@@ -507,6 +507,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                 }))
             : []
         }
+        signature={selectedWeek && data.signaturesBySemaine ? data.signaturesBySemaine[selectedWeek] : undefined}
       />
     </div>
   );

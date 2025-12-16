@@ -642,6 +642,27 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
 
       // 3. Récupérer tous les fiches_jours pour ces fiches
       const ficheIds = filteredFiches.map(f => f.id);
+      
+      // 🔥 Récupérer les signatures pour ces fiches
+      const { data: signaturesData } = await supabase
+        .from("signatures")
+        .select("fiche_id, signature_data, signed_at, role, signed_by")
+        .in("fiche_id", ficheIds)
+        .eq("signed_by", salarieId);
+
+      // Créer une map semaine -> signature
+      const signaturesBySemaine = new Map<string, { signature_data: string; signed_at: string; role: string | null }>();
+      (signaturesData || []).forEach(sig => {
+        const fiche = filteredFiches.find(f => f.id === sig.fiche_id);
+        if (fiche?.semaine && sig.signature_data) {
+          signaturesBySemaine.set(fiche.semaine, {
+            signature_data: sig.signature_data,
+            signed_at: sig.signed_at,
+            role: sig.role,
+          });
+        }
+      });
+
       const { data: fichesJoursRaw, error: joursError } = await supabase
         .from("fiches_jours")
         .select("*")
@@ -776,6 +797,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         },
         dailyDetails,
         summary,
+        signaturesBySemaine: Object.fromEntries(signaturesBySemaine),
       };
     },
     enabled: !!salarieId,
