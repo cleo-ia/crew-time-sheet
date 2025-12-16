@@ -52,8 +52,12 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 
   // Scroll vers le bas quand les messages changent ou quand la conversation s'ouvre
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "instant" });
+    if (open && messagesEndRef.current) {
+      // Délai pour s'assurer que ScrollArea est complètement rendu
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [messages, open]);
 
