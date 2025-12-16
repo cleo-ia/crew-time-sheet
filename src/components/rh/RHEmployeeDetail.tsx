@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, FileText, MapPin } from "lucide-react";
+import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, FileText, MapPin, ChevronRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -198,7 +198,10 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   <Badge variant="outline" className="text-sm font-semibold bg-primary/10 text-primary border-primary/30">
                     {week.semaine}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{week.nbJours} jour{week.nbJours > 1 ? 's' : ''}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{week.nbJours} jour{week.nbJours > 1 ? 's' : ''}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
                 
                 {/* Chantiers */}
