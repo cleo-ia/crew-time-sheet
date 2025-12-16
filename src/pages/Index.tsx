@@ -73,12 +73,13 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const [showConversation, setShowConversation] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
   
-  // Récupérer les messages non lus pour ce chantier
-  const { data: unreadData } = useUnreadMessages(selectedChef, selectedChantier ? [selectedChantier] : undefined);
+  // Récupérer les messages non lus pour ce chantier (utiliser auth.uid() pour cohérence avec RLS)
+  const { data: unreadData } = useUnreadMessages(authUserId, selectedChantier ? [selectedChantier] : undefined);
 
   // Mettre à jour selectedWeek quand initialWeek change
   useEffect(() => {
@@ -91,6 +92,8 @@ const Index = () => {
   useEffect(() => {
     const fetchConnectedChef = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      // Sauvegarder auth.uid() pour le système de messages (cohérence avec RLS)
+      if (user) setAuthUserId(user.id);
       if (!user) return;
 
       const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -409,7 +412,7 @@ const Index = () => {
         onOpenChange={setShowConversation}
         chantierId={selectedChantier || null}
         chantierNom={chantierNom}
-        currentUserId={selectedChef}
+        currentUserId={authUserId || ""}
       />
 
       {/* Main Content */}
