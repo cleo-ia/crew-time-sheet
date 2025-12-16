@@ -294,7 +294,8 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
         return acc;
       }, {} as Record<string, any>);
 
-      return Object.values(grouped);
+      // Tri par semaine (du plus ancien au plus récent) pour l'affichage chronologique
+      return Object.values(grouped).sort((a, b) => a.semaine.localeCompare(b.semaine));
     },
   });
 };
