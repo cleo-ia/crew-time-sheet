@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { Resend } from 'https://esm.sh/resend@2.0.0'
 import { isTargetParisHour } from '../_shared/timezone.ts'
 
 const corsHeaders = {
@@ -19,6 +20,56 @@ interface ConducteurWithFiches {
   }>
 }
 
+// Template HTML professionnel pour les emails
+function generateEmailHtml(prenom: string, content: string, ctaUrl: string, ctaText: string): string {
+  const year = new Date().getFullYear()
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 24px; border-radius: 8px 8px 0 0; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { background: #ffffff; padding: 24px; border-radius: 0 0 8px 8px; }
+    .greeting { font-size: 16px; margin-bottom: 16px; }
+    .list { background: #f9fafb; padding: 16px; border-radius: 6px; margin: 16px 0; }
+    .list ul { margin: 0; padding-left: 20px; }
+    .list li { margin: 8px 0; }
+    .chantier-item { background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 8px 0; }
+    .chantier-name { font-weight: bold; color: #374151; }
+    .chantier-details { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    .button { display: inline-block; background: #f97316; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+    .button:hover { background: #ea580c; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 24px; padding: 16px; }
+    .footer a { color: #f97316; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📋 DIVA - Fiches à valider</h1>
+    </div>
+    <div class="content">
+      <p class="greeting">Bonjour ${prenom},</p>
+      ${content}
+      <div style="text-align: center;">
+        <a href="${ctaUrl}" class="button">${ctaText}</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Cet email a été envoyé automatiquement par DIVA.</p>
+      <p>© ${year} <a href="https://groupe-engo.com">Groupe Engo</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -31,18 +82,14 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL')!
-    const n8nWebhookSecret = Deno.env.get('N8N_WEBHOOK_SECRET')!
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY non configuré')
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Log de l'URL cible pour diagnostic
-    try {
-      const url = new URL(n8nWebhookUrl)
-      console.log(`[rappel-conducteurs] 🎯 URL cible: ${url.host}${url.pathname}`)
-    } catch (e) {
-      console.error(`[rappel-conducteurs] ⚠️ URL webhook invalide: ${n8nWebhookUrl}`)
-    }
+    const resend = new Resend(resendApiKey)
 
     // Lire le body pour récupérer execution_mode, triggered_by et force
     let execution_mode = 'cron'
@@ -216,58 +263,61 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ÉTAPE 4: Envoyer les notifications via n8n
-    console.log(`[rappel-conducteurs] 📧 Envoi de ${conducteursANotifier.length} notification(s) via n8n...`)
+    // ÉTAPE 4: Envoyer les emails via Resend
+    console.log(`[rappel-conducteurs] 📧 Envoi de ${conducteursANotifier.length} email(s) via Resend...`)
 
     const results = []
     for (const conducteur of conducteursANotifier) {
       try {
-        // Calculer la semaine ISO pour le payload
-        const now = new Date()
-        const year = now.getFullYear()
-        const weekNumber = getWeekNumber(now)
-        const currentWeek = `${year}-S${String(weekNumber).padStart(2, '0')}`
+        const chantiersListHtml = conducteur.chantiers.map(ch => `
+          <div class="chantier-item">
+            <div class="chantier-name">🏗️ ${ch.nom}</div>
+            <div class="chantier-details">${ch.nb_fiches} fiche(s) • Chef(s) : ${ch.chefs.join(', ') || 'N/A'}</div>
+          </div>
+        `).join('')
 
-        const webhookPayload = {
-          type: 'rappel_conducteur',
-          conducteur_id: conducteur.conducteur_id,
-          conducteur_nom: conducteur.conducteur_nom,
-          conducteur_prenom: conducteur.conducteur_prenom,
-          conducteur_email: conducteur.conducteur_email,
-          items: conducteur.chantiers.map(ch => ({
-            chantier_nom: ch.nom,
-            semaine: currentWeek,
-            nb_fiches: ch.nb_fiches
-          })),
-          appBaseUrl: 'https://crew-time-sheet.lovable.app/validation-conducteur',
-          timestamp: new Date().toISOString()
-        }
+        const emailContent = `
+          <p>Vous avez <strong>${conducteur.nb_fiches_en_attente} fiche(s)</strong> transmise(s) par vos chefs en attente de validation.</p>
+          <div class="list">
+            <p><strong>Détail par chantier :</strong></p>
+            ${chantiersListHtml}
+          </div>
+          <p>Merci de valider ces fiches dès que possible.</p>
+        `
 
-        const webhookResponse = await fetch(n8nWebhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-N8N-Secret': n8nWebhookSecret,
-          },
-          body: JSON.stringify(webhookPayload),
+        const emailHtml = generateEmailHtml(
+          conducteur.conducteur_prenom || 'Conducteur',
+          emailContent,
+          'https://crew-time-sheet.lovable.app/validation-conducteur',
+          '✅ Valider les fiches'
+        )
+
+        console.log(`[rappel-conducteurs] 📤 Envoi email à ${conducteur.conducteur_email}...`)
+
+        const { data: emailResult, error: emailError } = await resend.emails.send({
+          from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
+          to: [conducteur.conducteur_email],
+          subject: `📋 ${conducteur.nb_fiches_en_attente} fiche(s) en attente de votre validation`,
+          html: emailHtml,
         })
 
-        if (!webhookResponse.ok) {
-          const errorText = await webhookResponse.text()
-          console.error(`[rappel-conducteurs] ❌ Réponse n8n (${webhookResponse.status}): ${errorText}`)
-          throw new Error(`Erreur webhook: ${webhookResponse.status} - ${errorText}`)
+        if (emailError) {
+          console.error(`[rappel-conducteurs] ❌ Erreur Resend pour ${conducteur.conducteur_email}:`, emailError)
+          throw emailError
         }
 
-        console.log(`[rappel-conducteurs] ✅ Notification envoyée pour ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`)
+        console.log(`[rappel-conducteurs] ✅ Email envoyé à ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`, emailResult)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
+          email: conducteur.conducteur_email,
           success: true
         })
-      } catch (webhookError) {
-        console.error(`[rappel-conducteurs] ❌ Erreur webhook pour ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}:`, webhookError)
-        const errorMessage = webhookError instanceof Error ? webhookError.message : String(webhookError)
+      } catch (emailError) {
+        console.error(`[rappel-conducteurs] ❌ Erreur envoi email pour ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}:`, emailError)
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
+          email: conducteur.conducteur_email,
           success: false,
           error: errorMessage
         })
