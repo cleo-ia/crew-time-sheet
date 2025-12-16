@@ -40,10 +40,13 @@ import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { ConversationButton } from "@/components/chat/ConversationButton";
 import { ConversationSheet } from "@/components/chat/ConversationSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useAuth } from "@/contexts/AuthProvider";
+import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { isOnline } = useAuth();
   const isContrainteVendredi12h = useFeatureEnabled('contrainteVendredi12h');
   const isRatioGlobalEnabled = useFeatureEnabled('ratioGlobal');
   const isPointsMeteoEnabled = useFeatureEnabled('pointsMeteo');
@@ -393,6 +396,7 @@ const Index = () => {
         subtitle="Chef de chantier"
         icon={FileText}
         theme="saisie-chef"
+        showNetworkBadge={true}
         actions={
           <>
             {selectedChantier && (
@@ -516,13 +520,15 @@ const Index = () => {
           {/* Time Entry Table */}
           {selectedWeek && selectedChantier ? (
             <>
-              <TimeEntryTable 
-                chantierId={selectedChantier}
-                weekId={selectedWeek}
-                chefId={selectedChef}
-                onEntriesChange={setTimeEntries}
-                readOnly={!isFicheModifiable}
-              />
+              <OfflineOverlay message="La saisie des heures est désactivée jusqu'au retour de la connexion">
+                <TimeEntryTable 
+                  chantierId={selectedChantier}
+                  weekId={selectedWeek}
+                  chefId={selectedChef}
+                  onEntriesChange={setTimeEntries}
+                  readOnly={!isFicheModifiable || !isOnline}
+                />
+              </OfflineOverlay>
 
               {/* Bouton "Enregistrer maintenant" */}
               {selectedChef && selectedWeek && timeEntries.length > 0 && (
@@ -538,7 +544,7 @@ const Index = () => {
                         chefId: selectedChef,
                       });
                     }}
-                    disabled={!selectedChef || !selectedWeek || timeEntries.length === 0 || autoSaveFiche.isPending || !isFicheModifiable}
+                    disabled={!selectedChef || !selectedWeek || timeEntries.length === 0 || autoSaveFiche.isPending || !isFicheModifiable || !isOnline}
                   >
                     {autoSaveFiche.isPending ? (
                       <>
@@ -562,37 +568,39 @@ const Index = () => {
 
               {/* Transport Sheet - Accordéon */}
               {selectedWeek && (
-                <Card className="p-4 shadow-md border-border/50">
-                  <Collapsible open={isTransportOpen} onOpenChange={setIsTransportOpen}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted/50 rounded-md transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Truck className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <h3 className="text-lg font-semibold">Fiche de Trajet</h3>
-                          <p className="text-xs text-muted-foreground">
-                            Gérer les conducteurs et véhicules de la semaine
-                          </p>
+                <OfflineOverlay message="La saisie des transports est désactivée jusqu'au retour de la connexion">
+                  <Card className="p-4 shadow-md border-border/50">
+                    <Collapsible open={isTransportOpen} onOpenChange={setIsTransportOpen}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted/50 rounded-md transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Truck className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <h3 className="text-lg font-semibold">Fiche de Trajet</h3>
+                            <p className="text-xs text-muted-foreground">
+                              Gérer les conducteurs et véhicules de la semaine
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <ChevronDown 
-                        className={`h-5 w-5 text-muted-foreground transition-transform ${
-                          isTransportOpen ? "transform rotate-180" : ""
-                        }`}
-                      />
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="pt-4">
-            <TransportSheetV2
-              selectedWeek={parseISOWeek(selectedWeek)}
-              selectedWeekString={selectedWeek}
-              chantierId={selectedChantier}
-              chefId={selectedChef}
-              ficheId={ficheId}
-              isReadOnly={!isFicheModifiable}
-            />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Card>
+                        <ChevronDown 
+                          className={`h-5 w-5 text-muted-foreground transition-transform ${
+                            isTransportOpen ? "transform rotate-180" : ""
+                          }`}
+                        />
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent className="pt-4">
+                        <TransportSheetV2
+                          selectedWeek={parseISOWeek(selectedWeek)}
+                          selectedWeekString={selectedWeek}
+                          chantierId={selectedChantier}
+                          chefId={selectedChef}
+                          ficheId={ficheId}
+                          isReadOnly={!isFicheModifiable || !isOnline}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </Card>
+                </OfflineOverlay>
               )}
 
               {/* Ratio Global Sheet - Limoge Revillon uniquement */}
@@ -635,7 +643,7 @@ const Index = () => {
                     size="lg"
                     className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
                     onClick={handleSaveAndSign}
-                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable}
+                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable || !isOnline}
                   >
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                     Enregistrer et collecter les signatures
@@ -643,7 +651,14 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground text-center">
                     Les maçons devront signer individuellement sur la tablette
                   </p>
-                  {!isTransportComplete && selectedWeek && selectedChantier && (
+                  {!isOnline && (
+                    <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                      <p className="text-sm text-amber-800 dark:text-amber-200 font-medium text-center">
+                        📵 Connexion perdue — Transmission impossible
+                      </p>
+                    </div>
+                  )}
+                  {!isTransportComplete && selectedWeek && selectedChantier && isOnline && (
                     <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md">
                       <p className="text-sm text-red-800 dark:text-red-200 font-medium text-center">
                         ⚠️ La fiche de trajet doit être complétée avant de collecter les signatures
