@@ -85,6 +85,11 @@ export const WeekSelectorWithPending = ({ value, onChange, disabled }: WeekSelec
         <SelectValue placeholder="Sélectionner une semaine" />
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="all">
+          <span className="flex items-center gap-2 font-medium">
+            📅 Toutes les semaines
+          </span>
+        </SelectItem>
         {weeks.map((week) => (
           <SelectItem key={week} value={week}>
             <span className="flex items-center gap-2">

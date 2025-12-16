@@ -180,7 +180,7 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
         .eq("statut", status as any)
         .in("chantier_id", allowedChantierIds);
 
-      if (filters?.semaine) {
+      if (filters?.semaine && filters.semaine !== "all") {
         statusQuery = statusQuery.eq("semaine", filters.semaine);
       }
 
