@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Download, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Download, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
@@ -10,6 +11,24 @@ import { generateInterimaireSimplifiedExcel } from "@/lib/excelExportInterimaire
 import { RHFilters, buildRHConsolidation } from "@/hooks/rhShared";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { format, parseISO, startOfWeek, getISOWeek } from "date-fns";
+
+const STORAGE_KEY = "interim_exports_done";
+
+const loadExportedItems = (): Set<string> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveExportedItem = (key: string, currentSet: Set<string>): Set<string> => {
+  const newSet = new Set(currentSet);
+  newSet.add(key);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...newSet]));
+  return newSet;
+};
 
 interface InterimaireExportDialogProps {
   open: boolean;
@@ -83,6 +102,17 @@ export const InterimaireExportDialog = ({
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+  const [exportedItems, setExportedItems] = useState<Set<string>>(() => loadExportedItems());
+
+  // Générer la clé pour localStorage
+  const getExportKey = useCallback((agenceName: string): string => {
+    return `${selectedWeek}_${agenceName}`;
+  }, [selectedWeek]);
+
+  // Vérifier si une agence a déjà été exportée pour la semaine sélectionnée
+  const isExported = useCallback((agenceName: string): boolean => {
+    return exportedItems.has(getExportKey(agenceName));
+  }, [exportedItems, getExportKey]);
 
   // Calculer les agences filtrées par semaine
   const filteredAgences = useMemo(() => {
@@ -243,6 +273,10 @@ export const InterimaireExportDialog = ({
         selectedWeek !== "all" ? selectedWeek : undefined,
         signaturesMap
       );
+
+      // Marquer comme exporté
+      setExportedItems(prev => saveExportedItem(getExportKey(agenceName), prev));
+      
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
       console.error("Erreur lors de l'export:", error);
@@ -289,6 +323,10 @@ export const InterimaireExportDialog = ({
           selectedWeek !== "all" ? selectedWeek : undefined,
           signaturesMap
         );
+        
+        // Marquer comme exporté
+        setExportedItems(prev => saveExportedItem(getExportKey(agence.name), prev));
+        
         successCount++;
       } catch (error) {
         console.error(`Erreur export ${agence.name}:`, error);
@@ -376,7 +414,15 @@ export const InterimaireExportDialog = ({
                 <div className="flex items-center gap-3">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <div className="font-medium">{agence.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{agence.name}</span>
+                      {isExported(agence.name) && (
+                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                          <Check className="h-3 w-3 mr-1" />
+                          Exporté
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {agence.count} intérimaire{agence.count > 1 ? "s" : ""}
                     </div>
