@@ -171,7 +171,7 @@ export const DashboardManager = () => {
       </div>
 
       {/* Progression Transmission */}
-      <Card className="border-0 shadow-md overflow-hidden">
+      <Card className="border-0 shadow-md overflow-hidden relative">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
