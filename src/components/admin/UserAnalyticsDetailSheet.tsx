@@ -97,9 +97,9 @@ const getDeviceLabel = (type: string | null) => {
 
 const getSessionDurationColor = (seconds: number | null) => {
   if (!seconds) return 'border-l-muted-foreground/30';
-  if (seconds > 600) return 'border-l-emerald-500'; // > 10min
-  if (seconds > 120) return 'border-l-amber-500'; // > 2min
-  return 'border-l-red-400'; // < 2min
+  if (seconds < 600) return 'border-l-emerald-500'; // < 10min = efficace
+  if (seconds <= 1200) return 'border-l-amber-500'; // 10-20min = normal
+  return 'border-l-red-400'; // > 20min = trop long
 };
 
 export const UserAnalyticsDetailSheet = ({
