@@ -15,12 +15,18 @@ import {
   Tablet, 
   Activity,
   TrendingUp,
+  TrendingDown,
   FileText,
   CircleHelp,
   ChevronRight,
   UserX,
-  BarChart3
+  BarChart3,
+  AlertTriangle,
+  Flame
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { differenceInDays } from 'date-fns';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -29,7 +35,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
 } from 'recharts';
@@ -84,11 +90,39 @@ export const AnalyticsManager = () => {
     userName: string;
     role: string | null;
   } | null>(null);
-  const { globalStats, userStats, dailyStats, isLoading } = useUserAnalytics(period);
+  const { globalStats, userStats, dailyStats, heatmapData, durationTrend, isLoading } = useUserAnalytics(period);
   const { data: entrepriseId } = useCurrentEntrepriseId();
 
   const activeUsersCount = userStats?.filter(u => u.sessionsCount > 0).length || 0;
   const inactiveUsersCount = userStats?.filter(u => u.sessionsCount === 0).length || 0;
+
+  // Calcul des utilisateurs inactifs (> 7 jours sans connexion)
+  const INACTIVITY_THRESHOLD_DAYS = 7;
+  const inactiveUsersList = userStats?.filter(u => {
+    if (!u.lastConnection) return true; // Jamais connecté = inactif
+    const daysSince = differenceInDays(new Date(), new Date(u.lastConnection));
+    return daysSince > INACTIVITY_THRESHOLD_DAYS;
+  }) || [];
+
+  // Stats par rôle
+  const roleStats = userStats ? (() => {
+    const roles = ['admin', 'rh', 'conducteur', 'chef'] as const;
+    return roles.map(role => {
+      const usersWithRole = userStats.filter(u => u.role === role);
+      const activeUsers = usersWithRole.filter(u => u.sessionsCount > 0);
+      const totalSessions = usersWithRole.reduce((acc, u) => acc + u.sessionsCount, 0);
+      const avgDuration = activeUsers.length > 0
+        ? activeUsers.reduce((acc, u) => acc + u.avgDurationSeconds, 0) / activeUsers.length
+        : 0;
+      return {
+        role,
+        total: usersWithRole.length,
+        active: activeUsers.length,
+        sessions: totalSessions,
+        avgDuration: Math.round(avgDuration),
+      };
+    }).filter(r => r.total > 0);
+  })() : [];
 
   return (
     <div className="space-y-6">
@@ -119,6 +153,48 @@ export const AnalyticsManager = () => {
           </Select>
         </div>
       </div>
+
+      {/* Alerte utilisateurs inactifs */}
+      {inactiveUsersList.length > 0 && (
+        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-400">
+            {inactiveUsersList.length} utilisateur{inactiveUsersList.length > 1 ? 's' : ''} inactif{inactiveUsersList.length > 1 ? 's' : ''}
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-500">
+            <span>Sans connexion depuis plus de {INACTIVITY_THRESHOLD_DAYS} jours : </span>
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-medium underline decoration-dotted cursor-help">
+                    {inactiveUsersList.slice(0, 3).map(u => 
+                      `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email
+                    ).join(', ')}
+                    {inactiveUsersList.length > 3 && ` +${inactiveUsersList.length - 3} autres`}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <div className="space-y-1">
+                    {inactiveUsersList.map(u => (
+                      <div key={u.userId} className="text-xs">
+                        <span className="font-medium">
+                          {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                        </span>
+                        <span className="text-muted-foreground ml-2">
+                          ({u.role || 'Sans rôle'})
+                          {u.lastConnection 
+                            ? ` - ${differenceInDays(new Date(), new Date(u.lastConnection))}j`
+                            : ' - Jamais connecté'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Cards statistiques redesignées */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -271,7 +347,7 @@ export const AnalyticsManager = () => {
                       className="text-muted-foreground"
                       allowDecimals={false}
                     />
-                    <Tooltip 
+                    <RechartsTooltip 
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
@@ -357,6 +433,189 @@ export const AnalyticsManager = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Heatmap + Comparaison par rôle */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Heatmap d'activité */}
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Flame className="h-4 w-4 text-orange-500" />
+              Heatmap d'activité
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : heatmapData ? (
+              <div className="space-y-2">
+                {/* En-têtes des plages horaires */}
+                <div className="grid grid-cols-5 gap-1 text-xs text-muted-foreground">
+                  <div></div>
+                  {heatmapData.timeSlots.map(slot => (
+                    <div key={slot} className="text-center">{slot}</div>
+                  ))}
+                </div>
+                {/* Grille */}
+                {heatmapData.days.map((day, dayIndex) => (
+                  <div key={day} className="grid grid-cols-5 gap-1 items-center">
+                    <div className="text-xs text-muted-foreground font-medium">{day}</div>
+                    {heatmapData.data[dayIndex].map((value, slotIndex) => {
+                      const intensity = heatmapData.maxValue > 0 ? value / heatmapData.maxValue : 0;
+                      return (
+                        <TooltipProvider key={slotIndex}>
+                          <UITooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="h-7 rounded-md transition-all duration-200 hover:scale-110 cursor-default"
+                                style={{
+                                  backgroundColor: value === 0 
+                                    ? 'hsl(var(--muted))' 
+                                    : `hsla(24, 95%, ${65 - intensity * 30}%, ${0.3 + intensity * 0.7})`,
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{day} {heatmapData.timeSlots[slotIndex]}: {value} session{value > 1 ? 's' : ''}</p>
+                            </TooltipContent>
+                          </UITooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </div>
+                ))}
+                {/* Légende */}
+                <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
+                  <span>Moins</span>
+                  <div className="flex gap-0.5">
+                    {[0, 0.25, 0.5, 0.75, 1].map((intensity, i) => (
+                      <div 
+                        key={i}
+                        className="w-4 h-3 rounded-sm"
+                        style={{
+                          backgroundColor: intensity === 0 
+                            ? 'hsl(var(--muted))' 
+                            : `hsla(24, 95%, ${65 - intensity * 30}%, ${0.3 + intensity * 0.7})`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span>Plus</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                Aucune donnée disponible
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Comparaison par rôle */}
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-violet-500" />
+              Comparaison par rôle
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : roleStats.length > 0 ? (
+              <div className="space-y-4">
+                {roleStats.map(stat => {
+                  const activePercentage = stat.total > 0 ? (stat.active / stat.total) * 100 : 0;
+                  return (
+                    <div key={stat.role} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge className={`${getRoleBadgeClasses(stat.role)} border`}>
+                          {stat.role}
+                        </Badge>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{stat.active}/{stat.total} actifs</span>
+                          <span>{stat.sessions} sessions</span>
+                          <span>{formatDuration(stat.avgDuration)} moy.</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            stat.role === 'admin' ? 'bg-red-500' :
+                            stat.role === 'rh' ? 'bg-emerald-500' :
+                            stat.role === 'conducteur' ? 'bg-amber-500' :
+                            'bg-blue-500'
+                          }`}
+                          style={{ width: `${activePercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                Aucune donnée disponible
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tendances durée moyenne (sparklines) */}
+      {period !== 'all' && durationTrend && durationTrend.data.length > 0 && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              {durationTrend.isIncreasing ? (
+                <TrendingUp className="h-4 w-4 text-red-500" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-emerald-500" />
+              )}
+              Tendance durée des sessions
+              <Badge 
+                variant="outline" 
+                className={`ml-2 ${durationTrend.isIncreasing ? 'text-red-600 border-red-200' : 'text-emerald-600 border-emerald-200'}`}
+              >
+                {durationTrend.isIncreasing ? '+' : ''}{Math.round(durationTrend.trend)}%
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={120}>
+              <LineChart data={durationTrend.data}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }} 
+                  className="text-muted-foreground"
+                />
+                <YAxis 
+                  tick={{ fontSize: 10 }} 
+                  className="text-muted-foreground"
+                  tickFormatter={(v) => `${Math.round(v / 60)}m`}
+                />
+                <RechartsTooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: number) => [formatDuration(value), 'Durée moy.']}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="avgDuration" 
+                  stroke={durationTrend.isIncreasing ? '#ef4444' : '#10b981'}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Utilisateurs AVEC données d'activité */}
       <Card className="shadow-md">

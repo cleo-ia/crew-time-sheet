@@ -254,6 +254,24 @@ export const UserAnalyticsDetailSheet = ({
 
               {/* Tabs redesignés */}
               <Tabs defaultValue="sessions" className="flex-1 flex flex-col min-h-0">
+                {/* Légende des couleurs de session */}
+                <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Légende durée de session</p>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <span className="text-xs text-muted-foreground">&lt; 10 min (efficace)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-amber-500" />
+                      <span className="text-xs text-muted-foreground">10-20 min (normale)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-400" />
+                      <span className="text-xs text-muted-foreground">&gt; 20 min (longue)</span>
+                    </div>
+                  </div>
+                </div>
                 <TabsList className="w-full bg-muted/50 p-1 rounded-xl shrink-0">
                   <TabsTrigger 
                     value="sessions" 
