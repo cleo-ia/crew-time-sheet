@@ -16,7 +16,7 @@ import {
   CheckCircle2,
   Activity,
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const COLORS = {
   brouillon: "hsl(220, 14%, 70%)",
@@ -114,7 +114,9 @@ export const DashboardManager = () => {
     { name: "Validé chef", value: stats.fichesValideChef, color: COLORS.valideChef },
     { name: "Envoyé RH", value: stats.fichesEnvoyeRH, color: COLORS.envoyeRH },
     { name: "Clôturé", value: stats.fichesCloture, color: COLORS.cloture },
-  ].filter(d => d.value > 0);
+  ];
+  
+  const pieDataForChart = pieData.filter(d => d.value > 0);
 
   const totalAlertes = stats.fichesEnRetard.length + stats.chantiersOrphelins.length + (stats.trajetsACompleter > 0 ? 1 : 0);
 
@@ -232,37 +234,48 @@ export const DashboardManager = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
-                        className="hover:opacity-80 transition-opacity cursor-pointer"
+            {pieDataForChart.length > 0 ? (
+              <div className="space-y-4">
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={pieDataForChart}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {pieDataForChart.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color}
+                          className="hover:opacity-80 transition-opacity cursor-pointer"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Légende personnalisée avec tous les statuts */}
+                <div className="grid grid-cols-2 gap-2 px-2">
+                  {pieData.map((item) => (
+                    <div 
+                      key={item.name}
+                      className={`flex items-center gap-2 text-xs ${item.value === 0 ? "opacity-40" : ""}`}
+                    >
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: item.color }}
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={40}
-                    formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
-                    iconType="circle"
-                    iconSize={8}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                      <span className="text-muted-foreground truncate">{item.name}</span>
+                      <span className="font-medium ml-auto">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="h-[240px] flex flex-col items-center justify-center text-muted-foreground">
                 <FileText className="h-12 w-12 mb-2 opacity-20" />
