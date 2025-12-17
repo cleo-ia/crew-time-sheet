@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3 } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
@@ -20,11 +20,12 @@ import { RappelsManager } from "@/components/admin/RappelsManager";
 import { TransportDebugManager } from "@/components/admin/TransportDebugManager";
 import { RHAdminManager } from "@/components/admin/RHAdminManager";
 import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
+import { DashboardManager } from "@/components/admin/DashboardManager";
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "utilisateurs");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "dashboard");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   // Sync tab with URL parameter
@@ -75,6 +76,10 @@ const AdminPanel = () => {
         <Card className="shadow-md border-border/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="w-full flex flex-wrap justify-start gap-1 rounded-none border-b bg-transparent h-auto p-2">
+              <TabsTrigger value="dashboard" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </TabsTrigger>
               <TabsTrigger value="utilisateurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Utilisateurs</span>
@@ -124,6 +129,10 @@ const AdminPanel = () => {
                 <span className="hidden sm:inline">Debug</span>
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dashboard" className="p-6">
+              <DashboardManager />
+            </TabsContent>
 
             <TabsContent value="utilisateurs" className="p-6">
               <UsersManager />
