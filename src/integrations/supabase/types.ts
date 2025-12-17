@@ -1544,6 +1544,50 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          created_at: string
+          entreprise_id: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          page_name: string | null
+          page_path: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entreprise_id: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          page_name?: string | null
+          page_path?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entreprise_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          page_name?: string | null
+          page_path?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1572,6 +1616,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_roles_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          browser: string | null
+          device_type: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          entreprise_id: string
+          id: string
+          is_active: boolean | null
+          last_activity_at: string
+          pages_visited: number | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          entreprise_id: string
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string
+          pages_visited?: number | null
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          entreprise_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string
+          pages_visited?: number | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_entreprise_id_fkey"
             columns: ["entreprise_id"]
             isOneToOne: false
             referencedRelation: "entreprises"

@@ -5,6 +5,7 @@ import OfflineBanner from "@/components/ui/OfflineBanner";
 import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
+import { useUserActivityTracking } from "@/hooks/useUserActivityTracking";
 
 // Timeout en millisecondes avant d'afficher le message d'erreur (10 secondes)
 const LOADING_TIMEOUT_MS = 10000;
@@ -13,6 +14,12 @@ export default function RequireAuth() {
   const { status, isOnline } = useAuth();
   const location = useLocation();
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
+
+  // Tracking d'activité utilisateur - 100% isolé, non-bloquant
+  // Activé uniquement quand l'utilisateur est connecté
+  // Si le tracking échoue, l'app continue de fonctionner normalement
+  const isSignedIn = status !== "unknown" && status !== "signed_out";
+  useUserActivityTracking({ enabled: isSignedIn });
 
   // Timer pour détecter un blocage sur status "unknown"
   useEffect(() => {
