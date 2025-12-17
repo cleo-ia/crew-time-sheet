@@ -40,6 +40,22 @@ interface EmployeePdfData {
   summary: Summary;
   signaturesBySemaine: Record<string, SignatureData>;
   periode: string;
+  // Enterprise info
+  entrepriseNom?: string;
+  entrepriseLogo?: string; // base64
+  primaryColor?: string; // hex color
+}
+
+// Helper to convert hex to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : { r: 234, g: 88, b: 12 }; // Default orange
 }
 
 export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
@@ -47,17 +63,36 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
-  let y = 20;
+  let y = 15;
+
+  // Colors
+  const primaryColor = hexToRgb(data.primaryColor || '#ea580c');
+  const entrepriseNom = data.entrepriseNom || 'DIVA';
 
   const addPageFooter = (pageNum: number, totalPages: number) => {
+    // Footer bar
+    doc.setFillColor(245, 245, 245);
+    doc.rect(0, pageHeight - 18, pageWidth, 18, "F");
+    
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(120, 120, 120);
     doc.text(
-      `Document généré le ${format(new Date(), "dd/MM/yyyy 'à' HH:mm", { locale: fr })} - Page ${pageNum}/${totalPages}`,
+      entrepriseNom,
+      margin,
+      pageHeight - 8
+    );
+    doc.text(
+      `Document généré le ${format(new Date(), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}`,
       pageWidth / 2,
-      pageHeight - 10,
+      pageHeight - 8,
       { align: "center" }
+    );
+    doc.text(
+      `Page ${pageNum}/${totalPages}`,
+      pageWidth - margin,
+      pageHeight - 8,
+      { align: "right" }
     );
     doc.setTextColor(0, 0, 0);
   };
@@ -71,118 +106,175 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     return false;
   };
 
-  // === PAGE 1: EN-TÊTE ET RÉSUMÉ ===
+  // === HEADER AVEC BANDEAU COLORÉ ===
   
-  // Titre
-  doc.setFontSize(20);
+  // Bandeau supérieur avec couleur primaire
+  doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.rect(0, 0, pageWidth, 8, "F");
+
+  // Logo de l'entreprise (si disponible)
+  let logoEndX = margin;
+  if (data.entrepriseLogo) {
+    try {
+      doc.addImage(data.entrepriseLogo, "PNG", margin, 12, 35, 18);
+      logoEndX = margin + 40;
+    } catch (e) {
+      console.error("Erreur chargement logo:", e);
+    }
+  }
+
+  // Nom de l'entreprise
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("Fiche horaire mensuelle", margin, y);
-  
-  // Badge période
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  const badgeText = data.periode;
-  const badgeWidth = 30;
-  const badgeX = pageWidth - margin - badgeWidth;
-  doc.setFillColor(230, 240, 250);
-  doc.roundedRect(badgeX, y - 6, badgeWidth, 10, 2, 2, "F");
-  doc.setTextColor(50, 100, 150);
-  doc.text(badgeText, badgeX + badgeWidth / 2, y, { align: "center" });
+  doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.text(entrepriseNom, logoEndX, 20);
   doc.setTextColor(0, 0, 0);
 
-  y += 14;
+  // Titre et période à droite
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(50, 50, 50);
+  doc.text("FICHE HORAIRE", pageWidth - margin, 16, { align: "right" });
+  
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  const periodeText = `Période : ${data.periode}`;
+  doc.text(periodeText, pageWidth - margin, 23, { align: "right" });
 
-  // Nom du salarié et rôle
+  // Ligne de séparation sous le header
+  y = 35;
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  y += 10;
+
+  // === SECTION EMPLOYÉ ===
+  
+  // Badge coloré pour le nom
+  const fullName = `${data.salarie.prenom} ${data.salarie.nom}`;
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(`${data.salarie.prenom} ${data.salarie.nom}`, margin, y);
+  doc.setTextColor(30, 30, 30);
+  doc.text(fullName, margin, y);
   
-  // Badge rôle
+  // Badge rôle avec fond coloré
   const roleText = data.salarie.isChef ? "Chef" : 
     data.salarie.role === "conducteur" ? "Conducteur" :
     data.salarie.role === "finisseur" ? "Finisseur" :
     data.salarie.role === "grutier" ? "Grutier" :
     data.salarie.role === "interimaire" ? "Intérimaire" : "Maçon";
   
-  const roleWidth = doc.getTextWidth(roleText) + 8;
-  const roleX = margin + doc.getTextWidth(`${data.salarie.prenom} ${data.salarie.nom}`) + 10;
+  const roleWidth = doc.getTextWidth(roleText) * 0.7 + 10;
+  const roleX = margin + doc.getTextWidth(fullName) + 8;
+  
+  // Fond du badge avec couleur primaire légère
+  doc.setFillColor(
+    Math.min(255, primaryColor.r + 180),
+    Math.min(255, primaryColor.g + 160),
+    Math.min(255, primaryColor.b + 160)
+  );
+  doc.roundedRect(roleX, y - 5, roleWidth, 7, 2, 2, "F");
   
   doc.setFontSize(9);
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(roleX, y - 5, roleWidth, 7, 2, 2, "F");
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
   doc.text(roleText, roleX + roleWidth / 2, y - 1, { align: "center" });
+  doc.setTextColor(0, 0, 0);
 
   y += 6;
 
   // Agence intérim si applicable
   if (data.salarie.agence_interim) {
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Agence: ${data.salarie.agence_interim}`, margin, y);
+    doc.setTextColor(120, 60, 150);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Agence : ${data.salarie.agence_interim}`, margin, y);
     doc.setTextColor(0, 0, 0);
-    y += 6;
+    doc.setFont("helvetica", "normal");
+    y += 8;
   }
 
-  // Date de génération
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Généré le ${format(new Date(), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}`, margin, y);
-  doc.setTextColor(0, 0, 0);
-  y += 15;
-
-  // === SECTION RÉSUMÉ ===
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Résumé de la période", margin, y);
   y += 8;
 
-  // Cartes de résumé
+  // === SECTION RÉSUMÉ AVEC CARTES AMÉLIORÉES ===
+  
+  // Titre de section avec icône simulée
+  doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.rect(margin, y - 3, 3, 10, "F");
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(50, 50, 50);
+  doc.text("Résumé de la période", margin + 8, y + 4);
+  y += 14;
+
+  // Cartes de résumé améliorées
   const cardWidth = (pageWidth - margin * 2 - 15) / 4;
-  const cardHeight = 25;
+  const cardHeight = 28;
   const summaryItems = [
-    { label: "Heures totales", value: `${data.summary.totalHeures}h`, color: [59, 130, 246] },
-    { label: "Intempéries", value: `${data.summary.totalIntemperies}h`, color: [14, 165, 233] },
-    { label: "Paniers", value: `${data.summary.totalPaniers}`, color: [249, 115, 22] },
-    { label: "Trajets", value: `${data.summary.totalTrajets}`, color: [34, 197, 94] },
+    { label: "Heures totales", value: `${data.summary.totalHeures}h`, color: [59, 130, 246], icon: "⏱" },
+    { label: "Intempéries", value: `${data.summary.totalIntemperies}h`, color: [14, 165, 233], icon: "🌧" },
+    { label: "Paniers", value: `${data.summary.totalPaniers}`, color: [primaryColor.r, primaryColor.g, primaryColor.b], icon: "🍽" },
+    { label: "Trajets", value: `${data.summary.totalTrajets}`, color: [34, 197, 94], icon: "🚗" },
   ];
 
   summaryItems.forEach((item, idx) => {
     const x = margin + idx * (cardWidth + 5);
     
-    // Fond de carte
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "F");
+    // Ombre simulée
+    doc.setFillColor(230, 230, 230);
+    doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, 4, 4, "F");
     
-    // Bordure colorée à gauche
+    // Fond de carte blanc
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "F");
+    
+    // Bordure
+    doc.setDrawColor(230, 230, 230);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "S");
+    
+    // Bordure colorée en haut
     doc.setFillColor(item.color[0], item.color[1], item.color[2]);
-    doc.rect(x, y + 2, 3, cardHeight - 4, "F");
+    doc.rect(x, y, cardWidth, 3, "F");
+    // Arrondir les coins supérieurs
+    doc.setFillColor(255, 255, 255);
+    doc.rect(x, y + 2.5, cardWidth, 1, "F");
+    doc.setFillColor(item.color[0], item.color[1], item.color[2]);
+    doc.roundedRect(x, y, cardWidth, 3, 4, 4, "F");
+    doc.setFillColor(255, 255, 255);
+    doc.rect(x, y + 1.5, cardWidth, 2, "F");
     
     // Valeur
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text(item.value, x + cardWidth / 2 + 2, y + 11, { align: "center" });
+    doc.setTextColor(item.color[0], item.color[1], item.color[2]);
+    doc.text(item.value, x + cardWidth / 2, y + 14, { align: "center" });
     
     // Label
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(item.label, x + cardWidth / 2 + 2, y + 19, { align: "center" });
+    doc.text(item.label, x + cardWidth / 2, y + 22, { align: "center" });
   });
 
   doc.setTextColor(0, 0, 0);
-  y += cardHeight + 12;
+  y += cardHeight + 15;
 
   // === LISTE DES CHANTIERS TRAVAILLÉS ===
   const chantiersSet = new Set(data.dailyDetails.map(d => d.chantier));
   const chantiersList = Array.from(chantiersSet);
 
   if (chantiersList.length > 0) {
+    // Titre de section
+    doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+    doc.rect(margin, y - 3, 3, 10, "F");
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Chantiers travaillés", margin, y);
-    y += 8;
+    doc.setTextColor(50, 50, 50);
+    doc.text("Chantiers travaillés", margin + 8, y + 4);
+    y += 12;
 
     // Calculer heures par chantier
     const heuresParChantier = new Map<string, number>();
@@ -196,44 +288,75 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     
     chantiersList.forEach((chantier, idx) => {
       const heures = heuresParChantier.get(chantier) || 0;
-      doc.setFillColor(250, 250, 250);
-      doc.roundedRect(margin, y, pageWidth - margin * 2, 8, 2, 2, "F");
-      doc.text(`• ${chantier}`, margin + 3, y + 5.5);
-      doc.text(`${heures}h`, pageWidth - margin - 15, y + 5.5, { align: "right" });
-      y += 10;
+      
+      // Fond alterné
+      if (idx % 2 === 0) {
+        doc.setFillColor(250, 250, 252);
+      } else {
+        doc.setFillColor(255, 255, 255);
+      }
+      doc.roundedRect(margin, y, pageWidth - margin * 2, 9, 2, 2, "F");
+      
+      // Puce colorée
+      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.circle(margin + 4, y + 4.5, 1.5, "F");
+      
+      doc.setTextColor(50, 50, 50);
+      doc.text(chantier, margin + 10, y + 6);
+      
+      // Badge heures
+      const heuresText = `${heures}h`;
+      const heuresBadgeWidth = 18;
+      doc.setFillColor(240, 240, 245);
+      doc.roundedRect(pageWidth - margin - heuresBadgeWidth - 3, y + 1.5, heuresBadgeWidth, 6, 2, 2, "F");
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 80);
+      doc.text(heuresText, pageWidth - margin - heuresBadgeWidth / 2 - 3, y + 5.5, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      
+      y += 11;
     });
     
     y += 8;
   }
 
   // === TABLEAU DÉTAIL JOUR PAR JOUR ===
-  checkPageBreak(40);
+  checkPageBreak(50);
   
+  // Titre de section
+  doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.rect(margin, y - 3, 3, 10, "F");
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Détail jour par jour", margin, y);
-  y += 10;
+  doc.setTextColor(50, 50, 50);
+  doc.text("Détail jour par jour", margin + 8, y + 4);
+  y += 14;
 
-  // En-tête du tableau
+  // En-tête du tableau avec couleur primaire
   const colWidths = [26, 50, 20, 20, 22, 22, 20];
   const headers = ["Date", "Chantier", "Heures", "Intemp.", "Panier", "Trajet", "Absence"];
   const tableWidth = colWidths.reduce((a, b) => a + b, 0);
   const startX = margin;
 
-  doc.setFillColor(240, 240, 240);
-  doc.rect(startX, y, tableWidth, 8, "F");
+  // Fond header avec couleur primaire
+  doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.rect(startX, y, tableWidth, 9, "F");
+  
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
   
   let xPos = startX;
   headers.forEach((header, idx) => {
-    doc.text(header, xPos + 2, y + 5.5);
+    doc.text(header, xPos + colWidths[idx] / 2, y + 6, { align: "center" });
     xPos += colWidths[idx];
   });
-  y += 8;
+  y += 9;
 
   // Lignes du tableau
   doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
   let totals = { heures: 0, intemperies: 0, paniers: 0, trajets: 0 };
 
   data.dailyDetails.forEach((day, rowIdx) => {
@@ -242,22 +365,35 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
     
     // Alternance de couleur
-    if (rowIdx % 2 === 1) {
-      doc.setFillColor(250, 250, 250);
-      doc.rect(startX, y, tableWidth, 7, "F");
+    if (rowIdx % 2 === 0) {
+      doc.setFillColor(250, 250, 252);
+    } else {
+      doc.setFillColor(255, 255, 255);
     }
+    doc.rect(startX, y, tableWidth, 7, "F");
     
-    // Fond rouge si absent
+    // Fond rouge pâle si absent avec motif
     if (isAbsent && day.typeAbsence) {
-      doc.setFillColor(255, 240, 240);
+      doc.setFillColor(255, 245, 245);
       doc.rect(startX, y, tableWidth, 7, "F");
     }
+
+    // Bordures de cellules
+    doc.setDrawColor(230, 230, 230);
+    doc.setLineWidth(0.2);
+    xPos = startX;
+    colWidths.forEach(w => {
+      doc.rect(xPos, y, w, 7);
+      xPos += w;
+    });
 
     xPos = startX;
     doc.setFontSize(7);
+    doc.setTextColor(50, 50, 50);
 
     // Date
-    doc.text(format(new Date(day.date), "EEE dd/MM", { locale: fr }), xPos + 2, y + 5);
+    const dateText = format(new Date(day.date), "EEE dd/MM", { locale: fr });
+    doc.text(dateText, xPos + colWidths[0] / 2, y + 5, { align: "center" });
     xPos += colWidths[0];
 
     // Chantier (tronqué)
@@ -266,29 +402,58 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     xPos += colWidths[1];
 
     // Heures
-    doc.text(isAbsent ? "-" : `${day.heuresNormales}h`, xPos + 8, y + 5, { align: "center" });
+    if (!isAbsent) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(59, 130, 246);
+    }
+    doc.text(isAbsent ? "-" : `${day.heuresNormales}h`, xPos + colWidths[2] / 2, y + 5, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(50, 50, 50);
     xPos += colWidths[2];
 
     // Intempéries
-    doc.text(day.heuresIntemperies > 0 ? `${day.heuresIntemperies}h` : "-", xPos + 8, y + 5, { align: "center" });
+    if (day.heuresIntemperies > 0) {
+      doc.setTextColor(14, 165, 233);
+    }
+    doc.text(day.heuresIntemperies > 0 ? `${day.heuresIntemperies}h` : "-", xPos + colWidths[3] / 2, y + 5, { align: "center" });
+    doc.setTextColor(50, 50, 50);
     xPos += colWidths[3];
 
     // Panier
-    doc.text(day.panier ? "✓" : "-", xPos + 10, y + 5, { align: "center" });
+    if (day.panier) {
+      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.circle(xPos + colWidths[4] / 2, y + 3.5, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(5);
+      doc.text("✓", xPos + colWidths[4] / 2, y + 4.5, { align: "center" });
+      doc.setFontSize(7);
+      doc.setTextColor(50, 50, 50);
+    } else {
+      doc.text("-", xPos + colWidths[4] / 2, y + 5, { align: "center" });
+    }
     xPos += colWidths[4];
 
     // Trajet
     let trajetText = "-";
     if (day.trajetPerso) {
       trajetText = "Perso";
+      doc.setTextColor(100, 100, 100);
     } else if (day.codeTrajet && day.codeTrajet !== "A_COMPLETER") {
       trajetText = day.codeTrajet;
+      doc.setTextColor(34, 197, 94);
     }
-    doc.text(trajetText, xPos + 10, y + 5, { align: "center" });
+    doc.text(trajetText, xPos + colWidths[5] / 2, y + 5, { align: "center" });
+    doc.setTextColor(50, 50, 50);
     xPos += colWidths[5];
 
     // Absence
-    doc.text(day.typeAbsence || "-", xPos + 2, y + 5);
+    if (day.typeAbsence) {
+      doc.setTextColor(220, 38, 38);
+      doc.setFont("helvetica", "bold");
+    }
+    doc.text(day.typeAbsence || "-", xPos + colWidths[6] / 2, y + 5, { align: "center" });
+    doc.setTextColor(50, 50, 50);
+    doc.setFont("helvetica", "normal");
 
     // Totaux
     totals.heures += day.heuresNormales || 0;
@@ -299,24 +464,26 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     y += 7;
   });
 
-  // Ligne de totaux
+  // Ligne de totaux avec style distinct
   checkPageBreak(12);
-  y += 2;
-  doc.setFillColor(230, 230, 230);
-  doc.rect(startX, y, tableWidth, 8, "F");
+  y += 1;
+  
+  doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+  doc.rect(startX, y, tableWidth, 9, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
 
   xPos = startX;
-  doc.text("TOTAL", xPos + 2, y + 5.5);
+  doc.text("TOTAL", xPos + colWidths[0] / 2, y + 6, { align: "center" });
   xPos += colWidths[0] + colWidths[1];
-  doc.text(`${totals.heures}h`, xPos + 8, y + 5.5, { align: "center" });
+  doc.text(`${totals.heures}h`, xPos + colWidths[2] / 2, y + 6, { align: "center" });
   xPos += colWidths[2];
-  doc.text(totals.intemperies > 0 ? `${totals.intemperies}h` : "-", xPos + 8, y + 5.5, { align: "center" });
+  doc.text(totals.intemperies > 0 ? `${totals.intemperies}h` : "-", xPos + colWidths[3] / 2, y + 6, { align: "center" });
   xPos += colWidths[3];
-  doc.text(`${totals.paniers}`, xPos + 10, y + 5.5, { align: "center" });
+  doc.text(`${totals.paniers}`, xPos + colWidths[4] / 2, y + 6, { align: "center" });
   xPos += colWidths[4];
-  doc.text(`${totals.trajets}`, xPos + 10, y + 5.5, { align: "center" });
+  doc.text(`${totals.trajets}`, xPos + colWidths[5] / 2, y + 6, { align: "center" });
 
   y += 18;
 
@@ -324,16 +491,25 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
   const signatures = Object.entries(data.signaturesBySemaine);
   
   if (signatures.length > 0) {
-    checkPageBreak(50);
+    checkPageBreak(60);
     
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
+    // Séparateur élégant
+    doc.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
+    doc.setLineWidth(0.8);
+    doc.line(margin, y, margin + 40, y);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(margin + 42, y, pageWidth - margin, y);
+    y += 12;
 
+    // Titre de section
+    doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+    doc.rect(margin, y - 3, 3, 10, "F");
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Signatures", margin, y);
-    y += 10;
+    doc.setTextColor(50, 50, 50);
+    doc.text("Signatures", margin + 8, y + 4);
+    y += 14;
 
     // Grouper les semaines à partir des dates des dailyDetails
     const weeksInPeriod = new Set<string>();
@@ -345,71 +521,87 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     });
 
     Array.from(weeksInPeriod).sort().forEach((semaine) => {
-      checkPageBreak(45);
+      checkPageBreak(50);
       
       const signature = data.signaturesBySemaine[semaine];
       
-      // Semaine badge
-      doc.setFontSize(10);
+      // Badge semaine avec style amélioré
+      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.roundedRect(margin, y, 28, 8, 2, 2, "F");
+      doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
-      doc.setFillColor(240, 240, 250);
-      doc.roundedRect(margin, y, 25, 7, 2, 2, "F");
-      doc.text(semaine, margin + 12.5, y + 5, { align: "center" });
+      doc.setTextColor(255, 255, 255);
+      doc.text(semaine, margin + 14, y + 5.5, { align: "center" });
 
       if (signature && signature.signature_data) {
-        // Badge "Signé"
+        // Badge "Signé" vert
         doc.setFillColor(220, 252, 231);
-        doc.roundedRect(margin + 30, y, 20, 7, 2, 2, "F");
+        doc.roundedRect(margin + 32, y, 22, 8, 2, 2, "F");
         doc.setFontSize(8);
         doc.setTextColor(22, 163, 74);
-        doc.text("✓ Signé", margin + 40, y + 5, { align: "center" });
+        doc.text("✓ Signé", margin + 43, y + 5.5, { align: "center" });
         doc.setTextColor(0, 0, 0);
 
-        y += 12;
+        y += 14;
 
-        // Cadre signature
-        const sigBoxWidth = 60;
-        const sigBoxHeight = 30;
-        doc.setDrawColor(180, 180, 180);
-        doc.rect(margin, y, sigBoxWidth, sigBoxHeight);
+        // Cadre signature élégant
+        const sigBoxWidth = 65;
+        const sigBoxHeight = 32;
+        
+        // Ombre
+        doc.setFillColor(235, 235, 235);
+        doc.roundedRect(margin + 2, y + 2, sigBoxWidth, sigBoxHeight, 3, 3, "F");
+        
+        // Fond blanc
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, sigBoxWidth, sigBoxHeight, 3, 3, "F");
+        
+        // Bordure
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(margin, y, sigBoxWidth, sigBoxHeight, 3, 3, "S");
 
         try {
           doc.addImage(
             signature.signature_data,
             "PNG",
-            margin + 2,
-            y + 2,
-            sigBoxWidth - 4,
-            sigBoxHeight - 4
+            margin + 3,
+            y + 3,
+            sigBoxWidth - 6,
+            sigBoxHeight - 6
           );
         } catch (e) {
           doc.setFontSize(8);
           doc.setFont("helvetica", "italic");
-          doc.text("Signature numérique", margin + 5, y + 15);
+          doc.setTextColor(150, 150, 150);
+          doc.text("Signature numérique", margin + sigBoxWidth / 2, y + sigBoxHeight / 2, { align: "center" });
         }
 
-        // Date de signature
-        doc.setFontSize(8);
+        // Infos signature à droite
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(80, 80, 80);
+        doc.text("Signé par l'employé", margin + sigBoxWidth + 12, y + 10);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
         doc.text(
-          `Signé le ${format(new Date(signature.signed_at), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}`,
-          margin + sigBoxWidth + 10,
-          y + 15
+          format(new Date(signature.signed_at), "dd/MM/yyyy 'à' HH:mm", { locale: fr }),
+          margin + sigBoxWidth + 12,
+          y + 18
         );
         doc.setTextColor(0, 0, 0);
 
-        y += sigBoxHeight + 8;
+        y += sigBoxHeight + 10;
       } else {
-        // Non signé
+        // Badge "Non signé" rouge
         doc.setFillColor(254, 226, 226);
-        doc.roundedRect(margin + 30, y, 25, 7, 2, 2, "F");
+        doc.roundedRect(margin + 32, y, 28, 8, 2, 2, "F");
         doc.setFontSize(8);
         doc.setTextColor(220, 38, 38);
-        doc.text("✗ Non signé", margin + 42.5, y + 5, { align: "center" });
+        doc.text("✗ Non signé", margin + 46, y + 5.5, { align: "center" });
         doc.setTextColor(0, 0, 0);
 
-        y += 15;
+        y += 18;
       }
     });
   }
