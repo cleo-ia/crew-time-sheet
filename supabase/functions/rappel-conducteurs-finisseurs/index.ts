@@ -1,6 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { Resend } from 'https://esm.sh/resend@2.0.0'
 import { isTargetParisHour } from '../_shared/timezone.ts'
+import { 
+  generateEmailHtml, 
+  createAlertBox, 
+  createPersonCard, 
+  createSectionTitle,
+  createClosingMessage 
+} from '../_shared/emailTemplate.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,143 +27,6 @@ interface ConducteurWithFinisseurs {
   }>
 }
 
-// Template HTML professionnel DIVA pour les emails
-function generateEmailHtml(
-  prenom: string, 
-  content: string, 
-  ctaUrl: string, 
-  ctaText: string,
-  emailType: 'rappel' | 'alerte' | 'validation' = 'rappel'
-): string {
-  const year = new Date().getFullYear()
-  
-  const typeConfig = {
-    rappel: { icon: '⏰', label: 'Rappel', color: '#f97316' },
-    alerte: { icon: '⚠️', label: 'Alerte', color: '#dc2626' },
-    validation: { icon: '✅', label: 'Validation', color: '#16a34a' }
-  }
-  
-  const config = typeConfig[emailType]
-  
-  return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DIVA - ${config.label}</title>
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f3f4f6;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%;">
-          
-          <!-- Header avec logo et badge -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 16px 16px 0 0; padding: 32px 40px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <!-- Logo DIVA -->
-                    <table role="presentation" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); width: 48px; height: 48px; border-radius: 12px; text-align: center; vertical-align: middle;">
-                          <span style="font-size: 24px; color: white; font-weight: bold;">D</span>
-                        </td>
-                        <td style="padding-left: 16px;">
-                          <span style="font-size: 28px; font-weight: 700; color: white; letter-spacing: -0.5px;">DIVA</span>
-                          <br>
-                          <span style="font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">Gestion des équipes</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                  <td align="right" valign="top">
-                    <!-- Badge type -->
-                    <span style="display: inline-block; background: ${config.color}; color: white; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
-                      ${config.icon} ${config.label}
-                    </span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Contenu principal -->
-          <tr>
-            <td style="background: #ffffff; padding: 40px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-              <!-- Salutation -->
-              <p style="margin: 0 0 24px 0; font-size: 18px; color: #111827;">
-                Bonjour <strong style="color: #f97316;">${prenom}</strong>,
-              </p>
-              
-              <!-- Contenu dynamique -->
-              ${content}
-              
-              <!-- Bouton CTA -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 32px;">
-                <tr>
-                  <td align="center">
-                    <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 32px; border-radius: 10px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);">
-                      ${ctaText}
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="background: #f9fafb; border-radius: 0 0 16px 16px; padding: 24px 40px; border: 1px solid #e5e7eb; border-top: none;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="text-align: center;">
-                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">
-                      Cet email a été envoyé automatiquement par <strong style="color: #374151;">DIVA</strong>
-                    </p>
-                    <p style="margin: 0 0 16px 0; font-size: 12px; color: #9ca3af;">
-                      Vous recevez ce message car vous êtes inscrit sur la plateforme de gestion des équipes.
-                    </p>
-                    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
-                      <tr>
-                        <td style="padding: 0 8px;">
-                          <a href="https://groupe-engo.com" style="font-size: 12px; color: #f97316; text-decoration: none;">Groupe Engo</a>
-                        </td>
-                        <td style="color: #d1d5db;">•</td>
-                        <td style="padding: 0 8px;">
-                          <a href="${ctaUrl}" style="font-size: 12px; color: #f97316; text-decoration: none;">Accéder à DIVA</a>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin: 16px 0 0 0; font-size: 11px; color: #9ca3af;">
-                      © ${year} Groupe Engo - Tous droits réservés
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim()
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -165,14 +35,14 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    console.log('[rappel-conducteurs-finisseurs] 🚀 Démarrage du rappel aux conducteurs pour finisseurs...')
+    console.log('[rappel-conducteurs-finisseurs] Demarrage du rappel aux conducteurs pour finisseurs...')
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configuré')
+      throw new Error('RESEND_API_KEY non configure')
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -193,7 +63,7 @@ Deno.serve(async (req) => {
 
     // Vérifier si on est à 12h Paris (sauf si force = true)
     if (!force && !isTargetParisHour(12)) {
-      console.log('[rappel-conducteurs-finisseurs] ⏭️ Pas encore 12h à Paris, skip')
+      console.log('[rappel-conducteurs-finisseurs] Pas encore 12h a Paris, skip')
       return new Response(
         JSON.stringify({ message: 'Not target hour', skipped: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -201,7 +71,7 @@ Deno.serve(async (req) => {
     }
 
     if (force) {
-      console.log('[rappel-conducteurs-finisseurs] 🔥 Mode force activé - bypass de la vérification horaire')
+      console.log('[rappel-conducteurs-finisseurs] Mode force active - bypass de la verification horaire')
     }
 
     // Calculer la semaine ISO actuelle
@@ -209,7 +79,7 @@ Deno.serve(async (req) => {
     const year = now.getFullYear()
     const weekNumber = getWeekNumber(now)
     const currentWeek = `${year}-S${String(weekNumber).padStart(2, '0')}`
-    console.log(`[rappel-conducteurs-finisseurs] 📅 Semaine courante: ${currentWeek}`)
+    console.log(`[rappel-conducteurs-finisseurs] Semaine courante: ${currentWeek}`)
 
     // ÉTAPE 1: Récupérer les user_id des conducteurs
     const { data: rolesData, error: rolesError } = await supabase
@@ -218,20 +88,20 @@ Deno.serve(async (req) => {
       .eq('role', 'conducteur')
 
     if (rolesError) {
-      console.error('[rappel-conducteurs-finisseurs] ❌ Erreur lors de la récupération des rôles:', rolesError)
+      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la recuperation des roles:', rolesError)
       throw rolesError
     }
 
     if (!rolesData || rolesData.length === 0) {
-      console.log('[rappel-conducteurs-finisseurs] ℹ️ Aucun conducteur trouvé')
+      console.log('[rappel-conducteurs-finisseurs] Aucun conducteur trouve')
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur trouvé' }),
+        JSON.stringify({ message: 'Aucun conducteur trouve' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     const conducteurIds = rolesData.map(r => r.user_id)
-    console.log(`[rappel-conducteurs-finisseurs] 👥 ${conducteurIds.length} conducteur(s) trouvé(s)`)
+    console.log(`[rappel-conducteurs-finisseurs] ${conducteurIds.length} conducteur(s) trouve(s)`)
 
     // ÉTAPE 2: Récupérer les profiles de ces conducteurs
     const { data: profilesData, error: profilesError } = await supabase
@@ -240,13 +110,13 @@ Deno.serve(async (req) => {
       .in('id', conducteurIds)
 
     if (profilesError) {
-      console.error('[rappel-conducteurs-finisseurs] ❌ Erreur lors de la récupération des profiles:', profilesError)
+      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la recuperation des profiles:', profilesError)
       throw profilesError
     }
 
     // Créer un map id -> profile
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || [])
-    console.log(`[rappel-conducteurs-finisseurs] 📋 ${profilesMap.size} profile(s) récupéré(s)`)
+    console.log(`[rappel-conducteurs-finisseurs] ${profilesMap.size} profile(s) recupere(s)`)
 
     const conducteursANotifier: ConducteurWithFinisseurs[] = []
 
@@ -254,7 +124,7 @@ Deno.serve(async (req) => {
     for (const conducteurId of conducteurIds) {
       const profile = profilesMap.get(conducteurId)
       if (!profile) {
-        console.warn(`[rappel-conducteurs-finisseurs] ⚠️ Profile non trouvé pour conducteur ${conducteurId}`)
+        console.warn(`[rappel-conducteurs-finisseurs] Profile non trouve pour conducteur ${conducteurId}`)
         continue
       }
 
@@ -266,7 +136,7 @@ Deno.serve(async (req) => {
         .or('date_fin.is.null,date_fin.gte.' + now.toISOString().split('T')[0])
 
       if (affectationsError) {
-        console.error(`[rappel-conducteurs-finisseurs] ❌ Erreur affectations pour ${profile.first_name} ${profile.last_name}:`, affectationsError)
+        console.error(`[rappel-conducteurs-finisseurs] Erreur affectations pour ${profile.first_name} ${profile.last_name}:`, affectationsError)
         continue
       }
 
@@ -285,7 +155,7 @@ Deno.serve(async (req) => {
         .in('statut', ['BROUILLON', 'EN_SIGNATURE'])
 
       if (fichesError) {
-        console.error(`[rappel-conducteurs-finisseurs] ❌ Erreur fiches pour ${profile.first_name} ${profile.last_name}:`, fichesError)
+        console.error(`[rappel-conducteurs-finisseurs] Erreur fiches pour ${profile.first_name} ${profile.last_name}:`, fichesError)
         continue
       }
 
@@ -301,7 +171,7 @@ Deno.serve(async (req) => {
         .in('id', finisseursAvecFiches)
 
       if (finisseursProfilesError) {
-        console.error(`[rappel-conducteurs-finisseurs] ❌ Erreur profiles finisseurs:`, finisseursProfilesError)
+        console.error(`[rappel-conducteurs-finisseurs] Erreur profiles finisseurs:`, finisseursProfilesError)
         continue
       }
 
@@ -334,11 +204,11 @@ Deno.serve(async (req) => {
         finisseurs: finisseursDetails
       })
 
-      console.log(`[rappel-conducteurs-finisseurs] ⚠️ Conducteur ${profile.first_name} ${profile.last_name} : ${finisseursDetails.length} finisseur(s) avec fiches non finalisées`)
+      console.log(`[rappel-conducteurs-finisseurs] Conducteur ${profile.first_name} ${profile.last_name} : ${finisseursDetails.length} finisseur(s) avec fiches non finalisees`)
     }
 
     if (conducteursANotifier.length === 0) {
-      console.log('[rappel-conducteurs-finisseurs] ✅ Aucune fiche en attente')
+      console.log('[rappel-conducteurs-finisseurs] Aucune fiche en attente')
       
       // Enregistrer dans l'historique même si aucune notification
       await supabase.from('rappels_historique').insert({
@@ -352,106 +222,66 @@ Deno.serve(async (req) => {
       })
       
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur à notifier' }),
+        JSON.stringify({ message: 'Aucun conducteur a notifier' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     // ÉTAPE 4: Envoyer les emails via Resend
-    console.log(`[rappel-conducteurs-finisseurs] 📧 Envoi de ${conducteursANotifier.length} email(s) via Resend...`)
+    console.log(`[rappel-conducteurs-finisseurs] Envoi de ${conducteursANotifier.length} email(s) via Resend...`)
 
     const results = []
     for (const conducteur of conducteursANotifier) {
       try {
-        const finisseursListHtml = conducteur.finisseurs.map(f => `
-          <tr>
-            <td style="padding: 14px 16px; background: #f9fafb; border-radius: 10px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="vertical-align: middle;">
-                    <span style="display: inline-block; width: 36px; height: 36px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 50%; text-align: center; line-height: 36px; font-size: 16px; margin-right: 12px;">👷</span>
-                  </td>
-                  <td style="vertical-align: middle; padding-left: 8px;">
-                    <span style="font-size: 15px; font-weight: 600; color: #1f2937;">${f.finisseur_prenom} ${f.finisseur_nom}</span>
-                  </td>
-                  <td align="right" style="vertical-align: middle;">
-                    <span style="display: inline-block; background: #f97316; color: white; font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 12px;">${f.nb_fiches} fiche(s)</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr><td style="height: 10px;"></td></tr>
-        `).join('')
+        // Construire la liste des finisseurs
+        const finisseursListHtml = conducteur.finisseurs.map(f => 
+          createPersonCard(f.finisseur_prenom, f.finisseur_nom, f.nb_fiches)
+        ).join('')
 
         const emailContent = `
-          <!-- Alerte -->
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
-            <tr>
-              <td style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 0 8px 8px 0;">
-                <table role="presentation" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td style="vertical-align: top; padding-right: 12px;">
-                      <span style="font-size: 20px;">⚠️</span>
-                    </td>
-                    <td>
-                      <p style="margin: 0; font-size: 15px; color: #92400e;">
-                        <strong style="color: #78350f;">${conducteur.nb_finisseurs_en_attente} finisseur(s)</strong> ont des fiches non finalisées pour la semaine <strong style="color: #78350f;">${currentWeek}</strong>.
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
+          ${createAlertBox(
+            `<strong>${conducteur.nb_finisseurs_en_attente} finisseur(s)</strong> ont des fiches non finalisees pour la semaine <strong>${currentWeek}</strong>.`,
+            'warning'
+          )}
           
-          <!-- Liste des finisseurs -->
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
-            <tr>
-              <td>
-                <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">
-                  👷 Finisseurs concernés
-                </p>
-              </td>
-            </tr>
+          ${createSectionTitle('Finisseurs concernes')}
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
             ${finisseursListHtml}
           </table>
           
-          <p style="margin: 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            Merci de vérifier l'avancement et de relancer ces finisseurs si nécessaire.
-          </p>
+          ${createClosingMessage('Merci de verifier l\'avancement et de relancer ces finisseurs si necessaire.')}
         `
 
         const emailHtml = generateEmailHtml(
           conducteur.conducteur_prenom || 'Conducteur',
           emailContent,
           'https://crew-time-sheet.lovable.app/validation-conducteur',
-          '📋 Voir les fiches',
-          'alerte'
+          'Voir les fiches',
+          'rappel'
         )
 
-        console.log(`[rappel-conducteurs-finisseurs] 📤 Envoi email à ${conducteur.conducteur_email}...`)
+        console.log(`[rappel-conducteurs-finisseurs] Envoi email a ${conducteur.conducteur_email}...`)
 
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
           to: [conducteur.conducteur_email],
-          subject: `⚠️ ${conducteur.nb_finisseurs_en_attente} finisseur(s) avec fiches non finalisées`,
+          subject: `${conducteur.nb_finisseurs_en_attente} finisseur(s) avec fiches non finalisees`,
           html: emailHtml,
         })
 
         if (emailError) {
-          console.error(`[rappel-conducteurs-finisseurs] ❌ Erreur Resend pour ${conducteur.conducteur_email}:`, emailError)
+          console.error(`[rappel-conducteurs-finisseurs] Erreur Resend pour ${conducteur.conducteur_email}:`, emailError)
           throw emailError
         }
 
-        console.log(`[rappel-conducteurs-finisseurs] ✅ Email envoyé à ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`, emailResult)
+        console.log(`[rappel-conducteurs-finisseurs] Email envoye a ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom} (${conducteur.conducteur_email})`, emailResult)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
           email: conducteur.conducteur_email,
           success: true
         })
       } catch (emailError) {
-        console.error(`[rappel-conducteurs-finisseurs] ❌ Erreur envoi email pour ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}:`, emailError)
+        console.error(`[rappel-conducteurs-finisseurs] Erreur envoi email pour ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}:`, emailError)
         const errorMessage = emailError instanceof Error ? emailError.message : String(emailError)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
@@ -462,7 +292,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[rappel-conducteurs-finisseurs] 🎉 Traitement terminé: ${results.filter(r => r.success).length}/${results.length} succès`)
+    console.log(`[rappel-conducteurs-finisseurs] Traitement termine: ${results.filter(r => r.success).length}/${results.length} succes`)
 
     // ÉTAPE 5: Enregistrer dans l'historique
     const endTime = Date.now()
@@ -475,64 +305,53 @@ Deno.serve(async (req) => {
       nb_destinataires: conducteursANotifier.length,
       nb_succes: results.filter(r => r.success).length,
       nb_echecs: results.filter(r => !r.success).length,
-      details: results,
-      duration_ms
+      duration_ms,
+      details: {
+        semaine: currentWeek,
+        conducteurs: conducteursANotifier.map(c => ({
+          nom: `${c.conducteur_prenom} ${c.conducteur_nom}`,
+          email: c.conducteur_email,
+          nb_finisseurs: c.nb_finisseurs_en_attente,
+          finisseurs: c.finisseurs.map(f => `${f.finisseur_prenom} ${f.finisseur_nom}`)
+        })),
+        results
+      }
     })
 
     return new Response(
       JSON.stringify({
-        message: 'Rappel aux conducteurs pour finisseurs terminé',
-        total_conducteurs: conducteursANotifier.length,
+        success: true,
+        semaine: currentWeek,
+        nb_conducteurs_notifies: conducteursANotifier.length,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
 
   } catch (error) {
-    console.error('[rappel-conducteurs-finisseurs] ❌ Erreur globale:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('[rappel-conducteurs-finisseurs] Erreur globale:', error)
     
     // Enregistrer l'erreur dans l'historique
-    const endTime = Date.now()
-    const duration_ms = endTime - startTime
-
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-      let execution_mode = 'cron'
-      let triggered_by = null
-      try {
-        const body = await req.json()
-        execution_mode = body.execution_mode || 'cron'
-        triggered_by = body.triggered_by || null
-      } catch (e) {
-        // Ignore
-      }
-
-      await supabase.from('rappels_historique').insert({
-        type: 'rappel_conducteurs_finisseurs',
-        execution_mode,
-        triggered_by,
-        nb_destinataires: 0,
-        nb_succes: 0,
-        nb_echecs: 0,
-        error_message: errorMessage,
-        duration_ms
-      })
-    } catch (histError) {
-      console.error('[rappel-conducteurs-finisseurs] ❌ Erreur lors de l\'enregistrement dans l\'historique:', histError)
-    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
+    await supabase.from('rappels_historique').insert({
+      type: 'rappel_conducteurs_finisseurs',
+      execution_mode: 'cron',
+      nb_destinataires: 0,
+      nb_succes: 0,
+      nb_echecs: 0,
+      error_message: error instanceof Error ? error.message : String(error)
+    })
     
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
 })
 
-// Fonction utilitaire pour obtenir le numéro de semaine ISO
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const dayNum = d.getUTCDay() || 7
