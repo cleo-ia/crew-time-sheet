@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserAnalytics, PeriodFilter } from '@/hooks/useUserAnalytics';
+import { useCurrentEntrepriseId } from '@/hooks/useCurrentEntrepriseId';
+import { UserAnalyticsDetailSheet } from './UserAnalyticsDetailSheet';
 import { 
   Users, 
   Clock, 
@@ -74,7 +76,13 @@ const DeviceIcon = ({ type }: { type: string | null }) => {
 
 export const AnalyticsManager = () => {
   const [period, setPeriod] = useState<PeriodFilter>('7days');
+  const [selectedUser, setSelectedUser] = useState<{
+    userId: string;
+    userName: string;
+    role: string | null;
+  } | null>(null);
   const { globalStats, userStats, dailyStats, isLoading } = useUserAnalytics(period);
+  const { data: entrepriseId } = useCurrentEntrepriseId();
 
   return (
     <div className="space-y-6">
@@ -327,60 +335,69 @@ export const AnalyticsManager = () => {
                 </TableHeader>
                 <TableBody>
                   {userStats && userStats.filter(u => u.sessionsCount > 0).length > 0 ? (
-                    sortByRole(userStats.filter(u => u.sessionsCount > 0)).map(user => (
-                      <TableRow key={user.userId}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {user.firstName || user.lastName 
-                                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                : 'Sans nom'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {user.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {user.role && (
-                            <Badge variant={getRoleBadgeVariant(user.role)}>
-                              {user.role}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {user.lastConnection ? (
+                    sortByRole(userStats.filter(u => u.sessionsCount > 0)).map(user => {
+                      const userName = user.firstName || user.lastName 
+                        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                        : 'Sans nom';
+                      return (
+                        <TableRow 
+                          key={user.userId}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedUser({
+                            userId: user.userId,
+                            userName,
+                            role: user.role,
+                          })}
+                        >
+                          <TableCell>
                             <div>
-                              <div className="text-sm">
-                                {formatDistanceToNow(new Date(user.lastConnection), { 
-                                  addSuffix: true,
-                                  locale: fr 
-                                })}
-                              </div>
+                              <div className="font-medium">{userName}</div>
                               <div className="text-xs text-muted-foreground">
-                                {format(new Date(user.lastConnection), 'dd/MM/yyyy HH:mm')}
+                                {user.email}
                               </div>
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Jamais</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {user.sessionsCount}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {formatDuration(user.avgDurationSeconds)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {user.totalPagesVisited}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <DeviceIcon type={user.deviceType} />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          </TableCell>
+                          <TableCell>
+                            {user.role && (
+                              <Badge variant={getRoleBadgeVariant(user.role)}>
+                                {user.role}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.lastConnection ? (
+                              <div>
+                                <div className="text-sm">
+                                  {formatDistanceToNow(new Date(user.lastConnection), { 
+                                    addSuffix: true,
+                                    locale: fr 
+                                  })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {format(new Date(user.lastConnection), 'dd/MM/yyyy HH:mm')}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">Jamais</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {user.sessionsCount}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {formatDuration(user.avgDurationSeconds)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {user.totalPagesVisited}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <DeviceIcon type={user.deviceType} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
@@ -448,6 +465,15 @@ export const AnalyticsManager = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Sheet de détail utilisateur */}
+      <UserAnalyticsDetailSheet
+        open={!!selectedUser}
+        onOpenChange={(open) => !open && setSelectedUser(null)}
+        user={selectedUser}
+        entrepriseId={entrepriseId}
+      />
     </div>
   );
 };
+
