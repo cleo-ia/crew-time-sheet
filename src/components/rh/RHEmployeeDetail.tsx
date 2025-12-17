@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, FileText, MapPin, ChevronRight } from "lucide-react";
+import { ArrowLeft, User, Calendar, Clock, Coffee, Car, CloudRain, FileText, MapPin, ChevronRight, Download } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,8 @@ import { EditableTextCell } from "@/components/rh/EditableTextCell";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
 import { useUpdateCodeTrajetBatch } from "@/hooks/useUpdateCodeTrajetBatch";
 import { CodeTrajetSelector } from "@/components/timesheet/CodeTrajetSelector";
+import { generateEmployeePeriodPdf } from "@/lib/rhEmployeePdfExport";
+import { toast } from "sonner";
 
 interface RHEmployeeDetailProps {
   salarieId: string;
@@ -120,10 +122,26 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
     );
   }
 
+  const handleExportPdf = () => {
+    try {
+      generateEmployeePeriodPdf({
+        salarie: data.salarie,
+        dailyDetails: data.dailyDetails,
+        summary: data.summary,
+        signaturesBySemaine: data.signaturesBySemaine,
+        periode: filters.periode || format(new Date(), "yyyy-MM"),
+      });
+      toast.success("PDF exporté avec succès");
+    } catch (error) {
+      console.error("Erreur export PDF:", error);
+      toast.error("Erreur lors de l'export PDF");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -148,6 +166,10 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
             ) : null}
           </div>
         </div>
+        <Button onClick={handleExportPdf} className="gap-2">
+          <Download className="h-4 w-4" />
+          Export PDF
+        </Button>
       </div>
 
       {/* Summary Card */}
