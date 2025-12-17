@@ -211,14 +211,14 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
   doc.text("Résumé de la période", margin + 8, y + 4);
   y += 14;
 
-  // Cartes de résumé améliorées
+  // Cartes de résumé compactes
   const cardWidth = (pageWidth - margin * 2 - 15) / 4;
-  const cardHeight = 28;
+  const cardHeight = 18;
   const summaryItems = [
-    { label: "Heures totales", value: `${data.summary.totalHeures}h`, color: [59, 130, 246], icon: "⏱" },
-    { label: "Intempéries", value: `${data.summary.totalIntemperies}h`, color: [14, 165, 233], icon: "🌧" },
-    { label: "Paniers", value: `${data.summary.totalPaniers}`, color: [primaryColor.r, primaryColor.g, primaryColor.b], icon: "🍽" },
-    { label: "Trajets", value: `${data.summary.totalTrajets}`, color: [34, 197, 94], icon: "🚗" },
+    { label: "Heures totales", value: `${data.summary.totalHeures}h`, color: [59, 130, 246] },
+    { label: "Intempéries", value: `${data.summary.totalIntemperies}h`, color: [14, 165, 233] },
+    { label: "Paniers", value: `${data.summary.totalPaniers}`, color: [primaryColor.r, primaryColor.g, primaryColor.b] },
+    { label: "Trajets", value: `${data.summary.totalTrajets}`, color: [34, 197, 94] },
   ];
 
   summaryItems.forEach((item, idx) => {
@@ -226,43 +226,38 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     
     // Ombre simulée
     doc.setFillColor(230, 230, 230);
-    doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, 4, 4, "F");
+    doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, 3, 3, "F");
     
     // Fond de carte blanc
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "F");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "F");
     
     // Bordure
     doc.setDrawColor(230, 230, 230);
     doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "S");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "S");
     
     // Bordure colorée en haut
     doc.setFillColor(item.color[0], item.color[1], item.color[2]);
-    doc.rect(x, y, cardWidth, 3, "F");
-    // Arrondir les coins supérieurs
+    doc.roundedRect(x, y, cardWidth, 2.5, 3, 3, "F");
     doc.setFillColor(255, 255, 255);
-    doc.rect(x, y + 2.5, cardWidth, 1, "F");
-    doc.setFillColor(item.color[0], item.color[1], item.color[2]);
-    doc.roundedRect(x, y, cardWidth, 3, 4, 4, "F");
-    doc.setFillColor(255, 255, 255);
-    doc.rect(x, y + 1.5, cardWidth, 2, "F");
+    doc.rect(x, y + 1.5, cardWidth, 1.5, "F");
     
     // Valeur
-    doc.setFontSize(18);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(item.color[0], item.color[1], item.color[2]);
-    doc.text(item.value, x + cardWidth / 2, y + 14, { align: "center" });
+    doc.text(item.value, x + cardWidth / 2, y + 10, { align: "center" });
     
     // Label
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(item.label, x + cardWidth / 2, y + 22, { align: "center" });
+    doc.text(item.label, x + cardWidth / 2, y + 15, { align: "center" });
   });
 
   doc.setTextColor(0, 0, 0);
-  y += cardHeight + 15;
+  y += cardHeight + 8;
 
   // === LISTE DES CHANTIERS TRAVAILLÉS ===
   const chantiersSet = new Set(data.dailyDetails.map(d => d.chantier));
