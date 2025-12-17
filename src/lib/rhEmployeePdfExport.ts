@@ -5,6 +5,8 @@ import { fr } from "date-fns/locale";
 interface DayDetail {
   date: string;
   chantier: string;
+  chantierNom?: string;
+  chantierCode?: string | null;
   heuresNormales: number;
   heuresIntemperies: number;
   panier: boolean;
@@ -396,9 +398,18 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
     doc.text(dateText, xPos + colWidths[0] / 2, y + 5, { align: "center" });
     xPos += colWidths[0];
 
-    // Chantier (tronqué)
-    const chantierText = day.chantier.length > 24 ? day.chantier.substring(0, 22) + "..." : day.chantier;
-    doc.text(chantierText, xPos + 2, y + 5);
+    // Chantier (nom + code en petit)
+    const nomDisplay = day.chantierNom || day.chantier;
+    const nomText = nomDisplay.length > 20 ? nomDisplay.substring(0, 18) + "..." : nomDisplay;
+    doc.text(nomText, xPos + 2, y + 3.5);
+    if (day.chantierCode) {
+      doc.setFontSize(5);
+      doc.setTextColor(120, 120, 120);
+      const codeText = day.chantierCode.length > 16 ? day.chantierCode.substring(0, 14) + "..." : day.chantierCode;
+      doc.text(codeText, xPos + 2, y + 6);
+      doc.setFontSize(7);
+      doc.setTextColor(50, 50, 50);
+    }
     xPos += colWidths[1];
 
     // Heures
