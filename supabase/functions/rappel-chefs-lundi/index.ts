@@ -4,8 +4,9 @@ import { isTargetParisHour } from '../_shared/timezone.ts'
 import { 
   generateEmailHtml, 
   createAlertBox, 
-  createListItem, 
+  createChantierCard, 
   createSectionTitle,
+  createSeparator,
   createClosingMessage 
 } from '../_shared/emailTemplate.ts'
 
@@ -20,10 +21,11 @@ interface ChefWithFiches {
   chef_prenom: string
   chef_nom: string
   nb_fiches: number
-  chantiers: Array<{
-    chantier_nom: string
-    semaine: string
+  chantierDetails: Array<{
+    nom: string
+    nbFiches: number
   }>
+  semaine: string
 }
 
 Deno.serve(async (req) => {
@@ -35,7 +37,7 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
   const executionId = crypto.randomUUID()
   
-  console.log(`[${executionId}] Demarrage rappel-chefs-lundi`)
+  console.log(`[${executionId}] Démarrage rappel-chefs-lundi`)
 
   try {
     // Parse request body
@@ -79,7 +81,7 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configure')
+      throw new Error('RESEND_API_KEY non configuré')
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
@@ -93,7 +95,7 @@ Deno.serve(async (req) => {
     const previousWeekNum = getWeekNumber(previousDate)
     const previousWeek = `${previousYear}-S${String(previousWeekNum).padStart(2, '0')}`
 
-    console.log(`[${executionId}] Semaine precedente: ${previousWeek}`)
+    console.log(`[${executionId}] Semaine précédente: ${previousWeek}`)
 
     // 1. Récupérer tous les chefs
     const { data: chefRoles, error: rolesError } = await supabase
@@ -102,15 +104,15 @@ Deno.serve(async (req) => {
       .eq('role', 'chef')
 
     if (rolesError) {
-      console.error(`[${executionId}] Erreur recuperation roles:`, rolesError)
+      console.error(`[${executionId}] Erreur récupération roles:`, rolesError)
       throw rolesError
     }
 
     const chefIds = chefRoles.map(r => r.user_id)
-    console.log(`[${executionId}] ${chefIds.length} chefs trouves`)
+    console.log(`[${executionId}] ${chefIds.length} chefs trouvés`)
 
     if (chefIds.length === 0) {
-      console.log(`[${executionId}] Aucun chef trouve`)
+      console.log(`[${executionId}] Aucun chef trouvé`)
       return new Response(
         JSON.stringify({ notified: 0, reason: 'no_chefs' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -124,11 +126,11 @@ Deno.serve(async (req) => {
       .in('id', chefIds)
 
     if (chefsError) {
-      console.error(`[${executionId}] Erreur recuperation chefs:`, chefsError)
+      console.error(`[${executionId}] Erreur récupération chefs:`, chefsError)
       throw chefsError
     }
 
-    console.log(`[${executionId}] ${chefsData.length} profils chefs recuperes`)
+    console.log(`[${executionId}] ${chefsData.length} profils chefs récupérés`)
 
     // 3. Récupérer les fiches de S-1 non finalisées
     const { data: fichesData, error: fichesError } = await supabase
@@ -139,11 +141,11 @@ Deno.serve(async (req) => {
       .in('statut', ['BROUILLON', 'EN_SIGNATURE'])
 
     if (fichesError) {
-      console.error(`[${executionId}] Erreur recuperation fiches:`, fichesError)
+      console.error(`[${executionId}] Erreur récupération fiches:`, fichesError)
       throw fichesError
     }
 
-    console.log(`[${executionId}] ${fichesData.length} fiches S-1 non finalisees`)
+    console.log(`[${executionId}] ${fichesData.length} fiches S-1 non finalisées`)
 
     let noPendingFiches = false
     if (fichesData.length === 0) {
@@ -180,23 +182,30 @@ Deno.serve(async (req) => {
         .in('id', chantierIds)
 
       if (chantiersError) {
-        console.error(`[${executionId}] Erreur recuperation chantiers:`, chantiersError)
+        console.error(`[${executionId}] Erreur récupération chantiers:`, chantiersError)
         throw chantiersError
       }
 
       chantiersMap = new Map(chantiersData.map(c => [c.id, c.nom]))
     }
 
-    // 5. Grouper par chef
+    // 5. Grouper par chef ET par chantier
     const chefsWithFiches: ChefWithFiches[] = []
 
     for (const chef of chefsData) {
       const chefFiches = fichesData.filter(f => f.user_id === chef.id)
       
       if (chefFiches.length > 0) {
-        const chantiers = chefFiches.map(f => ({
-          chantier_nom: chantiersMap.get(f.chantier_id) || 'Chantier inconnu',
-          semaine: previousWeek,
+        // Grouper par chantier
+        const fichesByChantier = new Map<string, number>()
+        for (const fiche of chefFiches) {
+          const currentCount = fichesByChantier.get(fiche.chantier_id) || 0
+          fichesByChantier.set(fiche.chantier_id, currentCount + 1)
+        }
+
+        const chantierDetails = Array.from(fichesByChantier.entries()).map(([chantierId, nbFiches]) => ({
+          nom: chantiersMap.get(chantierId) || 'Chantier inconnu',
+          nbFiches
         }))
 
         chefsWithFiches.push({
@@ -205,16 +214,17 @@ Deno.serve(async (req) => {
           chef_prenom: chef.prenom || '',
           chef_nom: chef.nom || '',
           nb_fiches: chefFiches.length,
-          chantiers,
+          chantierDetails,
+          semaine: previousWeek,
         })
       }
     }
 
-    console.log(`[${executionId}] ${chefsWithFiches.length} chefs a notifier`)
+    console.log(`[${executionId}] ${chefsWithFiches.length} chefs à notifier`)
 
     // Mode test manuel: si aucun chef à notifier ET mode manuel, créer un payload de test
     if (execution_mode === 'manual' && chefsWithFiches.length === 0 && triggered_by) {
-      console.log(`[${executionId}] Mode test: envoi d'un payload de demonstration`)
+      console.log(`[${executionId}] Mode test: envoi d'un payload de démonstration`)
       
       // Récupérer l'utilisateur qui a déclenché le test
       const { data: testUser, error: testUserError } = await supabase
@@ -224,7 +234,7 @@ Deno.serve(async (req) => {
         .single()
       
       if (testUserError) {
-        console.error(`[${executionId}] Impossible de recuperer l'utilisateur test:`, testUserError)
+        console.error(`[${executionId}] Impossible de récupérer l'utilisateur test:`, testUserError)
       } else if (testUser) {
         // Ajouter un chef fictif avec des données de test
         chefsWithFiches.push({
@@ -232,14 +242,15 @@ Deno.serve(async (req) => {
           chef_email: testUser.email,
           chef_prenom: testUser.prenom || 'Test',
           chef_nom: testUser.nom || 'User',
-          nb_fiches: 2,
-          chantiers: [
-            { chantier_nom: 'Chantier Test A', semaine: previousWeek },
-            { chantier_nom: 'Chantier Test B', semaine: previousWeek }
-          ]
+          nb_fiches: 3,
+          chantierDetails: [
+            { nom: 'Chantier Test A', nbFiches: 2 },
+            { nom: 'Chantier Test B', nbFiches: 1 }
+          ],
+          semaine: previousWeek
         })
         
-        console.log(`[${executionId}] Payload test cree pour ${testUser.email}`)
+        console.log(`[${executionId}] Payload test créé pour ${testUser.email}`)
       }
     }
 
@@ -250,21 +261,25 @@ Deno.serve(async (req) => {
 
     for (const chef of chefsWithFiches) {
       try {
-        // Construire la liste des chantiers
-        const chantiersListHtml = chef.chantiers.map(c => createListItem(c.chantier_nom)).join('')
+        // Construire la liste des chantiers avec nombre de fiches
+        const chantiersListHtml = chef.chantierDetails.map(c => 
+          createChantierCard(c.nom, c.nbFiches)
+        ).join('')
 
         const emailContent = `
           ${createAlertBox(
-            `<strong>Attention :</strong> Vous avez <strong>${chef.nb_fiches} fiche(s)</strong> de la semaine precedente (<strong>${previousWeek}</strong>) qui n'ont pas encore ete validees.`,
+            `<strong>Attention :</strong> Vous avez <strong>${chef.nb_fiches} fiche(s)</strong> de la semaine précédente (<strong>${previousWeek}</strong>) qui n'ont pas encore été validées.`,
             'error'
           )}
           
-          ${createSectionTitle('Chantiers concernes')}
+          ${createSeparator()}
+          
+          ${createSectionTitle('Chantiers concernés')}
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
             ${chantiersListHtml}
           </table>
           
-          ${createClosingMessage('Merci de finaliser ces fiches <strong>rapidement</strong> afin d\'eviter tout retard dans le traitement des heures.')}
+          ${createClosingMessage('Merci de finaliser ces fiches <strong>rapidement</strong> afin d\'éviter tout retard dans le traitement des heures.')}
         `
 
         const emailHtml = generateEmailHtml(
@@ -275,12 +290,12 @@ Deno.serve(async (req) => {
           'alerte'
         )
 
-        console.log(`[${executionId}] Envoi email a ${chef.chef_email}...`)
+        console.log(`[${executionId}] Envoi email à ${chef.chef_email}...`)
 
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
           to: [chef.chef_email],
-          subject: `Fiches de la semaine derniere (${previousWeek}) non validees`,
+          subject: `Fiches de la semaine dernière (${previousWeek}) non validées`,
           html: emailHtml,
         })
 
@@ -289,7 +304,7 @@ Deno.serve(async (req) => {
           throw emailError
         }
 
-        console.log(`[${executionId}] Email envoye a ${chef.chef_prenom} ${chef.chef_nom}`, emailResult)
+        console.log(`[${executionId}] Email envoyé à ${chef.chef_prenom} ${chef.chef_nom}`, emailResult)
         successCount++
         details.push({
           chef: `${chef.chef_prenom} ${chef.chef_nom}`,
@@ -325,7 +340,7 @@ Deno.serve(async (req) => {
       },
     })
 
-    console.log(`[${executionId}] Termine: ${successCount} succes, ${failureCount} echecs`)
+    console.log(`[${executionId}] Terminé: ${successCount} succès, ${failureCount} échecs`)
 
     return new Response(
       JSON.stringify({

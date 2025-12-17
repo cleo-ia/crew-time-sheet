@@ -57,7 +57,7 @@ export function generateEmailHtml(
   </noscript>
   <style>
     table { border-collapse: collapse; }
-    .button-link { padding: 16px 40px !important; }
+    .button-link { padding: 18px 48px !important; }
   </style>
   <![endif]-->
   <style type="text/css">
@@ -85,7 +85,7 @@ export function generateEmailHtml(
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
       <tr>
         <td style="padding: 40px 20px;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; max-width: 600px;" class="email-container">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; max-width: 600px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border-radius: 16px;" class="email-container">
             
             <!-- HEADER -->
             <tr>
@@ -159,7 +159,7 @@ export function generateEmailHtml(
                   <tr>
                     <td align="center">
                       <!--[if mso]>
-                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${ctaUrl}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="20%" strokecolor="#ea580c" fillcolor="#f97316">
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${ctaUrl}" style="height:56px;v-text-anchor:middle;width:280px;" arcsize="18%" strokecolor="#ea580c" fillcolor="#f97316">
                         <w:anchorlock/>
                         <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:600;">
                           ${ctaText}
@@ -167,7 +167,7 @@ export function generateEmailHtml(
                       </v:roundrect>
                       <![endif]-->
                       <!--[if !mso]><!-->
-                      <a href="${ctaUrl}" target="_blank" style="display: inline-block; background-color: #f97316; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 16px 36px; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; mso-hide: all;">
+                      <a href="${ctaUrl}" target="_blank" style="display: inline-block; background-color: #f97316; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 18px 48px; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; mso-hide: all;">
                         ${ctaText}
                       </a>
                       <!--<![endif]-->
@@ -184,11 +184,11 @@ export function generateEmailHtml(
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                   <tr>
                     <td align="center" style="font-size: 13px; color: #6b7280; padding-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
-                      Cet email a ete envoye automatiquement par <strong style="color: #374151;">DIVA</strong>
+                      Cet email a été envoyé automatiquement par <strong style="color: #374151;">DIVA</strong>
                     </td>
                   </tr>
                   <tr>
-                    <td align="center" style="padding-bottom: 16px;">
+                    <td align="center" style="padding-bottom: 12px;">
                       <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                         <tr>
                           <td style="padding: 0 10px;">
@@ -196,7 +196,11 @@ export function generateEmailHtml(
                           </td>
                           <td style="color: #d1d5db; font-size: 12px;">|</td>
                           <td style="padding: 0 10px;">
-                            <a href="${ctaUrl}" target="_blank" style="font-size: 12px; color: #f97316; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">Acceder a DIVA</a>
+                            <a href="${ctaUrl}" target="_blank" style="font-size: 12px; color: #f97316; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">Accéder à DIVA</a>
+                          </td>
+                          <td style="color: #d1d5db; font-size: 12px;">|</td>
+                          <td style="padding: 0 10px;">
+                            <a href="mailto:support@groupe-engo.com" style="font-size: 12px; color: #f97316; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">Support</a>
                           </td>
                         </tr>
                       </table>
@@ -204,7 +208,7 @@ export function generateEmailHtml(
                   </tr>
                   <tr>
                     <td align="center" style="font-size: 11px; color: #9ca3af; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
-                      ${year} Groupe Engo - Tous droits reserves
+                      ${year} Groupe Engo - Tous droits réservés
                     </td>
                   </tr>
                 </table>
@@ -255,6 +259,17 @@ export function createAlertBox(
             </tr>
           </table>
         </td>
+      </tr>
+    </table>
+  `
+}
+
+// Helper function to create a visual separator
+export function createSeparator(): string {
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+      <tr>
+        <td style="border-top: 1px solid #e5e7eb;"></td>
       </tr>
     </table>
   `
@@ -378,7 +393,7 @@ export function createPersonCard(
   `
 }
 
-// Helper to create closing message
+// Helper function to create a closing message
 export function createClosingMessage(message: string): string {
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">

@@ -6,6 +6,7 @@ import {
   createAlertBox, 
   createChantierCard, 
   createSectionTitle,
+  createSeparator,
   createClosingMessage 
 } from '../_shared/emailTemplate.ts'
 
@@ -35,14 +36,14 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    console.log('[rappel-conducteurs] Demarrage du rappel aux conducteurs...')
+    console.log('[rappel-conducteurs] Démarrage du rappel aux conducteurs...')
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configure')
+      throw new Error('RESEND_API_KEY non configuré')
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
 
     // Vérifier si on est à 12h Paris (sauf si force = true)
     if (!force && !isTargetParisHour(12)) {
-      console.log('[rappel-conducteurs] Pas encore 12h a Paris, skip')
+      console.log('[rappel-conducteurs] Pas encore 12h à Paris, skip')
       return new Response(
         JSON.stringify({ message: 'Not target hour', skipped: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     }
 
     if (force) {
-      console.log('[rappel-conducteurs] Mode force active - bypass de la verification horaire')
+      console.log('[rappel-conducteurs] Mode force activé - bypass de la vérification horaire')
     }
 
     // ÉTAPE 1: Récupérer les user_id des conducteurs
@@ -81,20 +82,20 @@ Deno.serve(async (req) => {
       .eq('role', 'conducteur')
 
     if (rolesError) {
-      console.error('[rappel-conducteurs] Erreur lors de la recuperation des roles:', rolesError)
+      console.error('[rappel-conducteurs] Erreur lors de la récupération des roles:', rolesError)
       throw rolesError
     }
 
     if (!rolesData || rolesData.length === 0) {
-      console.log('[rappel-conducteurs] Aucun conducteur trouve')
+      console.log('[rappel-conducteurs] Aucun conducteur trouvé')
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur trouve' }),
+        JSON.stringify({ message: 'Aucun conducteur trouvé' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     const conducteurIds = rolesData.map(r => r.user_id)
-    console.log(`[rappel-conducteurs] ${conducteurIds.length} conducteur(s) trouve(s)`)
+    console.log(`[rappel-conducteurs] ${conducteurIds.length} conducteur(s) trouvé(s)`)
 
     // ÉTAPE 2: Récupérer les profiles de ces conducteurs
     const { data: profilesData, error: profilesError } = await supabase
@@ -103,13 +104,13 @@ Deno.serve(async (req) => {
       .in('id', conducteurIds)
 
     if (profilesError) {
-      console.error('[rappel-conducteurs] Erreur lors de la recuperation des profiles:', profilesError)
+      console.error('[rappel-conducteurs] Erreur lors de la récupération des profiles:', profilesError)
       throw profilesError
     }
 
     // Créer un map id -> profile
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || [])
-    console.log(`[rappel-conducteurs] ${profilesMap.size} profile(s) recupere(s)`)
+    console.log(`[rappel-conducteurs] ${profilesMap.size} profile(s) récupéré(s)`)
 
     const conducteursANotifier: ConducteurWithFiches[] = []
 
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
     for (const conducteurId of conducteurIds) {
       const profile = profilesMap.get(conducteurId)
       if (!profile) {
-        console.warn(`[rappel-conducteurs] Profile non trouve pour conducteur ${conducteurId}`)
+        console.warn(`[rappel-conducteurs] Profile non trouvé pour conducteur ${conducteurId}`)
         continue
       }
 
@@ -215,7 +216,7 @@ Deno.serve(async (req) => {
     if (conducteursANotifier.length === 0) {
       console.log('[rappel-conducteurs] Aucune fiche en attente')
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur a notifier' }),
+        JSON.stringify({ message: 'Aucun conducteur à notifier' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
@@ -237,12 +238,14 @@ Deno.serve(async (req) => {
             'info'
           )}
           
-          ${createSectionTitle('Detail par chantier')}
+          ${createSeparator()}
+          
+          ${createSectionTitle('Détail par chantier')}
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
             ${chantiersListHtml}
           </table>
           
-          ${createClosingMessage('Merci de valider ces fiches des que possible afin de permettre le traitement des heures par le service RH.')}
+          ${createClosingMessage('Merci de valider ces fiches dès que possible afin de permettre le traitement des heures par le service RH.')}
         `
 
         const emailHtml = generateEmailHtml(
@@ -253,7 +256,7 @@ Deno.serve(async (req) => {
           'validation'
         )
 
-        console.log(`[rappel-conducteurs] Envoi email a ${conducteur.conducteur_email}...`)
+        console.log(`[rappel-conducteurs] Envoi email à ${conducteur.conducteur_email}...`)
 
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
@@ -267,7 +270,7 @@ Deno.serve(async (req) => {
           throw emailError
         }
 
-        console.log(`[rappel-conducteurs] Email envoye a ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom} (${conducteur.conducteur_email})`, emailResult)
+        console.log(`[rappel-conducteurs] Email envoyé à ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom} (${conducteur.conducteur_email})`, emailResult)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
           email: conducteur.conducteur_email,
@@ -285,7 +288,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[rappel-conducteurs] Traitement termine: ${results.filter(r => r.success).length}/${results.length} succes`)
+    console.log(`[rappel-conducteurs] Traitement terminé: ${results.filter(r => r.success).length}/${results.length} succès`)
 
     // ÉTAPE 5: Enregistrer dans l'historique
     const endTime = Date.now()
