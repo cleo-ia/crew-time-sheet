@@ -275,12 +275,17 @@ export const AnalyticsManager = () => {
         </Card>
       </div>
 
-      {/* Tableau des utilisateurs */}
+      {/* Utilisateurs AVEC données d'activité */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Détail par utilisateur
+            <Users className="h-4 w-4 text-green-600" />
+            Utilisateurs avec données d'activité
+            {userStats && (
+              <Badge variant="secondary" className="ml-2">
+                {userStats.filter(u => u.sessionsCount > 0).length}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -305,8 +310,8 @@ export const AnalyticsManager = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {userStats && userStats.length > 0 ? (
-                    userStats.map(user => (
+                  {userStats && userStats.filter(u => u.sessionsCount > 0).length > 0 ? (
+                    userStats.filter(u => u.sessionsCount > 0).map(user => (
                       <TableRow key={user.userId}>
                         <TableCell>
                           <div>
@@ -373,6 +378,60 @@ export const AnalyticsManager = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Utilisateurs SANS données d'activité */}
+      {userStats && userStats.filter(u => u.sessionsCount === 0).length > 0 && (
+        <Card className="border-dashed border-muted-foreground/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2 text-muted-foreground">
+              <Users className="h-4 w-4" />
+              Utilisateurs sans données d'activité
+              <Badge variant="outline" className="ml-2">
+                {userStats.filter(u => u.sessionsCount === 0).length}
+              </Badge>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ces utilisateurs n'ont pas de données traçables historiques. Leurs activités seront enregistrées à partir de leur prochaine connexion.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userStats.filter(u => u.sessionsCount === 0).map(user => (
+                    <TableRow key={user.userId} className="opacity-60">
+                      <TableCell>
+                        <div className="font-medium">
+                          {user.firstName || user.lastName 
+                            ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                            : 'Sans nom'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.role && (
+                          <Badge variant={getRoleBadgeVariant(user.role)}>
+                            {user.role}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {user.email}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
