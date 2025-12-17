@@ -8,7 +8,7 @@ import { useRHEmployeeDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, getISOWeek, getISOWeekYear } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { RHWeekDetailDialog } from "@/components/rh/RHWeekDetailDialog";
 import { EditableCell } from "@/components/rh/EditableCell";
 import { EditableAbsenceTypeCell } from "@/components/rh/EditableAbsenceTypeCell";
@@ -18,6 +18,7 @@ import { useUpdateCodeTrajetBatch } from "@/hooks/useUpdateCodeTrajetBatch";
 import { CodeTrajetSelector } from "@/components/timesheet/CodeTrajetSelector";
 import { generateEmployeePeriodPdf } from "@/lib/rhEmployeePdfExport";
 import { toast } from "sonner";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 
 interface RHEmployeeDetailProps {
   salarieId: string;
@@ -30,6 +31,28 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
+  const enterpriseConfig = useEnterpriseConfig();
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  // Charger le logo en base64 pour le PDF
+  useEffect(() => {
+    if (enterpriseConfig?.theme?.logo) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataURL = canvas.toDataURL("image/png");
+          setLogoBase64(dataURL);
+        }
+      };
+      img.src = enterpriseConfig.theme.logo;
+    }
+  }, [enterpriseConfig?.theme?.logo]);
 
   // Grouper les jours par semaine
   const weeklyData = useMemo(() => {
@@ -130,6 +153,10 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         summary: data.summary,
         signaturesBySemaine: data.signaturesBySemaine,
         periode: filters.periode || format(new Date(), "yyyy-MM"),
+        // Enterprise branding
+        entrepriseNom: enterpriseConfig?.nom || 'DIVA',
+        entrepriseLogo: logoBase64 || undefined,
+        primaryColor: enterpriseConfig?.theme?.primaryColor || '#ea580c',
       });
       toast.success("PDF exporté avec succès");
     } catch (error) {
