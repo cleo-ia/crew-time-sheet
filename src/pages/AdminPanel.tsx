@@ -49,10 +49,19 @@ const AdminPanel = () => {
         icon={Settings}
         theme="admin"
         actions={
-          <Button onClick={() => setInviteDialogOpen(true)}>
-            <Users className="h-4 w-4 mr-2" />
-            Inviter un utilisateur
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => handleTabChange("analyse")}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analyse
+            </Button>
+            <Button onClick={() => setInviteDialogOpen(true)}>
+              <Users className="h-4 w-4 mr-2" />
+              Inviter un utilisateur
+            </Button>
+          </div>
         }
       />
 
@@ -65,56 +74,56 @@ const AdminPanel = () => {
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Card className="shadow-md border-border/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="w-full grid grid-cols-13 rounded-none border-b">
-              <TabsTrigger value="utilisateurs" className="rounded-none gap-2">
+            <TabsList className="w-full flex flex-wrap justify-start gap-1 rounded-none border-b bg-transparent h-auto p-2">
+              <TabsTrigger value="utilisateurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Utilisateurs</span>
               </TabsTrigger>
-              <TabsTrigger value="chantiers" className="rounded-none gap-2">
+              <TabsTrigger value="chantiers" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Building2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Chantiers</span>
               </TabsTrigger>
-              <TabsTrigger value="conducteurs" className="rounded-none gap-2">
+              <TabsTrigger value="conducteurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Briefcase className="h-4 w-4" />
                 <span className="hidden sm:inline">Conducteurs</span>
               </TabsTrigger>
-              <TabsTrigger value="chefs" className="rounded-none gap-2">
+              <TabsTrigger value="chefs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <UserCog className="h-4 w-4" />
                 <span className="hidden sm:inline">Chefs</span>
               </TabsTrigger>
-              <TabsTrigger value="macons" className="rounded-none gap-2">
+              <TabsTrigger value="macons" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <HardHat className="h-4 w-4" />
                 <span className="hidden sm:inline">Maçons</span>
               </TabsTrigger>
-              <TabsTrigger value="grutiers" className="rounded-none gap-2">
+              <TabsTrigger value="grutiers" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <HardHat className="h-4 w-4" />
                 <span className="hidden sm:inline">Grutiers</span>
               </TabsTrigger>
-              <TabsTrigger value="interimaires" className="rounded-none gap-2">
+              <TabsTrigger value="interimaires" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <UserCheck className="h-4 w-4" />
                 <span className="hidden sm:inline">Intérimaires</span>
               </TabsTrigger>
-              <TabsTrigger value="finisseurs" className="rounded-none gap-2">
+              <TabsTrigger value="finisseurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Finisseurs</span>
               </TabsTrigger>
-              <TabsTrigger value="rh" className="rounded-none gap-2">
+              <TabsTrigger value="rh" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <FileUser className="h-4 w-4" />
                 <span className="hidden sm:inline">RH</span>
               </TabsTrigger>
-              <TabsTrigger value="vehicules" className="rounded-none gap-2">
+              <TabsTrigger value="vehicules" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Truck className="h-4 w-4" />
                 <span className="hidden sm:inline">Véhicules</span>
               </TabsTrigger>
-              <TabsTrigger value="rappels" className="rounded-none gap-2">
+              <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Rappels</span>
               </TabsTrigger>
-              <TabsTrigger value="analyse" className="rounded-none gap-2">
+              <TabsTrigger value="analyse" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">Analyse</span>
               </TabsTrigger>
-              <TabsTrigger value="debug" className="rounded-none gap-2">
+              <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="h-4 w-4" />
                 <span className="hidden sm:inline">Debug</span>
               </TabsTrigger>
