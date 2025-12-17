@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-engo-bourgogne.png";
 import logoEngoBourgogne from "@/assets/logo-sder.png";
@@ -147,6 +148,8 @@ export const AppNav = () => {
                 </Link>
               </Button>
             )}
+            
+            <ThemeToggle />
             
             <Button
               variant="ghost"
