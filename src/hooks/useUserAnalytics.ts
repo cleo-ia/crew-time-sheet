@@ -156,11 +156,12 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
       const { data: sessions, error: sessionsError } = await sessionsQuery;
       if (sessionsError) throw sessionsError;
 
-      // Get users info from utilisateurs (source de vérité) and user_roles
+      // Get users info from utilisateurs - uniquement ceux avec un compte app (auth_user_id)
       const { data: utilisateurs, error: utilisateursError } = await supabase
         .from('utilisateurs')
         .select('id, auth_user_id, email, prenom, nom')
-        .eq('entreprise_id', entrepriseId);
+        .eq('entreprise_id', entrepriseId)
+        .not('auth_user_id', 'is', null);
       if (utilisateursError) throw utilisateursError;
 
       const { data: userRoles, error: rolesError } = await supabase
