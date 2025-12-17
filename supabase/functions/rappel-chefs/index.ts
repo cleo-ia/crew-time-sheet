@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
 
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
-          to: ['tom.genin@groupe-engo.com'], // TEMPORAIRE POUR TEST - remettre [chef.chef_email]
+          to: [chef.chef_email],
           subject: `Rappel - ${chef.nb_fiches_en_cours} fiche(s) en attente de validation`,
           html: emailHtml,
         })
