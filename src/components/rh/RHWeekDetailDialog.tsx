@@ -6,10 +6,14 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { PenLine, Download } from "lucide-react";
 import { generateWeekDetailPdf } from "@/lib/rhWeekDetailPdfExport";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import { useState, useEffect } from "react";
 
 interface DayDetail {
   date: string;
   chantier: string;
+  chantierNom?: string;
+  chantierCode?: string | null;
   heuresNormales: number;
   heuresIntemperies: number;
   panier: boolean;
@@ -35,6 +39,27 @@ interface RHWeekDetailDialogProps {
 }
 
 export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signature, employeeName }: RHWeekDetailDialogProps) => {
+  const enterpriseConfig = useEnterpriseConfig();
+  const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
+
+  // Charger le logo en base64
+  useEffect(() => {
+    const loadLogo = async () => {
+      if (enterpriseConfig?.theme?.logo) {
+        try {
+          const response = await fetch(enterpriseConfig.theme.logo);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => setLogoBase64(reader.result as string);
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          console.error("Erreur chargement logo:", error);
+        }
+      }
+    };
+    loadLogo();
+  }, [enterpriseConfig?.theme?.logo]);
+
   // Calculer les totaux
   const totals = days.reduce(
     (acc, day) => ({
@@ -47,7 +72,11 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
   );
 
   const handleExportPdf = () => {
-    generateWeekDetailPdf(employeeName, semaine, days, signature);
+    generateWeekDetailPdf(employeeName, semaine, days, signature, {
+      entrepriseNom: enterpriseConfig?.nom,
+      entrepriseLogo: logoBase64,
+      primaryColor: enterpriseConfig?.theme?.primaryColor,
+    });
   };
 
   return (
@@ -93,8 +122,17 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
                     <TableCell className="py-2 px-3 text-foreground font-medium">
                       {format(new Date(day.date), "EEE dd/MM", { locale: fr })}
                     </TableCell>
-                    <TableCell className="py-2 px-3 text-foreground text-sm">
-                      {day.chantier}
+                    <TableCell className="py-2 px-3">
+                      <div className="leading-tight">
+                        <span className="text-foreground font-medium">
+                          {day.chantierNom || day.chantier}
+                        </span>
+                        {day.chantierCode && (
+                          <span className="block text-xs text-muted-foreground">
+                            {day.chantierCode}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center py-2 px-3">
                       {isAbsent ? (
