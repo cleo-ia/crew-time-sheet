@@ -84,7 +84,7 @@ const DeviceIcon = ({ type }: { type: string | null }) => {
 };
 
 export const AnalyticsManager = () => {
-  const [period, setPeriod] = useState<PeriodFilter>('7days');
+  const [period, setPeriod] = useState<PeriodFilter>('30days');
   const [selectedUser, setSelectedUser] = useState<{
     userId: string;
     userName: string;
