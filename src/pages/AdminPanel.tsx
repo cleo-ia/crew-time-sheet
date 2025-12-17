@@ -49,10 +49,19 @@ const AdminPanel = () => {
         icon={Settings}
         theme="admin"
         actions={
-          <Button onClick={() => setInviteDialogOpen(true)}>
-            <Users className="h-4 w-4 mr-2" />
-            Inviter un utilisateur
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => handleTabChange("analyse")}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analyse
+            </Button>
+            <Button onClick={() => setInviteDialogOpen(true)}>
+              <Users className="h-4 w-4 mr-2" />
+              Inviter un utilisateur
+            </Button>
+          </div>
         }
       />
 
@@ -109,10 +118,6 @@ const AdminPanel = () => {
               <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Rappels</span>
-              </TabsTrigger>
-              <TabsTrigger value="analyse" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Analyse</span>
               </TabsTrigger>
               <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="h-4 w-4" />
