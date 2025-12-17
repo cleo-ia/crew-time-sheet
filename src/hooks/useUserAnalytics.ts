@@ -156,12 +156,12 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
       const { data: sessions, error: sessionsError } = await sessionsQuery;
       if (sessionsError) throw sessionsError;
 
-      // Get users info from profiles and user_roles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
+      // Get users info from utilisateurs (source de vérité) and user_roles
+      const { data: utilisateurs, error: utilisateursError } = await supabase
+        .from('utilisateurs')
+        .select('id, auth_user_id, email, prenom, nom')
         .eq('entreprise_id', entrepriseId);
-      if (profilesError) throw profilesError;
+      if (utilisateursError) throw utilisateursError;
 
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
@@ -169,7 +169,7 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
         .eq('entreprise_id', entrepriseId);
       if (rolesError) throw rolesError;
 
-      // Create a map of user sessions
+      // Create a map of user sessions (keyed by utilisateurs.id)
       const userSessionsMap = new Map<string, typeof sessions>();
       sessions?.forEach(session => {
         const existing = userSessionsMap.get(session.user_id) || [];
@@ -178,9 +178,13 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
       });
 
       // Build user stats
-      const userStats: UserActivityStats[] = (profiles || []).map(profile => {
-        const userSessions = userSessionsMap.get(profile.id) || [];
-        const userRole = userRoles?.find(r => r.user_id === profile.id);
+      const userStats: UserActivityStats[] = (utilisateurs || []).map(utilisateur => {
+        // Sessions are keyed by utilisateurs.id
+        const userSessions = userSessionsMap.get(utilisateur.id) || [];
+        // Roles are keyed by auth_user_id
+        const userRole = utilisateur.auth_user_id 
+          ? userRoles?.find(r => r.user_id === utilisateur.auth_user_id)
+          : null;
 
         // Last connection
         const sortedSessions = [...userSessions].sort(
@@ -213,10 +217,10 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
         });
 
         return {
-          userId: profile.id,
-          email: profile.email,
-          firstName: profile.first_name,
-          lastName: profile.last_name,
+          userId: utilisateur.id,
+          email: utilisateur.email || '',
+          firstName: utilisateur.prenom,
+          lastName: utilisateur.nom,
           role: userRole?.role || null,
           lastConnection,
           sessionsCount: userSessions.length,
