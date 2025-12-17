@@ -120,9 +120,9 @@ export const UserAnalyticsDetailSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl p-0">
+      <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col h-full">
         {/* Header avec gradient */}
-        <SheetHeader className={`bg-gradient-to-r ${roleConfig.gradient} px-6 pt-6 pb-5 border-b`}>
+        <SheetHeader className={`bg-gradient-to-r ${roleConfig.gradient} px-6 pt-6 pb-5 border-b shrink-0`}>
           <div className="flex items-center gap-4">
             <div className={`h-14 w-14 rounded-full ${roleConfig.bg} flex items-center justify-center ${roleConfig.text} font-bold text-xl shadow-sm`}>
               {user.userName.charAt(0).toUpperCase()}
@@ -138,7 +138,7 @@ export const UserAnalyticsDetailSheet = ({
           </div>
         </SheetHeader>
 
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 flex-1 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="space-y-4 py-6">
               <div className="grid grid-cols-2 gap-3">
@@ -253,8 +253,8 @@ export const UserAnalyticsDetailSheet = ({
               )}
 
               {/* Tabs redesignés */}
-              <Tabs defaultValue="sessions" className="flex-1">
-                <TabsList className="w-full bg-muted/50 p-1 rounded-xl">
+              <Tabs defaultValue="sessions" className="flex-1 flex flex-col min-h-0">
+                <TabsList className="w-full bg-muted/50 p-1 rounded-xl shrink-0">
                   <TabsTrigger 
                     value="sessions" 
                     className="flex-1 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg transition-all"
@@ -271,8 +271,8 @@ export const UserAnalyticsDetailSheet = ({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="sessions" className="mt-4">
-                  <ScrollArea className="h-[350px] pr-4">
+                <TabsContent value="sessions" className="mt-4 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
+                  <ScrollArea className="flex-1 pr-4">
                     {sessions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="p-4 rounded-full bg-muted mb-3">
@@ -356,8 +356,8 @@ export const UserAnalyticsDetailSheet = ({
                   </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="activity" className="mt-4">
-                  <ScrollArea className="h-[350px] pr-4">
+                <TabsContent value="activity" className="mt-4 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
+                  <ScrollArea className="flex-1 pr-4">
                     {activities.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="p-4 rounded-full bg-muted mb-3">
