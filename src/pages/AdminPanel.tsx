@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard, History } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
@@ -21,6 +21,7 @@ import { TransportDebugManager } from "@/components/admin/TransportDebugManager"
 import { RHAdminManager } from "@/components/admin/RHAdminManager";
 import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
 import { DashboardManager } from "@/components/admin/DashboardManager";
+import { HistoriqueManager } from "@/components/admin/HistoriqueManager";
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -124,6 +125,10 @@ const AdminPanel = () => {
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Rappels</span>
               </TabsTrigger>
+              <TabsTrigger value="historique" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">Historique</span>
+              </TabsTrigger>
               <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="h-4 w-4" />
                 <span className="hidden sm:inline">Debug</span>
@@ -181,6 +186,10 @@ const AdminPanel = () => {
             <TabsContent value="analyse" className="p-6">
               <AnalyticsManager />
             </TabsContent>
+
+          <TabsContent value="historique" className="p-6">
+            <HistoriqueManager />
+          </TabsContent>
 
           <TabsContent value="debug" className="p-6">
             <TransportDebugManager />

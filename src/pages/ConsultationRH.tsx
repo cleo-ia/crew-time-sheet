@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2 } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
 import { RHSummary } from "@/components/rh/RHSummary";
@@ -27,6 +27,7 @@ import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
 import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
+import { RHModificationsTab } from "@/components/rh/RHModificationsTab";
 
 
 const ConsultationRH = () => {
@@ -188,7 +189,7 @@ const ConsultationRH = () => {
             {/* Tabs */}
             <Card className="shadow-md border-border/50 overflow-hidden">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-4 rounded-none border-b">
+                <TabsList className="w-full grid grid-cols-5 rounded-none border-b">
                   <TabsTrigger value="consolide" className="rounded-none">
                     Consolidé par salarié
                   </TabsTrigger>
@@ -200,6 +201,10 @@ const ConsultationRH = () => {
                   </TabsTrigger>
                   <TabsTrigger value="historique" className="rounded-none">
                     Historique clôturé
+                  </TabsTrigger>
+                  <TabsTrigger value="modifications" className="rounded-none flex items-center gap-1">
+                    <History className="h-3 w-3" />
+                    Historique modifs
                   </TabsTrigger>
                 </TabsList>
 
@@ -217,6 +222,10 @@ const ConsultationRH = () => {
 
                 <TabsContent value="historique" className="p-6">
                   <RHHistorique filters={filters} onSelectFiche={setSelectedFiche} />
+                </TabsContent>
+
+                <TabsContent value="modifications" className="p-6">
+                  <RHModificationsTab entrepriseId={localStorage.getItem("current_entreprise_id")} />
                 </TabsContent>
               </Tabs>
             </Card>
