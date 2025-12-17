@@ -287,10 +287,126 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
     enabled: !!entrepriseId && period !== 'all',
   });
 
+  // Données pour le heatmap (jour de semaine × plage horaire)
+  const heatmapQuery = useQuery({
+    queryKey: ['user-analytics-heatmap', entrepriseId, period],
+    queryFn: async () => {
+      if (!entrepriseId) throw new Error('No entreprise selected');
+
+      const dateFilter = getDateFilter(period);
+
+      let sessionsQuery = supabase
+        .from('user_sessions')
+        .select('started_at')
+        .eq('entreprise_id', entrepriseId);
+
+      if (dateFilter) {
+        sessionsQuery = sessionsQuery.gte('started_at', dateFilter.toISOString());
+      }
+
+      const { data: sessions, error } = await sessionsQuery;
+      if (error) throw error;
+
+      // Créer une grille 7 jours × 4 plages horaires (matin, midi, après-midi, soir)
+      const heatmapData: number[][] = Array(7).fill(null).map(() => Array(4).fill(0));
+      
+      sessions?.forEach(session => {
+        const date = new Date(session.started_at);
+        const dayOfWeek = date.getDay(); // 0 = dimanche, 6 = samedi
+        const hour = date.getHours();
+        
+        // Convertir en index (lundi = 0, dimanche = 6)
+        const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        
+        // Plages horaires: 6-12 = matin, 12-14 = midi, 14-18 = après-midi, 18-22 = soir
+        let timeSlot = 0;
+        if (hour >= 6 && hour < 12) timeSlot = 0; // Matin
+        else if (hour >= 12 && hour < 14) timeSlot = 1; // Midi
+        else if (hour >= 14 && hour < 18) timeSlot = 2; // Après-midi
+        else timeSlot = 3; // Soir/Nuit
+        
+        heatmapData[dayIndex][timeSlot]++;
+      });
+
+      return {
+        data: heatmapData,
+        days: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+        timeSlots: ['Matin', 'Midi', 'Après-midi', 'Soir'],
+        maxValue: Math.max(...heatmapData.flat()),
+      };
+    },
+    enabled: !!entrepriseId,
+  });
+
+  // Tendances de durée moyenne par jour (pour sparklines)
+  const durationTrendQuery = useQuery({
+    queryKey: ['user-analytics-duration-trend', entrepriseId, period],
+    queryFn: async () => {
+      if (!entrepriseId) throw new Error('No entreprise selected');
+
+      const days = period === 'today' ? 1 : period === '7days' ? 7 : 30;
+      const dateFilter = subDays(new Date(), days);
+
+      const { data: sessions, error } = await supabase
+        .from('user_sessions')
+        .select('started_at, duration_seconds')
+        .eq('entreprise_id', entrepriseId)
+        .not('duration_seconds', 'is', null)
+        .gte('started_at', dateFilter.toISOString());
+
+      if (error) throw error;
+
+      // Grouper par jour et calculer la moyenne
+      const dailyMap = new Map<string, number[]>();
+      sessions?.forEach(session => {
+        const day = format(new Date(session.started_at), 'yyyy-MM-dd');
+        const existing = dailyMap.get(day) || [];
+        if (session.duration_seconds) {
+          existing.push(session.duration_seconds);
+        }
+        dailyMap.set(day, existing);
+      });
+
+      // Générer les données pour tous les jours
+      const result: Array<{ date: string; avgDuration: number }> = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+        const durations = dailyMap.get(date) || [];
+        const avg = durations.length > 0 
+          ? durations.reduce((a, b) => a + b, 0) / durations.length 
+          : 0;
+        
+        result.push({
+          date: format(subDays(new Date(), i), 'dd/MM'),
+          avgDuration: Math.round(avg),
+        });
+      }
+
+      // Calculer la tendance (comparer première et dernière moitié)
+      const halfLength = Math.floor(result.length / 2);
+      const firstHalf = result.slice(0, halfLength);
+      const secondHalf = result.slice(halfLength);
+      
+      const firstAvg = firstHalf.reduce((a, b) => a + b.avgDuration, 0) / (firstHalf.length || 1);
+      const secondAvg = secondHalf.reduce((a, b) => a + b.avgDuration, 0) / (secondHalf.length || 1);
+      
+      const trendPercentage = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
+
+      return {
+        data: result,
+        trend: trendPercentage,
+        isIncreasing: trendPercentage > 0,
+      };
+    },
+    enabled: !!entrepriseId && period !== 'all',
+  });
+
   return {
     globalStats: globalStatsQuery.data,
     userStats: userStatsQuery.data,
     dailyStats: dailyStatsQuery.data,
+    heatmapData: heatmapQuery.data,
+    durationTrend: durationTrendQuery.data,
     isLoading: globalStatsQuery.isLoading || userStatsQuery.isLoading,
     error: globalStatsQuery.error || userStatsQuery.error,
   };
