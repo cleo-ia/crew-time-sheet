@@ -49,19 +49,10 @@ const AdminPanel = () => {
         icon={Settings}
         theme="admin"
         actions={
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => handleTabChange("analyse")}
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analyse
-            </Button>
-            <Button onClick={() => setInviteDialogOpen(true)}>
-              <Users className="h-4 w-4 mr-2" />
-              Inviter un utilisateur
-            </Button>
-          </div>
+          <Button onClick={() => setInviteDialogOpen(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Inviter un utilisateur
+          </Button>
         }
       />
 
