@@ -6,6 +6,7 @@ import {
   createAlertBox, 
   createPersonCard, 
   createSectionTitle,
+  createSeparator,
   createClosingMessage 
 } from '../_shared/emailTemplate.ts'
 
@@ -35,14 +36,14 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    console.log('[rappel-conducteurs-finisseurs] Demarrage du rappel aux conducteurs pour finisseurs...')
+    console.log('[rappel-conducteurs-finisseurs] Démarrage du rappel aux conducteurs pour finisseurs...')
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configure')
+      throw new Error('RESEND_API_KEY non configuré')
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
 
     // Vérifier si on est à 12h Paris (sauf si force = true)
     if (!force && !isTargetParisHour(12)) {
-      console.log('[rappel-conducteurs-finisseurs] Pas encore 12h a Paris, skip')
+      console.log('[rappel-conducteurs-finisseurs] Pas encore 12h à Paris, skip')
       return new Response(
         JSON.stringify({ message: 'Not target hour', skipped: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     }
 
     if (force) {
-      console.log('[rappel-conducteurs-finisseurs] Mode force active - bypass de la verification horaire')
+      console.log('[rappel-conducteurs-finisseurs] Mode force activé - bypass de la vérification horaire')
     }
 
     // Calculer la semaine ISO actuelle
@@ -88,20 +89,20 @@ Deno.serve(async (req) => {
       .eq('role', 'conducteur')
 
     if (rolesError) {
-      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la recuperation des roles:', rolesError)
+      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la récupération des roles:', rolesError)
       throw rolesError
     }
 
     if (!rolesData || rolesData.length === 0) {
-      console.log('[rappel-conducteurs-finisseurs] Aucun conducteur trouve')
+      console.log('[rappel-conducteurs-finisseurs] Aucun conducteur trouvé')
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur trouve' }),
+        JSON.stringify({ message: 'Aucun conducteur trouvé' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     const conducteurIds = rolesData.map(r => r.user_id)
-    console.log(`[rappel-conducteurs-finisseurs] ${conducteurIds.length} conducteur(s) trouve(s)`)
+    console.log(`[rappel-conducteurs-finisseurs] ${conducteurIds.length} conducteur(s) trouvé(s)`)
 
     // ÉTAPE 2: Récupérer les profiles de ces conducteurs
     const { data: profilesData, error: profilesError } = await supabase
@@ -110,13 +111,13 @@ Deno.serve(async (req) => {
       .in('id', conducteurIds)
 
     if (profilesError) {
-      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la recuperation des profiles:', profilesError)
+      console.error('[rappel-conducteurs-finisseurs] Erreur lors de la récupération des profiles:', profilesError)
       throw profilesError
     }
 
     // Créer un map id -> profile
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || [])
-    console.log(`[rappel-conducteurs-finisseurs] ${profilesMap.size} profile(s) recupere(s)`)
+    console.log(`[rappel-conducteurs-finisseurs] ${profilesMap.size} profile(s) récupéré(s)`)
 
     const conducteursANotifier: ConducteurWithFinisseurs[] = []
 
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
     for (const conducteurId of conducteurIds) {
       const profile = profilesMap.get(conducteurId)
       if (!profile) {
-        console.warn(`[rappel-conducteurs-finisseurs] Profile non trouve pour conducteur ${conducteurId}`)
+        console.warn(`[rappel-conducteurs-finisseurs] Profile non trouvé pour conducteur ${conducteurId}`)
         continue
       }
 
@@ -204,7 +205,7 @@ Deno.serve(async (req) => {
         finisseurs: finisseursDetails
       })
 
-      console.log(`[rappel-conducteurs-finisseurs] Conducteur ${profile.first_name} ${profile.last_name} : ${finisseursDetails.length} finisseur(s) avec fiches non finalisees`)
+      console.log(`[rappel-conducteurs-finisseurs] Conducteur ${profile.first_name} ${profile.last_name} : ${finisseursDetails.length} finisseur(s) avec fiches non finalisées`)
     }
 
     if (conducteursANotifier.length === 0) {
@@ -222,7 +223,7 @@ Deno.serve(async (req) => {
       })
       
       return new Response(
-        JSON.stringify({ message: 'Aucun conducteur a notifier' }),
+        JSON.stringify({ message: 'Aucun conducteur à notifier' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
@@ -240,16 +241,18 @@ Deno.serve(async (req) => {
 
         const emailContent = `
           ${createAlertBox(
-            `<strong>${conducteur.nb_finisseurs_en_attente} finisseur(s)</strong> ont des fiches non finalisees pour la semaine <strong>${currentWeek}</strong>.`,
+            `<strong>${conducteur.nb_finisseurs_en_attente} finisseur(s)</strong> ont des fiches non finalisées pour la semaine <strong>${currentWeek}</strong>.`,
             'warning'
           )}
           
-          ${createSectionTitle('Finisseurs concernes')}
+          ${createSeparator()}
+          
+          ${createSectionTitle('Finisseurs concernés')}
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
             ${finisseursListHtml}
           </table>
           
-          ${createClosingMessage('Merci de verifier l\'avancement et de relancer ces finisseurs si necessaire.')}
+          ${createClosingMessage('Merci de vérifier l\'avancement et de relancer ces finisseurs si nécessaire.')}
         `
 
         const emailHtml = generateEmailHtml(
@@ -260,12 +263,12 @@ Deno.serve(async (req) => {
           'rappel'
         )
 
-        console.log(`[rappel-conducteurs-finisseurs] Envoi email a ${conducteur.conducteur_email}...`)
+        console.log(`[rappel-conducteurs-finisseurs] Envoi email à ${conducteur.conducteur_email}...`)
 
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
           to: [conducteur.conducteur_email],
-          subject: `${conducteur.nb_finisseurs_en_attente} finisseur(s) avec fiches non finalisees`,
+          subject: `${conducteur.nb_finisseurs_en_attente} finisseur(s) avec fiches non finalisées`,
           html: emailHtml,
         })
 
@@ -274,7 +277,7 @@ Deno.serve(async (req) => {
           throw emailError
         }
 
-        console.log(`[rappel-conducteurs-finisseurs] Email envoye a ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom} (${conducteur.conducteur_email})`, emailResult)
+        console.log(`[rappel-conducteurs-finisseurs] Email envoyé à ${conducteur.conducteur_prenom} ${conducteur.conducteur_nom} (${conducteur.conducteur_email})`, emailResult)
         results.push({
           conducteur: `${conducteur.conducteur_prenom} ${conducteur.conducteur_nom}`,
           email: conducteur.conducteur_email,
@@ -292,7 +295,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[rappel-conducteurs-finisseurs] Traitement termine: ${results.filter(r => r.success).length}/${results.length} succes`)
+    console.log(`[rappel-conducteurs-finisseurs] Traitement terminé: ${results.filter(r => r.success).length}/${results.length} succès`)
 
     // ÉTAPE 5: Enregistrer dans l'historique
     const endTime = Date.now()
