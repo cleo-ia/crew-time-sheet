@@ -720,19 +720,46 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         });
       }
 
-      // 4. 🔥 CORRECTION: Construire le détail jour par jour avec chantier du jour pour finisseurs
+      // 4. 🔥 Récupérer tous les chantiers pour mapper code → nom
+      const entrepriseId = localStorage.getItem("current_entreprise_id");
+      const { data: allChantiers } = await supabase
+        .from("chantiers")
+        .select("id, nom, code_chantier")
+        .eq("entreprise_id", entrepriseId || "");
+      
+      const chantiersCodeMap = new Map<string, { nom: string; code: string | null }>();
+      (allChantiers || []).forEach(c => {
+        if (c.code_chantier) {
+          chantiersCodeMap.set(c.code_chantier, { nom: c.nom, code: c.code_chantier });
+        }
+      });
+
+      // 5. 🔥 CORRECTION: Construire le détail jour par jour avec chantier du jour pour finisseurs
       const dailyDetails = (fichesJoursFiltrees?.map(jour => {
         const fiche = filteredFiches.find(f => f.id === jour.fiche_id);
         
-        // PRIORITÉ: code_chantier_du_jour + ville_du_jour (finisseurs) puis chantier de la fiche (autres)
+        // RÉSOUDRE nom et code du chantier
         let chantierNom = "Sans chantier";
-        if (jour.code_chantier_du_jour || jour.ville_du_jour) {
-          const parts = [];
-          if (jour.code_chantier_du_jour) parts.push(jour.code_chantier_du_jour);
-          if (jour.ville_du_jour) parts.push(jour.ville_du_jour);
-          chantierNom = parts.join(" - ");
-        } else if (fiche?.chantiers?.nom) {
+        let chantierCode: string | null = null;
+        
+        if (jour.code_chantier_du_jour) {
+          // Traduire le code vers le nom via la map
+          const chantierInfo = chantiersCodeMap.get(jour.code_chantier_du_jour);
+          if (chantierInfo) {
+            chantierNom = chantierInfo.nom;
+            chantierCode = chantierInfo.code;
+          } else {
+            // Code non trouvé dans la map, afficher le code tel quel
+            chantierNom = jour.code_chantier_du_jour;
+            chantierCode = jour.code_chantier_du_jour;
+          }
+          // Ajouter ville si présente
+          if (jour.ville_du_jour) {
+            chantierNom = `${chantierNom} - ${jour.ville_du_jour}`;
+          }
+        } else if (fiche?.chantiers) {
           chantierNom = fiche.chantiers.nom;
+          chantierCode = fiche.chantiers.code_chantier || null;
         }
 
         const heuresNormales = Number(jour.heures) || Number(jour.HNORM) || 0;
@@ -742,7 +769,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         return {
           date: jour.date,
           ficheJourId: jour.id,
-          chantier: chantierNom,
+          chantier: chantierNom, // Rétrocompatibilité
+          chantierNom,
+          chantierCode,
           heuresNormales,
           heuresIntemperies,
           panier: !!jour.PA,

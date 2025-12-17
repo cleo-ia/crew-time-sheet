@@ -357,7 +357,14 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   <TableCell className="font-medium py-4 px-4">
                     {format(new Date(day.date), "EEE dd MMM", { locale: fr })}
                   </TableCell>
-                  <TableCell className="py-4 px-4">{day.chantier}</TableCell>
+                  <TableCell className="py-3 px-4">
+                    <div className="leading-tight">
+                      <div className="font-medium">{(day as any).chantierNom || day.chantier}</div>
+                      {(day as any).chantierCode && (
+                        <div className="text-xs text-muted-foreground">{(day as any).chantierCode}</div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-center py-4 px-4">
                     <EditableCell
                       value={day.heuresNormales}
