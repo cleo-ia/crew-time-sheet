@@ -699,6 +699,63 @@ export type Database = {
           },
         ]
       }
+      fiches_modifications: {
+        Row: {
+          action: string
+          ancienne_valeur: string | null
+          champ_modifie: string | null
+          created_at: string
+          details: Json | null
+          entreprise_id: string
+          fiche_id: string | null
+          id: string
+          nouvelle_valeur: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          ancienne_valeur?: string | null
+          champ_modifie?: string | null
+          created_at?: string
+          details?: Json | null
+          entreprise_id: string
+          fiche_id?: string | null
+          id?: string
+          nouvelle_valeur?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          action?: string
+          ancienne_valeur?: string | null
+          champ_modifie?: string | null
+          created_at?: string
+          details?: Json | null
+          entreprise_id?: string
+          fiche_id?: string | null
+          id?: string
+          nouvelle_valeur?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiches_modifications_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiches_modifications_fiche_id_fkey"
+            columns: ["fiche_id"]
+            isOneToOne: false
+            referencedRelation: "fiches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiches_transport: {
         Row: {
           chantier_id: string | null
