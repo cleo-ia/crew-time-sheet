@@ -19,6 +19,8 @@ import { CodeTrajetSelector } from "@/components/timesheet/CodeTrajetSelector";
 import { generateEmployeePeriodPdf } from "@/lib/rhEmployeePdfExport";
 import { toast } from "sonner";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface RHEmployeeDetailProps {
   salarieId: string;
@@ -30,6 +32,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const enterpriseConfig = useEnterpriseConfig();
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
@@ -374,11 +378,32 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       step={0.5}
                       unit="h"
                       onSave={async (newValue) => {
+                        const oldValue = day.heuresNormales;
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,
                           field: "HNORM",
                           value: newValue as number,
                         });
+                        // Log modification (non-blocking)
+                        if (userInfo) {
+                          try {
+                            await logModification.mutateAsync({
+                              ficheId: (day as any).ficheId || null,
+                              entrepriseId: userInfo.entrepriseId,
+                              userId: userInfo.userId,
+                              userName: userInfo.userName,
+                              action: "modification_heures_normales",
+                              champModifie: "HNORM",
+                              ancienneValeur: String(oldValue),
+                              nouvelleValeur: String(newValue),
+                              details: {
+                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                date: day.date,
+                                chantier: day.chantier,
+                              },
+                            });
+                          } catch (e) { console.error("Log error:", e); }
+                        }
                       }}
                     />
                   </TableCell>
@@ -392,11 +417,32 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         step={0.5}
                         unit="h"
                         onSave={async (newValue) => {
+                          const oldValue = day.heuresIntemperies;
                           await updateFicheJour.mutateAsync({
                             ficheJourId: day.ficheJourId,
                             field: "HI",
                             value: newValue as number,
                           });
+                          // Log modification (non-blocking)
+                          if (userInfo) {
+                            try {
+                              await logModification.mutateAsync({
+                                ficheId: (day as any).ficheId || null,
+                                entrepriseId: userInfo.entrepriseId,
+                                userId: userInfo.userId,
+                                userName: userInfo.userName,
+                                action: "modification_heures_intemperies",
+                                champModifie: "HI",
+                                ancienneValeur: String(oldValue),
+                                nouvelleValeur: String(newValue),
+                                details: {
+                                  salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                  date: day.date,
+                                  chantier: day.chantier,
+                                },
+                              });
+                            } catch (e) { console.error("Log error:", e); }
+                          }
                         }}
                       />
                     ) : (
@@ -416,11 +462,32 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }))}
                       currentDate={day.date}
                       onSave={async (newValue) => {
+                        const oldValue = (day as any).typeAbsence || null;
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,
                           field: "type_absence",
                           value: newValue,
                         });
+                        // Log modification (non-blocking)
+                        if (userInfo) {
+                          try {
+                            await logModification.mutateAsync({
+                              ficheId: (day as any).ficheId || null,
+                              entrepriseId: userInfo.entrepriseId,
+                              userId: userInfo.userId,
+                              userName: userInfo.userName,
+                              action: "modification_type_absence",
+                              champModifie: "type_absence",
+                              ancienneValeur: oldValue,
+                              nouvelleValeur: newValue,
+                              details: {
+                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                date: day.date,
+                                chantier: day.chantier,
+                              },
+                            });
+                          } catch (e) { console.error("Log error:", e); }
+                        }
                       }}
                     />
                   </TableCell>
@@ -442,17 +509,58 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     <CodeTrajetSelector
                       value={(day as any).codeTrajet || null}
                       onChange={async (value) => {
+                        const oldValue = (day as any).codeTrajet || null;
                         await updateFicheJour.mutateAsync({
                           ficheJourId: day.ficheJourId,
                           field: "code_trajet",
                           value: value || null,
                         });
+                        // Log modification (non-blocking)
+                        if (userInfo) {
+                          try {
+                            await logModification.mutateAsync({
+                              ficheId: (day as any).ficheId || null,
+                              entrepriseId: userInfo.entrepriseId,
+                              userId: userInfo.userId,
+                              userName: userInfo.userName,
+                              action: "modification_code_trajet",
+                              champModifie: "code_trajet",
+                              ancienneValeur: oldValue,
+                              nouvelleValeur: value,
+                              details: {
+                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                date: day.date,
+                                chantier: day.chantier,
+                              },
+                            });
+                          } catch (e) { console.error("Log error:", e); }
+                        }
                       }}
                       onBatchChange={async (value) => {
                         await batchUpdateTrajet.mutateAsync({
                           ficheJourIds: batchFicheJourIds,
                           codeTrajet: value,
                         });
+                        // Log batch modification (non-blocking)
+                        if (userInfo) {
+                          try {
+                            await logModification.mutateAsync({
+                              ficheId: null,
+                              entrepriseId: userInfo.entrepriseId,
+                              userId: userInfo.userId,
+                              userName: userInfo.userName,
+                              action: "modification_code_trajet_lot",
+                              champModifie: "code_trajet",
+                              ancienneValeur: null,
+                              nouvelleValeur: value,
+                              details: {
+                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                chantier: day.chantier,
+                                nbJours: batchDaysCount,
+                              },
+                            });
+                          } catch (e) { console.error("Log error:", e); }
+                        }
                       }}
                       batchDaysCount={batchDaysCount}
                       chantierName={day.chantier}

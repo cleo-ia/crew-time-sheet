@@ -9,6 +9,8 @@ import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { RHFilters } from "@/hooks/rhShared";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePreExportSave } from "@/hooks/usePreExportSave";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface RHPreExportProps {
   filters: RHFilters;
@@ -74,6 +76,8 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const savePreExportMutation = usePreExportSave();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -183,6 +187,33 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     });
 
     await savePreExportMutation.mutateAsync(modifiedData);
+
+    // Log modifications (non-blocking)
+    if (userInfo) {
+      for (const row of modifiedRows) {
+        const modifiedFields = Object.keys(row.modified);
+        if (modifiedFields.length > 0) {
+          try {
+            await logModification.mutateAsync({
+              ficheId: row.original.ficheId || null,
+              entrepriseId: userInfo.entrepriseId,
+              userId: userInfo.userId,
+              userName: userInfo.userName,
+              action: "modification_pre_export",
+              champModifie: modifiedFields.join(", "),
+              ancienneValeur: null,
+              nouvelleValeur: JSON.stringify(row.modified),
+              details: {
+                salarie: `${row.original.prenom || ""} ${row.original.nom || ""}`.trim(),
+                matricule: row.original.matricule,
+                periode: filters.periode,
+                champsModifies: modifiedFields,
+              },
+            });
+          } catch (e) { console.error("Log error:", e); }
+        }
+      }
+    }
 
     // Recharger les données depuis la base avec les overrides
     await loadData();
