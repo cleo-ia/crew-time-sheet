@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3 } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
@@ -19,6 +19,7 @@ import { UsersManager } from "@/components/admin/UsersManager";
 import { RappelsManager } from "@/components/admin/RappelsManager";
 import { TransportDebugManager } from "@/components/admin/TransportDebugManager";
 import { RHAdminManager } from "@/components/admin/RHAdminManager";
+import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,7 +65,7 @@ const AdminPanel = () => {
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Card className="shadow-md border-border/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="w-full grid grid-cols-12 rounded-none border-b">
+            <TabsList className="w-full grid grid-cols-13 rounded-none border-b">
               <TabsTrigger value="utilisateurs" className="rounded-none gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Utilisateurs</span>
@@ -108,6 +109,10 @@ const AdminPanel = () => {
               <TabsTrigger value="rappels" className="rounded-none gap-2">
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Rappels</span>
+              </TabsTrigger>
+              <TabsTrigger value="analyse" className="rounded-none gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Analyse</span>
               </TabsTrigger>
               <TabsTrigger value="debug" className="rounded-none gap-2">
                 <Settings className="h-4 w-4" />
@@ -157,6 +162,10 @@ const AdminPanel = () => {
 
             <TabsContent value="rappels" className="p-6">
               <RappelsManager />
+            </TabsContent>
+
+            <TabsContent value="analyse" className="p-6">
+              <AnalyticsManager />
             </TabsContent>
 
           <TabsContent value="debug" className="p-6">
