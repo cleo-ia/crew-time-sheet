@@ -166,10 +166,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
             ) : null}
           </div>
         </div>
-        <Button onClick={handleExportPdf} className="gap-2">
-          <Download className="h-4 w-4" />
-          Export PDF
-        </Button>
       </div>
 
       {/* Summary Card */}
@@ -280,11 +276,15 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
 
       {/* Daily Details Table */}
       <Card className="shadow-md border-border/40 overflow-hidden">
-        <div className="p-6 border-b border-border/40 bg-muted/20">
+        <div className="p-6 border-b border-border/40 bg-muted/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             Détail jour par jour
           </h3>
+          <Button onClick={handleExportPdf} className="gap-2" size="sm">
+            <Download className="h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
         <div className="overflow-auto">
           <Table>
