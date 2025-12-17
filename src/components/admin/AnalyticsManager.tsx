@@ -47,6 +47,22 @@ const getRoleBadgeVariant = (role: string | null) => {
   }
 };
 
+// Tri par rôle: admin > rh > conducteur > chef
+const ROLE_ORDER: Record<string, number> = {
+  'admin': 0,
+  'rh': 1,
+  'conducteur': 2,
+  'chef': 3,
+};
+
+const sortByRole = <T extends { role: string | null }>(users: T[]): T[] => {
+  return [...users].sort((a, b) => {
+    const orderA = a.role ? (ROLE_ORDER[a.role] ?? 99) : 99;
+    const orderB = b.role ? (ROLE_ORDER[b.role] ?? 99) : 99;
+    return orderA - orderB;
+  });
+};
+
 const DeviceIcon = ({ type }: { type: string | null }) => {
   switch (type) {
     case 'desktop': return <Monitor className="h-4 w-4" />;
@@ -311,7 +327,7 @@ export const AnalyticsManager = () => {
                 </TableHeader>
                 <TableBody>
                   {userStats && userStats.filter(u => u.sessionsCount > 0).length > 0 ? (
-                    userStats.filter(u => u.sessionsCount > 0).map(user => (
+                    sortByRole(userStats.filter(u => u.sessionsCount > 0)).map(user => (
                       <TableRow key={user.userId}>
                         <TableCell>
                           <div>
@@ -405,7 +421,7 @@ export const AnalyticsManager = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {userStats.filter(u => u.sessionsCount === 0).map(user => (
+                  {sortByRole(userStats.filter(u => u.sessionsCount === 0)).map(user => (
                     <TableRow key={user.userId} className="opacity-60">
                       <TableCell>
                         <div className="font-medium">
