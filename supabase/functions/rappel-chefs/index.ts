@@ -16,48 +16,138 @@ interface ChefWithFiches {
   chantiers: string[]
 }
 
-// Template HTML professionnel pour les emails
-function generateEmailHtml(prenom: string, content: string, ctaUrl: string, ctaText: string): string {
+// Template HTML professionnel DIVA pour les emails
+function generateEmailHtml(
+  prenom: string, 
+  content: string, 
+  ctaUrl: string, 
+  ctaText: string,
+  emailType: 'rappel' | 'alerte' | 'validation' = 'rappel'
+): string {
   const year = new Date().getFullYear()
+  
+  const typeConfig = {
+    rappel: { icon: '⏰', label: 'Rappel', color: '#f97316' },
+    alerte: { icon: '⚠️', label: 'Alerte', color: '#dc2626' },
+    validation: { icon: '✅', label: 'Validation', color: '#16a34a' }
+  }
+  
+  const config = typeConfig[emailType]
+  
   return `
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 24px; border-radius: 8px 8px 0 0; text-align: center; }
-    .header h1 { margin: 0; font-size: 24px; }
-    .content { background: #ffffff; padding: 24px; border-radius: 0 0 8px 8px; }
-    .greeting { font-size: 16px; margin-bottom: 16px; }
-    .list { background: #f9fafb; padding: 16px; border-radius: 6px; margin: 16px 0; }
-    .list ul { margin: 0; padding-left: 20px; }
-    .list li { margin: 8px 0; }
-    .button { display: inline-block; background: #f97316; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
-    .button:hover { background: #ea580c; }
-    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 24px; padding: 16px; }
-    .footer a { color: #f97316; text-decoration: none; }
-  </style>
+  <title>DIVA - ${config.label}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🏗️ DIVA - Rappel</h1>
-    </div>
-    <div class="content">
-      <p class="greeting">Bonjour ${prenom},</p>
-      ${content}
-      <div style="text-align: center;">
-        <a href="${ctaUrl}" class="button">${ctaText}</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>Cet email a été envoyé automatiquement par DIVA.</p>
-      <p>© ${year} <a href="https://groupe-engo.com">Groupe Engo</a></p>
-    </div>
-  </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f3f4f6;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%;">
+          
+          <!-- Header avec logo et badge -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 16px 16px 0 0; padding: 32px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <!-- Logo DIVA -->
+                    <table role="presentation" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); width: 48px; height: 48px; border-radius: 12px; text-align: center; vertical-align: middle;">
+                          <span style="font-size: 24px; color: white; font-weight: bold;">D</span>
+                        </td>
+                        <td style="padding-left: 16px;">
+                          <span style="font-size: 28px; font-weight: 700; color: white; letter-spacing: -0.5px;">DIVA</span>
+                          <br>
+                          <span style="font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">Gestion des équipes</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" valign="top">
+                    <!-- Badge type -->
+                    <span style="display: inline-block; background: ${config.color}; color: white; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      ${config.icon} ${config.label}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Contenu principal -->
+          <tr>
+            <td style="background: #ffffff; padding: 40px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+              <!-- Salutation -->
+              <p style="margin: 0 0 24px 0; font-size: 18px; color: #111827;">
+                Bonjour <strong style="color: #f97316;">${prenom}</strong>,
+              </p>
+              
+              <!-- Contenu dynamique -->
+              ${content}
+              
+              <!-- Bouton CTA -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 32px;">
+                <tr>
+                  <td align="center">
+                    <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 32px; border-radius: 10px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);">
+                      ${ctaText}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background: #f9fafb; border-radius: 0 0 16px 16px; padding: 24px 40px; border: 1px solid #e5e7eb; border-top: none;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="text-align: center;">
+                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">
+                      Cet email a été envoyé automatiquement par <strong style="color: #374151;">DIVA</strong>
+                    </p>
+                    <p style="margin: 0 0 16px 0; font-size: 12px; color: #9ca3af;">
+                      Vous recevez ce message car vous êtes inscrit sur la plateforme de gestion des équipes.
+                    </p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+                      <tr>
+                        <td style="padding: 0 8px;">
+                          <a href="https://groupe-engo.com" style="font-size: 12px; color: #f97316; text-decoration: none;">Groupe Engo</a>
+                        </td>
+                        <td style="color: #d1d5db;">•</td>
+                        <td style="padding: 0 8px;">
+                          <a href="${ctaUrl}" style="font-size: 12px; color: #f97316; text-decoration: none;">Accéder à DIVA</a>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin: 16px 0 0 0; font-size: 11px; color: #9ca3af;">
+                      © ${year} Groupe Engo - Tous droits réservés
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
   `.trim()
@@ -246,21 +336,68 @@ Deno.serve(async (req) => {
     const results = []
     for (const chef of chefsANotifier) {
       try {
-        const chantiersListHtml = chef.chantiers.map(c => `<li>${c}</li>`).join('')
+        const chantiersListHtml = chef.chantiers.map(c => `
+          <tr>
+            <td style="padding: 12px 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="width: 8px;">
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #f97316; border-radius: 50%;"></span>
+                  </td>
+                  <td style="padding-left: 12px; font-size: 15px; color: #374151; font-weight: 500;">
+                    ${c}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr><td style="height: 8px;"></td></tr>
+        `).join('')
+        
         const emailContent = `
-          <p>Vous avez <strong>${chef.nb_fiches_en_cours} fiche(s)</strong> non finalisée(s) pour la semaine <strong>${currentWeek}</strong>.</p>
-          <div class="list">
-            <p><strong>Chantiers concernés :</strong></p>
-            <ul>${chantiersListHtml}</ul>
-          </div>
-          <p>Merci de finaliser vos fiches dès que possible.</p>
+          <!-- Alerte principale -->
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+            <tr>
+              <td style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 0 8px 8px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="vertical-align: top; padding-right: 12px;">
+                      <span style="font-size: 20px;">📝</span>
+                    </td>
+                    <td>
+                      <p style="margin: 0; font-size: 15px; color: #92400e;">
+                        Vous avez <strong style="color: #78350f;">${chef.nb_fiches_en_cours} fiche(s)</strong> non finalisée(s) pour la semaine <strong style="color: #78350f;">${currentWeek}</strong>.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          
+          <!-- Liste des chantiers -->
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+            <tr>
+              <td>
+                <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">
+                  🏗️ Chantiers concernés
+                </p>
+              </td>
+            </tr>
+            ${chantiersListHtml}
+          </table>
+          
+          <p style="margin: 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            Merci de finaliser vos fiches dès que possible afin de permettre la validation par votre conducteur.
+          </p>
         `
 
         const emailHtml = generateEmailHtml(
           chef.chef_prenom || 'Chef',
           emailContent,
           'https://crew-time-sheet.lovable.app/',
-          '📋 Accéder à mes fiches'
+          '📋 Accéder à mes fiches',
+          'rappel'
         )
 
         console.log(`[rappel-chefs] 📤 Envoi email à ${chef.chef_email}...`)
