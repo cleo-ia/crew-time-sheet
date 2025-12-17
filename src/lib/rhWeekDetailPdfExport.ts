@@ -131,9 +131,9 @@ export function generateWeekDetailPdf(
   doc.text("Résumé de la semaine", margin + 8, y + 4);
   y += 14;
 
-  // Cartes de résumé améliorées
+  // Cartes de résumé compactes
   const cardWidth = (pageWidth - margin * 2 - 15) / 4;
-  const cardHeight = 28;
+  const cardHeight = 18;
   const summaryItems = [
     { label: "Heures totales", value: `${totals.heures}h`, color: [59, 130, 246] },
     { label: "Intempéries", value: `${totals.intemperies}h`, color: [14, 165, 233] },
@@ -146,38 +146,38 @@ export function generateWeekDetailPdf(
     
     // Ombre simulée
     doc.setFillColor(230, 230, 230);
-    doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, 4, 4, "F");
+    doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, 3, 3, "F");
     
     // Fond de carte blanc
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "F");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "F");
     
     // Bordure
     doc.setDrawColor(230, 230, 230);
     doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "S");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "S");
     
     // Bordure colorée en haut
     doc.setFillColor(item.color[0], item.color[1], item.color[2]);
-    doc.roundedRect(x, y, cardWidth, 3, 4, 4, "F");
+    doc.roundedRect(x, y, cardWidth, 2.5, 3, 3, "F");
     doc.setFillColor(255, 255, 255);
-    doc.rect(x, y + 1.5, cardWidth, 2, "F");
+    doc.rect(x, y + 1.5, cardWidth, 1.5, "F");
     
     // Valeur
-    doc.setFontSize(18);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(item.color[0], item.color[1], item.color[2]);
-    doc.text(item.value, x + cardWidth / 2, y + 14, { align: "center" });
+    doc.text(item.value, x + cardWidth / 2, y + 10, { align: "center" });
     
     // Label
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(item.label, x + cardWidth / 2, y + 22, { align: "center" });
+    doc.text(item.label, x + cardWidth / 2, y + 15, { align: "center" });
   });
 
   doc.setTextColor(0, 0, 0);
-  y += cardHeight + 15;
+  y += cardHeight + 8;
 
   // === LISTE DES CHANTIERS TRAVAILLÉS ===
   const chantiersMap = new Map<string, { nom: string; code?: string | null; heures: number }>();
