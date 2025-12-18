@@ -185,8 +185,8 @@ export const generateInterimaireSimplifiedPdf = async (
 
   // Dessiner l'en-tête professionnel de page
   const drawPageHeader = () => {
-    // Barre orange en haut
-    pdf.setFillColor(COLORS.orange.r, COLORS.orange.g, COLORS.orange.b);
+    // Barre verte en haut (cohérence avec le reste du document)
+    pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
     pdf.rect(0, 0, pageWidth, 5, "F");
 
     // Logo à gauche
@@ -196,12 +196,12 @@ export const generateInterimaireSimplifiedPdf = async (
       console.error("Erreur lors du chargement du logo:", error);
     }
 
-    // Nom entreprise au centre (en bleu foncé)
+    // Nom entreprise au centre (en noir)
     drawText(entrepriseName, pageWidth / 2, 15, { 
       bold: true, 
       fontSize: 14, 
       align: "center",
-      color: COLORS.darkBlue
+      color: COLORS.black
     });
 
     // Titre "FICHE INTÉRIMAIRE" et période à droite
@@ -215,8 +215,8 @@ export const generateInterimaireSimplifiedPdf = async (
       align: "right" 
     });
 
-    // Ligne séparatrice orange
-    pdf.setDrawColor(COLORS.orange.r, COLORS.orange.g, COLORS.orange.b);
+    // Ligne séparatrice verte
+    pdf.setDrawColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
     pdf.setLineWidth(0.5);
     pdf.line(margin, 22, pageWidth - margin, 22);
     pdf.setLineWidth(0.2);
