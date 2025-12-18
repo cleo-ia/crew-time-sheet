@@ -138,7 +138,8 @@ export const UserAnalyticsDetailSheet = ({
           </div>
         </SheetHeader>
 
-        <div className="px-6 pb-6 flex-1 flex flex-col overflow-hidden">
+        <ScrollArea className="flex-1">
+          <div className="px-6 pb-6">
           {isLoading ? (
             <div className="space-y-4 py-6">
               <div className="grid grid-cols-2 gap-3">
@@ -253,7 +254,7 @@ export const UserAnalyticsDetailSheet = ({
               )}
 
               {/* Tabs redesignés */}
-              <Tabs defaultValue="sessions" className="flex-1 flex flex-col min-h-0">
+              <Tabs defaultValue="sessions" className="">
                 {/* Légende des couleurs de session */}
                 <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Légende durée de session</p>
@@ -289,8 +290,8 @@ export const UserAnalyticsDetailSheet = ({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="sessions" className="mt-4 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
-                  <ScrollArea className="flex-1 min-h-0 h-0 pr-4">
+                <TabsContent value="sessions" className="mt-4 data-[state=inactive]:hidden">
+                  <div className="space-y-3">
                     {sessions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="p-4 rounded-full bg-muted mb-3">
@@ -371,11 +372,11 @@ export const UserAnalyticsDetailSheet = ({
                         </div>
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </TabsContent>
 
-                <TabsContent value="activity" className="mt-4 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
-                  <ScrollArea className="flex-1 min-h-0 h-0 pr-4">
+                <TabsContent value="activity" className="mt-4 data-[state=inactive]:hidden">
+                  <div className="space-y-1">
                     {activities.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="p-4 rounded-full bg-muted mb-3">
@@ -428,12 +429,13 @@ export const UserAnalyticsDetailSheet = ({
                         </div>
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </TabsContent>
               </Tabs>
             </>
           )}
-        </div>
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
