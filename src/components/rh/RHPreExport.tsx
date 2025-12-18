@@ -79,6 +79,23 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const savePreExportMutation = usePreExportSave();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
+  
+  // Refs pour synchronisation scroll horizontal
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const stickyScrollRef = useRef<HTMLDivElement>(null);
+
+  // Synchroniser le scroll horizontal bidirectionnellement
+  const handleTableScroll = () => {
+    if (tableWrapperRef.current && stickyScrollRef.current) {
+      stickyScrollRef.current.scrollLeft = tableWrapperRef.current.scrollLeft;
+    }
+  };
+
+  const handleStickyScroll = () => {
+    if (tableWrapperRef.current && stickyScrollRef.current) {
+      tableWrapperRef.current.scrollLeft = stickyScrollRef.current.scrollLeft;
+    }
+  };
 
 
   const loadData = async () => {
@@ -296,12 +313,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       </div>
 
       {/* Table avec barre de scroll horizontale sticky */}
-      <div className="border rounded-lg">
-        {/* Conteneur externe : scroll horizontal (scrollbar toujours visible en bas) */}
-        <div className="overflow-x-auto">
-          {/* Conteneur interne : scroll vertical uniquement */}
-          <div className="h-[600px] overflow-y-auto">
-            <Table className="min-w-[5000px]">
+      <div className="border rounded-lg h-[600px] flex flex-col relative">
+        {/* Zone scrollable verticalement ET horizontalement (scrollbar H cachée) */}
+        <div 
+          ref={tableWrapperRef}
+          className="flex-1 overflow-y-auto overflow-x-auto scrollbar-hide-horizontal"
+          onScroll={handleTableScroll}
+        >
+          <Table className="min-w-[5000px]">
           <TableHeader>
             <TableRow>
               {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
@@ -486,8 +505,16 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               );
             })}
           </TableBody>
-            </Table>
-          </div>
+          </Table>
+        </div>
+        
+        {/* Scrollbar horizontale sticky en bas - toujours visible */}
+        <div 
+          ref={stickyScrollRef}
+          className="h-3 overflow-x-auto bg-muted/30 border-t flex-shrink-0"
+          onScroll={handleStickyScroll}
+        >
+          <div style={{ width: '5000px', height: '1px' }}></div>
         </div>
       </div>
     </div>
