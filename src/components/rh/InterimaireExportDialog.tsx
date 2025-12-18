@@ -7,7 +7,7 @@ import { Building2, Download, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
-import { generateInterimaireSimplifiedExcel } from "@/lib/excelExportInterimaire";
+import { generateInterimaireSimplifiedPdf } from "@/lib/pdfExportInterimaire";
 import { RHFilters, buildRHConsolidation } from "@/hooks/rhShared";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { format, parseISO, startOfWeek, getISOWeek } from "date-fns";
@@ -266,7 +266,7 @@ export const InterimaireExportDialog = ({
       const signaturesMap = await fetchSignaturesForEmployees(data);
 
       // Générer l'Excel simplifié format fiche de pointage
-      const fileName = await generateInterimaireSimplifiedExcel(
+      const fileName = await generateInterimaireSimplifiedPdf(
         data, 
         mois, 
         agenceName, 
@@ -316,7 +316,7 @@ export const InterimaireExportDialog = ({
         // Récupérer les signatures
         const signaturesMap = await fetchSignaturesForEmployees(data);
 
-        await generateInterimaireSimplifiedExcel(
+        await generateInterimaireSimplifiedPdf(
           data, 
           mois, 
           agence.name,
