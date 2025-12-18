@@ -98,6 +98,7 @@ const COLORS = {
   black: { r: 0, g: 0, b: 0 },
   orange: { r: 234, g: 88, b: 12 },         // #EA580C - orange principal
   orangeLight: { r: 255, g: 237, b: 213 },  // #FFEDD5 - orange clair
+  darkBlue: { r: 30, g: 58, b: 138 },       // #1E3A8A - bleu foncé pour le nom entreprise
 };
 
 /**
@@ -195,12 +196,12 @@ export const generateInterimaireSimplifiedPdf = async (
       console.error("Erreur lors du chargement du logo:", error);
     }
 
-    // Nom entreprise au centre (en orange)
+    // Nom entreprise au centre (en bleu foncé)
     drawText(entrepriseName, pageWidth / 2, 15, { 
       bold: true, 
       fontSize: 14, 
       align: "center",
-      color: COLORS.orange
+      color: COLORS.darkBlue
     });
 
     // Titre "FICHE INTÉRIMAIRE" et période à droite
