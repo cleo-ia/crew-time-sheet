@@ -80,20 +80,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
   
-  // Refs pour synchronisation scroll horizontal
-  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  // State et ref pour scroll horizontal via transform
+  const [scrollLeft, setScrollLeft] = useState(0);
   const stickyScrollRef = useRef<HTMLDivElement>(null);
 
-  // Synchroniser le scroll horizontal bidirectionnellement
-  const handleTableScroll = () => {
-    if (tableWrapperRef.current && stickyScrollRef.current) {
-      stickyScrollRef.current.scrollLeft = tableWrapperRef.current.scrollLeft;
-    }
-  };
-
+  // La scrollbar sticky contrôle la position horizontale
   const handleStickyScroll = () => {
-    if (tableWrapperRef.current && stickyScrollRef.current) {
-      tableWrapperRef.current.scrollLeft = stickyScrollRef.current.scrollLeft;
+    if (stickyScrollRef.current) {
+      setScrollLeft(stickyScrollRef.current.scrollLeft);
     }
   };
 
@@ -313,14 +307,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       </div>
 
       {/* Table avec barre de scroll horizontale sticky */}
-      <div className="border rounded-lg h-[600px] flex flex-col relative">
-        {/* Zone scrollable verticalement ET horizontalement (scrollbar H cachée) */}
-        <div 
-          ref={tableWrapperRef}
-          className="flex-1 overflow-y-auto overflow-x-auto scrollbar-hide-horizontal"
-          onScroll={handleTableScroll}
-        >
-          <Table className="min-w-[5000px]">
+      <div className="border rounded-lg h-[600px] flex flex-col">
+        {/* Zone scrollable verticalement UNIQUEMENT - pas de scroll H natif */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Conteneur déplacé horizontalement via transform */}
+          <div style={{ transform: `translateX(-${scrollLeft}px)`, width: 'fit-content' }}>
+            <Table className="min-w-[5000px]">
           <TableHeader>
             <TableRow>
               {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
@@ -505,10 +497,11 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               );
             })}
           </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
         
-        {/* Scrollbar horizontale sticky en bas - toujours visible */}
+        {/* Scrollbar horizontale sticky en bas - SEULE source de scroll H */}
         <div 
           ref={stickyScrollRef}
           className="h-3 overflow-x-auto bg-muted/30 border-t flex-shrink-0"
