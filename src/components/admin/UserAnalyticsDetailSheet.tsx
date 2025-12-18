@@ -291,7 +291,7 @@ export const UserAnalyticsDetailSheet = ({
                 </TabsList>
 
                 <TabsContent value="sessions" className="mt-4 data-[state=inactive]:hidden">
-                  <ScrollArea className="max-h-[400px] pr-4">
+                  <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-3">
                     {sessions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -378,7 +378,7 @@ export const UserAnalyticsDetailSheet = ({
                 </TabsContent>
 
                 <TabsContent value="activity" className="mt-4 data-[state=inactive]:hidden">
-                  <ScrollArea className="max-h-[400px] pr-4">
+                  <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-1">
                     {activities.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
