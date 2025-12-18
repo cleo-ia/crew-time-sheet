@@ -1,6 +1,9 @@
 import jsPDF from "jspdf";
 import { RHExportEmployee } from "@/hooks/useRHExport";
 import { format, parseISO, startOfWeek, addDays, getISOWeek } from "date-fns";
+import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
+import logoSder from "@/assets/logo-sder.png";
+import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
 
 interface WeekData {
   weekNumber: number;
@@ -73,6 +76,19 @@ const getEntrepriseName = (): string => {
   return names[slug || ""] || "Entreprise";
 };
 
+/**
+ * Récupère le logo de l'entreprise selon le slug
+ */
+const getEntrepriseLogo = (): string => {
+  const slug = localStorage.getItem("entreprise_slug");
+  const logos: Record<string, string> = {
+    "limoge-revillon": logoLimogeRevillon,
+    "sder": logoSder,
+    "engo-bourgogne": logoEngoBourgogne,
+  };
+  return logos[slug || ""] || logoLimogeRevillon;
+};
+
 // Couleurs
 const COLORS = {
   darkGreen: { r: 46, g: 125, b: 50 },      // #2E7D32
@@ -80,6 +96,8 @@ const COLORS = {
   yellow: { r: 255, g: 249, b: 196 },       // #FFF9C4
   white: { r: 255, g: 255, b: 255 },
   black: { r: 0, g: 0, b: 0 },
+  orange: { r: 234, g: 88, b: 12 },         // #EA580C - orange principal
+  orangeLight: { r: 255, g: 237, b: 213 },  // #FFEDD5 - orange clair
 };
 
 /**
@@ -103,6 +121,8 @@ export const generateInterimaireSimplifiedPdf = async (
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 10;
   const contentWidth = pageWidth - 2 * margin;
+  const headerHeight = 25; // Hauteur réservée pour l'en-tête
+  const footerHeight = 12; // Hauteur réservée pour le pied de page
   
   // Largeurs des colonnes
   const colLabel = 18;
@@ -111,8 +131,10 @@ export const generateInterimaireSimplifiedPdf = async (
   const colSignature = 30;
   const rowHeight = 7;
   
-  let currentY = margin;
+  let currentY = margin + headerHeight;
   const entrepriseName = getEntrepriseName();
+  const entrepriseLogo = getEntrepriseLogo();
+  const generationDate = new Date();
 
   // Grouper les employés par semaine
   const allWeeks = new Set<string>();
@@ -139,10 +161,17 @@ export const generateInterimaireSimplifiedPdf = async (
     align?: "left" | "center" | "right";
     fontSize?: number;
     italic?: boolean;
+    color?: { r: number; g: number; b: number };
   }) => {
     pdf.setFontSize(options?.fontSize || 9);
     pdf.setFont("helvetica", options?.bold ? "bold" : options?.italic ? "italic" : "normal");
-    pdf.setTextColor(options?.white ? 255 : 0, options?.white ? 255 : 0, options?.white ? 255 : 0);
+    if (options?.color) {
+      pdf.setTextColor(options.color.r, options.color.g, options.color.b);
+    } else if (options?.white) {
+      pdf.setTextColor(255, 255, 255);
+    } else {
+      pdf.setTextColor(0, 0, 0);
+    }
     
     if (options?.align === "center") {
       pdf.text(text, x, y, { align: "center" });
@@ -153,13 +182,81 @@ export const generateInterimaireSimplifiedPdf = async (
     }
   };
 
+  // Dessiner l'en-tête professionnel de page
+  const drawPageHeader = () => {
+    // Barre orange en haut
+    pdf.setFillColor(COLORS.orange.r, COLORS.orange.g, COLORS.orange.b);
+    pdf.rect(0, 0, pageWidth, 5, "F");
+
+    // Logo à gauche
+    try {
+      pdf.addImage(entrepriseLogo, "PNG", margin, 7, 25, 12);
+    } catch (error) {
+      console.error("Erreur lors du chargement du logo:", error);
+    }
+
+    // Nom entreprise au centre (en orange)
+    drawText(entrepriseName, pageWidth / 2, 15, { 
+      bold: true, 
+      fontSize: 14, 
+      align: "center",
+      color: COLORS.orange
+    });
+
+    // Titre "FICHE INTÉRIMAIRE" et période à droite
+    drawText("FICHE INTÉRIMAIRE", pageWidth - margin, 11, { 
+      bold: true, 
+      fontSize: 11, 
+      align: "right" 
+    });
+    drawText(`Période : ${mois}`, pageWidth - margin, 17, { 
+      fontSize: 9, 
+      align: "right" 
+    });
+
+    // Ligne séparatrice orange
+    pdf.setDrawColor(COLORS.orange.r, COLORS.orange.g, COLORS.orange.b);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, 22, pageWidth - margin, 22);
+    pdf.setLineWidth(0.2);
+  };
+
+  // Dessiner le pied de page
+  const drawPageFooter = (pageNum: number, totalPages: number) => {
+    const footerY = pageHeight - footerHeight + 3;
+    
+    // Ligne séparatrice
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+    pdf.setLineWidth(0.2);
+
+    // Nom entreprise à gauche
+    drawText(entrepriseName, margin, footerY + 4, { fontSize: 8 });
+
+    // Date de génération au centre
+    const dateStr = format(generationDate, "dd/MM/yyyy");
+    const timeStr = format(generationDate, "HH:mm");
+    drawText(`Document généré le ${dateStr} à ${timeStr}`, pageWidth / 2, footerY + 4, { 
+      fontSize: 8, 
+      align: "center" 
+    });
+
+    // Numéro de page à droite
+    drawText(`Page ${pageNum}/${totalPages}`, pageWidth - margin, footerY + 4, { 
+      fontSize: 8, 
+      align: "right" 
+    });
+  };
+
   const addNewPage = () => {
     pdf.addPage();
-    currentY = margin;
+    currentY = margin + headerHeight;
+    drawPageHeader();
   };
 
   const checkPageBreak = (requiredHeight: number): boolean => {
-    if (currentY + requiredHeight > pageHeight - margin) {
+    if (currentY + requiredHeight > pageHeight - margin - footerHeight) {
       addNewPage();
       return true;
     }
@@ -379,6 +476,9 @@ export const generateInterimaireSimplifiedPdf = async (
     currentY += 5;
   };
 
+  // Dessiner l'en-tête de la première page
+  drawPageHeader();
+
   // Générer le contenu - une semaine par page
   let isFirstWeek = true;
   for (const weekKey of sortedWeeks) {
@@ -409,6 +509,13 @@ export const generateInterimaireSimplifiedPdf = async (
     for (const { employee, weekData } of weekEmployees) {
       drawEmployeeBlock(employee, weekData);
     }
+  }
+
+  // Ajouter les pieds de page sur toutes les pages
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    drawPageFooter(i, totalPages);
   }
 
   // Nom du fichier
