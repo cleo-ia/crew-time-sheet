@@ -379,7 +379,8 @@ export const generateInterimaireSimplifiedPdf = async (
     currentY += 5;
   };
 
-  // Générer le contenu
+  // Générer le contenu - une semaine par page
+  let isFirstWeek = true;
   for (const weekKey of sortedWeeks) {
     // Trouver les données de cette semaine
     const weekEmployees = employees
@@ -396,20 +397,18 @@ export const generateInterimaireSimplifiedPdf = async (
 
     const firstWeekData = weekEmployees[0].weekData;
 
-    // En-tête de semaine (vérifier la place)
-    const headerHeight = 8 + 7 + 20 + 6 + 3; // ~44mm
-    if (checkPageBreak(headerHeight)) {
-      // Nouvelle page
+    // Saut de page forcé pour chaque nouvelle semaine (sauf la première)
+    if (!isFirstWeek) {
+      addNewPage();
     }
+    isFirstWeek = false;
+
     drawWeekHeader(firstWeekData);
 
     // Blocs employés
     for (const { employee, weekData } of weekEmployees) {
       drawEmployeeBlock(employee, weekData);
     }
-
-    // Espacement entre semaines
-    currentY += 10;
   }
 
   // Nom du fichier
