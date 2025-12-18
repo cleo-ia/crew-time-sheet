@@ -289,12 +289,14 @@ export const generateInterimaireSimplifiedPdf = async (
     drawText("Total", x + colTotal / 2, currentY + 5, { bold: true, align: "center" });
     x += colTotal;
     
-    // Cellule signature (vide pour l'instant)
-    drawRect(x, currentY, colSignature, rowHeight, COLORS.white, false);
+    // Cellule signature - seulement bordures verticales gauche/droite
+    pdf.setDrawColor(0, 0, 0);
+    pdf.line(x, currentY, x, currentY + rowHeight); // gauche
+    pdf.line(x + colSignature, currentY, x + colSignature, currentY + rowHeight); // droite
     currentY += rowHeight;
 
-    // Fonction pour dessiner une ligne de données
-    const drawDataRow = (label: string, values: (string | number)[], total: string | number) => {
+    // Fonction pour dessiner une ligne de données (sans bordure sur colonne signature)
+    const drawDataRow = (label: string, values: (string | number)[], total: string | number, isLastRow: boolean = false) => {
       let x = tableX;
       
       // Label avec fond jaune
@@ -319,29 +321,38 @@ export const generateInterimaireSimplifiedPdf = async (
       }
       x += colTotal;
       
-      // Signature
-      drawRect(x, currentY, colSignature, rowHeight, COLORS.white, false);
+      // Signature - uniquement bordures verticales gauche/droite et bas si dernière ligne
+      pdf.setDrawColor(0, 0, 0);
+      // Bordure gauche
+      pdf.line(x, currentY, x, currentY + rowHeight);
+      // Bordure droite
+      pdf.line(x + colSignature, currentY, x + colSignature, currentY + rowHeight);
+      // Bordure bas seulement si dernière ligne
+      if (isLastRow) {
+        pdf.line(x, currentY + rowHeight, x + colSignature, currentY + rowHeight);
+      }
+      
       currentY += rowHeight;
     };
 
     // Ligne Code
-    drawDataRow("Code", daysData.map(d => d.code), "");
+    drawDataRow("Code", daysData.map(d => d.code), "", false);
 
     // Ligne HNORM
     const formatNumber = (n: number) => n > 0 ? n.toFixed(2).replace(".", ",") : "";
-    drawDataRow("HNORM", daysData.map(d => formatNumber(d.heures)), formatNumber(totalHeures));
+    drawDataRow("HNORM", daysData.map(d => formatNumber(d.heures)), formatNumber(totalHeures), false);
 
     // Ligne HI (si intempéries)
     if (hasIntemperie) {
-      drawDataRow("HI", daysData.map(d => formatNumber(d.intemperie)), formatNumber(totalIntemperie));
+      drawDataRow("HI", daysData.map(d => formatNumber(d.intemperie)), formatNumber(totalIntemperie), false);
     }
 
     // Ligne PA
     const formatInt = (n: number) => n > 0 ? n.toFixed(2).replace(".", ",") : "";
-    drawDataRow("PA", daysData.map(d => formatInt(d.panier)), formatInt(totalPanier));
+    drawDataRow("PA", daysData.map(d => formatInt(d.panier)), formatInt(totalPanier), false);
 
-    // Ligne T
-    drawDataRow("T", daysData.map(d => formatInt(d.trajet)), formatInt(totalTrajet));
+    // Ligne T (dernière ligne)
+    drawDataRow("T", daysData.map(d => formatInt(d.trajet)), formatInt(totalTrajet), true);
 
     // Ajouter la signature si disponible
     const signatureData = employee.ficheId ? signatures?.get(employee.ficheId) : null;
