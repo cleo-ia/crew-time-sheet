@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,24 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const savePreExportMutation = usePreExportSave();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
+
+  // Refs pour la synchronisation du scroll horizontal
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const horizontalScrollRef = useRef<HTMLDivElement>(null);
+
+  // Synchroniser le scroll horizontal (barre sticky → tableau)
+  const handleHorizontalScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (tableWrapperRef.current) {
+      tableWrapperRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
+  // Synchroniser le scroll horizontal (tableau → barre sticky)
+  const handleTableWrapperScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (horizontalScrollRef.current) {
+      horizontalScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -294,8 +312,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         </p>
       </div>
 
-      {/* Table */}
-      <div className="h-[600px] border rounded-lg overflow-auto">
+      {/* Table avec barre de scroll horizontale sticky */}
+      <div className="h-[600px] border rounded-lg flex flex-col relative">
+        {/* Zone principale avec scroll vertical + horizontal */}
+        <div 
+          ref={tableWrapperRef}
+          className="flex-1 overflow-auto"
+          onScroll={handleTableWrapperScroll}
+        >
         <Table className="min-w-[5000px]">
           <TableHeader>
             <TableRow>
@@ -481,7 +505,18 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               );
             })}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
+        
+        {/* Barre de scroll horizontale sticky en bas */}
+        <div 
+          ref={horizontalScrollRef}
+          className="sticky bottom-0 overflow-x-auto overflow-y-hidden bg-muted/50 border-t shrink-0"
+          style={{ height: '16px' }}
+          onScroll={handleHorizontalScroll}
+        >
+          <div className="min-w-[5000px] h-px"></div>
+        </div>
       </div>
     </div>
   );
