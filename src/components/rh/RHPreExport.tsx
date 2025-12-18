@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -80,9 +80,24 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
   
-  // State et ref pour scroll horizontal via transform
+  // State et refs pour scroll horizontal via transform
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [tableWidth, setTableWidth] = useState(6000);
   const stickyScrollRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  // Mesurer la largeur réelle du tableau
+  useEffect(() => {
+    const updateTableWidth = () => {
+      if (tableRef.current) {
+        setTableWidth(tableRef.current.scrollWidth);
+      }
+    };
+    
+    updateTableWidth();
+    window.addEventListener('resize', updateTableWidth);
+    return () => window.removeEventListener('resize', updateTableWidth);
+  }, [rows]);
 
   // La scrollbar sticky contrôle la position horizontale
   const handleStickyScroll = () => {
@@ -312,7 +327,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Conteneur déplacé horizontalement via transform */}
           <div style={{ transform: `translateX(-${scrollLeft}px)`, width: 'fit-content' }}>
-            <Table className="min-w-[5000px]">
+            <Table ref={tableRef} className="min-w-[5000px]">
           <TableHeader>
             <TableRow>
               {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
@@ -507,7 +522,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           className="h-3 overflow-x-auto bg-muted/30 border-t flex-shrink-0"
           onScroll={handleStickyScroll}
         >
-          <div style={{ width: '5000px', height: '1px' }}></div>
+          <div style={{ width: `${tableWidth}px`, height: '1px' }}></div>
         </div>
       </div>
     </div>
