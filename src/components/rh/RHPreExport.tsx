@@ -317,7 +317,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         {/* Zone principale avec scroll vertical + horizontal */}
         <div 
           ref={tableWrapperRef}
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-y-auto overflow-x-hidden"
           onScroll={handleTableWrapperScroll}
         >
         <Table className="min-w-[5000px]">
