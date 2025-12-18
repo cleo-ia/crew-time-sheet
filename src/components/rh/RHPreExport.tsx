@@ -296,10 +296,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       </div>
 
       {/* Table avec barre de scroll horizontale sticky */}
-      <div className="h-[600px] border rounded-lg flex flex-col relative">
-        {/* Zone principale avec scroll vertical + horizontal */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto">
-        <Table className="min-w-[5000px]">
+      <div className="border rounded-lg">
+        {/* Conteneur externe : scroll horizontal (scrollbar toujours visible en bas) */}
+        <div className="overflow-x-auto">
+          {/* Conteneur interne : scroll vertical uniquement */}
+          <div className="h-[600px] overflow-y-auto">
+            <Table className="min-w-[5000px]">
           <TableHeader>
             <TableRow>
               {/* DONNÉES CONTRACTUELLES (14 colonnes) */}
@@ -484,7 +486,8 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               );
             })}
           </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
       </div>
     </div>
