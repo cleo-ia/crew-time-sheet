@@ -167,7 +167,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
   });
 
-  const totalCols = 57; // Ajout d'une colonne pour les heures réelles
+  const totalCols = 58; // Ajout d'une colonne ECOLE pour les apprentis
 
   // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
@@ -269,6 +269,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     "Intempéries",
     "CPSS",
     "ABS INJ",
+    "ECOLE",
     "h supp à 25%",
     "h supp à 50%",
     "NB PANIERS",
@@ -340,6 +341,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
       absences.HI || 0,
       absences.CPSS || 0,
       absences.ABS_INJ || 0,
+      absences.ECOLE || 0,
       // HEURES SUPP
       heuresSupp25,
       heuresSupp50,
@@ -412,10 +414,11 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     12,
     10,
     6,
-    6, // O-X (absences)
+    6,
+    6, // O-Y (absences avec ECOLE)
     10,
-    10, // Y-Z (heures supp)
-    10, // AA (paniers)
+    10, // Z-AA (heures supp)
+    10, // AB (paniers)
     8,
     8,
     6,
@@ -455,21 +458,21 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
   sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(57)}1`); // O1:BE1
 
   // Lignes 3-4: colonnes individuelles
-  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 27, 56, 57];
+  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 28, 57, 58];
   singles.forEach((c) => sheet.mergeCells(3, c, 4, c));
 
   // Groupes
-  sheet.mergeCells(3, 15, 3, 24); // ABSENCES EN HEURES (O3:X3)
-  sheet.mergeCells(3, 25, 3, 26); // HEURES SUPP (Y3:Z3)
-  sheet.mergeCells(3, 28, 3, 49); // TRAJETS (AB3:AW3)
-  sheet.mergeCells(3, 50, 3, 52); // Acomptes et prêts (AX3:AZ3)
-  sheet.mergeCells(3, 53, 3, 55); // SAISIES (BA3:BC3)
+  sheet.mergeCells(3, 15, 3, 25); // ABSENCES EN HEURES (O3:Y3) - +1 pour ECOLE
+  sheet.mergeCells(3, 26, 3, 27); // HEURES SUPP (Z3:AA3)
+  sheet.mergeCells(3, 29, 3, 50); // TRAJETS (AC3:AX3)
+  sheet.mergeCells(3, 51, 3, 53); // Acomptes et prêts (AY3:BA3)
+  sheet.mergeCells(3, 54, 3, 56); // SAISIES (BB3:BD3)
   
   // Forcer explicitement les valeurs des cellules après les merges
-  sheet.getCell(`${colToLetter(50)}3`).value = "ACOMPTES ET PRÊTS";
-  sheet.getCell(`${colToLetter(53)}3`).value = "SAISIES SUR SALAIRES";
-  sheet.getCell(`${colToLetter(56)}3`).value = "Regularisation M-1";
-  sheet.getCell(`${colToLetter(57)}3`).value = "Autres éléments";
+  sheet.getCell(`${colToLetter(51)}3`).value = "ACOMPTES ET PRÊTS";
+  sheet.getCell(`${colToLetter(54)}3`).value = "SAISIES SUR SALAIRES";
+  sheet.getCell(`${colToLetter(57)}3`).value = "Regularisation M-1";
+  sheet.getCell(`${colToLetter(58)}3`).value = "Autres éléments";
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
@@ -486,14 +489,14 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
       // Couleur par groupe
       let bg = "E0E0E0";
       if (c >= 1 && c <= 14) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
-      else if (c >= 15 && c <= 24) bg = COLOR_SCHEME.ABSENCES_HEADER;
-      else if (c >= 25 && c <= 26) bg = COLOR_SCHEME.OVERTIME_HEADER;
-      else if (c === 27) bg = COLOR_SCHEME.MEALS_HEADER;
-      else if (c >= 28 && c <= 49) bg = COLOR_SCHEME.TRANSPORT_HEADER;
-      else if (c >= 50 && c <= 52) bg = "A9D08E"; // Vert pour Acomptes et prêts
-      else if (c >= 53 && c <= 55) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
-      else if (c === 56) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
-      else if (c === 57) bg = "E8DAEF"; // Mauve clair pour Autres éléments
+      else if (c >= 15 && c <= 25) bg = COLOR_SCHEME.ABSENCES_HEADER; // +1 pour ECOLE
+      else if (c >= 26 && c <= 27) bg = COLOR_SCHEME.OVERTIME_HEADER;
+      else if (c === 28) bg = COLOR_SCHEME.MEALS_HEADER;
+      else if (c >= 29 && c <= 50) bg = COLOR_SCHEME.TRANSPORT_HEADER;
+      else if (c >= 51 && c <= 53) bg = "A9D08E"; // Vert pour Acomptes et prêts
+      else if (c >= 54 && c <= 56) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
+      else if (c === 57) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
+      else if (c === 58) bg = "E8DAEF"; // Mauve clair pour Autres éléments
 
       setHeaderFill(cell, bg);
     }

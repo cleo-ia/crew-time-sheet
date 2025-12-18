@@ -29,6 +29,7 @@ type EditableRow = {
     absenceIntemperies?: number;
     absenceCPSS?: number;
     absenceAbsInj?: number;
+    absenceEcole?: number;
     absenceDate?: string;
     // Heures supp
     heuresSupp25?: number;
@@ -146,6 +147,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       if (row.modified.absenceIntemperies !== undefined) absencesOverride.HI = row.modified.absenceIntemperies;
       if (row.modified.absenceCPSS !== undefined) absencesOverride.CPSS = row.modified.absenceCPSS;
       if (row.modified.absenceAbsInj !== undefined) absencesOverride.ABS_INJ = row.modified.absenceAbsInj;
+      if (row.modified.absenceEcole !== undefined) absencesOverride.ECOLE = row.modified.absenceEcole;
       
       // Collecter les trajets modifiés
       if (row.modified.trajetT1 !== undefined) trajetsOverride.T1 = row.modified.trajetT1;
@@ -324,6 +326,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               <TableHead className="bg-amber-50 min-w-[100px]">Intempéries</TableHead>
               <TableHead className="bg-amber-50 min-w-[70px]">CPSS</TableHead>
               <TableHead className="bg-amber-50 min-w-[80px]">ABS INJ</TableHead>
+              <TableHead className="bg-amber-50 min-w-[70px]">ECOLE</TableHead>
               
               {/* HEURES SUPP (2 colonnes) */}
               <TableHead className="bg-blue-50 min-w-[100px]">h supp à 25%</TableHead>
@@ -427,6 +430,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   <EditableCell value={row.modified.absenceIntemperies ?? absencesByType.HI ?? 0} onChange={(v) => handleCellChange(index, 'absenceIntemperies', v)} type="number" isModified={row.modified.absenceIntemperies !== undefined} />
                   <EditableCell value={row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0} onChange={(v) => handleCellChange(index, 'absenceCPSS', v)} type="number" isModified={row.modified.absenceCPSS !== undefined} />
                   <EditableCell value={row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0} onChange={(v) => handleCellChange(index, 'absenceAbsInj', v)} type="number" isModified={row.modified.absenceAbsInj !== undefined} />
+                  <EditableCell value={row.modified.absenceEcole ?? absencesByType.ECOLE ?? 0} onChange={(v) => handleCellChange(index, 'absenceEcole', v)} type="number" isModified={row.modified.absenceEcole !== undefined} />
                   
                   {/* HEURES SUPP */}
                   <EditableCell value={row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp25', v)} type="number" isModified={row.modified.heuresSupp25 !== undefined} />
