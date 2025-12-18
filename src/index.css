@@ -216,3 +216,12 @@ All colors MUST be HSL.
   .btn-theme-admin-active { background-color: hsl(var(--theme-admin-active)) !important; color: hsl(var(--theme-admin-foreground-active)) !important; transition: var(--transition-smooth); }
 }
 
+/* Classe utilitaire pour cacher la scrollbar native tout en gardant le scroll fonctionnel */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome/Safari/Opera */
+}
+
