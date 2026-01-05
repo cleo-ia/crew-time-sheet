@@ -54,13 +54,14 @@ export const AgenceInterimCombobox = ({
               onChange(e.target.value);
               if (!open) setOpen(true);
             }}
+            onClick={(e) => e.stopPropagation()}
             onFocus={() => setOpen(true)}
             className="w-full pr-8"
           />
           <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command shouldFilter={false}>
           <CommandList>
             {isLoading ? (
