@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -27,57 +26,42 @@ export const AgenceInterimCombobox = ({
   onChange,
 }: AgenceInterimComboboxProps) => {
   const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
   const { data: agences = [], isLoading } = useAgencesInterim();
 
-  // Filtrer les agences selon la saisie
+  // Filtrer les agences selon la valeur saisie
   const filteredAgences = agences.filter((agence) =>
-    agence.toLowerCase().includes(inputValue.toLowerCase())
+    agence.toLowerCase().includes(value.toLowerCase())
   );
 
-  // Vérifier si la valeur saisie existe déjà
+  // Vérifier si la valeur saisie existe déjà (exactement)
   const exactMatch = agences.some(
-    (agence) => agence.toLowerCase() === inputValue.toLowerCase()
+    (agence) => agence.toLowerCase() === value.toLowerCase()
   );
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);
-    setInputValue("");
     setOpen(false);
-  };
-
-  const handleUseCustomValue = () => {
-    if (inputValue.trim()) {
-      onChange(inputValue.trim());
-      setInputValue("");
-      setOpen(false);
-    }
   };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          {value || (
-            <span className="text-muted-foreground">
-              Ex: Manpower Lyon, Adecco Dijon...
-            </span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+        <div className="relative">
+          <Input
+            placeholder="Ex: Manpower Lyon, Adecco Dijon..."
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              if (!open) setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            className="w-full pr-8"
+          />
+          <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Rechercher une agence..."
-            value={inputValue}
-            onValueChange={setInputValue}
-          />
           <CommandList>
             {isLoading ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -85,16 +69,8 @@ export const AgenceInterimCombobox = ({
               </div>
             ) : (
               <>
-                {filteredAgences.length === 0 && !inputValue && (
+                {filteredAgences.length === 0 && !value && (
                   <CommandEmpty>Aucune agence enregistrée</CommandEmpty>
-                )}
-                {filteredAgences.length === 0 && inputValue && !exactMatch && (
-                  <CommandGroup>
-                    <CommandItem onSelect={handleUseCustomValue}>
-                      <Building2 className="mr-2 h-4 w-4" />
-                      Utiliser "{inputValue}"
-                    </CommandItem>
-                  </CommandGroup>
                 )}
                 {filteredAgences.length > 0 && (
                   <CommandGroup heading="Agences existantes">
@@ -115,11 +91,11 @@ export const AgenceInterimCombobox = ({
                     ))}
                   </CommandGroup>
                 )}
-                {inputValue && !exactMatch && filteredAgences.length > 0 && (
-                  <CommandGroup heading="Nouvelle agence">
-                    <CommandItem onSelect={handleUseCustomValue}>
+                {value && !exactMatch && (
+                  <CommandGroup heading={filteredAgences.length > 0 ? "Nouvelle agence" : undefined}>
+                    <CommandItem onSelect={() => handleSelect(value.trim())}>
                       <Building2 className="mr-2 h-4 w-4" />
-                      Utiliser "{inputValue}"
+                      Utiliser "{value}"
                     </CommandItem>
                   </CommandGroup>
                 )}
