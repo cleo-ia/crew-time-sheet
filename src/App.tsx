@@ -18,6 +18,7 @@ import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import Bootstrap from "./pages/Bootstrap";
 import NotFound from "./pages/NotFound";
+import Documentation from "./pages/Documentation";
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
 
@@ -84,6 +85,9 @@ const App = () => (
             
             {/* Signature Maçons - Accessible par tous les authentifiés */}
             <Route path="/signature-macons" element={<SignatureMacons />} />
+            
+            {/* Documentation - Accessible par tous les authentifiés */}
+            <Route path="/documentation" element={<Documentation />} />
             
             {/* Signature Finisseurs - Accessible par: admin, conducteur */}
             <Route 
