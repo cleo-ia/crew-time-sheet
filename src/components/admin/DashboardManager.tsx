@@ -205,7 +205,7 @@ export const DashboardManager = () => {
             <div className="text-right">
               <span className="text-2xl font-bold text-primary">{stats.progressionTransmission.transmis}</span>
               <span className="text-muted-foreground text-lg"> / {stats.progressionTransmission.total}</span>
-              <p className="text-xs text-muted-foreground">équipes</p>
+              <p className="text-xs text-muted-foreground">chantiers</p>
             </div>
           </div>
         </CardHeader>
