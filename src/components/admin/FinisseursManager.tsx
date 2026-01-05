@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useCreateUtilisateur, useUpdateUtilisateur, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
+import { useAffectations } from "@/hooks/useAffectations";
 import { useChantiers } from "@/hooks/useChantiers";
 import { getCurrentWeek } from "@/lib/weekUtils";
 
@@ -43,23 +44,44 @@ export const FinisseursManager = () => {
 
   // Données pour les affectations
   const currentWeek = getCurrentWeek();
-  const { data: affectations = [] } = useAffectationsFinisseursJours(currentWeek);
+  const { data: affectationsHebdo = [] } = useAffectationsFinisseursJours(currentWeek);
+  const { data: affectationsPermanentes = [] } = useAffectations();
   const { data: chantiers = [] } = useChantiers();
   const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
 
   const getAffectationForFinisseur = (finisseurId: string) => {
-    const affectationsFinisseur = affectations.filter(a => a.finisseur_id === finisseurId);
-    if (affectationsFinisseur.length === 0) return null;
+    // 1. Vérifier d'abord les affectations permanentes (via chef de chantier)
+    const affectationPermanente = affectationsPermanentes.find(
+      (a: any) => a.macon_id === finisseurId && a.date_fin === null
+    );
     
-    const firstAffectation = affectationsFinisseur[0];
-    const chantier = chantiers.find(c => c.id === firstAffectation.chantier_id);
-    const conducteur = conducteurs.find(c => c.id === firstAffectation.conducteur_id);
+    if (affectationPermanente) {
+      return {
+        type: 'permanent' as const,
+        chantier_nom: affectationPermanente.chantier_nom || "N/A",
+        chef_nom: affectationPermanente.chef_prenom && affectationPermanente.chef_nom
+          ? `${affectationPermanente.chef_prenom} ${affectationPermanente.chef_nom}`
+          : "Non assigné",
+        date_debut: affectationPermanente.date_debut,
+      };
+    }
     
-    return {
-      chantier_nom: chantier?.nom || "N/A",
-      conducteur_nom: conducteur ? `${conducteur.prenom} ${conducteur.nom}` : "N/A",
-      nb_jours: affectationsFinisseur.length,
-    };
+    // 2. Sinon, vérifier les affectations hebdomadaires (via conducteur)
+    const affectationsFinisseur = affectationsHebdo.filter(a => a.finisseur_id === finisseurId);
+    if (affectationsFinisseur.length > 0) {
+      const firstAffectation = affectationsFinisseur[0];
+      const chantier = chantiers.find(c => c.id === firstAffectation.chantier_id);
+      const conducteur = conducteurs.find(c => c.id === firstAffectation.conducteur_id);
+      
+      return {
+        type: 'hebdomadaire' as const,
+        chantier_nom: chantier?.nom || "N/A",
+        conducteur_nom: conducteur ? `${conducteur.prenom} ${conducteur.nom}` : "N/A",
+        nb_jours: affectationsFinisseur.length,
+      };
+    }
+    
+    return null;
   };
 
   const handleSave = async () => {
@@ -167,15 +189,29 @@ export const FinisseursManager = () => {
                     <TableCell>{finisseur.prenom}</TableCell>
                     <TableCell>
                       {affectation ? (
-                        <div className="space-y-1">
-                          <div className="font-medium">{affectation.chantier_nom}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Conducteur: {affectation.conducteur_nom}
+                        affectation.type === 'permanent' ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">{affectation.chantier_nom}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Chef: {affectation.chef_nom}
+                            </div>
+                            {affectation.date_debut && (
+                              <div className="text-xs text-muted-foreground">
+                                Depuis le {new Date(affectation.date_debut).toLocaleDateString("fr-FR")}
+                              </div>
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {affectation.nb_jours}/5 jours cette semaine
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="font-medium">{affectation.chantier_nom}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Conducteur: {affectation.conducteur_nom}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {affectation.nb_jours}/5 jours cette semaine
+                            </div>
                           </div>
-                        </div>
+                        )
                       ) : (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
                           Non affecté
