@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { UserPlus, Loader2, X, Crown, AlertTriangle } from "lucide-react";
+import { UserPlus, Loader2, X, Crown, AlertTriangle, Users, ArrowRightLeft } from "lucide-react";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { useAffectations, useCreateAffectation, useUpdateAffectation } from "@/hooks/useAffectations";
 import { useDeleteFichesByMacon } from "@/hooks/useFiches";
@@ -15,7 +15,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TeamMemberCombobox } from "./TeamMemberCombobox";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 import { useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
-
+import { useChantiers } from "@/hooks/useChantiers";
+import { useDissoudreEquipe } from "@/hooks/useDissoudreEquipe";
+import { useTransfererEquipe } from "@/hooks/useTransfererEquipe";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 interface ChefMaconsManagerProps {
   chefId: string;
   chantierId: string;
@@ -30,6 +34,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   const [maconToRemove, setMaconToRemove] = useState<{id: string, nom: string, prenom: string, role: string} | null>(null);
   const [searchValue, setSearchValue] = useState<string>("all");
   const [showCreateInterimaireDialog, setShowCreateInterimaireDialog] = useState(false);
+  const [showDissolutionDialog, setShowDissolutionDialog] = useState(false);
+  const [showTransfertDialog, setShowTransfertDialog] = useState(false);
+  const [destinationChantierId, setDestinationChantierId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -59,6 +66,16 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   
   // Hook pour supprimer les fiches lors du retrait
   const deleteFichesByMacon = useDeleteFichesByMacon();
+
+  // Hooks pour dissolution et transfert
+  const dissoudreEquipe = useDissoudreEquipe();
+  const transfererEquipe = useTransfererEquipe();
+
+  // Récupérer les chantiers pour le transfert
+  const { data: allChantiers } = useChantiers();
+  const otherActiveChantiers = (allChantiers || []).filter(
+    c => c.actif && c.id !== chantierId
+  );
 
   // Vérifier si un maçon est dans l'équipe actuelle (check currentTeam + affectations actives)
   const isMaconInTeam = (maconId: string): boolean => {
@@ -431,6 +448,50 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                   </p>
                 )}
               </div>
+
+              {/* Section Actions sur l'équipe - visible seulement si équipe non vide */}
+              {currentTeam && currentTeam.filter(m => m.id !== chefId).length > 0 && (
+                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20">
+                  <h4 className="font-semibold text-sm text-muted-foreground mb-3">
+                    ACTIONS SUR L'ÉQUIPE
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowDissolutionDialog(true)}
+                      disabled={dissoudreEquipe.isPending}
+                    >
+                      {dissoudreEquipe.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Users className="h-4 w-4 mr-2" />
+                      )}
+                      Dissoudre l'équipe
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setDestinationChantierId("");
+                        setShowTransfertDialog(true);
+                      }}
+                      disabled={transfererEquipe.isPending || otherActiveChantiers.length === 0}
+                    >
+                      {transfererEquipe.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      )}
+                      Transférer vers un autre chantier
+                    </Button>
+                  </div>
+                  {otherActiveChantiers.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Aucun autre chantier actif disponible pour le transfert.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {(showMaconsSection || showGrutiersSection || showInterimairesSection || showFinisseursSection) && (
                 <>
@@ -929,6 +990,109 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
           setSearchValue("all");
         }}
       />
+
+      {/* Dialog de confirmation de dissolution */}
+      <AlertDialog open={showDissolutionDialog} onOpenChange={setShowDissolutionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Dissoudre l'équipe ?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Cette action va libérer <strong>{currentTeam?.filter(m => m.id !== chefId).length || 0} membre(s)</strong> de votre équipe.
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-1">Membres concernés :</p>
+                  <ul className="list-disc list-inside max-h-32 overflow-y-auto">
+                    {currentTeam?.filter(m => m.id !== chefId).map(m => (
+                      <li key={m.id}>{m.prenom} {m.nom}</li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ Leurs fiches en cours (non envoyées au RH) seront supprimées.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await dissoudreEquipe.mutateAsync({ chantierId, semaine, chefId });
+                setShowDissolutionDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmer la dissolution
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de transfert d'équipe */}
+      <Dialog open={showTransfertDialog} onOpenChange={setShowTransfertDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transférer l'équipe
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              <strong>{currentTeam?.filter(m => m.id !== chefId).length || 0} membre(s)</strong> seront transférés vers le nouveau chantier.
+            </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="destination-chantier">Chantier de destination</Label>
+              <Select value={destinationChantierId} onValueChange={setDestinationChantierId}>
+                <SelectTrigger id="destination-chantier">
+                  <SelectValue placeholder="Sélectionner un chantier..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {otherActiveChantiers.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.code_chantier ? `${c.code_chantier} - ` : ""}{c.nom}
+                      {c.ville ? ` (${c.ville})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <p className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+              ⚠️ Les fiches en cours (non envoyées au RH) seront supprimées.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransfertDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!destinationChantierId) return;
+                await transfererEquipe.mutateAsync({
+                  sourceChantierId: chantierId,
+                  destinationChantierId,
+                  semaine,
+                  chefId,
+                });
+                setShowTransfertDialog(false);
+              }}
+              disabled={!destinationChantierId || transfererEquipe.isPending}
+            >
+              {transfererEquipe.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Confirmer le transfert
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
