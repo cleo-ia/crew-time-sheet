@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { useCreateUtilisateur, useUpdateUtilisateur } from "@/hooks/useUtilisateurs";
 import { AlertTriangle } from "lucide-react";
+import { AgenceInterimCombobox } from "./AgenceInterimCombobox";
 
 interface InterimaireFormDialogProps {
   open: boolean;
@@ -95,10 +96,9 @@ export const InterimaireFormDialog = ({
           </div>
           <div className="space-y-2">
             <Label>Agence d'intérim</Label>
-            <Input
-              placeholder="Ex: Manpower Lyon, Adecco Dijon..."
+            <AgenceInterimCombobox
               value={formData.agence_interim}
-              onChange={(e) => setFormData({ ...formData, agence_interim: e.target.value })}
+              onChange={(val) => setFormData({ ...formData, agence_interim: val })}
             />
             <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
