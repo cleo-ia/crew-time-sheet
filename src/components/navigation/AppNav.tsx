@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut } from "lucide-react";
+import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-engo-bourgogne.png";
@@ -148,6 +148,18 @@ export const AppNav = () => {
                 </Link>
               </Button>
             )}
+            
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="gap-2 border-0 hover:opacity-80"
+            >
+              <Link to="/documentation">
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden md:inline">Aide</span>
+              </Link>
+            </Button>
             
             <ThemeToggle />
             
