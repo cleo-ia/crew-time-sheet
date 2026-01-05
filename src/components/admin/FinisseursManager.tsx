@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useCreateUtilisateur, useUpdateUtilisateur, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
+import { useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
+import { useChantiers } from "@/hooks/useChantiers";
+import { getCurrentWeek } from "@/lib/weekUtils";
 
 export const FinisseursManager = () => {
   const { toast } = useToast();
@@ -37,6 +40,27 @@ export const FinisseursManager = () => {
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
   const deleteUtilisateur = useDeleteUtilisateur();
+
+  // Données pour les affectations
+  const currentWeek = getCurrentWeek();
+  const { data: affectations = [] } = useAffectationsFinisseursJours(currentWeek);
+  const { data: chantiers = [] } = useChantiers();
+  const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
+
+  const getAffectationForFinisseur = (finisseurId: string) => {
+    const affectationsFinisseur = affectations.filter(a => a.finisseur_id === finisseurId);
+    if (affectationsFinisseur.length === 0) return null;
+    
+    const firstAffectation = affectationsFinisseur[0];
+    const chantier = chantiers.find(c => c.id === firstAffectation.chantier_id);
+    const conducteur = conducteurs.find(c => c.id === firstAffectation.conducteur_id);
+    
+    return {
+      chantier_nom: chantier?.nom || "N/A",
+      conducteur_nom: conducteur ? `${conducteur.prenom} ${conducteur.nom}` : "N/A",
+      nb_jours: affectationsFinisseur.length,
+    };
+  };
 
   const handleSave = async () => {
     if (editingFinisseur) {
@@ -117,6 +141,7 @@ export const FinisseursManager = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
+              <TableHead>Affectation</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -134,10 +159,29 @@ export const FinisseursManager = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              finisseurs.map((finisseur) => (
+              finisseurs.map((finisseur) => {
+                const affectation = getAffectationForFinisseur(finisseur.id);
+                return (
                   <TableRow key={finisseur.id}>
                     <TableCell className="font-medium">{finisseur.nom}</TableCell>
                     <TableCell>{finisseur.prenom}</TableCell>
+                    <TableCell>
+                      {affectation ? (
+                        <div className="space-y-1">
+                          <div className="font-medium">{affectation.chantier_nom}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Conducteur: {affectation.conducteur_nom}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {affectation.nb_jours}/5 jours cette semaine
+                          </div>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                          Non affecté
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -153,7 +197,8 @@ export const FinisseursManager = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
