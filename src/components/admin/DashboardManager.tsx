@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -14,7 +15,7 @@ import {
   TrendingUp,
   MapPin,
   CheckCircle2,
-  Activity,
+  RefreshCw,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -53,7 +54,7 @@ const StatCard = ({
       <div className="text-3xl font-bold tracking-tight">{value}</div>
       {description && (
         <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-          <Activity className="h-3 w-3" />
+          <TrendingUp className="h-3 w-3" />
           {description}
         </p>
       )}
@@ -97,7 +98,22 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export const DashboardManager = () => {
-  const { data: stats, isLoading, error } = useDashboardStats();
+  const { data: stats, isLoading, error, dataUpdatedAt, isFetching } = useDashboardStats();
+  const [, setTick] = useState(0);
+
+  // Force re-render every 10 seconds to update the "time since update" badge
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getTimeSinceUpdate = () => {
+    if (!dataUpdatedAt) return "...";
+    const seconds = Math.floor((Date.now() - dataUpdatedAt) / 1000);
+    if (seconds < 10) return "À l'instant";
+    if (seconds < 60) return `Il y a ${seconds}s`;
+    return `Il y a ${Math.floor(seconds / 60)}min`;
+  };
 
   if (isLoading) return <LoadingSkeleton />;
   if (error) return (
@@ -129,8 +145,8 @@ export const DashboardManager = () => {
           <p className="text-muted-foreground text-sm">Activité et progression de l'entreprise</p>
         </div>
         <Badge variant="outline" className="text-xs px-3 py-1">
-          <Activity className="h-3 w-3 mr-1.5" />
-          Mise à jour en temps réel
+          <RefreshCw className={`h-3 w-3 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+          {getTimeSinceUpdate()}
         </Badge>
       </div>
 

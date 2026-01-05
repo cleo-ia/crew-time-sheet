@@ -278,5 +278,7 @@ export const useDashboardStats = () => {
     },
     enabled: !!entrepriseId,
     staleTime: 30000,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
 };
