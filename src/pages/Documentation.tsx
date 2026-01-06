@@ -84,6 +84,17 @@ const sections: Section[] = [
     ],
   },
   {
+    id: "commun",
+    title: "Fonctionnalités communes",
+    icon: <Users className="h-4 w-4" />,
+    subsections: [
+      { id: "commun-messagerie", title: "Messagerie interne" },
+      { id: "commun-meteo", title: "Météo du chantier" },
+      { id: "commun-theme", title: "Mode sombre" },
+      { id: "commun-pwa", title: "Application mobile (PWA)" },
+    ],
+  },
+  {
     id: "chef",
     title: "Guide Chef de chantier",
     icon: <HardHat className="h-4 w-4" />,
@@ -130,17 +141,6 @@ const sections: Section[] = [
       { id: "admin-chantiers", title: "Gestion des chantiers" },
       { id: "admin-referentiels", title: "Référentiels" },
       { id: "admin-rappels", title: "Rappels automatiques" },
-    ],
-  },
-  {
-    id: "commun",
-    title: "Fonctionnalités communes",
-    icon: <Users className="h-4 w-4" />,
-    subsections: [
-      { id: "commun-messagerie", title: "Messagerie interne" },
-      { id: "commun-meteo", title: "Météo du chantier" },
-      { id: "commun-theme", title: "Mode sombre" },
-      { id: "commun-pwa", title: "Application mobile (PWA)" },
     ],
   },
 ];
@@ -621,6 +621,88 @@ const Documentation = () => {
                     </CardContent>
                   </Card>
                 </div>
+              </DocSubsection>
+            </DocSection>
+
+            <Separator className="my-12" />
+
+            {/* ============ FONCTIONNALITÉS COMMUNES ============ */}
+            <DocSection id="commun" title="Fonctionnalités communes" icon={<Users className="h-5 w-5" />}>
+              <DocSubsection id="commun-messagerie" title="Messagerie interne">
+                <div className="space-y-4">
+                  <DocStep number={1} title="Accéder à la messagerie">
+                    <p>
+                      Cliquez sur l'icône de conversation dans le header.
+                      Un badge rouge indique les messages non lus.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Conversations par chantier">
+                    <p>
+                      Chaque chantier dispose de sa propre conversation.
+                      Tous les membres du chantier peuvent y participer.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Envoyer un message">
+                    <p>Tapez votre message et appuyez sur Entrée ou cliquez sur Envoyer.</p>
+                  </DocStep>
+                </div>
+              </DocSubsection>
+
+              <DocSubsection id="commun-meteo" title="Météo du chantier">
+                <p className="text-muted-foreground mb-4">
+                  Si le chantier a une ville renseignée, un bouton météo apparaît dans le header.
+                </p>
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Fonctionnalités météo :</h4>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-2">
+                        <CloudSun className="h-4 w-4 text-primary" />
+                        Prévisions à 7 jours
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CloudSun className="h-4 w-4 text-primary" />
+                        Radar pluie interactif
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CloudSun className="h-4 w-4 text-primary" />
+                        Alertes météo
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </DocSubsection>
+
+              <DocSubsection id="commun-theme" title="Mode sombre">
+                <p className="text-muted-foreground">
+                  Cliquez sur l'icône <Moon className="h-4 w-4 inline" /> dans la barre de navigation
+                  pour basculer entre le mode clair et le mode sombre.
+                  Votre préférence est sauvegardée.
+                </p>
+              </DocSubsection>
+
+              <DocSubsection id="commun-pwa" title="Application mobile (PWA)">
+                <p className="text-muted-foreground mb-4">
+                  DIVA RH peut être installée sur votre téléphone ou tablette comme une application native.
+                </p>
+                <div className="space-y-4">
+                  <DocStep number={1} title="Installer l'application">
+                    <p>
+                      Une bannière s'affiche automatiquement proposant l'installation.
+                      Vous pouvez aussi utiliser le menu du navigateur {">"} "Ajouter à l'écran d'accueil".
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Mode hors-ligne">
+                    <p>
+                      Une fois installée, l'application peut être consultée même sans connexion internet.
+                      Les modifications seront synchronisées au retour de la connexion.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="info">
+                  L'installation PWA offre une meilleure expérience sur mobile avec un accès rapide
+                  depuis l'écran d'accueil.
+                </DocNote>
               </DocSubsection>
             </DocSection>
 
@@ -1285,87 +1367,6 @@ const Documentation = () => {
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
-
-            {/* ============ FONCTIONNALITÉS COMMUNES ============ */}
-            <DocSection id="commun" title="Fonctionnalités communes" icon={<Users className="h-5 w-5" />}>
-              <DocSubsection id="commun-messagerie" title="Messagerie interne">
-                <div className="space-y-4">
-                  <DocStep number={1} title="Accéder à la messagerie">
-                    <p>
-                      Cliquez sur l'icône de conversation dans le header.
-                      Un badge rouge indique les messages non lus.
-                    </p>
-                  </DocStep>
-                  <DocStep number={2} title="Conversations par chantier">
-                    <p>
-                      Chaque chantier dispose de sa propre conversation.
-                      Tous les membres du chantier peuvent y participer.
-                    </p>
-                  </DocStep>
-                  <DocStep number={3} title="Envoyer un message">
-                    <p>Tapez votre message et appuyez sur Entrée ou cliquez sur Envoyer.</p>
-                  </DocStep>
-                </div>
-              </DocSubsection>
-
-              <DocSubsection id="commun-meteo" title="Météo du chantier">
-                <p className="text-muted-foreground mb-4">
-                  Si le chantier a une ville renseignée, un bouton météo apparaît dans le header.
-                </p>
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Fonctionnalités météo :</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
-                        Prévisions à 7 jours
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
-                        Radar pluie interactif
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
-                        Alertes météo
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </DocSubsection>
-
-              <DocSubsection id="commun-theme" title="Mode sombre">
-                <p className="text-muted-foreground">
-                  Cliquez sur l'icône <Moon className="h-4 w-4 inline" /> dans la barre de navigation
-                  pour basculer entre le mode clair et le mode sombre.
-                  Votre préférence est sauvegardée.
-                </p>
-              </DocSubsection>
-
-              <DocSubsection id="commun-pwa" title="Application mobile (PWA)">
-                <p className="text-muted-foreground mb-4">
-                  DIVA RH peut être installée sur votre téléphone ou tablette comme une application native.
-                </p>
-                <div className="space-y-4">
-                  <DocStep number={1} title="Installer l'application">
-                    <p>
-                      Une bannière s'affiche automatiquement proposant l'installation.
-                      Vous pouvez aussi utiliser le menu du navigateur {">"} "Ajouter à l'écran d'accueil".
-                    </p>
-                  </DocStep>
-                  <DocStep number={2} title="Mode hors-ligne">
-                    <p>
-                      Une fois installée, l'application peut être consultée même sans connexion internet.
-                      Les modifications seront synchronisées au retour de la connexion.
-                    </p>
-                  </DocStep>
-                </div>
-                <DocNote type="info">
-                  L'installation PWA offre une meilleure expérience sur mobile avec un accès rapide
-                  depuis l'écran d'accueil.
-                </DocNote>
-              </DocSubsection>
-            </DocSection>
 
             {/* Footer */}
             <div className="mt-16 pt-8 border-t border-border text-center">
