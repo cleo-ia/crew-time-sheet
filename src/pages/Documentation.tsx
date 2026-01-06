@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 
 // Import des images de documentation
 import docSaisieHeures from "@/assets/doc-saisie-heures.png";
+import docSaisieHeuresDetail from "@/assets/doc-saisie-heures-detail.png";
 import docSignaturePad from "@/assets/doc-signature-pad.png";
 import docValidation from "@/assets/doc-validation.png";
 import docExportExcel from "@/assets/doc-export-excel.png";
@@ -661,7 +662,12 @@ const Documentation = () => {
                 <DocImage 
                   src={docSaisieHeures} 
                   alt="Tableau de saisie des heures" 
-                  caption="Exemple de tableau de saisie des heures - une ligne par salarié, une colonne par jour"
+                  caption="Liste des salariés avec leurs heures totales"
+                />
+                <DocImage 
+                  src={docSaisieHeuresDetail} 
+                  alt="Détail de saisie par jour" 
+                  caption="Détail de saisie : heures, intempérie, panier repas et trajet pour chaque jour"
                 />
                 <div className="space-y-4">
                   <DocStep number={1} title="Heures normales (HNORM)">
