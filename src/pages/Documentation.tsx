@@ -53,6 +53,7 @@ import docValidation from "@/assets/doc-validation.png";
 import docExportExcel from "@/assets/doc-export-excel.png";
 import docDashboard from "@/assets/doc-dashboard.png";
 import docSelectionSemaineChantier from "@/assets/doc-selection-semaine-chantier.png";
+import docRatioGlobal from "@/assets/doc-ratio-global.png";
 
 // Types
 interface Section {
@@ -83,6 +84,7 @@ const sections: Section[] = [
       { id: "chef-equipe", title: "Gestion de l'équipe" },
       { id: "chef-saisie", title: "Saisie des heures" },
       { id: "chef-transport", title: "Fiche de trajet" },
+      { id: "chef-ratio", title: "Ratio global" },
       { id: "chef-signature", title: "Collecte des signatures" },
       { id: "chef-historique", title: "Historique" },
     ],
@@ -753,6 +755,46 @@ const Documentation = () => {
                 <DocNote type="warning">
                   Les 15 champs (5 jours × 3 informations) doivent être remplis pour pouvoir
                   transmettre la fiche au conducteur.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="chef-ratio" title="Ratio global">
+                <p className="text-muted-foreground mb-4">
+                  Le <strong>Ratio Global</strong> permet de saisir les quantités journalières 
+                  de production pour suivre la performance du chantier.
+                </p>
+                <DocImage 
+                  src={docRatioGlobal} 
+                  alt="Interface Ratio Global" 
+                  caption="Tableau de saisie des ratios journaliers"
+                />
+                <div className="space-y-4">
+                  <DocStep number={1} title="Ouvrir la section Ratio Global">
+                    <p>
+                      Dépliez la section <strong>"Ratio Global"</strong> située sous la fiche de trajet.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Saisir les quantités">
+                    <p>Pour chaque jour de la semaine, renseignez :</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li><strong>M³ béton</strong> : volume de béton coulé</li>
+                      <li><strong>ML voile</strong> : mètres linéaires de voile</li>
+                      <li><strong>M² coffrage</strong> : surface de coffrage mise en œuvre</li>
+                      <li><strong>Météo</strong> : conditions météorologiques du jour</li>
+                      <li><strong>Observations</strong> : remarques sur le déroulement du chantier</li>
+                      <li><strong>Incident</strong> : tout incident survenu sur le chantier</li>
+                    </ul>
+                  </DocStep>
+                  <DocStep number={3} title="Totaux automatiques">
+                    <p>
+                      Les totaux hebdomadaires sont calculés automatiquement en bas du tableau
+                      pour M³ béton, ML voile et M² coffrage.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="info">
+                  Ces données alimentent les indicateurs de rentabilité du chantier
+                  et permettent d'analyser la productivité de l'équipe.
                 </DocNote>
               </DocSubsection>
 
