@@ -1012,9 +1012,7 @@ const Documentation = () => {
                 </p>
                 <div className="space-y-4">
                   <DocStep number={1} title="Identifier les absences non qualifiées">
-                    <p>
-                      Un badge orange s'affiche sur les fiches contenant des absences à qualifier.
-                    </p>
+                    <p>Un badge orange s'affiche <strong>à côté du nom de l'employé</strong> sur les fiches contenant des absences à qualifier.</p>
                   </DocStep>
                   <DocStep number={2} title="Qualifier l'absence">
                     <p>Cliquez sur la cellule d'absence et sélectionnez le type :</p>
