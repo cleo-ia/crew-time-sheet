@@ -707,10 +707,17 @@ const Documentation = () => {
                   <DocStep number={4} title="Panier repas (PA)">
                     <p>Cochez si le salarié a droit au panier repas ce jour.</p>
                   </DocStep>
-                  <DocStep number={5} title="Code trajet">
+                  <DocStep number={5} title="Trajet">
                     <p>
-                      Sélectionnez le code trajet correspondant au déplacement du salarié,
-                      ou cochez <strong>"Trajet perso"</strong> s'il utilise son véhicule personnel.
+                      Indiquez le type de trajet effectué par le salarié :
+                    </p>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                      <li><strong>"Trajet"</strong> : le salarié a effectué un trajet domicile-chantier</li>
+                      <li><strong>"Trajet perso"</strong> : le salarié utilise son véhicule personnel</li>
+                      <li><strong>"GD"</strong> : Grand Déplacement</li>
+                    </ul>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Les codes trajet détaillés (T1, T2, etc.) sont renseignés par le service RH lors du pré-export.
                     </p>
                   </DocStep>
                 </div>
