@@ -58,6 +58,7 @@ import docGestionFinisseurs from "@/assets/doc-gestion-finisseurs.png";
 import docRhFiltres from "@/assets/doc-rh-filtres.png";
 import docRhConsolide from "@/assets/doc-rh-consolide.png";
 import docFicheTrajet from "@/assets/doc-fiche-trajet.png";
+import docCollecteSignaturesBtn from "@/assets/doc-collecte-signatures-btn.png";
 
 // Types
 interface Section {
@@ -810,6 +811,11 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="chef-signature" title="Collecte des signatures">
+                <DocImage 
+                  src={docCollecteSignaturesBtn} 
+                  alt="Bouton enregistrer et collecter les signatures" 
+                  caption="Cliquez sur 'Enregistrer et collecter les signatures' (1)"
+                />
                 <DocImage 
                   src={docSignaturePad} 
                   alt="Pad de signature numérique" 
