@@ -974,13 +974,19 @@ const Documentation = () => {
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-medium mb-2">Colonnes affichées :</h4>
-                    <ul className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                      <li>• Nom du salarié</li>
-                      <li>• Total heures normales</li>
-                      <li>• Total heures supplémentaires</li>
-                      <li>• Nombre de paniers</li>
-                      <li>• Trajets par code</li>
-                      <li>• Heures d'intempérie</li>
+                    <ul className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
+                      <li>• Salarié</li>
+                      <li>• Chantier</li>
+                      <li>• Type</li>
+                      <li>• H. Normales</li>
+                      <li>• H. Supp</li>
+                      <li>• Absences</li>
+                      <li>• Paniers</li>
+                      <li>• Trajets</li>
+                      <li>• Trajets perso</li>
+                      <li>• Agence</li>
+                      <li>• Statut</li>
+                      <li>• Actions</li>
                     </ul>
                   </CardContent>
                 </Card>
