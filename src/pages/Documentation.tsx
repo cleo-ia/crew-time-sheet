@@ -1015,7 +1015,7 @@ const Documentation = () => {
                     <p>Un badge orange s'affiche <strong>à côté du nom de l'employé</strong> sur les fiches contenant des absences à qualifier.</p>
                   </DocStep>
                   <DocStep number={2} title="Qualifier l'absence">
-                    <p>Cliquez sur la cellule d'absence et sélectionnez le type :</p>
+                    <p>Cliquez sur <strong>l'icône œil</strong> dans la colonne "Action" pour ouvrir le détail de la fiche, puis sélectionnez le type d'absence :</p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <Badge variant="outline">CP - Congés payés</Badge>
                       <Badge variant="outline">RTT</Badge>
