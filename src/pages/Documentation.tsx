@@ -54,6 +54,7 @@ import docExportExcel from "@/assets/doc-export-excel.png";
 import docDashboard from "@/assets/doc-dashboard.png";
 import docSelectionSemaineChantier from "@/assets/doc-selection-semaine-chantier.png";
 import docRatioGlobal from "@/assets/doc-ratio-global.png";
+import docGestionFinisseurs from "@/assets/doc-gestion-finisseurs.png";
 
 // Types
 interface Section {
@@ -879,6 +880,11 @@ const Documentation = () => {
                     </p>
                   </DocStep>
                 </div>
+                <DocImage 
+                  src={docGestionFinisseurs} 
+                  alt="Interface de gestion des finisseurs" 
+                  caption="Sélection de semaine (1) et affectation des finisseurs (2)"
+                />
               </DocSubsection>
 
               <DocSubsection id="conducteur-validation" title="Validation des fiches (Onglet 'Validation')">
