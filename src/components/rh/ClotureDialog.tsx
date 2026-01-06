@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle, Lock, Download, Loader2, Users, FileText, Clock, Building2, Utensils, Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCloturePeriode } from "@/hooks/useRHData";
@@ -37,6 +38,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [forceClose, setForceClose] = useState(false);
   const clotureMutation = useCloturePeriode();
 
   // Formater le nom du mois pour l'affichage
@@ -150,7 +152,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
         return total + (emp.trajetsParCode?.A_COMPLETER || 0);
       }, 0);
 
-      if (hasUnqualifiedAbsences || trajetsACompleter > 0) {
+      if ((hasUnqualifiedAbsences || trajetsACompleter > 0) && !forceClose) {
         const warnings: string[] = [];
         if (hasUnqualifiedAbsences) warnings.push("absences non qualifiées");
         if (trajetsACompleter > 0) warnings.push(`${trajetsACompleter} trajets à compléter`);
@@ -219,6 +221,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
 
       onOpenChange(false);
       setMotif("");
+      setForceClose(false);
     } catch (error) {
       console.error("Erreur lors de la clôture:", error);
       toast({
@@ -231,7 +234,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
     }
   };
 
-  const canConfirm = previewData && !previewData.hasWarnings && previewData.salaries > 0;
+  const canConfirm = previewData && previewData.salaries > 0 && (!previewData.hasWarnings || forceClose);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -303,7 +306,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
 
               {/* Warnings si données incomplètes */}
               {previewData.hasWarnings && (
-                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg space-y-3">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
                     <div>
@@ -312,6 +315,16 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
                         {previewData.warnings.map((w, i) => <li key={i}>{w}</li>)}
                       </ul>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-destructive/20">
+                    <Checkbox 
+                      id="force-close"
+                      checked={forceClose}
+                      onCheckedChange={(checked) => setForceClose(checked === true)}
+                    />
+                    <label htmlFor="force-close" className="text-sm text-muted-foreground cursor-pointer">
+                      Forcer la clôture malgré les données incomplètes
+                    </label>
                   </div>
                 </div>
               )}
