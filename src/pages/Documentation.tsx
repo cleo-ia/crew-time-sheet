@@ -841,7 +841,7 @@ const Documentation = () => {
                   </DocStep>
                   <DocStep number={4} title="Transmission">
                     <p>
-                      Cliquez sur <strong>"Transmettre au conducteur"</strong>.
+                      Cliquez sur <strong>"Valider"</strong>.
                       La fiche passe en statut "VALIDE_CHEF" et sera visible par le conducteur.
                     </p>
                   </DocStep>
