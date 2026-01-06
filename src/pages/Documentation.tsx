@@ -52,6 +52,7 @@ import docSignaturePad from "@/assets/doc-signature-pad.png";
 import docValidation from "@/assets/doc-validation.png";
 import docExportExcel from "@/assets/doc-export-excel.png";
 import docDashboard from "@/assets/doc-dashboard.png";
+import docSelectionSemaineChantier from "@/assets/doc-selection-semaine-chantier.png";
 
 // Types
 interface Section {
@@ -632,6 +633,11 @@ const Documentation = () => {
                     </p>
                   </DocStep>
                 </div>
+                <DocImage 
+                  src={docSelectionSemaineChantier} 
+                  alt="Sélection de la semaine et du chantier" 
+                  caption="Sélecteurs de semaine (2) et de chantier (3)"
+                />
                 <DocNote type="info">
                   Vos sélections sont mémorisées pour votre prochaine visite.
                 </DocNote>
