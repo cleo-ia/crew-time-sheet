@@ -56,7 +56,6 @@ import docSelectionSemaineChantier from "@/assets/doc-selection-semaine-chantier
 import docRatioGlobal from "@/assets/doc-ratio-global.png";
 import docGestionFinisseurs from "@/assets/doc-gestion-finisseurs.png";
 import docRhFiltres from "@/assets/doc-rh-filtres.png";
-import docRhConsolide from "@/assets/doc-rh-consolide.png";
 
 // Types
 interface Section {
@@ -965,12 +964,6 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Cette vue affiche un récapitulatif par employé sur la période sélectionnée.
                 </p>
-                <DocImage
-                  src={docRhConsolide}
-                  alt="Vue consolidée par salarié avec le tableau récapitulatif"
-                  caption="Vue consolidée par salarié avec le tableau récapitulatif"
-                  fullWidth={true}
-                />
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-medium mb-2">Colonnes affichées :</h4>
