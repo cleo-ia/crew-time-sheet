@@ -1078,7 +1078,7 @@ const Documentation = () => {
                 />
                 <div className="space-y-4">
                   <DocStep number={1} title="Accéder à l'export">
-                    <p>Cliquez sur <strong>"Export Intérimaires"</strong>.</p>
+                    <p>Cliquez sur le bouton <strong>"Export Intérimaires"</strong> situé en haut à droite de la page.</p>
                   </DocStep>
                   <DocStep number={2} title="Sélectionner l'agence">
                     <p>Choisissez l'agence d'intérim concernée dans la liste.</p>
