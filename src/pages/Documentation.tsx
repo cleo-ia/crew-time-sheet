@@ -39,8 +39,17 @@ import {
   Bell,
   History,
   BarChart3,
+  Image,
+  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Import des images de documentation
+import docSaisieHeures from "@/assets/doc-saisie-heures.png";
+import docSignaturePad from "@/assets/doc-signature-pad.png";
+import docValidation from "@/assets/doc-validation.png";
+import docExportExcel from "@/assets/doc-export-excel.png";
+import docDashboard from "@/assets/doc-dashboard.png";
 
 // Types
 interface Section {
@@ -224,6 +233,50 @@ const DocNote = ({
     </div>
   );
 };
+
+// Composant pour afficher des images/captures d'écran
+const DocImage = ({
+  src,
+  alt,
+  caption,
+}: {
+  src: string;
+  alt: string;
+  caption?: string;
+}) => (
+  <figure className="my-6">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-muted/30">
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-auto object-contain max-h-80"
+        loading="lazy"
+      />
+    </div>
+    {caption && (
+      <figcaption className="mt-2 text-center text-sm text-muted-foreground italic">
+        {caption}
+      </figcaption>
+    )}
+  </figure>
+);
+
+// Composant placeholder pour les captures d'écran à ajouter
+const DocScreenshotPlaceholder = ({
+  description,
+}: {
+  description: string;
+}) => (
+  <div className="my-6 p-6 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
+    <div className="flex items-center gap-3 text-primary">
+      <Camera className="h-6 w-6" />
+      <div>
+        <p className="font-medium">Capture d'écran à ajouter</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  </div>
+);
 
 const FlowDiagram = () => (
   <div className="flex flex-wrap items-center justify-center gap-2 p-6 bg-muted/50 rounded-lg">
@@ -605,6 +658,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Le tableau de saisie affiche une ligne par salarié et une colonne par jour (Lundi à Vendredi).
                 </p>
+                <DocImage 
+                  src={docSaisieHeures} 
+                  alt="Tableau de saisie des heures" 
+                  caption="Exemple de tableau de saisie des heures - une ligne par salarié, une colonne par jour"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Heures normales (HNORM)">
                     <p>
@@ -663,6 +721,11 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="chef-signature" title="Collecte des signatures">
+                <DocImage 
+                  src={docSignaturePad} 
+                  alt="Pad de signature numérique" 
+                  caption="Interface de signature numérique sur mobile"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Passer à la signature">
                     <p>
@@ -744,6 +807,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Cet onglet affiche les fiches transmises par les chefs de chantier et en attente de validation.
                 </p>
+                <DocImage 
+                  src={docValidation} 
+                  alt="Interface de validation des fiches" 
+                  caption="Workflow de validation - les fiches progressent de BROUILLON à ENVOYE_RH"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Voir les fiches en attente">
                     <p>
@@ -856,6 +924,11 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="rh-export" title="Export Excel">
+                <DocImage 
+                  src={docExportExcel} 
+                  alt="Export Excel pour la paie" 
+                  caption="Bouton d'export et aperçu du fichier Excel généré"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Vérifier les données">
                     <p>Assurez-vous que toutes les absences sont qualifiées (aucun badge orange).</p>
@@ -918,6 +991,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Le dashboard offre une vue temps réel de l'activité de la semaine.
                 </p>
+                <DocImage 
+                  src={docDashboard} 
+                  alt="Dashboard administrateur" 
+                  caption="Vue d'ensemble du dashboard avec statistiques et indicateurs clés"
+                />
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-medium mb-2">Informations affichées :</h4>
