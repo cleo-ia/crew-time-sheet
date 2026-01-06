@@ -1006,9 +1006,9 @@ const Documentation = () => {
                 </p>
               </DocSubsection>
 
-              <DocSubsection id="rh-preexport" title="Pré-export et qualification des absences">
+              <DocSubsection id="rh-preexport" title="Pré-export : qualification des absences et trajets">
                 <p className="text-muted-foreground mb-4">
-                  Avant l'export, vous devez qualifier toutes les absences.
+                  Avant l'export, vous devez qualifier toutes les absences et renseigner les trajets manquants.
                 </p>
                 <div className="space-y-4">
                   <DocStep number={1} title="Identifier les absences non qualifiées">
@@ -1026,9 +1026,20 @@ const Documentation = () => {
                       <Badge variant="outline">ABS - Absence injustifiée</Badge>
                     </div>
                   </DocStep>
+                  <DocStep number={3} title="Renseigner les trajets manquants">
+                    <p>Les trajets marqués <strong>"À compléter"</strong> apparaissent avec un badge orange. Cliquez sur la cellule et sélectionnez le code trajet approprié :</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge variant="outline">T1 à T17</Badge>
+                      <Badge variant="outline">T31</Badge>
+                      <Badge variant="outline">T35</Badge>
+                      <Badge variant="outline">GD - Grand déplacement</Badge>
+                      <Badge variant="outline">T Perso</Badge>
+                      <Badge variant="outline">Aucun</Badge>
+                    </div>
+                  </DocStep>
                 </div>
                 <DocNote type="warning">
-                  L'export Excel n'est pas possible tant que des absences restent non qualifiées.
+                  L'export Excel n'est pas possible tant que des absences restent non qualifiées ou que des trajets sont marqués "À compléter".
                 </DocNote>
               </DocSubsection>
 
