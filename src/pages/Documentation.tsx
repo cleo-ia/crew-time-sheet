@@ -916,8 +916,9 @@ const Documentation = () => {
                   </DocStep>
                   <DocStep number={4} title="Signaler une erreur">
                     <p>
-                      Si vous détectez une erreur, contactez le chef de chantier 
-                      pour qu'il corrige la fiche avant de la revalider.
+                      Si vous détectez une erreur après validation, utilisez le bouton 
+                      <strong> "Conversation"</strong> situé en haut à droite de la page 
+                      pour notifier le service RH des corrections à apporter.
                     </p>
                   </DocStep>
                 </div>
