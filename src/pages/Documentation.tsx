@@ -914,10 +914,10 @@ const Documentation = () => {
                       La fiche passe en "ENVOYE_RH" et sera visible par le service RH.
                     </p>
                   </DocStep>
-                  <DocStep number={4} title="Retourner au chef">
+                  <DocStep number={4} title="Signaler une erreur">
                     <p>
-                      Si vous détectez une erreur, vous pouvez retourner la fiche au chef
-                      avec un commentaire explicatif.
+                      Si vous détectez une erreur, contactez le chef de chantier 
+                      pour qu'il corrige la fiche avant de la revalider.
                     </p>
                   </DocStep>
                 </div>
