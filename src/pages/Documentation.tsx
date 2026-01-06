@@ -941,15 +941,10 @@ const Documentation = () => {
             <DocSection id="rh" title="Guide Service RH" icon={<FileSpreadsheet className="h-5 w-5" />}>
               <DocSubsection id="rh-filtres" title="Filtres et navigation">
                 <div className="space-y-4">
-                  <DocStep number={1} title="Sélectionner le mois">
-                    <p>
-                      Utilisez le filtre "Période" pour choisir le mois à traiter.
-                      Les données affichées seront filtrées sur cette période.
-                    </p>
-                  </DocStep>
-                  <DocStep number={2} title="Filtres complémentaires">
-                    <p>Affinez votre recherche avec les filtres :</p>
+                  <DocStep number={1} title="Configurer les filtres">
+                    <p>Utilisez les filtres disponibles pour affiner votre recherche :</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Période (mois à traiter)</li>
                       <li>Semaine spécifique</li>
                       <li>Conducteur de travaux</li>
                       <li>Chantier</li>
