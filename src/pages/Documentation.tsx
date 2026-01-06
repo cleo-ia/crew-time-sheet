@@ -1137,16 +1137,32 @@ const Documentation = () => {
                     <h4 className="font-medium mb-2">Informations affichées :</h4>
                     <ul className="space-y-2 text-sm text-muted-foreground">
                       <li className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-primary" />
+                        Chantiers actifs
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        Fiches créées (total toutes périodes)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        Fiches en attente de validation
+                      </li>
+                      <li className="flex items-center gap-2">
                         <BarChart3 className="h-4 w-4 text-primary" />
-                        Nombre de fiches par statut
+                        Heures saisies (semaine et mois)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Send className="h-4 w-4 text-primary" />
+                        Progression des transmissions par semaine
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                        Répartition des fiches par statut
                       </li>
                       <li className="flex items-center gap-2">
                         <Bell className="h-4 w-4 text-primary" />
-                        Alertes et rappels en attente
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-primary" />
-                        Activité des utilisateurs
+                        Alertes et actions en attente
                       </li>
                     </ul>
                   </CardContent>
