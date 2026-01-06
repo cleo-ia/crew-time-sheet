@@ -57,6 +57,7 @@ import docRatioGlobal from "@/assets/doc-ratio-global.png";
 import docGestionFinisseurs from "@/assets/doc-gestion-finisseurs.png";
 import docRhFiltres from "@/assets/doc-rh-filtres.png";
 import docRhConsolide from "@/assets/doc-rh-consolide.png";
+import docFicheTrajet from "@/assets/doc-fiche-trajet.png";
 
 // Types
 interface Section {
@@ -744,6 +745,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   La fiche de trajet doit être remplie <strong>complètement</strong> avant de passer à la signature.
                 </p>
+                <DocImage 
+                  src={docFicheTrajet} 
+                  alt="Interface fiche de trajet" 
+                  caption="Formulaire de saisie des trajets par jour"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Ouvrir la section Transport">
                     <p>Dépliez la section "Fiche de trajet" sous le tableau de saisie.</p>
