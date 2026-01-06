@@ -908,10 +908,11 @@ const Documentation = () => {
                       Cliquez sur une fiche pour voir le détail : heures, paniers, trajets, signatures.
                     </p>
                   </DocStep>
-                  <DocStep number={3} title="Valider">
+                  <DocStep number={3} title="Valider et signer">
                     <p>
-                      Si tout est correct, cliquez sur <strong>"Valider"</strong>.
-                      La fiche passe en "ENVOYE_RH" et sera visible par le service RH.
+                      Si tout est correct, cliquez sur <strong>"Valider"</strong> puis 
+                      <strong> signez</strong> pour confirmer. La signature est obligatoire 
+                      pour transmettre la fiche au service RH (statut "ENVOYE_RH").
                     </p>
                   </DocStep>
                   <DocStep number={4} title="Signaler une erreur">
