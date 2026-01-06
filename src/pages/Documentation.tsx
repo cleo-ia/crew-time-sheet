@@ -1025,7 +1025,7 @@ const Documentation = () => {
                     </div>
                   </DocStep>
                   <DocStep number={3} title="Renseigner les trajets manquants">
-                    <p>Les trajets marqués <strong>"À compléter"</strong> apparaissent avec un badge orange. Cliquez sur la cellule et sélectionnez le code trajet approprié :</p>
+                    <p>Les trajets marqués <strong>"À compléter"</strong> apparaissent avec un badge orange <strong>à côté du nom de l'employé</strong>. Cliquez sur <strong>l'icône œil</strong> dans la colonne "Action" pour ouvrir le détail, puis sélectionnez le code trajet approprié :</p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <Badge variant="outline">T1 à T17</Badge>
                       <Badge variant="outline">T31</Badge>
