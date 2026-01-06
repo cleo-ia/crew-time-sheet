@@ -1085,7 +1085,7 @@ const Documentation = () => {
                   </DocStep>
                   <DocStep number={3} title="Générer le document">
                     <p>
-                      Le PDF ou Excel est généré avec les heures des intérimaires
+                      Le PDF est généré avec les heures des intérimaires
                       de cette agence pour la période.
                     </p>
                   </DocStep>
