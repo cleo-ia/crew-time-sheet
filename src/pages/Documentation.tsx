@@ -884,9 +884,9 @@ const Documentation = () => {
                   <DocStep number={4} title="Fiche de trajet">
                     <p>Complétez la fiche de trajet de chaque finisseur.</p>
                   </DocStep>
-                  <DocStep number={5} title="Collecter les signatures">
+                  <DocStep number={5} title="Signer en tant que conducteur">
                     <p>
-                      Passez à la signature et collectez les signatures de vos salariés, puis signez en tant que conducteur de travaux.
+                      Passez à la signature et signez en tant que conducteur de travaux pour valider les fiches.
                     </p>
                   </DocStep>
                 </div>
