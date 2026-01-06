@@ -21,6 +21,7 @@ interface TransportSheetV2Props {
   ficheId?: string | null;
   conducteurId?: string;
   isReadOnly?: boolean;
+  allAbsentDays?: string[];
 }
 
 export interface TransportSheetV2Ref {
@@ -35,6 +36,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   ficheId,
   conducteurId,
   isReadOnly = false,
+  allAbsentDays = [],
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -346,7 +348,11 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   }, [selectedWeek, selectedWeekString, queryClient]);
 
   // Vérifier que tous les jours ont au moins 1 véhicule complet
+  // (sauf les jours où toute l'équipe est absente)
   const isComplete = transportDays.every((day) => {
+    // Si toute l'équipe est absente ce jour : automatiquement valide
+    if (allAbsentDays.includes(day.date)) return true;
+    
     if (day.vehicules.length === 0) return false;
     return day.vehicules.every(
       (v) => v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
@@ -416,6 +422,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             conducteurId={conducteurId}
             onUpdate={(updatedDay) => updateDay(day.date, updatedDay)}
             isReadOnly={isReadOnly}
+            isAllAbsent={allAbsentDays.includes(day.date)}
           />
         ))}
       </Accordion>

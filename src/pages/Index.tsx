@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -191,8 +191,32 @@ const Index = () => {
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
 
-  // Validation de la fiche transport
-  const { isTransportComplete } = useTransportValidation(ficheId);
+  // Calculer les jours où TOUTE l'équipe est absente
+  const allAbsentDays = useMemo(() => {
+    if (timeEntries.length === 0) return [];
+    
+    const weekDays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+    const absentDays: string[] = [];
+    const monday = parseISOWeek(selectedWeek);
+    
+    weekDays.forEach((dayName, index) => {
+      // Vérifier si TOUS les employés sont absents ce jour
+      const allAbsent = timeEntries.every(entry => {
+        const dayData = entry.days[dayName];
+        return dayData?.absent === true;
+      });
+      
+      if (allAbsent) {
+        const dayDate = addDays(monday, index);
+        absentDays.push(format(dayDate, "yyyy-MM-dd"));
+      }
+    });
+    
+    return absentDays;
+  }, [timeEntries, selectedWeek]);
+
+  // Validation de la fiche transport (en tenant compte des jours d'absence totale)
+  const { isTransportComplete } = useTransportValidation(ficheId, undefined, allAbsentDays);
   const { toast } = useToast();
 
   // Validation des codes trajets
@@ -596,6 +620,7 @@ const Index = () => {
                           chefId={selectedChef}
                           ficheId={ficheId}
                           isReadOnly={!isFicheModifiable || !isOnline}
+                          allAbsentDays={allAbsentDays}
                         />
                       </CollapsibleContent>
                     </Collapsible>

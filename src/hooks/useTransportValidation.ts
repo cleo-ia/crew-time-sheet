@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { useTransportDataV2 } from "./useTransportDataV2";
 
-export const useTransportValidation = (ficheId: string | null, conducteurId?: string) => {
+export const useTransportValidation = (
+  ficheId: string | null, 
+  conducteurId?: string,
+  allAbsentDays?: string[]
+) => {
   const { data: transportData } = useTransportDataV2(ficheId, conducteurId);
 
   const isTransportComplete = useMemo(() => {
@@ -10,7 +14,11 @@ export const useTransportValidation = (ficheId: string | null, conducteurId?: st
     }
 
     // Vérifier que chaque jour a au moins 1 véhicule complet
+    // Sauf si toute l'équipe est absente ce jour-là
     const allDaysComplete = transportData.days.every((day) => {
+      // Si toute l'équipe est absente ce jour : considéré comme complet
+      if (allAbsentDays?.includes(day.date)) return true;
+      
       if (day.vehicules.length === 0) return false;
       
       return day.vehicules.some((vehicule) => {
@@ -23,7 +31,7 @@ export const useTransportValidation = (ficheId: string | null, conducteurId?: st
     });
 
     return transportData.days.length === 5 && allDaysComplete;
-  }, [transportData]);
+  }, [transportData, allAbsentDays]);
 
   return { isTransportComplete, transportData };
 };

@@ -1,4 +1,4 @@
-import { Plus, Trash2, User, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, User, AlertTriangle, Users } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { ConducteurCombobox } from "./ConducteurCombobox";
 import { VehiculeCombobox } from "./VehiculeCombobox";
 import { TransportVehicle, TransportDayV2 } from "@/types/transport";
@@ -25,6 +26,7 @@ interface TransportDayAccordionProps {
   conducteurId?: string;
   onUpdate: (updatedDay: TransportDayV2) => void;
   isReadOnly?: boolean;
+  isAllAbsent?: boolean;
 }
 
 export const TransportDayAccordion = ({
@@ -35,6 +37,7 @@ export const TransportDayAccordion = ({
   conducteurId,
   onUpdate,
   isReadOnly = false,
+  isAllAbsent = false,
 }: TransportDayAccordionProps) => {
   
   // Récupérer le nom du conducteur connecté
@@ -133,19 +136,27 @@ export const TransportDayAccordion = ({
   ).length;
 
   return (
-    <AccordionItem value={day.date} className="border rounded-lg mb-2">
+    <AccordionItem value={day.date} className={`border rounded-lg mb-2 ${isAllAbsent ? 'bg-muted/50 opacity-75' : ''}`}>
       <AccordionTrigger className="hover:no-underline px-4 py-3">
         <div className="flex items-center justify-between w-full pr-4">
           <div className="flex items-center gap-2">
             <span className="font-medium capitalize">{dayLabel}</span>
-            {hasTrajetPersoIssue && (
+            {isAllAbsent && (
+              <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                <Users className="h-3 w-3 mr-1" />
+                Équipe absente
+              </Badge>
+            )}
+            {hasTrajetPersoIssue && !isAllAbsent && (
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
             )}
           </div>
           <span className="text-sm text-muted-foreground">
-            {vehiculeCount === 0 
-              ? "Aucun véhicule" 
-              : `${completedCount}/${vehiculeCount} véhicule(s) complet(s)`
+            {isAllAbsent 
+              ? "Non requis"
+              : vehiculeCount === 0 
+                ? "Aucun véhicule" 
+                : `${completedCount}/${vehiculeCount} véhicule(s) complet(s)`
             }
           </span>
         </div>
@@ -250,15 +261,22 @@ export const TransportDayAccordion = ({
             ))
           )}
           
-          <Button
-            variant="outline"
-            onClick={addVehicule}
-            className="w-full"
-            disabled={isReadOnly}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter un véhicule
-          </Button>
+          {isAllAbsent ? (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Toute l'équipe est absente ce jour — aucun véhicule requis
+            </p>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={addVehicule}
+              className="w-full"
+              disabled={isReadOnly}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un véhicule
+            </Button>
+          )}
+        
         </div>
       </AccordionContent>
     </AccordionItem>
