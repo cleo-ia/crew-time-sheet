@@ -712,7 +712,7 @@ const Documentation = () => {
                       Indiquez le type de trajet effectué par le salarié :
                     </p>
                     <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
-                      <li><strong>"Trajet"</strong> : le salarié a effectué un trajet domicile-chantier</li>
+                      <li><strong>"Trajet"</strong> : le salarié a effectué un trajet classique</li>
                       <li><strong>"Trajet perso"</strong> : le salarié utilise son véhicule personnel</li>
                       <li><strong>"GD"</strong> : Grand Déplacement</li>
                     </ul>
