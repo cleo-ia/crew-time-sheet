@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   BookOpen,
@@ -235,7 +236,7 @@ const DocNote = ({
   );
 };
 
-// Composant pour afficher des images/captures d'écran
+// Composant pour afficher des images/captures d'écran avec zoom
 const DocImage = ({
   src,
   alt,
@@ -246,14 +247,30 @@ const DocImage = ({
   caption?: string;
 }) => (
   <figure className="my-6">
-    <div className="relative overflow-hidden rounded-lg border border-border bg-muted/30">
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-auto object-contain max-h-80"
-        loading="lazy"
-      />
-    </div>
+    <Dialog>
+      <DialogTrigger asChild>
+        <div className="relative overflow-hidden rounded-lg border border-border bg-muted/30 cursor-zoom-in hover:border-primary/50 transition-colors group">
+          <img
+            src={src}
+            alt={alt}
+            className="w-full h-auto object-contain max-h-80"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm">
+              Cliquer pour agrandir
+            </div>
+          </div>
+        </div>
+      </DialogTrigger>
+      <DialogContent className="max-w-[95vw] max-h-[95vh] p-2">
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-auto max-h-[90vh] object-contain rounded-lg"
+        />
+      </DialogContent>
+    </Dialog>
     {caption && (
       <figcaption className="mt-2 text-center text-sm text-muted-foreground italic">
         {caption}
