@@ -59,6 +59,7 @@ import docRhFiltres from "@/assets/doc-rh-filtres.png";
 import docRhConsolide from "@/assets/doc-rh-consolide.png";
 import docFicheTrajet from "@/assets/doc-fiche-trajet.png";
 import docCollecteSignaturesBtn from "@/assets/doc-collecte-signatures-btn.png";
+import docPreExportDetail from "@/assets/doc-pre-export-detail.png";
 
 // Types
 interface Section {
@@ -1010,6 +1011,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Avant l'export, vous devez qualifier toutes les absences et renseigner les trajets manquants.
                 </p>
+                <DocImage 
+                  src={docPreExportDetail} 
+                  alt="Détail jour par jour avec absences et trajets à qualifier" 
+                  caption="Vue détaillée avec colonnes Type d'absence et Trajet à compléter"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Identifier les absences non qualifiées">
                     <p>Un badge orange s'affiche <strong>à côté du nom de l'employé</strong> sur les fiches contenant des absences à qualifier.</p>
