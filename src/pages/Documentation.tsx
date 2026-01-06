@@ -55,6 +55,7 @@ import docDashboard from "@/assets/doc-dashboard.png";
 import docSelectionSemaineChantier from "@/assets/doc-selection-semaine-chantier.png";
 import docRatioGlobal from "@/assets/doc-ratio-global.png";
 import docGestionFinisseurs from "@/assets/doc-gestion-finisseurs.png";
+import docRhFiltres from "@/assets/doc-rh-filtres.png";
 
 // Types
 interface Section {
@@ -940,6 +941,7 @@ const Documentation = () => {
             {/* ============ GUIDE RH ============ */}
             <DocSection id="rh" title="Guide Service RH" icon={<FileSpreadsheet className="h-5 w-5" />}>
               <DocSubsection id="rh-filtres" title="Filtres et navigation">
+                <DocImage src={docRhFiltres} alt="Interface de filtrage RH" caption="Vue d'ensemble de la page Consultation RH avec les filtres" />
                 <div className="space-y-4">
                   <DocStep number={1} title="Configurer les filtres">
                     <p>Utilisez les filtres disponibles pour affiner votre recherche :</p>
