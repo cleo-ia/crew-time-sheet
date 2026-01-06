@@ -246,10 +246,12 @@ const DocImage = ({
   src,
   alt,
   caption,
+  fullWidth = false,
 }: {
   src: string;
   alt: string;
   caption?: string;
+  fullWidth?: boolean;
 }) => (
   <figure className="my-6">
     <Dialog>
@@ -258,7 +260,7 @@ const DocImage = ({
           <img
             src={src}
             alt={alt}
-            className="w-full h-auto object-contain max-h-80"
+            className={`w-full h-auto object-contain ${!fullWidth ? 'max-h-80' : ''}`}
             loading="lazy"
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
@@ -941,7 +943,7 @@ const Documentation = () => {
             {/* ============ GUIDE RH ============ */}
             <DocSection id="rh" title="Guide Service RH" icon={<FileSpreadsheet className="h-5 w-5" />}>
               <DocSubsection id="rh-filtres" title="Filtres et navigation">
-                <DocImage src={docRhFiltres} alt="Interface de filtrage RH" caption="Vue d'ensemble de la page Consultation RH avec les filtres" />
+                <DocImage src={docRhFiltres} alt="Interface de filtrage RH" caption="Vue d'ensemble de la page Consultation RH avec les filtres" fullWidth />
                 <div className="space-y-4">
                   <DocStep number={1} title="Configurer les filtres">
                     <p>Utilisez les filtres disponibles pour affiner votre recherche :</p>
