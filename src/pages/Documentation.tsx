@@ -260,7 +260,7 @@ const DocImage = ({
           <img
             src={src}
             alt={alt}
-            className={`w-full h-auto object-contain ${!fullWidth ? 'max-h-80' : ''}`}
+            className={`w-full h-auto object-contain ${fullWidth ? 'max-h-96' : 'max-h-80'}`}
             loading="lazy"
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
