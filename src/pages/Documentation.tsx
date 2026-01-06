@@ -690,6 +690,11 @@ const Documentation = () => {
                   Le tableau de saisie affiche une ligne par salarié et une colonne par jour (Lundi à Vendredi).
                 </p>
                 <DocImage 
+                  src={docSelectionSemaineChantier} 
+                  alt="Sélection semaine et chantier" 
+                  caption="Étape 1 : Sélectionnez la semaine et le chantier avant de saisir les heures"
+                />
+                <DocImage 
                   src={docSaisieHeures} 
                   alt="Tableau de saisie des heures" 
                   caption="Liste des salariés avec leurs heures totales"
