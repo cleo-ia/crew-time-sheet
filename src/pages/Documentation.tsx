@@ -61,6 +61,7 @@ import docFicheTrajet from "@/assets/doc-fiche-trajet.png";
 import docCollecteSignaturesBtn from "@/assets/doc-collecte-signatures-btn.png";
 import docPreExportDetail from "@/assets/doc-pre-export-detail.png";
 import docExportInterimaire from "@/assets/doc-export-interimaire.png";
+import docCloturePeriode from "@/assets/doc-cloture-periode.png";
 
 // Types
 interface Section {
@@ -1093,16 +1094,21 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="rh-cloture" title="Clôture de période">
+                <DocImage
+                  src={docCloturePeriode}
+                  alt="Interface de clôture de période"
+                  caption="Vue consolidée avec filtres et bouton de clôture"
+                />
                 <div className="space-y-4">
                   <DocStep number={1} title="Sélectionner la période">
-                    <p>Choisissez le mois à clôturer.</p>
+                    <p>Utilisez le filtre <strong>"Période"</strong> en haut à gauche pour choisir le mois à clôturer.</p>
                   </DocStep>
                   <DocStep number={2} title="Vérifier les données">
-                    <p>Assurez-vous que toutes les fiches sont validées et les absences qualifiées.</p>
+                    <p>Consultez le tableau <strong>"Consolidé par salarié"</strong> pour vous assurer que toutes les fiches sont validées et les absences qualifiées.</p>
                   </DocStep>
                   <DocStep number={3} title="Clôturer">
                     <p>
-                      Cliquez sur <strong>"Clôturer la période"</strong> et confirmez.
+                      Cliquez sur le bouton <strong>"Clôturer la période"</strong> en haut à droite de la page et confirmez.
                     </p>
                   </DocStep>
                 </div>
