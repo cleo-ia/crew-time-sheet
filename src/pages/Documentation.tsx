@@ -1279,7 +1279,24 @@ const Documentation = () => {
                       (Conducteurs, Chefs, RH, admin.) dans la page d'administration.
                     </p>
                   </DocStep>
-                  <DocStep number={3} title="Désactiver un utilisateur">
+                  <DocStep number={3} title="Ajouter un maçon, grutier ou finisseur">
+                    <p>
+                      Contrairement aux conducteurs, chefs et RH, les <strong>maçons, grutiers et finisseurs</strong> n'ont 
+                      pas besoin d'invitation car ils n'accèdent pas à l'application. 
+                      Pour les ajouter :
+                    </p>
+                    <ol className="list-decimal list-inside mt-2 space-y-1">
+                      <li>Accédez à la <strong>page d'administration</strong></li>
+                      <li>Sélectionnez l'onglet correspondant (<strong>"Maçons"</strong>, <strong>"Grutiers"</strong> ou <strong>"Finisseurs"</strong>)</li>
+                      <li>Cliquez sur <strong>"Ajouter"</strong></li>
+                      <li>Renseignez leurs informations (nom, prénom, matricule, informations contractuelles)</li>
+                    </ol>
+                    <p className="mt-2 text-muted-foreground text-sm">
+                      Ces profils servent uniquement au suivi des heures et à la génération des fiches de pointage. 
+                      Ils ne disposent d'aucun accès à l'application.
+                    </p>
+                  </DocStep>
+                  <DocStep number={4} title="Désactiver un utilisateur">
                     <p>
                       Les utilisateurs désactivés ne peuvent plus se connecter
                       mais leurs données sont conservées.
