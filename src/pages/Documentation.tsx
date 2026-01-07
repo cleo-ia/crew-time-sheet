@@ -1269,9 +1269,14 @@ const Documentation = () => {
                       <Badge>Chef</Badge>
                     </div>
                   </DocStep>
-                  <DocStep number={2} title="Modifier les rôles">
+                  <DocStep number={2} title="Compléter les informations">
                     <p>
-                      Cliquez sur un utilisateur pour modifier son rôle ou ses informations.
+                      Une fois que l'utilisateur invité s'est connecté pour la première fois, 
+                      il est nécessaire de renseigner ses informations contractuelles 
+                      (type de contrat, heures hebdomadaires, coefficient, etc.). 
+                      Ces informations peuvent être complétées depuis l'onglet <strong>"Utilisateurs"</strong> ou 
+                      directement depuis l'onglet correspondant à son rôle 
+                      (Conducteurs, Chefs, RH, admin.) dans la page d'administration.
                     </p>
                   </DocStep>
                   <DocStep number={3} title="Désactiver un utilisateur">
