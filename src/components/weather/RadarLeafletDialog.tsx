@@ -289,7 +289,7 @@ export function RadarLeafletDialog({
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-blue-400" />
-              <span>Bruine</span>
+              <span>Neige</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-green-400" />
@@ -322,12 +322,12 @@ export function RadarLeafletDialog({
                     <p className="font-medium">Intensité des précipitations</p>
                     <p className="text-muted-foreground">Les couleurs indiquent l'intensité en mm/heure :</p>
                     <ul className="space-y-0.5">
-                      <li><span className="text-blue-400 font-medium">Bleu</span> : Bruine / très faible</li>
+                      <li><span className="text-blue-400 font-medium">Bleu</span> : Neige</li>
                       <li><span className="text-green-400 font-medium">Vert</span> : Faible (&lt; 2.5 mm/h)</li>
                       <li><span className="text-yellow-400 font-medium">Jaune</span> : Modéré (2.5-7.5 mm/h)</li>
                       <li><span className="text-orange-500 font-medium">Orange</span> : Fort (7.5-20 mm/h)</li>
                       <li><span className="text-red-500 font-medium">Rouge</span> : Intense (&gt; 20 mm/h)</li>
-                      <li><span className="text-purple-500 font-medium">Violet</span> : Extrême / Neige</li>
+                      <li><span className="text-purple-500 font-medium">Violet</span> : Extrême</li>
                     </ul>
                   </div>
                 </TooltipContent>
