@@ -588,30 +588,43 @@ const Documentation = () => {
   // Scroll spy
   useEffect(() => {
     const handleScroll = () => {
+      // Si on est tout en haut de la page, forcer "introduction"
+      if (window.scrollY < 50) {
+        setActiveSection("introduction");
+        return;
+      }
+
       const scrollPosition = window.scrollY + 100;
+      let foundSection: string | null = null;
 
-      for (const section of sections) {
-        const element = document.getElementById(section.id);
-        if (element) {
-          const { offsetTop, offsetHeight } = element;
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setActiveSection(section.id);
-            break;
-          }
-        }
-
+      outer: for (const section of sections) {
+        // Vérifier les subsections d'abord (plus précis)
         if (section.subsections) {
           for (const sub of section.subsections) {
             const subElement = document.getElementById(sub.id);
             if (subElement) {
               const { offsetTop, offsetHeight } = subElement;
               if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-                setActiveSection(sub.id);
-                break;
+                foundSection = sub.id;
+                break outer;
               }
             }
           }
         }
+
+        // Puis la section principale
+        const element = document.getElementById(section.id);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            foundSection = section.id;
+            break outer;
+          }
+        }
+      }
+
+      if (foundSection) {
+        setActiveSection(foundSection);
       }
     };
 
