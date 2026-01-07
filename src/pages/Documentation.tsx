@@ -1296,12 +1296,6 @@ const Documentation = () => {
                       Ils ne disposent d'aucun accès à l'application.
                     </p>
                   </DocStep>
-                  <DocStep number={4} title="Désactiver un utilisateur">
-                    <p>
-                      Les utilisateurs désactivés ne peuvent plus se connecter
-                      mais leurs données sont conservées.
-                    </p>
-                  </DocStep>
                 </div>
               </DocSubsection>
 
