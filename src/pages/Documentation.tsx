@@ -1255,7 +1255,7 @@ const Documentation = () => {
                 <div className="space-y-4">
                   <DocStep number={1} title="Inviter un utilisateur">
                     <p>
-                      Cliquez sur <strong>"Inviter"</strong>, renseignez l'email et sélectionnez le rôle :
+                      Cliquez sur le bouton <strong>"Inviter un utilisateur"</strong> situé en haut à droite de la page, renseignez l'email et sélectionnez le rôle :
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <Badge>Admin</Badge>
