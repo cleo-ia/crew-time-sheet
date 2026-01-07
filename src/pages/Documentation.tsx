@@ -799,7 +799,7 @@ const Documentation = () => {
                 <div className="space-y-5">
                   <DocStep number={1} title="Réception de l'invitation">
                     <p>
-                      Vous recevez un email <strong>envoyé par Supabase</strong> (l'expéditeur sera <strong>noreply@mail.app.supabase.io</strong>) contenant un lien d'activation.
+                      Vous recevez un email <strong>envoyé par Supabase</strong> contenant un lien d'activation.
                       Cet email est envoyé à l'adresse professionnelle renseignée par l'administrateur.
                     </p>
                   </DocStep>
