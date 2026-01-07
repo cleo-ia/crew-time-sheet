@@ -1327,7 +1327,7 @@ const Documentation = () => {
                 <p className="text-muted-foreground mb-4">
                   Les onglets de référentiels permettent de gérer les données de base.
                 </p>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <Card>
                     <CardContent className="p-4">
                       <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -1341,6 +1341,20 @@ const Documentation = () => {
                         <li>• Grutiers</li>
                         <li>• Finisseurs</li>
                         <li>• Intérimaires</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Chantiers
+                      </h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Code et nom du chantier</li>
+                        <li>• Client et adresse</li>
+                        <li>• Chef de chantier assigné</li>
+                        <li>• Conducteur responsable</li>
                       </ul>
                     </CardContent>
                   </Card>
