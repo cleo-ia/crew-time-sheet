@@ -886,13 +886,14 @@ const Documentation = () => {
               <DocSubsection id="premiere-ios" title="Installer sur iPhone (iOS)">
                 <p className="text-muted-foreground mb-5">
                   DIVA RH peut être installée comme une vraie application sur votre iPhone ou iPad.
-                  L'installation se fait uniquement via <strong>Safari</strong>.
+                  L'installation peut se faire via <strong>Safari</strong> ou <strong>Google Chrome</strong>.
                 </p>
-                <DocNote type="warning">
-                  <strong>Safari est obligatoire</strong> pour installer l'application sur iOS.
-                  L'option n'apparaît pas dans Chrome ou Firefox.
+                <DocNote type="info">
+                  <strong>Safari ou Chrome</strong> permettent l'installation. Firefox ne supporte pas cette fonctionnalité sur iOS.
                 </DocNote>
-                <div className="space-y-5 mt-6">
+                
+                <h4 className="font-semibold mt-6 mb-3">Via Safari</h4>
+                <div className="space-y-5">
                   <DocStep number={1} title="Ouvrir Safari">
                     <p>
                       Ouvrez <strong>Safari</strong> et accédez à l'application DIVA RH à l'adresse habituelle.
@@ -907,15 +908,33 @@ const Documentation = () => {
                   <DocStep number={3} title="Sélectionner 'Sur l'écran d'accueil'">
                     <p>
                       Faites défiler les options et appuyez sur <strong>"Sur l'écran d'accueil"</strong>.
-                      Cette option peut être plus bas dans la liste, faites défiler si nécessaire.
                     </p>
                   </DocStep>
-                  <DocStep number={4} title="Confirmer l'installation">
+                </div>
+                
+                <h4 className="font-semibold mt-6 mb-3">Via Google Chrome</h4>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Ouvrir Chrome">
                     <p>
-                      Donnez un nom à l'application (par défaut "DIVA RH") et appuyez sur <strong>"Ajouter"</strong>.
-                      L'icône apparaît sur votre écran d'accueil.
+                      Ouvrez <strong>Chrome</strong> et accédez à l'application DIVA RH.
                     </p>
                   </DocStep>
+                  <DocStep number={2} title="Ouvrir le menu">
+                    <p>
+                      Appuyez sur les <strong>trois points</strong> en bas à droite de l'écran.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Ajouter à l'écran d'accueil">
+                    <p>
+                      Sélectionnez <strong>"Ajouter à l'écran d'accueil"</strong> ou <strong>"Installer l'application"</strong>.
+                    </p>
+                  </DocStep>
+                </div>
+                
+                <div className="mt-4">
+                  <DocNote type="info">
+                    Dans les deux cas, donnez un nom à l'application et confirmez. L'icône apparaît sur votre écran d'accueil.
+                  </DocNote>
                 </div>
                 <DocNote type="success">
                   Une fois installée, l'application s'ouvre en plein écran comme une vraie app,
