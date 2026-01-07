@@ -89,6 +89,18 @@ const sections: Section[] = [
     ],
   },
   {
+    id: "premiere-connexion",
+    title: "Première connexion",
+    icon: <UserPlus className="h-4 w-4" />,
+    color: "primary",
+    subsections: [
+      { id: "premiere-activer", title: "Activer son compte" },
+      { id: "premiere-se-connecter", title: "Se connecter" },
+      { id: "premiere-ios", title: "Installer sur iPhone" },
+      { id: "premiere-android", title: "Installer sur Android" },
+    ],
+  },
+  {
     id: "commun",
     title: "Fonctionnalités communes",
     icon: <Users className="h-4 w-4" />,
@@ -768,6 +780,210 @@ const Documentation = () => {
                     </CardContent>
                   </Card>
                 </div>
+              </DocSubsection>
+            </DocSection>
+
+            <GradientSeparator />
+
+            {/* ============ PREMIÈRE CONNEXION ============ */}
+            <DocSection 
+              id="premiere-connexion" 
+              title="Première connexion" 
+              icon={<UserPlus className="h-5 w-5" />}
+              isVisible={visibleSections.has("premiere-connexion")}
+            >
+              <DocSubsection id="premiere-activer" title="Activer son compte">
+                <p className="text-muted-foreground mb-5">
+                  Pour utiliser DIVA RH, vous devez d'abord être invité par un administrateur de votre entreprise.
+                </p>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Réception de l'invitation">
+                    <p>
+                      Vous recevez un email de la part de DIVA RH contenant un lien d'activation.
+                      Cet email est envoyé à l'adresse professionnelle renseignée par l'administrateur.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Cliquer sur le lien">
+                    <p>
+                      Cliquez sur le bouton <strong>"Activer mon compte"</strong> dans l'email.
+                      Vous êtes redirigé vers la page de création de mot de passe.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Définir votre mot de passe">
+                    <p>
+                      Choisissez un mot de passe sécurisé d'au moins <strong>6 caractères</strong>.
+                      Confirmez-le en le saisissant une seconde fois.
+                    </p>
+                  </DocStep>
+                  <DocStep number={4} title="Compte activé">
+                    <p>
+                      Une fois le mot de passe validé, votre compte est actif.
+                      Vous pouvez maintenant vous connecter à l'application.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="info">
+                  Votre adresse email devient votre identifiant de connexion.
+                  Conservez-la précieusement.
+                </DocNote>
+                <DocNote type="warning">
+                  Le lien d'activation expire après <strong>7 jours</strong>.
+                  Si le lien a expiré, contactez votre administrateur pour recevoir une nouvelle invitation.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="premiere-se-connecter" title="Se connecter">
+                <p className="text-muted-foreground mb-5">
+                  Une fois votre compte activé, vous pouvez accéder à l'application depuis n'importe quel appareil.
+                </p>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Sélectionner votre entreprise">
+                    <p>
+                      Sur la page de connexion, un carrousel affiche les entreprises disponibles.
+                      <strong> Faites glisser</strong> pour sélectionner votre entreprise (logo et nom).
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Saisir vos identifiants">
+                    <p>
+                      Entrez votre <strong>email professionnel</strong> et votre <strong>mot de passe</strong>.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Se connecter">
+                    <p>
+                      Cliquez sur <strong>"Connexion"</strong>. Vous êtes redirigé vers votre espace
+                      selon votre rôle (Chef, Conducteur, RH, Admin).
+                    </p>
+                  </DocStep>
+                </div>
+                <Card className="doc-card-hover mt-6">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      Options de connexion alternatives
+                    </h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-foreground">Lien magique</strong> : Recevez un lien de connexion par email sans avoir à saisir de mot de passe.
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-foreground">Mot de passe oublié</strong> : Cliquez sur "Mot de passe oublié" pour recevoir un email de réinitialisation.
+                        </div>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <DocNote type="warning">
+                  Assurez-vous de sélectionner la bonne entreprise avant de vous connecter.
+                  Un même email peut avoir des comptes sur différentes entreprises.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="premiere-ios" title="Installer sur iPhone (iOS)">
+                <p className="text-muted-foreground mb-5">
+                  DIVA RH peut être installée comme une vraie application sur votre iPhone ou iPad.
+                  L'installation se fait uniquement via <strong>Safari</strong>.
+                </p>
+                <DocNote type="warning">
+                  <strong>Safari est obligatoire</strong> pour installer l'application sur iOS.
+                  L'option n'apparaît pas dans Chrome ou Firefox.
+                </DocNote>
+                <div className="space-y-5 mt-6">
+                  <DocStep number={1} title="Ouvrir Safari">
+                    <p>
+                      Ouvrez <strong>Safari</strong> et accédez à l'application DIVA RH à l'adresse habituelle.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Appuyer sur 'Partager'">
+                    <p>
+                      Appuyez sur l'icône <strong>Partager</strong> en bas de l'écran
+                      (carré avec une flèche vers le haut).
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Sélectionner 'Sur l'écran d'accueil'">
+                    <p>
+                      Faites défiler les options et appuyez sur <strong>"Sur l'écran d'accueil"</strong>.
+                      Cette option peut être plus bas dans la liste, faites défiler si nécessaire.
+                    </p>
+                  </DocStep>
+                  <DocStep number={4} title="Confirmer l'installation">
+                    <p>
+                      Donnez un nom à l'application (par défaut "DIVA RH") et appuyez sur <strong>"Ajouter"</strong>.
+                      L'icône apparaît sur votre écran d'accueil.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="success">
+                  Une fois installée, l'application s'ouvre en plein écran comme une vraie app,
+                  sans la barre d'adresse Safari. Elle fonctionne même hors connexion.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="premiere-android" title="Installer sur Android">
+                <p className="text-muted-foreground mb-5">
+                  Sur Android, l'installation est encore plus simple. Chrome propose automatiquement
+                  l'installation, ou vous pouvez la déclencher manuellement.
+                </p>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Ouvrir Chrome">
+                    <p>
+                      Ouvrez <strong>Chrome</strong> et accédez à l'application DIVA RH.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Méthode automatique (recommandée)">
+                    <p>
+                      Une bannière <strong>"Installer l'application"</strong> peut apparaître en bas de l'écran.
+                      Si c'est le cas, appuyez simplement sur <strong>"Installer"</strong>.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Méthode manuelle">
+                    <p>
+                      Si la bannière n'apparaît pas, appuyez sur les <strong>3 points verticaux</strong> (menu)
+                      en haut à droite de Chrome, puis sélectionnez <strong>"Installer l'application"</strong>
+                      ou <strong>"Ajouter à l'écran d'accueil"</strong>.
+                    </p>
+                  </DocStep>
+                  <DocStep number={4} title="Confirmer">
+                    <p>
+                      Appuyez sur <strong>"Installer"</strong> dans la popup de confirmation.
+                      L'application s'installe et son icône apparaît sur l'écran d'accueil.
+                    </p>
+                  </DocStep>
+                </div>
+                <Card className="doc-card-hover mt-6">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-primary" />
+                      Avantages de l'installation
+                    </h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        Accès instantané depuis l'écran d'accueil
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        Mode plein écran (sans barre d'adresse)
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        Fonctionne hors connexion (cache local)
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        Pas besoin de passer par l'App Store ou Play Store
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <DocNote type="info">
+                  Vous pouvez continuer à utiliser DIVA RH directement dans votre navigateur
+                  si vous préférez ne pas installer l'application.
+                </DocNote>
               </DocSubsection>
             </DocSection>
 
