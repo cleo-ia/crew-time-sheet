@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import {
   BookOpen,
   Users,
@@ -42,6 +41,9 @@ import {
   BarChart3,
   Image,
   Camera,
+  Sparkles,
+  ChevronUp,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,15 +71,17 @@ interface Section {
   id: string;
   title: string;
   icon: React.ReactNode;
+  color?: string;
   subsections?: { id: string; title: string }[];
 }
 
-// Sections de navigation
+// Sections de navigation avec couleurs thématiques
 const sections: Section[] = [
   {
     id: "introduction",
     title: "Introduction",
     icon: <BookOpen className="h-4 w-4" />,
+    color: "primary",
     subsections: [
       { id: "presentation", title: "Présentation" },
       { id: "flux-travail", title: "Flux de travail" },
@@ -88,6 +92,7 @@ const sections: Section[] = [
     id: "commun",
     title: "Fonctionnalités communes",
     icon: <Users className="h-4 w-4" />,
+    color: "primary",
     subsections: [
       { id: "commun-messagerie", title: "Messagerie interne" },
       { id: "commun-meteo", title: "Météo du chantier" },
@@ -99,6 +104,7 @@ const sections: Section[] = [
     id: "chef",
     title: "Guide Chef de chantier",
     icon: <HardHat className="h-4 w-4" />,
+    color: "chef",
     subsections: [
       { id: "chef-connexion", title: "Connexion et sélection" },
       { id: "chef-equipe", title: "Gestion de l'équipe" },
@@ -113,6 +119,7 @@ const sections: Section[] = [
     id: "conducteur",
     title: "Guide Conducteur",
     icon: <FileCheck className="h-4 w-4" />,
+    color: "conducteur",
     subsections: [
       { id: "conducteur-finisseurs", title: "Gestion des finisseurs" },
       { id: "conducteur-validation", title: "Validation des fiches" },
@@ -123,6 +130,7 @@ const sections: Section[] = [
     id: "rh",
     title: "Guide Service RH",
     icon: <FileSpreadsheet className="h-4 w-4" />,
+    color: "rh",
     subsections: [
       { id: "rh-filtres", title: "Filtres et navigation" },
       { id: "rh-consolide", title: "Vue consolidée" },
@@ -136,6 +144,7 @@ const sections: Section[] = [
     id: "admin",
     title: "Guide Administrateur",
     icon: <Settings className="h-4 w-4" />,
+    color: "admin",
     subsections: [
       { id: "admin-dashboard", title: "Dashboard" },
       { id: "admin-utilisateurs", title: "Gestion des utilisateurs" },
@@ -146,24 +155,62 @@ const sections: Section[] = [
   },
 ];
 
-// Composants de documentation
+// Hook pour les animations au scroll
+const useScrollAnimation = () => {
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleSections((prev) => new Set([...prev, entry.target.id]));
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
+    );
+
+    const sections = document.querySelectorAll("[data-animate]");
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
+
+  return visibleSections;
+};
+
+// Composants de documentation améliorés
 const DocSection = ({
   id,
   title,
   icon,
   children,
+  isVisible,
 }: {
   id: string;
   title: string;
   icon?: React.ReactNode;
   children: React.ReactNode;
+  isVisible?: boolean;
 }) => (
-  <section id={id} className="scroll-mt-20 mb-12">
-    <div className="flex items-center gap-3 mb-6">
-      {icon && <div className="p-2 rounded-lg bg-primary/10 text-primary">{icon}</div>}
-      <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+  <section
+    id={id}
+    data-animate
+    className={cn(
+      "scroll-mt-20 mb-16 opacity-0",
+      isVisible && "animate-fade-in-up opacity-100"
+    )}
+  >
+    <div className="flex items-center gap-4 mb-8">
+      {icon && (
+        <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-sm">
+          {icon}
+        </div>
+      )}
+      <h2 className="text-2xl md:text-3xl font-bold text-foreground">{title}</h2>
     </div>
-    <div className="space-y-6">{children}</div>
+    <div className="space-y-8">{children}</div>
   </section>
 );
 
@@ -176,12 +223,14 @@ const DocSubsection = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <div id={id} className="scroll-mt-20 mb-8">
-    <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-      <ChevronRight className="h-5 w-5 text-primary" />
+  <div id={id} className="scroll-mt-20 mb-10">
+    <h3 className="text-xl font-semibold text-foreground mb-5 flex items-center gap-3">
+      <div className="w-1.5 h-6 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
       {title}
     </h3>
-    <div className="pl-4 border-l-2 border-primary/20 space-y-4">{children}</div>
+    <div className="pl-5 border-l-2 border-primary/20 space-y-5 hover:border-primary/40 transition-colors duration-300">
+      {children}
+    </div>
   </div>
 );
 
@@ -194,11 +243,11 @@ const DocStep = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <div className="flex gap-4">
-    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+  <div className="flex gap-4 group">
+    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground flex items-center justify-center font-bold text-sm shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
       {number}
     </div>
-    <div className="flex-1">
+    <div className="flex-1 pt-1">
       <h4 className="font-medium text-foreground mb-2">{title}</h4>
       <div className="text-muted-foreground">{children}</div>
     </div>
@@ -214,20 +263,17 @@ const DocNote = ({
 }) => {
   const styles = {
     info: {
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/30",
+      className: "doc-note-info",
       icon: <Lightbulb className="h-5 w-5 text-blue-500" />,
       title: "Conseil",
     },
     warning: {
-      bg: "bg-amber-500/10",
-      border: "border-amber-500/30",
+      className: "doc-note-warning",
       icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
       title: "Attention",
     },
     success: {
-      bg: "bg-green-500/10",
-      border: "border-green-500/30",
+      className: "doc-note-success",
       icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
       title: "Bonne pratique",
     },
@@ -236,12 +282,14 @@ const DocNote = ({
   const style = styles[type];
 
   return (
-    <div className={cn("p-4 rounded-lg border", style.bg, style.border)}>
-      <div className="flex items-start gap-3">
-        {style.icon}
+    <div className={cn("p-5 rounded-xl border-0 shadow-sm", style.className)}>
+      <div className="flex items-start gap-4">
+        <div className="p-2 rounded-lg bg-white/50 dark:bg-black/20">
+          {style.icon}
+        </div>
         <div>
-          <p className="font-medium text-foreground mb-1">{style.title}</p>
-          <div className="text-sm text-muted-foreground">{children}</div>
+          <p className="font-semibold text-foreground mb-1">{style.title}</p>
+          <div className="text-sm text-muted-foreground leading-relaxed">{children}</div>
         </div>
       </div>
     </div>
@@ -260,18 +308,19 @@ const DocImage = ({
   caption?: string;
   fullWidth?: boolean;
 }) => (
-  <figure className="my-6">
+  <figure className="my-8 group">
     <Dialog>
       <DialogTrigger asChild>
-        <div className="relative overflow-hidden rounded-lg border border-border bg-muted/30 cursor-zoom-in hover:border-primary/50 transition-colors group">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-muted/30 cursor-zoom-in doc-image-zoom shadow-md hover:shadow-xl">
           <img
             src={src}
             alt={alt}
-            className={`w-full h-auto object-contain ${fullWidth ? 'max-h-96' : 'max-h-80'}`}
+            className={`w-full h-auto object-contain ${fullWidth ? 'max-h-[500px]' : 'max-h-96'}`}
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+            <div className="bg-background/95 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium shadow-lg flex items-center gap-2">
+              <Search className="h-4 w-4" />
               Cliquer pour agrandir
             </div>
           </div>
@@ -286,7 +335,7 @@ const DocImage = ({
       </DialogContent>
     </Dialog>
     {caption && (
-      <figcaption className="mt-2 text-center text-sm text-muted-foreground italic">
+      <figcaption className="mt-3 text-center text-sm text-muted-foreground italic">
         {caption}
       </figcaption>
     )}
@@ -299,9 +348,11 @@ const DocScreenshotPlaceholder = ({
 }: {
   description: string;
 }) => (
-  <div className="my-6 p-6 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-    <div className="flex items-center gap-3 text-primary">
-      <Camera className="h-6 w-6" />
+  <div className="my-8 p-8 border-2 border-dashed border-primary/30 rounded-xl bg-gradient-to-br from-primary/5 to-transparent">
+    <div className="flex items-center gap-4 text-primary">
+      <div className="p-3 rounded-xl bg-primary/10">
+        <Camera className="h-6 w-6" />
+      </div>
       <div>
         <p className="font-medium">Capture d'écran à ajouter</p>
         <p className="text-sm text-muted-foreground">{description}</p>
@@ -310,41 +361,69 @@ const DocScreenshotPlaceholder = ({
   </div>
 );
 
+// FlowDiagram amélioré avec couleurs thématiques
 const FlowDiagram = () => (
-  <div className="flex flex-wrap items-center justify-center gap-2 p-6 bg-muted/50 rounded-lg">
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <HardHat className="h-4 w-4 mr-2" />
-      Chef de chantier
-    </Badge>
-    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <PenTool className="h-4 w-4 mr-2" />
-      Saisie & Signatures
-    </Badge>
-    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <FileCheck className="h-4 w-4 mr-2" />
-      Conducteur
-    </Badge>
-    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <CheckCircle2 className="h-4 w-4 mr-2" />
-      Validation
-    </Badge>
-    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <FileSpreadsheet className="h-4 w-4 mr-2" />
-      Service RH
-    </Badge>
-    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-    <Badge variant="outline" className="py-2 px-4 text-sm">
-      <Download className="h-4 w-4 mr-2" />
-      Export Paie
-    </Badge>
+  <div className="doc-flow-gradient p-8 rounded-2xl shadow-inner border border-border/50">
+    <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-chef shadow-sm hover:shadow-md transition-shadow"
+      >
+        <HardHat className="h-4 w-4 mr-2" />
+        Chef de chantier
+      </Badge>
+      <ArrowRight className="h-5 w-5 text-primary/60 animate-flow-arrow hidden sm:block" />
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-chef shadow-sm hover:shadow-md transition-shadow"
+      >
+        <PenTool className="h-4 w-4 mr-2" />
+        Saisie & Signatures
+      </Badge>
+      <ArrowRight className="h-5 w-5 text-primary/60 animate-flow-arrow hidden sm:block" />
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-conducteur shadow-sm hover:shadow-md transition-shadow"
+      >
+        <FileCheck className="h-4 w-4 mr-2" />
+        Conducteur
+      </Badge>
+      <ArrowRight className="h-5 w-5 text-primary/60 animate-flow-arrow hidden sm:block" />
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-conducteur shadow-sm hover:shadow-md transition-shadow"
+      >
+        <CheckCircle2 className="h-4 w-4 mr-2" />
+        Validation
+      </Badge>
+      <ArrowRight className="h-5 w-5 text-primary/60 animate-flow-arrow hidden sm:block" />
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-rh shadow-sm hover:shadow-md transition-shadow"
+      >
+        <FileSpreadsheet className="h-4 w-4 mr-2" />
+        Service RH
+      </Badge>
+      <ArrowRight className="h-5 w-5 text-primary/60 animate-flow-arrow hidden sm:block" />
+      <Badge 
+        variant="outline" 
+        className="py-3 px-5 text-sm font-medium doc-badge-rh shadow-sm hover:shadow-md transition-shadow"
+      >
+        <Download className="h-4 w-4 mr-2" />
+        Export Paie
+      </Badge>
+    </div>
   </div>
 );
 
-// Sidebar de navigation
+// Gradient separator
+const GradientSeparator = () => (
+  <div className="my-16 flex items-center justify-center">
+    <div className="doc-separator-gradient w-full max-w-md rounded-full" />
+  </div>
+);
+
+// Sidebar de navigation améliorée
 const DocSidebar = ({
   activeSection,
   onSectionClick,
@@ -369,7 +448,7 @@ const DocSidebar = ({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-72 bg-card border-r border-border transform transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:transform-none lg:z-auto",
+          "fixed top-0 left-0 z-50 h-full w-72 bg-card border-r border-border shadow-xl transform transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:transform-none lg:z-auto lg:shadow-lg",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -380,28 +459,47 @@ const DocSidebar = ({
           </Button>
         </div>
 
-        <ScrollArea className="h-[calc(100vh-4rem)] lg:h-[calc(100vh-8rem)]">
+        {/* Logo/Titre sidebar desktop */}
+        <div className="hidden lg:flex items-center gap-3 p-5 border-b border-border bg-muted/30">
+          <div className="p-2 rounded-lg bg-primary/10 doc-icon-glow">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <span className="font-semibold text-foreground">Documentation</span>
+        </div>
+
+        <ScrollArea className="h-[calc(100vh-4rem)] lg:h-[calc(100vh-5rem)]">
           <nav className="p-4 space-y-2">
-            {sections.map((section) => (
-              <div key={section.id}>
+            {sections.map((section, index) => (
+              <div 
+                key={section.id}
+                className="animate-slide-in-left opacity-0"
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'forwards' }}
+              >
                 <button
                   onClick={() => {
                     onSectionClick(section.id);
                     onMobileClose();
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
-                    activeSection === section.id
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200",
+                    activeSection === section.id || section.subsections?.some(s => s.id === activeSection)
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "hover:bg-muted hover:shadow-sm"
                   )}
                 >
-                  {section.icon}
+                  <div className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    activeSection === section.id || section.subsections?.some(s => s.id === activeSection)
+                      ? "bg-white/20"
+                      : "bg-primary/10"
+                  )}>
+                    {section.icon}
+                  </div>
                   <span className="font-medium text-sm">{section.title}</span>
                 </button>
 
                 {section.subsections && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-4 mt-2 space-y-1 border-l-2 border-primary/20 pl-4">
                     {section.subsections.map((sub) => (
                       <button
                         key={sub.id}
@@ -410,10 +508,10 @@ const DocSidebar = ({
                           onMobileClose();
                         }}
                         className={cn(
-                          "w-full text-left px-3 py-1.5 text-sm rounded transition-colors",
+                          "w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 relative",
                           activeSection === sub.id
-                            ? "text-primary font-medium"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "text-primary font-medium bg-primary/10 doc-sidebar-active"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         )}
                       >
                         {sub.title}
@@ -430,10 +528,42 @@ const DocSidebar = ({
   );
 };
 
+// Bouton retour en haut
+const ScrollToTopButton = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const toggleVisibility = () => {
+      setIsVisible(window.scrollY > 500);
+    };
+
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <Button
+      onClick={scrollToTop}
+      size="icon"
+      className={cn(
+        "fixed bottom-6 right-6 z-50 rounded-full shadow-lg transition-all duration-300",
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"
+      )}
+    >
+      <ChevronUp className="h-5 w-5" />
+    </Button>
+  );
+};
+
 // Page principale
 const Documentation = () => {
   const [activeSection, setActiveSection] = useState("introduction");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const visibleSections = useScrollAnimation();
 
   const scrollToSection = (id: string) => {
     setActiveSection(id);
@@ -503,15 +633,23 @@ const Documentation = () => {
           </div>
 
           <div className="max-w-4xl mx-auto p-6 lg:p-8">
-            {/* Header */}
-            <div className="mb-12">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <BookOpen className="h-8 w-8 text-primary" />
+            {/* Hero Header amélioré */}
+            <div className="doc-hero-gradient -mx-6 lg:-mx-8 px-6 lg:px-8 pt-8 pb-12 mb-12 rounded-b-3xl">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-6 animate-fade-in-up">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-xl doc-icon-glow">
+                  <BookOpen className="h-10 w-10" />
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">Documentation DIVA RH</h1>
-                  <p className="text-muted-foreground">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl md:text-4xl font-bold doc-gradient-text">
+                      Documentation DIVA RH
+                    </h1>
+                    <Badge variant="secondary" className="hidden sm:flex gap-1 items-center">
+                      <Sparkles className="h-3 w-3" />
+                      v1.0
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground text-lg">
                     Guide complet pour la gestion des heures et fiches de chantier
                   </p>
                 </div>
@@ -519,35 +657,43 @@ const Documentation = () => {
             </div>
 
             {/* ============ INTRODUCTION ============ */}
-            <DocSection id="introduction" title="Introduction" icon={<BookOpen className="h-5 w-5" />}>
+            <DocSection 
+              id="introduction" 
+              title="Introduction" 
+              icon={<BookOpen className="h-5 w-5" />}
+              isVisible={visibleSections.has("introduction")}
+            >
               <DocSubsection id="presentation" title="Présentation de DIVA RH">
                 <p className="text-muted-foreground leading-relaxed">
                   <strong className="text-foreground">DIVA RH</strong> est une application de gestion des heures et des fiches de chantier
                   conçue pour le secteur du BTP. Elle permet de suivre le temps de travail des équipes,
                   de collecter les signatures, et de transmettre les données au service RH pour l'export paie.
                 </p>
-                <Card className="mt-4">
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Fonctionnalités principales :</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <Card className="mt-6 doc-card-hover doc-card-accent overflow-hidden">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Fonctionnalités principales
+                    </h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                         Saisie des heures par les chefs de chantier
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                         Collecte des signatures numériques
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                         Validation par les conducteurs de travaux
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                         Export Excel pour la paie
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <li className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                         Gestion des intérimaires
                       </li>
                     </ul>
@@ -556,14 +702,14 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="flux-travail" title="Flux de travail global">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-6">
                   Le processus suit un flux linéaire du terrain vers le service RH :
                 </p>
                 <FlowDiagram />
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-primary" />
                         Rythme hebdomadaire
                       </h4>
@@ -573,9 +719,9 @@ const Documentation = () => {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Send className="h-4 w-4 text-primary" />
                         Export mensuel
                       </h4>
@@ -590,34 +736,34 @@ const Documentation = () => {
 
               <DocSubsection id="concepts-cles" title="Concepts clés">
                 <div className="grid gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2">Semaine</h4>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2">Semaine</h4>
                       <p className="text-sm text-muted-foreground">
-                        Identifiée par son numéro (ex: S01, S02...). Format : <code className="bg-muted px-1 rounded">YYYY-WXX</code>.
+                        Identifiée par son numéro (ex: S01, S02...). Format : <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">YYYY-WXX</code>.
                         La semaine courante et la suivante sont accessibles pour la saisie.
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2">Fiche</h4>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2">Fiche</h4>
                       <p className="text-sm text-muted-foreground">
                         Document hebdomadaire regroupant les heures d'un salarié sur un chantier.
                         Contient : heures normales, absences, paniers, trajets.
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2">Statuts de fiche</h4>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="secondary">BROUILLON</Badge>
-                        <Badge variant="secondary">EN_SIGNATURE</Badge>
-                        <Badge variant="secondary">VALIDE_CHEF</Badge>
-                        <Badge variant="secondary">VALIDE_CONDUCTEUR</Badge>
-                        <Badge variant="secondary">ENVOYE_RH</Badge>
-                        <Badge variant="secondary">CLOTURE</Badge>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2">Statuts de fiche</h4>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <Badge variant="secondary" className="font-mono text-xs">BROUILLON</Badge>
+                        <Badge variant="secondary" className="font-mono text-xs">EN_SIGNATURE</Badge>
+                        <Badge variant="secondary" className="font-mono text-xs">VALIDE_CHEF</Badge>
+                        <Badge variant="secondary" className="font-mono text-xs">VALIDE_CONDUCTEUR</Badge>
+                        <Badge variant="secondary" className="font-mono text-xs">ENVOYE_RH</Badge>
+                        <Badge variant="secondary" className="font-mono text-xs">CLOTURE</Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -625,12 +771,17 @@ const Documentation = () => {
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
+            <GradientSeparator />
 
             {/* ============ FONCTIONNALITÉS COMMUNES ============ */}
-            <DocSection id="commun" title="Fonctionnalités communes" icon={<Users className="h-5 w-5" />}>
+            <DocSection 
+              id="commun" 
+              title="Fonctionnalités communes" 
+              icon={<Users className="h-5 w-5" />}
+              isVisible={visibleSections.has("commun")}
+            >
               <DocSubsection id="commun-messagerie" title="Messagerie interne">
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Accéder à la messagerie">
                     <p>
                       Cliquez sur l'icône de conversation dans le header.
@@ -650,23 +801,23 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="commun-meteo" title="Météo du chantier">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Si le chantier a une ville renseignée, un bouton météo apparaît dans le header.
                 </p>
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Fonctionnalités météo :</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
+                <Card className="doc-card-hover">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-3">Fonctionnalités météo :</h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-3">
+                        <CloudSun className="h-5 w-5 text-primary" />
                         Prévisions à 7 jours
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <CloudSun className="h-5 w-5 text-primary" />
                         Radar pluie interactif
                       </li>
-                      <li className="flex items-center gap-2">
-                        <CloudSun className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <CloudSun className="h-5 w-5 text-primary" />
                         Alertes météo
                       </li>
                     </ul>
@@ -676,17 +827,17 @@ const Documentation = () => {
 
               <DocSubsection id="commun-theme" title="Mode sombre">
                 <p className="text-muted-foreground">
-                  Cliquez sur l'icône <Moon className="h-4 w-4 inline" /> dans la barre de navigation
+                  Cliquez sur l'icône <Moon className="h-4 w-4 inline mx-1" /> dans la barre de navigation
                   pour basculer entre le mode clair et le mode sombre.
                   Votre préférence est sauvegardée.
                 </p>
               </DocSubsection>
 
               <DocSubsection id="commun-pwa" title="Application mobile (PWA)">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   DIVA RH peut être installée sur votre téléphone ou tablette comme une application native.
                 </p>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Installer l'application">
                     <p>
                       Une bannière s'affiche automatiquement proposant l'installation.
@@ -707,12 +858,17 @@ const Documentation = () => {
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
+            <GradientSeparator />
 
             {/* ============ GUIDE CHEF ============ */}
-            <DocSection id="chef" title="Guide Chef de chantier" icon={<HardHat className="h-5 w-5" />}>
+            <DocSection 
+              id="chef" 
+              title="Guide Chef de chantier" 
+              icon={<HardHat className="h-5 w-5" />}
+              isVisible={visibleSections.has("chef")}
+            >
               <DocSubsection id="chef-connexion" title="Connexion et sélection">
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Se connecter">
                     <p>Accédez à l'application et connectez-vous avec votre email et mot de passe.</p>
                   </DocStep>
@@ -739,7 +895,7 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="chef-equipe" title="Gestion de l'équipe">
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Ouvrir la gestion d'équipe">
                     <p>Cliquez sur le bouton <strong>"Gérer mon équipe"</strong> pour accéder au panneau de gestion.</p>
                   </DocStep>
@@ -757,7 +913,7 @@ const Documentation = () => {
                   Retirer un membre supprime ses fiches <strong>non signées</strong> pour cette semaine.
                   Les fiches déjà signées sont conservées.
                 </DocNote>
-                <div className="mt-4 space-y-4">
+                <div className="mt-5 space-y-5">
                   <DocStep number={4} title="Dissoudre l'équipe">
                     <p>
                       Cette action retire <strong>tous</strong> les membres de l'équipe d'un coup.
@@ -774,7 +930,7 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="chef-saisie" title="Saisie des heures">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Le tableau de saisie affiche une ligne par salarié et une colonne par jour (Lundi à Vendredi).
                 </p>
                 <DocImage 
@@ -787,7 +943,7 @@ const Documentation = () => {
                   alt="Détail de saisie par jour" 
                   caption="Détail de saisie : heures, intempérie, panier repas et trajet pour chaque jour"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Heures normales (HNORM)">
                     <p>
                       Saisissez le nombre d'heures travaillées pour chaque jour.
@@ -829,7 +985,7 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="chef-transport" title="Fiche de trajet">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   La fiche de trajet doit être remplie <strong>complètement</strong> avant de passer à la signature.
                 </p>
                 <DocImage 
@@ -837,7 +993,7 @@ const Documentation = () => {
                   alt="Interface fiche de trajet" 
                   caption="Formulaire de saisie des trajets par jour"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Ouvrir la section Transport">
                     <p>Dépliez la section "Fiche de trajet" sous le tableau de saisie.</p>
                   </DocStep>
@@ -850,155 +1006,115 @@ const Documentation = () => {
                     </ul>
                   </DocStep>
                 </div>
-                <DocNote type="warning">
-                  Les 15 champs (5 jours × 3 informations) doivent être remplis pour pouvoir
-                  transmettre la fiche au conducteur.
+                <DocNote type="info">
+                  Utilisez le bouton <strong>"Copier semaine précédente"</strong> si les trajets sont identiques.
                 </DocNote>
               </DocSubsection>
 
               <DocSubsection id="chef-ratio" title="Ratio global">
-                <p className="text-muted-foreground mb-4">
-                  Le <strong>Ratio Global</strong> permet de saisir les quantités journalières 
-                  de production pour suivre la performance du chantier.
+                <p className="text-muted-foreground mb-5">
+                  Le ratio global permet de suivre les quantités produites par l'équipe sur la semaine.
                 </p>
                 <DocImage 
                   src={docRatioGlobal} 
-                  alt="Interface Ratio Global" 
-                  caption="Tableau de saisie des ratios journaliers"
+                  alt="Interface du ratio global" 
+                  caption="Saisie des ratios : m³ béton, m² coffrage, ml voile, et observations"
                 />
-                <div className="space-y-4">
-                  <DocStep number={1} title="Ouvrir la section Ratio Global">
-                    <p>
-                      Dépliez la section <strong>"Ratio Global"</strong> située sous la fiche de trajet.
-                    </p>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Accéder aux ratios">
+                    <p>Cliquez sur le bouton <strong>"Ratio"</strong> pour ouvrir le panneau de saisie.</p>
                   </DocStep>
-                  <DocStep number={2} title="Saisir les quantités">
-                    <p>Pour chaque jour de la semaine, renseignez :</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li><strong>M³ béton</strong> : volume de béton coulé</li>
-                      <li><strong>ML voile</strong> : mètres linéaires de voile</li>
-                      <li><strong>M² coffrage</strong> : surface de coffrage mise en œuvre</li>
-                      <li><strong>Météo</strong> : conditions météorologiques du jour</li>
-                      <li><strong>Observations</strong> : remarques sur le déroulement du chantier</li>
-                      <li><strong>Incident</strong> : tout incident survenu sur le chantier</li>
-                    </ul>
-                  </DocStep>
-                  <DocStep number={3} title="Totaux automatiques">
-                    <p>
-                      Les totaux hebdomadaires sont calculés automatiquement en bas du tableau
-                      pour M³ béton, ML voile et M² coffrage.
-                    </p>
+                  <DocStep number={2} title="Saisir les quantités journalières">
+                    <p>Pour chaque jour travaillé, renseignez les quantités produites et les observations.</p>
                   </DocStep>
                 </div>
-                <DocNote type="info">
-                  Ces données alimentent les indicateurs de rentabilité du chantier
-                  et permettent d'analyser la productivité de l'équipe.
-                </DocNote>
               </DocSubsection>
 
               <DocSubsection id="chef-signature" title="Collecte des signatures">
                 <DocImage 
                   src={docCollecteSignaturesBtn} 
-                  alt="Bouton enregistrer et collecter les signatures" 
-                  caption="Cliquez sur 'Enregistrer et collecter les signatures' (1)"
+                  alt="Bouton de collecte des signatures" 
+                  caption="Le bouton 'Collecte des signatures' dans le menu de navigation mobile"
                 />
-                <DocImage 
-                  src={docSignaturePad} 
-                  alt="Pad de signature numérique" 
-                  caption="Interface de signature numérique sur mobile"
-                />
-                <div className="space-y-4">
-                  <DocStep number={1} title="Passer à la signature">
-                    <p>
-                      Cliquez sur <strong>"Enregistrer et collecter les signatures"</strong>.
-                      L'application vérifie que la fiche de trajet est complète.
-                    </p>
+                <div className="space-y-5 mt-6">
+                  <DocStep number={1} title="Ouvrir la collecte">
+                    <p>Cliquez sur <strong>"Collecte des signatures"</strong> dans la navigation.</p>
                   </DocStep>
-                  <DocStep number={2} title="Signatures des maçons">
+                  <DocStep number={2} title="Faire signer chaque salarié">
                     <p>
-                      Chaque salarié vérifie ses heures affichées puis signe sur le pad tactile.
-                      Une fois signé, passez au suivant.
-                    </p>
-                  </DocStep>
-                  <DocStep number={3} title="Signature du chef">
-                    <p>
-                      Le chef de chantier signe en dernier pour valider l'ensemble de la fiche.
-                    </p>
-                  </DocStep>
-                  <DocStep number={4} title="Transmission">
-                    <p>
-                      Cliquez sur <strong>"Valider"</strong>.
-                      La fiche passe en statut "VALIDE_CHEF" et sera visible par le conducteur.
+                      Passez le téléphone à chaque salarié pour qu'il signe sa fiche.
+                      Une fois signé, le statut passe à "VALIDE_CHEF".
                     </p>
                   </DocStep>
                 </div>
-                <DocNote type="info">
-                  Après transmission, l'application bascule automatiquement vers la semaine suivante
-                  avec les données de transport copiées.
+                <DocImage 
+                  src={docSignaturePad} 
+                  alt="Interface de signature" 
+                  caption="Zone de signature tactile"
+                />
+                <DocNote type="warning">
+                  La fiche de trajet doit être complète avant la signature.
+                  Le bouton de signature reste désactivé tant qu'il manque des informations.
                 </DocNote>
               </DocSubsection>
 
               <DocSubsection id="chef-historique" title="Historique">
                 <p className="text-muted-foreground">
-                  L'onglet <strong>"Historique"</strong> permet de consulter les fiches des semaines précédentes.
-                  Vous pouvez voir le statut de chaque fiche et accéder au détail.
+                  L'onglet "Historique" permet de consulter les fiches des semaines précédentes.
+                  Les fiches déjà transmises au conducteur sont en lecture seule.
                 </p>
-                <DocNote type="info">
-                  Les fiches validées par le conducteur ou clôturées ne sont plus modifiables.
-                </DocNote>
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
+            <GradientSeparator />
 
             {/* ============ GUIDE CONDUCTEUR ============ */}
-            <DocSection id="conducteur" title="Guide Conducteur de travaux" icon={<FileCheck className="h-5 w-5" />}>
-              <DocSubsection id="conducteur-finisseurs" title="Gestion des finisseurs (Onglet 'Mes heures')">
-                <p className="text-muted-foreground mb-4">
-                  Cet onglet vous permet de gérer les heures des finisseurs sous votre responsabilité.
-                </p>
-                <div className="space-y-4">
-                  <DocStep number={1} title="Sélectionner la semaine">
-                    <p>Choisissez la semaine à saisir dans le sélecteur.</p>
-                  </DocStep>
-                  <DocStep number={2} title="Affecter les finisseurs">
-                    <p>
-                      Utilisez le tableau d'affectation pour indiquer sur quel chantier
-                      chaque finisseur travaille, jour par jour.
-                    </p>
-                  </DocStep>
-                  <DocStep number={3} title="Saisir les heures">
-                    <p>
-                      Pour chaque finisseur, renseignez les heures travaillées, les paniers,
-                      et les codes trajet comme pour un chef de chantier.
-                    </p>
-                  </DocStep>
-                  <DocStep number={4} title="Fiche de trajet">
-                    <p>Complétez la fiche de trajet de chaque finisseur.</p>
-                  </DocStep>
-                  <DocStep number={5} title="Signer en tant que conducteur">
-                    <p>
-                      Passez à la signature et signez en tant que conducteur de travaux pour valider les fiches.
-                    </p>
-                  </DocStep>
-                </div>
+            <DocSection 
+              id="conducteur" 
+              title="Guide Conducteur" 
+              icon={<FileCheck className="h-5 w-5" />}
+              isVisible={visibleSections.has("conducteur")}
+            >
+              <DocSubsection id="conducteur-finisseurs" title="Gestion des finisseurs">
                 <DocImage 
                   src={docGestionFinisseurs} 
                   alt="Interface de gestion des finisseurs" 
-                  caption="Sélection de semaine (1) et affectation des finisseurs (2)"
+                  caption="Planification des finisseurs par jour avec affectation sur les chantiers"
+                  fullWidth
                 />
+                <div className="space-y-5 mt-6">
+                  <DocStep number={1} title="Accéder à la gestion">
+                    <p>L'onglet <strong>"Finisseurs"</strong> est disponible dans votre espace conducteur.</p>
+                  </DocStep>
+                  <DocStep number={2} title="Affecter un finisseur">
+                    <p>
+                      Pour chaque jour, affectez les finisseurs aux chantiers.
+                      Un finisseur peut être sur différents chantiers selon les jours.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Renseigner les transports">
+                    <p>
+                      Pour chaque finisseur affecté, indiquez le conducteur matin,
+                      conducteur soir et le véhicule utilisé.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="success">
+                  Utilisez le bouton <strong>"Copier semaine précédente"</strong> pour reprendre
+                  les affectations de la semaine passée.
+                </DocNote>
               </DocSubsection>
 
-              <DocSubsection id="conducteur-validation" title="Validation des fiches (Onglet 'Validation')">
-                <p className="text-muted-foreground mb-4">
-                  Cet onglet affiche les fiches transmises par les chefs de chantier et en attente de validation.
+              <DocSubsection id="conducteur-validation" title="Validation des fiches">
+                <p className="text-muted-foreground mb-5">
+                  Vous recevez les fiches signées par les chefs de chantier pour validation.
                 </p>
                 <DocImage 
                   src={docValidation} 
-                  alt="Interface de validation des fiches" 
-                  caption="Workflow de validation - les fiches progressent de BROUILLON à ENVOYE_RH"
+                  alt="Interface de validation conducteur" 
+                  caption="Liste des fiches à valider avec les signatures des salariés"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Voir les fiches en attente">
                     <p>
                       La liste affiche les fiches avec le statut "VALIDE_CHEF".
@@ -1037,13 +1153,18 @@ const Documentation = () => {
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
+            <GradientSeparator />
 
             {/* ============ GUIDE RH ============ */}
-            <DocSection id="rh" title="Guide Service RH" icon={<FileSpreadsheet className="h-5 w-5" />}>
+            <DocSection 
+              id="rh" 
+              title="Guide Service RH" 
+              icon={<FileSpreadsheet className="h-5 w-5" />}
+              isVisible={visibleSections.has("rh")}
+            >
               <DocSubsection id="rh-filtres" title="Filtres et navigation">
                 <DocImage src={docRhFiltres} alt="Interface de filtrage RH" caption="Vue d'ensemble de la page Consultation RH avec les filtres" fullWidth />
-                <div className="space-y-4">
+                <div className="space-y-5 mt-6">
                   <DocStep number={1} title="Configurer les filtres">
                     <p>Utilisez les filtres disponibles pour affiner votre recherche :</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
@@ -1060,7 +1181,7 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="rh-consolide" title="Vue consolidée par salarié">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Cette vue affiche un récapitulatif par employé sur la période sélectionnée.
                 </p>
                 <DocImage
@@ -1069,9 +1190,9 @@ const Documentation = () => {
                   caption="Vue consolidée par salarié avec le tableau récapitulatif"
                   fullWidth={true}
                 />
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Colonnes affichées :</h4>
+                <Card className="doc-card-hover mt-6">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-3">Colonnes affichées :</h4>
                   <ul className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                     <li>• Salarié</li>
                     <li>• Chantier</li>
@@ -1087,13 +1208,13 @@ const Documentation = () => {
                   </ul>
                   </CardContent>
                 </Card>
-                <p className="text-muted-foreground mt-4">
+                <p className="text-muted-foreground mt-5">
                   Cliquez sur un employé pour voir le détail semaine par semaine.
                 </p>
               </DocSubsection>
 
               <DocSubsection id="rh-preexport" title="Pré-export : qualification des absences et trajets">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Avant l'export, vous devez qualifier toutes les absences et renseigner les trajets manquants.
                 </p>
                 <DocImage 
@@ -1101,13 +1222,13 @@ const Documentation = () => {
                   alt="Détail jour par jour avec absences et trajets à qualifier" 
                   caption="Vue détaillée avec colonnes Type d'absence et Trajet à compléter"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Identifier les absences non qualifiées">
                     <p>Un badge orange s'affiche <strong>à côté du nom de l'employé</strong> sur les fiches contenant des absences à qualifier.</p>
                   </DocStep>
                   <DocStep number={2} title="Qualifier l'absence">
                     <p>Cliquez sur <strong>l'icône œil</strong> dans la colonne "Action" pour ouvrir le détail de la fiche, puis sélectionnez le type d'absence :</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <Badge variant="outline">CP - Congés payés</Badge>
                       <Badge variant="outline">RTT</Badge>
                       <Badge variant="outline">AM - Maladie</Badge>
@@ -1117,7 +1238,7 @@ const Documentation = () => {
                   </DocStep>
                   <DocStep number={3} title="Renseigner les trajets manquants">
                     <p>Les trajets marqués <strong>"À compléter"</strong> sont <strong>encadrés en rouge dans la colonne Trajet</strong>. Cliquez sur <strong>l'icône œil</strong> dans la colonne "Action" pour ouvrir le détail, puis sélectionnez le code trajet approprié :</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <Badge variant="outline">T1 à T17</Badge>
                       <Badge variant="outline">T31</Badge>
                       <Badge variant="outline">T35</Badge>
@@ -1138,7 +1259,7 @@ const Documentation = () => {
                   alt="Export Excel pour la paie" 
                   caption="Bouton d'export et aperçu du fichier Excel généré"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Vérifier les données">
                     <p>Assurez-vous que toutes les absences sont qualifiées (aucun badge orange).</p>
                   </DocStep>
@@ -1160,7 +1281,7 @@ const Documentation = () => {
                   alt="Export par agence d'intérim"
                   caption="Export par agence d'intérim avec le nombre d'intérimaires par agence"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Accéder à l'export">
                     <p>Cliquez sur le bouton <strong>"Export Intérimaires"</strong> situé en haut à droite de la page.</p>
                   </DocStep>
@@ -1182,7 +1303,7 @@ const Documentation = () => {
                   alt="Interface de clôture de période"
                   caption="Vue consolidée avec filtres et bouton de clôture"
                 />
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Sélectionner la période">
                     <p>Utilisez le filtre <strong>"Période"</strong> en haut à gauche pour choisir le mois à clôturer.</p>
                   </DocStep>
@@ -1202,12 +1323,17 @@ const Documentation = () => {
               </DocSubsection>
             </DocSection>
 
-            <Separator className="my-12" />
+            <GradientSeparator />
 
             {/* ============ GUIDE ADMIN ============ */}
-            <DocSection id="admin" title="Guide Administrateur" icon={<Settings className="h-5 w-5" />}>
+            <DocSection 
+              id="admin" 
+              title="Guide Administrateur" 
+              icon={<Settings className="h-5 w-5" />}
+              isVisible={visibleSections.has("admin")}
+            >
               <DocSubsection id="admin-dashboard" title="Dashboard">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Le dashboard offre une vue temps réel de l'activité du mois en cours.
                 </p>
                 <DocImage 
@@ -1215,36 +1341,36 @@ const Documentation = () => {
                   alt="Dashboard administrateur" 
                   caption="Vue d'ensemble du dashboard avec statistiques et indicateurs clés"
                 />
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Informations affichées :</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-primary" />
+                <Card className="doc-card-hover mt-6">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-4">Informations affichées :</h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-primary" />
                         Chantiers actifs
                       </li>
-                      <li className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-primary" />
                         Fiches créées (total toutes périodes)
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-primary" />
                         Fiches en attente de validation
                       </li>
-                      <li className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <BarChart3 className="h-5 w-5 text-primary" />
                         Heures saisies (semaine et mois)
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Send className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <Send className="h-5 w-5 text-primary" />
                         Progression des transmissions par semaine
                       </li>
-                      <li className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <BarChart3 className="h-5 w-5 text-primary" />
                         Répartition des fiches par statut
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Bell className="h-4 w-4 text-primary" />
+                      <li className="flex items-center gap-3">
+                        <Bell className="h-5 w-5 text-primary" />
                         Alertes et actions en attente
                       </li>
                     </ul>
@@ -1257,16 +1383,16 @@ const Documentation = () => {
                   src={docGestionUtilisateurs} 
                   alt="Interface de gestion des utilisateurs" 
                 />
-                <div className="space-y-4 mt-4">
+                <div className="space-y-5 mt-6">
                   <DocStep number={1} title="Inviter un utilisateur">
                     <p>
                       Cliquez sur le bouton <strong>"Inviter un utilisateur"</strong> situé en haut à droite de la page, renseignez l'email et sélectionnez le rôle :
                     </p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge>Admin</Badge>
-                      <Badge>RH</Badge>
-                      <Badge>Conducteur</Badge>
-                      <Badge>Chef</Badge>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Badge className="doc-badge-admin">Admin</Badge>
+                      <Badge className="doc-badge-rh">RH</Badge>
+                      <Badge className="doc-badge-conducteur">Conducteur</Badge>
+                      <Badge className="doc-badge-chef">Chef</Badge>
                     </div>
                   </DocStep>
                   <DocStep number={2} title="Compléter les informations">
@@ -1300,7 +1426,7 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="admin-chantiers" title="Gestion des chantiers">
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <DocStep number={1} title="Créer un chantier">
                     <p>Renseignez les informations :</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
@@ -1324,14 +1450,14 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="admin-referentiels" title="Référentiels">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Les onglets de référentiels permettent de gérer les données de base.
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
                         Personnel
                       </h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
@@ -1344,10 +1470,10 @@ const Documentation = () => {
                       </ul>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-primary" />
                         Chantiers
                       </h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
@@ -1358,10 +1484,10 @@ const Documentation = () => {
                       </ul>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Car className="h-4 w-4" />
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Car className="h-4 w-4 text-primary" />
                         Véhicules
                       </h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
@@ -1375,47 +1501,57 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="admin-rappels" title="Rappels automatiques">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-5">
                   Le système envoie des rappels par email automatiquement.
                 </p>
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Rappels programmés :</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <Bell className="h-4 w-4 text-amber-500" />
+                <Card className="doc-card-hover doc-card-accent">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-4">Rappels programmés :</h4>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-3">
+                        <Bell className="h-5 w-5 text-amber-500" />
                         <strong>Lundi 8h :</strong> Rappel aux chefs de saisir les heures
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Bell className="h-4 w-4 text-amber-500" />
+                      <li className="flex items-center gap-3">
+                        <Bell className="h-5 w-5 text-amber-500" />
                         <strong>Vendredi 12h :</strong> Rappel aux chefs de transmettre
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Bell className="h-4 w-4 text-blue-500" />
+                      <li className="flex items-center gap-3">
+                        <Bell className="h-5 w-5 text-blue-500" />
                         <strong>Quotidien :</strong> Rappel aux conducteurs pour validation
                       </li>
                     </ul>
                   </CardContent>
                 </Card>
-                <p className="text-muted-foreground mt-4">
+                <p className="text-muted-foreground mt-5">
                   L'historique des rappels est consultable dans l'onglet "Rappels".
                 </p>
               </DocSubsection>
             </DocSection>
 
 
-            {/* Footer */}
-            <div className="mt-16 pt-8 border-t border-border text-center">
-              <p className="text-muted-foreground text-sm">
-                Documentation DIVA RH • Version 1.0 • {new Date().getFullYear()}
-              </p>
-              <p className="text-muted-foreground text-xs mt-2">
-                Pour toute question, contactez votre administrateur.
-              </p>
+            {/* Footer amélioré */}
+            <div className="mt-20 pt-10 border-t border-border">
+              <div className="bg-gradient-to-br from-muted/50 to-transparent rounded-2xl p-8 text-center">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="font-semibold text-foreground">Documentation DIVA RH</span>
+                </div>
+                <p className="text-muted-foreground text-sm mb-2">
+                  Version 1.0 • {new Date().getFullYear()}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Pour toute question, contactez votre administrateur.
+                </p>
+              </div>
             </div>
           </div>
         </main>
       </div>
+
+      <ScrollToTopButton />
     </PageLayout>
   );
 };

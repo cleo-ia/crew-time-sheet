@@ -225,3 +225,205 @@ All colors MUST be HSL.
   display: none;             /* Chrome/Safari/Opera */
 }
 
+/* ==================== DOCUMENTATION PAGE STYLES ==================== */
+
+/* Hero gradient background */
+.doc-hero-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.08) 0%,
+    hsl(var(--accent) / 0.05) 50%,
+    hsl(var(--background)) 100%
+  );
+}
+
+.dark .doc-hero-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15) 0%,
+    hsl(var(--accent) / 0.08) 50%,
+    hsl(var(--background)) 100%
+  );
+}
+
+/* Icon glow effect */
+.doc-icon-glow {
+  box-shadow: 
+    0 0 20px hsl(var(--primary) / 0.3),
+    0 0 40px hsl(var(--primary) / 0.15);
+}
+
+.dark .doc-icon-glow {
+  box-shadow: 
+    0 0 25px hsl(var(--primary) / 0.4),
+    0 0 50px hsl(var(--primary) / 0.2);
+}
+
+/* Gradient text */
+.doc-gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Flow diagram gradient */
+.doc-flow-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.8) 0%,
+    hsl(var(--primary) / 0.08) 100%
+  );
+}
+
+.dark .doc-flow-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.5) 0%,
+    hsl(var(--primary) / 0.12) 100%
+  );
+}
+
+/* Gradient separator */
+.doc-separator-gradient {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--primary) / 0.3) 20%,
+    hsl(var(--primary) / 0.5) 50%,
+    hsl(var(--primary) / 0.3) 80%,
+    transparent 100%
+  );
+}
+
+/* Card hover effects */
+.doc-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.doc-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px hsl(var(--primary) / 0.15);
+}
+
+/* Colored left border for important cards */
+.doc-card-accent {
+  border-left: 3px solid hsl(var(--primary));
+}
+
+/* DocNote enhanced styles */
+.doc-note-info {
+  background: linear-gradient(135deg, hsl(210 90% 95%) 0%, hsl(210 80% 98%) 100%);
+  border-left: 4px solid hsl(210 85% 55%);
+}
+
+.dark .doc-note-info {
+  background: linear-gradient(135deg, hsl(210 50% 18%) 0%, hsl(210 40% 15%) 100%);
+  border-left: 4px solid hsl(210 85% 60%);
+}
+
+.doc-note-warning {
+  background: linear-gradient(135deg, hsl(45 90% 95%) 0%, hsl(45 80% 98%) 100%);
+  border-left: 4px solid hsl(45 95% 50%);
+}
+
+.dark .doc-note-warning {
+  background: linear-gradient(135deg, hsl(45 50% 18%) 0%, hsl(45 40% 15%) 100%);
+  border-left: 4px solid hsl(45 95% 55%);
+}
+
+.doc-note-success {
+  background: linear-gradient(135deg, hsl(142 70% 95%) 0%, hsl(142 60% 98%) 100%);
+  border-left: 4px solid hsl(142 70% 45%);
+}
+
+.dark .doc-note-success {
+  background: linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 30% 15%) 100%);
+  border-left: 4px solid hsl(142 70% 50%);
+}
+
+/* Sidebar active indicator */
+.doc-sidebar-active {
+  position: relative;
+}
+
+.doc-sidebar-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: hsl(var(--primary));
+  border-radius: 0 2px 2px 0;
+}
+
+/* Image hover zoom effect */
+.doc-image-zoom {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.doc-image-zoom:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 30px -8px hsl(var(--primary) / 0.2);
+}
+
+/* Role-specific colors for badges */
+.doc-badge-chef {
+  background: hsl(210 85% 92%);
+  color: hsl(210 85% 30%);
+  border-color: hsl(210 85% 80%);
+}
+
+.dark .doc-badge-chef {
+  background: hsl(210 50% 25%);
+  color: hsl(210 85% 85%);
+  border-color: hsl(210 50% 35%);
+}
+
+.doc-badge-conducteur {
+  background: hsl(25 90% 92%);
+  color: hsl(25 85% 30%);
+  border-color: hsl(25 85% 80%);
+}
+
+.dark .doc-badge-conducteur {
+  background: hsl(25 50% 25%);
+  color: hsl(25 90% 85%);
+  border-color: hsl(25 50% 35%);
+}
+
+.doc-badge-rh {
+  background: hsl(142 65% 92%);
+  color: hsl(142 70% 28%);
+  border-color: hsl(142 65% 80%);
+}
+
+.dark .doc-badge-rh {
+  background: hsl(142 40% 22%);
+  color: hsl(142 70% 85%);
+  border-color: hsl(142 40% 32%);
+}
+
+.doc-badge-admin {
+  background: hsl(270 60% 93%);
+  color: hsl(270 60% 35%);
+  border-color: hsl(270 55% 80%);
+}
+
+.dark .doc-badge-admin {
+  background: hsl(270 35% 22%);
+  color: hsl(270 60% 85%);
+  border-color: hsl(270 35% 32%);
+}
+
+/* Animation delay utilities for staggered animations */
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-500 { animation-delay: 500ms; }
+.animation-delay-600 { animation-delay: 600ms; }
+
