@@ -34,7 +34,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 }) => {
   const [messageContent, setMessageContent] = useState("");
   const [sheetHeight, setSheetHeight] = useState("85vh");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,11 +53,15 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
 
   // Scroll vers le bas quand les messages changent ou quand la conversation s'ouvre
   useEffect(() => {
-    if (open && messagesEndRef.current) {
-      // Délai pour s'assurer que ScrollArea est complètement rendu
+    if (open && messages.length > 0) {
       const timer = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-      }, 100);
+        const viewport = scrollContainerRef.current?.querySelector(
+          '[data-radix-scroll-area-viewport]'
+        );
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [messages, open]);
@@ -204,7 +208,7 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
         ) : (
           <>
             {/* Zone des messages */}
-            <ScrollArea className="flex-1 bg-muted/20">
+            <ScrollArea ref={scrollContainerRef} className="flex-1 bg-muted/20">
               <div className="p-4 space-y-3 min-h-full">
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -234,8 +238,6 @@ export const ConversationSheet: React.FC<ConversationSheetProps> = ({
                     />
                   ))
                 )}
-                {/* Ancre invisible pour le scroll automatique vers le bas */}
-                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
