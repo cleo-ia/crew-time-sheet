@@ -1364,10 +1364,11 @@ const Documentation = () => {
                         <Car className="h-4 w-4" />
                         Véhicules
                       </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Liste des véhicules avec immatriculation, marque et modèle.
-                        Utilisés dans les fiches de trajet.
-                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Immatriculation</li>
+                        <li>• Marque et modèle</li>
+                        <li>• Utilisés dans les fiches trajet</li>
+                      </ul>
                     </CardContent>
                   </Card>
                 </div>
