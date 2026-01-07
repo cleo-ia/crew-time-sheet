@@ -113,6 +113,17 @@ const sections: Section[] = [
     ],
   },
   {
+    id: "erreurs",
+    title: "Gestion des erreurs",
+    icon: <AlertCircle className="h-4 w-4" />,
+    color: "primary",
+    subsections: [
+      { id: "erreurs-affichage", title: "Erreur affichée" },
+      { id: "erreurs-connexion", title: "Perte de connexion" },
+      { id: "erreurs-courants", title: "Messages courants" },
+    ],
+  },
+  {
     id: "chef",
     title: "Guide Chef de chantier",
     icon: <HardHat className="h-4 w-4" />,
@@ -1102,6 +1113,157 @@ const Documentation = () => {
                 <DocNote type="info">
                   L'installation PWA offre une meilleure expérience sur mobile avec un accès rapide
                   depuis l'écran d'accueil.
+                </DocNote>
+              </DocSubsection>
+            </DocSection>
+
+            <GradientSeparator />
+
+            {/* ============ GESTION DES ERREURS ============ */}
+            <DocSection 
+              id="erreurs" 
+              title="Gestion des erreurs et résolution de problèmes" 
+              icon={<AlertCircle className="h-5 w-5" />}
+              isVisible={visibleSections.has("erreurs")}
+            >
+              <DocSubsection id="erreurs-affichage" title="Que faire si l'application affiche une erreur ?">
+                <p className="text-muted-foreground mb-5">
+                  Si vous rencontrez une erreur dans l'application, suivez ces étapes dans l'ordre :
+                </p>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Rafraîchir la page">
+                    <p>
+                      Appuyez sur <strong>F5</strong> (ordinateur) ou tirez vers le bas pour actualiser (mobile).
+                      Cela résout la plupart des problèmes temporaires.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Vérifier votre connexion internet">
+                    <p>
+                      Assurez-vous d'être connecté au Wi-Fi ou au réseau mobile.
+                      L'icône de connexion dans l'application indique l'état du réseau.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Vider le cache du navigateur">
+                    <p>
+                      Si le problème persiste, videz le cache de votre navigateur :
+                      <br />
+                      <strong>Chrome :</strong> Menu → Paramètres → Confidentialité → Effacer les données de navigation
+                    </p>
+                  </DocStep>
+                  <DocStep number={4} title="Se déconnecter et se reconnecter">
+                    <p>
+                      Déconnectez-vous de l'application puis reconnectez-vous pour réinitialiser votre session.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="warning">
+                  Si l'erreur persiste après ces étapes, contactez votre administrateur ou le service RH
+                  en précisant le message d'erreur affiché et les actions effectuées.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="erreurs-connexion" title="Perte de connexion internet pendant la saisie">
+                <p className="text-muted-foreground mb-5">
+                  L'application peut continuer à fonctionner partiellement hors connexion grâce au cache local.
+                </p>
+                <Card className="doc-card-hover mb-6">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      Bandeau "Hors connexion"
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Lorsque la connexion est perdue, un bandeau orange apparaît en haut de l'écran.
+                      Les données saisies sont conservées localement et seront synchronisées automatiquement
+                      dès que la connexion sera rétablie.
+                    </p>
+                  </CardContent>
+                </Card>
+                <div className="space-y-5">
+                  <DocStep number={1} title="Ne pas fermer l'application">
+                    <p>
+                      Si vous perdez la connexion, <strong>ne fermez pas</strong> l'application.
+                      Attendez le retour de la connexion.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Vérifier le retour de connexion">
+                    <p>
+                      Le bandeau orange disparaît automatiquement quand la connexion revient.
+                      Les données sont alors synchronisées.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="En cas de fermeture accidentelle">
+                    <p>
+                      Si vous avez fermé l'application hors connexion, les données non sauvegardées
+                      peuvent être perdues. Reconnectez-vous et vérifiez vos saisies.
+                    </p>
+                  </DocStep>
+                </div>
+                <DocNote type="success">
+                  L'application sauvegarde automatiquement vos modifications toutes les quelques secondes.
+                  En cas de coupure brève, vos données récentes sont généralement préservées.
+                </DocNote>
+              </DocSubsection>
+
+              <DocSubsection id="erreurs-courants" title="Messages d'erreur courants et solutions">
+                <p className="text-muted-foreground mb-5">
+                  Voici les messages d'erreur les plus fréquents et comment les résoudre :
+                </p>
+                <div className="grid gap-4">
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2 text-red-600 dark:text-red-400">"Session expirée"</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Cause :</strong> Votre session a expiré après une longue période d'inactivité.
+                        <br />
+                        <strong>Solution :</strong> Reconnectez-vous avec votre email et mot de passe.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2 text-red-600 dark:text-red-400">"Erreur de chargement des données"</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Cause :</strong> Problème de connexion au serveur.
+                        <br />
+                        <strong>Solution :</strong> Vérifiez votre connexion internet et rafraîchissez la page.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2 text-amber-600 dark:text-amber-400">"Fiche déjà validée"</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Cause :</strong> Vous tentez de modifier une fiche qui a déjà été validée par le conducteur.
+                        <br />
+                        <strong>Solution :</strong> Contactez le conducteur ou le service RH pour demander une correction.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2 text-amber-600 dark:text-amber-400">"Signature requise"</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Cause :</strong> La fiche nécessite la signature du salarié avant transmission.
+                        <br />
+                        <strong>Solution :</strong> Collectez la signature via le bouton "Collecte des signatures".
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="doc-card-hover">
+                    <CardContent className="p-5">
+                      <h4 className="font-semibold mb-2 text-amber-600 dark:text-amber-400">"Période clôturée"</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Cause :</strong> La période de paie a été clôturée par le service RH.
+                        <br />
+                        <strong>Solution :</strong> Les modifications ne sont plus possibles. Contactez le service RH si nécessaire.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <DocNote type="info">
+                  En cas de message d'erreur non listé ici, notez le message exact et contactez
+                  votre administrateur avec une description de ce que vous faisiez au moment de l'erreur.
                 </DocNote>
               </DocSubsection>
             </DocSection>
