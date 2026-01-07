@@ -317,7 +317,7 @@ export function RadarLeafletDialog({
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
+                <TooltipContent side="left" align="end" className="max-w-xs z-[1100]">
                   <div className="space-y-1.5 text-xs">
                     <p className="font-medium">Intensité des précipitations</p>
                     <p className="text-muted-foreground">Les couleurs indiquent l'intensité en mm/heure :</p>
