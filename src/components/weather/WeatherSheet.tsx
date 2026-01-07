@@ -4,12 +4,13 @@ import { fr } from "date-fns/locale";
 import { 
   RefreshCw, Droplets, Wind, CloudRain, Gauge, Cloud, 
   Sun as SunIcon, ThermometerSun, Radio, Pause, Play, 
-  SkipBack, SkipForward, X 
+  SkipBack, SkipForward, X, Info 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WeatherData } from "@/hooks/useWeather";
 import { useRadarData } from "@/hooks/useRadarData";
 import { useHourlyForecast } from "@/hooks/useHourlyForecast";
@@ -366,7 +367,11 @@ export function WeatherSheet({
                   </div>
                   
                   {/* Legend */}
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <div className="flex items-center flex-wrap gap-2 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      <span>Bruine</span>
+                    </div>
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 rounded-full bg-green-400" />
                       <span>Faible</span>
@@ -383,6 +388,32 @@ export function WeatherSheet({
                       <div className="w-2 h-2 rounded-full bg-red-500" />
                       <span>Intense</span>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-purple-500" />
+                      <span>Extrême</span>
+                    </div>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <div className="space-y-1.5 text-xs">
+                            <p className="font-medium">Intensité des précipitations</p>
+                            <p className="text-muted-foreground">Les couleurs indiquent l'intensité en mm/heure :</p>
+                            <ul className="space-y-0.5">
+                              <li><span className="text-blue-400 font-medium">Bleu</span> : Bruine / très faible</li>
+                              <li><span className="text-green-400 font-medium">Vert</span> : Faible (&lt; 2.5 mm/h)</li>
+                              <li><span className="text-yellow-400 font-medium">Jaune</span> : Modéré (2.5-7.5 mm/h)</li>
+                              <li><span className="text-orange-500 font-medium">Orange</span> : Fort (7.5-20 mm/h)</li>
+                              <li><span className="text-red-500 font-medium">Rouge</span> : Intense (&gt; 20 mm/h)</li>
+                              <li><span className="text-purple-500 font-medium">Violet</span> : Extrême / Neige</li>
+                            </ul>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               )}

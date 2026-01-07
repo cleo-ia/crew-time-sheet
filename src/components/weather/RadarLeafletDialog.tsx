@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Pause, Play, SkipBack, SkipForward, Radio } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Pause, Play, SkipBack, SkipForward, Radio, Info } from "lucide-react";
 import { useRadarData } from "@/hooks/useRadarData";
 import { useHourlyForecast } from "@/hooks/useHourlyForecast";
 import { format } from "date-fns";
@@ -287,6 +288,10 @@ export function RadarLeafletDialog({
           {/* Legend */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-blue-400" />
+              <span>Bruine</span>
+            </div>
+            <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-green-400" />
               <span>Faible</span>
             </div>
@@ -302,6 +307,32 @@ export function RadarLeafletDialog({
               <div className="w-3 h-3 rounded-full bg-red-500" />
               <span>Intense</span>
             </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-purple-500" />
+              <span>Extrême</span>
+            </div>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="space-y-1.5 text-xs">
+                    <p className="font-medium">Intensité des précipitations</p>
+                    <p className="text-muted-foreground">Les couleurs indiquent l'intensité en mm/heure :</p>
+                    <ul className="space-y-0.5">
+                      <li><span className="text-blue-400 font-medium">Bleu</span> : Bruine / très faible</li>
+                      <li><span className="text-green-400 font-medium">Vert</span> : Faible (&lt; 2.5 mm/h)</li>
+                      <li><span className="text-yellow-400 font-medium">Jaune</span> : Modéré (2.5-7.5 mm/h)</li>
+                      <li><span className="text-orange-500 font-medium">Orange</span> : Fort (7.5-20 mm/h)</li>
+                      <li><span className="text-red-500 font-medium">Rouge</span> : Intense (&gt; 20 mm/h)</li>
+                      <li><span className="text-purple-500 font-medium">Violet</span> : Extrême / Neige</li>
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </DialogContent>
