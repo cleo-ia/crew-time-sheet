@@ -1207,7 +1207,7 @@ const Documentation = () => {
             <DocSection id="admin" title="Guide Administrateur" icon={<Settings className="h-5 w-5" />}>
               <DocSubsection id="admin-dashboard" title="Dashboard">
                 <p className="text-muted-foreground mb-4">
-                  Le dashboard offre une vue temps réel de l'activité de la semaine.
+                  Le dashboard offre une vue temps réel de l'activité du mois en cours.
                 </p>
                 <DocImage 
                   src={docDashboard} 
