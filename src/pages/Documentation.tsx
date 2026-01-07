@@ -62,6 +62,7 @@ import docCollecteSignaturesBtn from "@/assets/doc-collecte-signatures-btn.png";
 import docPreExportDetail from "@/assets/doc-pre-export-detail.png";
 import docExportInterimaire from "@/assets/doc-export-interimaire.png";
 import docCloturePeriode from "@/assets/doc-cloture-periode.png";
+import docGestionUtilisateurs from "@/assets/doc-gestion-utilisateurs.png";
 
 // Types
 interface Section {
@@ -1252,7 +1253,11 @@ const Documentation = () => {
               </DocSubsection>
 
               <DocSubsection id="admin-utilisateurs" title="Gestion des utilisateurs">
-                <div className="space-y-4">
+                <DocImage 
+                  src={docGestionUtilisateurs} 
+                  alt="Interface de gestion des utilisateurs" 
+                />
+                <div className="space-y-4 mt-4">
                   <DocStep number={1} title="Inviter un utilisateur">
                     <p>
                       Cliquez sur le bouton <strong>"Inviter un utilisateur"</strong> situé en haut à droite de la page, renseignez l'email et sélectionnez le rôle :
