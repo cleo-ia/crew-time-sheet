@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, startOfWeek, addWeeks } from "date-fns";
+import { format, startOfWeek, addWeeks, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
-import { parseISOWeek } from "@/lib/weekUtils";
 
 interface WeekSelectorProps {
   value: string;
@@ -14,19 +13,16 @@ export const WeekSelector = ({ value, onChange, disabled = false }: WeekSelector
   const [weeks, setWeeks] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
+    // Generate 3 weeks: previous week (S-1), current week (S), and next week (S+1)
     const generatedWeeks = [];
     const today = new Date();
     
-    // Utiliser la semaine fournie comme ancrage, sinon aujourd'hui
-    const anchorDate = value ? parseISOWeek(value) : today;
-    
-    // Générer 17 semaines (-8 à +8) autour de l'ancrage
-    for (let i = -8; i <= 8; i++) {
-      const weekStart = startOfWeek(addWeeks(anchorDate, i), { weekStartsOn: 1, locale: fr });
+    for (let i = -1; i <= 1; i++) {
+      const weekStart = startOfWeek(addWeeks(today, i), { weekStartsOn: 1, locale: fr });
       const weekLabel = format(weekStart, "'Semaine' II – 'du' dd/MM/yyyy", { locale: fr });
       
       generatedWeeks.push({
-        value: format(weekStart, "RRRR-'S'II"),
+        value: format(weekStart, "RRRR-'S'II"), // format ISO semaine attendu par la base
         label: weekLabel,
       });
     }
@@ -38,7 +34,7 @@ export const WeekSelector = ({ value, onChange, disabled = false }: WeekSelector
       const currentWeek = startOfWeek(today, { weekStartsOn: 1 });
       onChange(format(currentWeek, "RRRR-'S'II"));
     }
-  }, [value]);
+  }, []);
 
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
