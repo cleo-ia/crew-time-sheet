@@ -5,7 +5,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle } from "lucide-react";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { FichesFilters } from "@/components/validation/FichesFilters";
@@ -29,6 +29,8 @@ import { useFichesEnAttentePourConducteur } from "@/hooks/useFichesEnAttentePour
 import { ConversationButton } from "@/components/chat/ConversationButton";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useWeekTransmissionStatus } from "@/hooks/useWeekTransmissionStatus";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -134,6 +136,9 @@ const ValidationConducteur = () => {
     };
     fetchConducteurId();
   }, []);
+  
+  // Vérifier si la semaine a déjà été transmise
+  const { data: transmissionStatus } = useWeekTransmissionStatus(selectedWeek, conducteurId);
   
   // Charger les finisseurs
   const { data: allFinisseurs = [] } = useFinisseursByConducteur(conducteurId, selectedWeek);
@@ -557,6 +562,17 @@ const ValidationConducteur = () => {
                           Semaine sélectionnée
                         </label>
                         <WeekSelector value={selectedWeek} onChange={setSelectedWeek} />
+                        
+                        {/* Alerte rouge si semaine déjà transmise */}
+                        {transmissionStatus?.isTransmitted && (
+                          <Alert variant="destructive" className="mt-3">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="font-medium">
+                              ⚠️ Cette semaine a déjà été transmise au service RH. 
+                              Passez à la semaine suivante pour une nouvelle saisie.
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
 
                       {selectedWeek && conducteurId && (
@@ -606,7 +622,7 @@ const ValidationConducteur = () => {
                               size="lg"
                               className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
                               onClick={handleSaveAndSign}
-                              disabled={saveFiche.isPending || isSubmitting || timeEntries.length === 0}
+                              disabled={saveFiche.isPending || isSubmitting || timeEntries.length === 0 || transmissionStatus?.isTransmitted}
                             >
                               <CheckCircle2 className="h-5 w-5 mr-2" />
                               Collecter les signatures
