@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { format, addDays, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { parseISOWeek } from "@/lib/weekUtils";
@@ -381,31 +382,70 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       return;
     }
     
-    // Récupérer tous les jours où le finisseur est affecté
-    const affectedDays = days.filter(
-      day => localState[finisseurId]?.[day.date]?.checked
-    );
-
-    if (affectedDays.length === 0) {
-      toast({
-        title: "ℹ️ Aucune affectation",
-        description: `${finisseurName} n'a aucune affectation cette semaine.`,
-      });
-      setDeleteConfirmation(null);
-      return;
-    }
-
-    // Créer les promesses de suppression pour tous les jours
-    const deletePromises = affectedDays.map(day =>
-      deleteMutation.mutateAsync({ finisseurId, date: day.date })
-    );
-
     try {
-      await Promise.all(deletePromises);
+      // 1. Supprimer toutes les affectations du finisseur pour cette semaine
+      const affectedDays = days.filter(
+        day => localState[finisseurId]?.[day.date]?.checked
+      );
+
+      if (affectedDays.length > 0) {
+        const deletePromises = affectedDays.map(day =>
+          deleteMutation.mutateAsync({ finisseurId, date: day.date })
+        );
+        await Promise.all(deletePromises);
+      }
+
+      // 2. Récupérer et supprimer la fiche du finisseur pour cette semaine
+      const { data: fiche } = await supabase
+        .from("fiches")
+        .select("id")
+        .eq("salarie_id", finisseurId)
+        .eq("semaine", semaine)
+        .is("chantier_id", null)
+        .maybeSingle();
+
+      if (fiche) {
+        // Supprimer les signatures liées
+        await supabase.from("signatures").delete().eq("fiche_id", fiche.id);
+        
+        // Supprimer les fiches_jours
+        await supabase.from("fiches_jours").delete().eq("fiche_id", fiche.id);
+        
+        // Supprimer le transport finisseur (jours puis parent)
+        const { data: transportFinisseur } = await supabase
+          .from("fiches_transport_finisseurs")
+          .select("id")
+          .eq("fiche_id", fiche.id);
+        
+        if (transportFinisseur?.length) {
+          const transportIds = transportFinisseur.map(t => t.id);
+          await supabase
+            .from("fiches_transport_finisseurs_jours")
+            .delete()
+            .in("fiche_transport_finisseur_id", transportIds);
+          await supabase
+            .from("fiches_transport_finisseurs")
+            .delete()
+            .eq("fiche_id", fiche.id);
+        }
+        
+        // Supprimer la fiche elle-même
+        await supabase.from("fiches").delete().eq("id", fiche.id);
+      }
       
-      // Invalider le cache pour forcer le rechargement
+      // 3. Invalider tous les caches concernés
       queryClient.invalidateQueries({ 
         queryKey: ["finisseurs-conducteur", conducteurId, semaine] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ["finisseurs-fiches-week", conducteurId, semaine] 
+      });
+      queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["fiches_jours"] });
+
+      toast({
+        title: "✅ Finisseur retiré",
+        description: `${finisseurName} a été retiré de votre équipe.`,
       });
     } catch (error) {
       toast({
