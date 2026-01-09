@@ -28,8 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
-import { FinisseurCombobox } from "./FinisseurCombobox";
+import { useUtilisateursByRoles } from "@/hooks/useUtilisateurs";
+import { EmployeCombobox } from "./EmployeCombobox";
 import { useChantiers } from "@/hooks/useChantiers";
 import {
   useAffectationsFinisseursJours,
@@ -65,7 +65,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     return format(previousMonday, "RRRR-'S'II");
   }, [semaine]);
 
-  const { data: finisseurs = [], isLoading: loadingFinisseurs } = useUtilisateursByRole("finisseur");
+  const { data: employes = [], isLoading: loadingEmployes } = useUtilisateursByRoles(["finisseur", "macon", "grutier", "interimaire"]);
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
   const { data: affectations = [], isLoading: loadingAffectations } = useAffectationsFinisseursJours(semaine);
   const { data: finisseursS1Ids = [], isLoading: loadingS1 } = 
@@ -121,11 +121,11 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
 
   // Initialiser le state local depuis les affectations
   useEffect(() => {
-    if (!finisseurs.length) return;
+    if (!employes.length) return;
 
     const newState: Record<string, Record<string, { checked: boolean; chantierId: string }>> = {};
 
-    finisseurs.forEach((f) => {
+    employes.forEach((f) => {
       newState[f.id] = {};
       days.forEach((day) => {
         const aff = affectations.find((a) => a.finisseur_id === f.id && a.date === day.date);
@@ -137,7 +137,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     });
 
     setLocalState(newState);
-  }, [affectations, finisseurs, days]);
+  }, [affectations, employes, days]);
 
   // Émettre les affectations locales au parent à chaque changement
   useEffect(() => {
@@ -158,10 +158,10 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     onAffectationsChange(list);
   }, [localState, onAffectationsChange]);
 
-  // Fonction pour scroller vers un finisseur
+  // Fonction pour scroller vers un employé
   const scrollToFinisseur = (finisseurId: string) => {
-    // Si le finisseur n'est pas déjà dans "Mon équipe" et pas pending, l'ajouter aux pending
-    const isInTeam = mesFinisseursActuels.some(f => f.id === finisseurId);
+    // Si l'employé n'est pas déjà dans "Mon équipe" et pas pending, l'ajouter aux pending
+    const isInTeam = mesEmployesActuels.some(f => f.id === finisseurId);
     if (!isInTeam && !pendingFinisseurs.includes(finisseurId)) {
       setPendingFinisseurs(prev => [...prev, finisseurId]);
     }
@@ -208,44 +208,44 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     );
   };
 
-  // Finisseurs de "mon équipe" (uniquement ceux affectés par CE conducteur OU avec fiches)
-  const mesFinisseursActuels = useMemo(() => {
+  // Employés de "mon équipe" (uniquement ceux affectés par CE conducteur OU avec fiches)
+  const mesEmployesActuels = useMemo(() => {
     // Union de deux listes :
     // 1. Ceux avec affectations par CE conducteur (semaine en cours)
     // 2. Ceux avec fiches pour CE conducteur (indépendamment des affectations)
-    const mesFinisseursActuelsIds = new Set([
+    const mesEmployesActuelsIds = new Set([
       ...finisseursCurrentIds,
       ...finisseursFichesIds,
     ]);
-    return finisseurs.filter(f => mesFinisseursActuelsIds.has(f.id));
-  }, [finisseurs, finisseursCurrentIds, finisseursFichesIds]);
+    return employes.filter(f => mesEmployesActuelsIds.has(f.id));
+  }, [employes, finisseursCurrentIds, finisseursFichesIds]);
 
-  // Finisseurs à afficher selon recherche
-  const finisseursToDisplay = useMemo(() => {
+  // Employés à afficher selon recherche
+  const employesToDisplay = useMemo(() => {
     const query = searchQuery.trim();
     
-    // Finisseurs avec affectations + pending
+    // Employés avec affectations + pending
     const displayedIds = new Set([
-      ...mesFinisseursActuels.map(f => f.id),
+      ...mesEmployesActuels.map(f => f.id),
       ...pendingFinisseurs
     ]);
     
     if (query === "") {
-      return finisseurs.filter(f => displayedIds.has(f.id));
+      return employes.filter(f => displayedIds.has(f.id));
     } else {
-      return finisseurs.filter((f) =>
+      return employes.filter((f) =>
         `${f.prenom} ${f.nom}`.toLowerCase().includes(query.toLowerCase())
       );
     }
-  }, [searchQuery, mesFinisseursActuels, finisseurs, pendingFinisseurs]);
+  }, [searchQuery, mesEmployesActuels, employes, pendingFinisseurs]);
 
   // Filtrage final par statut
-  const filteredFinisseurs = useMemo(() => {
-    return finisseursToDisplay.filter((f) => {
+  const filteredEmployes = useMemo(() => {
+    return employesToDisplay.filter((f) => {
       const statut = getFinisseurStatut(f.id);
       return statusFilter === "tous" || statut === statusFilter;
     });
-  }, [finisseursToDisplay, statusFilter]);
+  }, [employesToDisplay, statusFilter]);
 
   // Handlers
   const handleCheckboxChange = async (finisseurId: string, date: string, checked: boolean) => {
@@ -458,7 +458,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     }
   };
 
-  if (loadingFinisseurs || loadingChantiers || loadingAffectations || loadingS1 || loadingCurrent || loadingFiches) {
+  if (loadingEmployes || loadingChantiers || loadingAffectations || loadingS1 || loadingCurrent || loadingFiches) {
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -469,11 +469,11 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     );
   }
 
-  if (finisseurs.length === 0) {
+  if (employes.length === 0) {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>Aucun finisseur disponible dans l'entreprise.</AlertDescription>
+        <AlertDescription>Aucun employé disponible dans l'entreprise.</AlertDescription>
       </Alert>
     );
   }
@@ -498,11 +498,11 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
           {/* Barre de recherche + Filtres */}
           <div className="flex gap-4">
             <div className="flex-1">
-              <FinisseurCombobox
-                finisseurs={finisseurs}
-                mesFinisseursActuels={mesFinisseursActuels}
+              <EmployeCombobox
+                employes={employes}
+                mesEmployesActuels={mesEmployesActuels}
                 getAffectedDaysCount={getAffectedDaysCount}
-                onFinisseurSelect={scrollToFinisseur}
+                onEmployeSelect={scrollToFinisseur}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
               />
@@ -529,12 +529,12 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
             <div className="text-sm text-muted-foreground">
               {!searchQuery ? (
                 <>
-                  Mes finisseurs (semaine {semaine}) : <strong>{mesFinisseursActuels.length}</strong>
-                  {statusFilter !== "tous" && ` • Filtrés : ${filteredFinisseurs.length}`}
+                  Mon équipe (semaine {semaine}) : <strong>{mesEmployesActuels.length}</strong>
+                  {statusFilter !== "tous" && ` • Filtrés : ${filteredEmployes.length}`}
                 </>
               ) : (
                 <>
-                  Résultats de recherche : <strong>{filteredFinisseurs.length}</strong>
+                  Résultats de recherche : <strong>{filteredEmployes.length}</strong>
                 </>
               )}
             </div>
@@ -558,21 +558,21 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       {/* Vue Accordéon */}
       {viewMode === "accordion" && (
         <>
-          {!searchQuery && filteredFinisseurs.length === 0 ? (
+          {!searchQuery && filteredEmployes.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Aucun finisseur trouvé</AlertTitle>
+              <AlertTitle>Aucun employé trouvé</AlertTitle>
               <AlertDescription>
-                Vous n'avez encore affecté aucun finisseur cette semaine (semaine {semaine}).
+                Vous n'avez encore affecté aucun employé cette semaine (semaine {semaine}).
                 <br />
-                <strong>💡 Utilisez la recherche ci-dessus</strong> pour ajouter vos premiers finisseurs.
+                <strong>💡 Utilisez la recherche ci-dessus</strong> pour ajouter vos premiers employés.
               </AlertDescription>
             </Alert>
-          ) : searchQuery && filteredFinisseurs.length === 0 ? (
+          ) : searchQuery && filteredEmployes.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Aucun finisseur ne correspond à votre recherche "{searchQuery}".
+                Aucun employé ne correspond à votre recherche "{searchQuery}".
               </AlertDescription>
             </Alert>
           ) : (
@@ -582,21 +582,21 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
               onValueChange={setOpenAccordions}
               className="space-y-2"
             >
-              {filteredFinisseurs.map((finisseur) => {
-                const affectedCount = getAffectedDaysCount(finisseur.id);
-                const statut = getFinisseurStatut(finisseur.id);
+              {filteredEmployes.map((employe) => {
+                const affectedCount = getAffectedDaysCount(employe.id);
+                const statut = getFinisseurStatut(employe.id);
 
                 return (
                   <AccordionItem
-                    key={finisseur.id}
-                    value={finisseur.id}
-                    id={`finisseur-${finisseur.id}`}
+                    key={employe.id}
+                    value={employe.id}
+                    id={`finisseur-${employe.id}`}
                     className="border rounded-lg"
                   >
                     <AccordionTrigger className="px-4 hover:bg-muted/50">
                       <div className="flex items-center gap-3">
                         <span className="font-medium">
-                          {finisseur.prenom} {finisseur.nom}
+                          {employe.prenom} {employe.nom}
                         </span>
 
                         <Badge
@@ -609,7 +609,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                           }
                         >
                           {affectedCount}/5 jours
-                          {statut === "partiel" && days.some(day => isFinisseurAffectedElsewhere(finisseur.id, day.date)) && " (partagé)"}
+                          {statut === "partiel" && days.some(day => isFinisseurAffectedElsewhere(employe.id, day.date)) && " (partagé)"}
                         </Badge>
                       </div>
                     </AccordionTrigger>
@@ -620,9 +620,9 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                         <span className="text-sm font-medium text-muted-foreground">Actions rapides :</span>
                         
                         <Select
-                          value={quickChantiers[finisseur.id] || ""}
+                          value={quickChantiers[employe.id] || ""}
                           onValueChange={(v) =>
-                            setQuickChantiers((prev) => ({ ...prev, [finisseur.id]: v }))
+                            setQuickChantiers((prev) => ({ ...prev, [employe.id]: v }))
                           }
                         >
                           <SelectTrigger className="w-[180px] h-8 text-xs">
@@ -645,8 +645,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleAssignAllWeek(finisseur.id)}
-                                disabled={!quickChantiers[finisseur.id]}
+                                onClick={() => handleAssignAllWeek(employe.id)}
+                                disabled={!quickChantiers[employe.id]}
                               >
                                 <CalendarCheck className="h-4 w-4 mr-1" />
                                 Affecter toute la semaine
@@ -664,8 +664,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                                 size="sm"
                                 onClick={() =>
                                   handleRemoveFinisseur(
-                                    finisseur.id,
-                                    `${finisseur.prenom} ${finisseur.nom}`
+                                    employe.id,
+                                    `${employe.prenom} ${employe.nom}`
                                   )
                                 }
                                 disabled={deleteMutation.isPending}
@@ -675,7 +675,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Retirer ce finisseur de votre équipe et supprimer toutes ses affectations pour cette semaine
+                              Retirer cet employé de votre équipe et supprimer toutes ses affectations pour cette semaine
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -683,9 +683,9 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
 
                       <div className="space-y-3 pt-2">
                         {days.map((day) => {
-                          const isBlocked = isFinisseurAffectedElsewhere(finisseur.id, day.date);
-                          const isAffectedByChef = isFinisseurAffectedByChef(finisseur.id);
-                          const cellState = localState[finisseur.id]?.[day.date] || {
+                          const isBlocked = isFinisseurAffectedElsewhere(employe.id, day.date);
+                          const isAffectedByChef = isFinisseurAffectedByChef(employe.id);
+                          const cellState = localState[employe.id]?.[day.date] || {
                             checked: false,
                             chantierId: "",
                           };
@@ -705,7 +705,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                                         checked={cellState.checked}
                                         disabled={isBlocked || isAffectedByChef}
                                         onCheckedChange={(checked) =>
-                                          handleCheckboxChange(finisseur.id, day.date, !!checked)
+                                          handleCheckboxChange(employe.id, day.date, !!checked)
                                         }
                                       />
                                       {isAffectedByChef && (
@@ -722,7 +722,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                                   )}
                                   {isAffectedByChef && (
                                     <TooltipContent>
-                                      <p>🔒 Ce finisseur fait partie de l'équipe d'un chef</p>
+                                      <p>🔒 Cet employé fait partie de l'équipe d'un chef</p>
                                     </TooltipContent>
                                   )}
                                 </Tooltip>
@@ -732,7 +732,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                                 <Select
                                   value={cellState.chantierId}
                                   onValueChange={(value) =>
-                                    handleChantierChange(finisseur.id, day.date, value)
+                                    handleChantierChange(employe.id, day.date, value)
                                   }
                                 >
                                   <SelectTrigger className="flex-1">
@@ -787,10 +787,10 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                 </tr>
               </thead>
               <tbody>
-                {filteredFinisseurs.map((finisseur) => (
-                  <tr key={finisseur.id} className="border-b hover:bg-muted/50">
+                {filteredEmployes.map((employe) => (
+                  <tr key={employe.id} className="border-b hover:bg-muted/50">
                     <td className="p-2 font-medium sticky left-0 bg-background z-10">
-                      {finisseur.prenom} {finisseur.nom}
+                      {employe.prenom} {employe.nom}
                     </td>
                     {days.map((day) => {
                       const isBlocked = isFinisseurAffectedElsewhere(finisseur.id, day.date);
