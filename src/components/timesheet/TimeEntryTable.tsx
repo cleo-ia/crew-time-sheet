@@ -767,8 +767,13 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
   // Propager l'état au parent pour sauvegarde
   useEffect(() => {
+    // En mode edit, ne pas propager un tableau vide pendant le chargement initial
+    // pour éviter d'écraser les données passées en initialData
+    if (mode === "edit" && !hasLoadedData && entries.length === 0) {
+      return;
+    }
     onEntriesChange?.(entries);
-  }, [entries, onEntriesChange]);
+  }, [entries, onEntriesChange, mode, hasLoadedData]);
 
   // Flag pour suivre les modifications en attente
   const isDirty = useRef<boolean>(false);
