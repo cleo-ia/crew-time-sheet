@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -15,7 +14,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { useAffectations } from "@/hooks/useAffectations";
 
 interface Employe {
@@ -45,11 +43,12 @@ const getRoleLabel = (employe: Employe): string => {
   return "Employé";
 };
 
-const getRoleBadgeVariant = (employe: Employe): "default" | "secondary" | "outline" => {
-  if (employe.agence_interim || employe._roleType === "interimaire") return "secondary";
-  if (employe.role_metier === "macon" || employe._roleType === "macon") return "default";
-  if (employe.role_metier === "grutier" || employe._roleType === "grutier") return "outline";
-  return "secondary";
+const getRoleIcon = (employe: Employe): string => {
+  if (employe.agence_interim || employe._roleType === "interimaire") return "🔄";
+  if (employe.role_metier === "macon" || employe._roleType === "macon") return "👷";
+  if (employe.role_metier === "grutier" || employe._roleType === "grutier") return "🏗️";
+  if (employe.role_metier === "finisseur" || employe._roleType === "finisseur") return "🔨";
+  return "👤";
 };
 
 export const EmployeCombobox = ({
@@ -100,62 +99,11 @@ export const EmployeCombobox = ({
     });
   }, [employes, mesEmployesActuels, getAffectedDaysCount, affectationsChefs]);
 
-  // Grouper par statut pour affichage
-  const groupedEmployes = useMemo(() => {
-    const nonAffectes = sortedEmployes.filter((e) => e.affectedDays === 0);
-    const partiels = sortedEmployes.filter(
-      (e) => e.affectedDays > 0 && e.affectedDays < 5
-    );
-    const complets = sortedEmployes.filter((e) => e.affectedDays === 5);
-
-    return { nonAffectes, partiels, complets };
-  }, [sortedEmployes]);
-
   const handleSelect = (employeId: string) => {
     setOpen(false);
     onSearchChange("");
     onEmployeSelect(employeId);
   };
-
-  const renderEmployeItem = (e: typeof sortedEmployes[0]) => (
-    <CommandItem
-      key={e.id}
-      value={e.id}
-      keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
-      onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
-      className={cn(
-        "flex items-center justify-between gap-2",
-        e.isAffectedByChef ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-      )}
-      disabled={e.isAffectedByChef}
-    >
-      <div className="flex items-center gap-2 flex-1">
-        {e.isAffected && !e.isAffectedByChef && (
-          <Check className="h-4 w-4 text-green-600 shrink-0" />
-        )}
-        <span className={cn(!e.isAffected && "ml-6")}>
-          {e.prenom} {e.nom}
-        </span>
-        <Badge variant={getRoleBadgeVariant(e)} className="text-xs">
-          {getRoleLabel(e)}
-        </Badge>
-      </div>
-      <div className="flex items-center gap-2">
-        {e.isAffectedByChef ? (
-          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 text-xs shrink-0">
-            Affecté à un chef
-          </Badge>
-        ) : e.affectedDays > 0 ? (
-          <Badge
-            variant={e.affectedDays === 5 ? "default" : "secondary"}
-            className="text-xs shrink-0"
-          >
-            {e.affectedDays}/5 jours
-          </Badge>
-        ) : null}
-      </div>
-    </CommandItem>
-  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -166,45 +114,57 @@ export const EmployeCombobox = ({
           aria-expanded={open}
           className="w-full justify-between"
         >
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Search className="h-4 w-4" />
-            <span>
-              {searchQuery || "🔍 Rechercher un employé (nom, prénom)..."}
-            </span>
-          </div>
+          <span className="text-muted-foreground">
+            Rechercher un employé...
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[600px] p-0" align="start">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput
-            placeholder="Taper pour filtrer..."
+            placeholder="Taper un nom..."
             value={searchQuery}
             onValueChange={onSearchChange}
           />
-          <CommandList className="max-h-[400px]">
+          <CommandList className="max-h-[300px]">
             <CommandEmpty>Aucun employé trouvé</CommandEmpty>
 
-            {/* Groupe : Non affectés */}
-            {groupedEmployes.nonAffectes.length > 0 && (
-              <CommandGroup heading="Non affectés (0/5)">
-                {groupedEmployes.nonAffectes.map(renderEmployeItem)}
-              </CommandGroup>
-            )}
-
-            {/* Groupe : Partiellement affectés */}
-            {groupedEmployes.partiels.length > 0 && (
-              <CommandGroup heading="Partiellement affectés (1-4/5)">
-                {groupedEmployes.partiels.map(renderEmployeItem)}
-              </CommandGroup>
-            )}
-
-            {/* Groupe : Semaine complète */}
-            {groupedEmployes.complets.length > 0 && (
-              <CommandGroup heading="Semaine complète (5/5)">
-                {groupedEmployes.complets.map(renderEmployeItem)}
-              </CommandGroup>
-            )}
+            {sortedEmployes.map((e) => (
+              <CommandItem
+                key={e.id}
+                value={e.id}
+                keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+                onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
+                className={cn(
+                  "flex items-center gap-3 py-2",
+                  e.isAffectedByChef && "opacity-40 cursor-not-allowed"
+                )}
+                disabled={e.isAffectedByChef}
+              >
+                <Check 
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    e.isAffected ? "opacity-100 text-primary" : "opacity-0"
+                  )} 
+                />
+                <span className="text-lg">{getRoleIcon(e)}</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium truncate">
+                    {e.prenom} {e.nom}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {getRoleLabel(e)}
+                    {e.isAffectedByChef 
+                      ? " • Affecté à un chef"
+                      : e.affectedDays > 0 
+                        ? ` • ${e.affectedDays}/5 jours`
+                        : ""
+                    }
+                  </span>
+                </div>
+              </CommandItem>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
