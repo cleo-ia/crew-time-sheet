@@ -187,6 +187,15 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
 
   const totalHeures = allFiches.reduce((sum: number, f: any) => sum + Number(f.total_heures || 0), 0);
 
+  // Heures séparées employés vs intérimaires (indicatif)
+  const heuresEmployes = allFiches
+    .filter((f: any) => !f.salarie?.agence_interim)
+    .reduce((sum: number, f: any) => sum + Number(f.total_heures || 0), 0);
+  
+  const heuresInterimaires = allFiches
+    .filter((f: any) => f.salarie?.agence_interim)
+    .reduce((sum: number, f: any) => sum + Number(f.total_heures || 0), 0);
+
   // Collect signatures from all fiches
   const signatures = allFiches
     .map((f: any) => {
@@ -496,7 +505,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
 
         <div className="space-y-3">
           <h2 className="text-2xl font-bold text-foreground">{fiche.chantier}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Semaine</span>
               <p className="font-medium text-foreground">{fiche.semaine}</p>
@@ -506,8 +515,16 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
               <p className="font-medium text-foreground">{fiche.chef}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Maçons</span>
+              <span className="text-muted-foreground">Effectif</span>
               <p className="font-medium text-foreground">{fiche.macons.length}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">H. Employés</span>
+              <p className="font-medium text-foreground">{heuresEmployes}h</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">H. Intérimaires</span>
+              <p className="font-medium text-foreground">{heuresInterimaires}h</p>
             </div>
             <div>
               <span className="text-muted-foreground">Total heures</span>
