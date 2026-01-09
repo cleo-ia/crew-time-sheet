@@ -793,8 +793,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                       {employe.prenom} {employe.nom}
                     </td>
                     {days.map((day) => {
-                      const isBlocked = isFinisseurAffectedElsewhere(finisseur.id, day.date);
-                      const cellState = localState[finisseur.id]?.[day.date] || {
+                      const isBlocked = isFinisseurAffectedElsewhere(employe.id, day.date);
+                      const cellState = localState[employe.id]?.[day.date] || {
                         checked: false,
                         chantierId: "",
                       };
@@ -810,7 +810,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                                       checked={cellState.checked}
                                       disabled={isBlocked}
                                       onCheckedChange={(checked) =>
-                                        handleCheckboxChange(finisseur.id, day.date, !!checked)
+                                        handleCheckboxChange(employe.id, day.date, !!checked)
                                       }
                                     />
                                   </div>
@@ -827,7 +827,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                               <Select
                                 value={cellState.chantierId}
                                 onValueChange={(value) =>
-                                  handleChantierChange(finisseur.id, day.date, value)
+                                  handleChantierChange(employe.id, day.date, value)
                                 }
                               >
                                 <SelectTrigger className="w-[180px]">
@@ -857,8 +857,8 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                               size="sm"
                               onClick={() =>
                                 handleRemoveFinisseur(
-                                  finisseur.id,
-                                  `${finisseur.prenom} ${finisseur.nom}`
+                                  employe.id,
+                                  `${employe.prenom} ${employe.nom}`
                                 )
                               }
                               disabled={deleteMutation.isPending}
@@ -867,7 +867,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            Retirer ce finisseur de votre équipe
+                            Retirer cet employé de votre équipe
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
