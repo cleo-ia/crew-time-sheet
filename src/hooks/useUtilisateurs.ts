@@ -309,6 +309,55 @@ export const useDeleteUtilisateur = () => {
   });
 };
 
+// Get users by multiple roles at once (for conducteur team management)
+export const useUtilisateursByRoles = (roles: string[]) => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
+  return useQuery({
+    queryKey: ["utilisateurs", "multi-roles", roles, entrepriseId],
+    queryFn: async () => {
+      if (!roles.length) return [];
+      
+      const results: (Utilisateur & { _roleType: string })[] = [];
+      
+      for (const role of roles) {
+        let data: any[] = [];
+        
+        if (role === "interimaire") {
+          // Intérimaires: users with agence_interim
+          let query = supabase.from("utilisateurs").select("*")
+            .not("agence_interim", "is", null)
+            .neq("agence_interim", "");
+          if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+          const { data: result, error } = await query.order("nom");
+          if (error) throw error;
+          data = result || [];
+        } else if (role === "finisseur" || role === "macon" || role === "grutier") {
+          // Role métier direct
+          let query = supabase.from("utilisateurs").select("*").eq("role_metier", role as any);
+          if (entrepriseId) query = query.eq("entreprise_id", entrepriseId);
+          const { data: result, error } = await query.order("nom");
+          if (error) throw error;
+          data = result || [];
+        }
+        
+        // Add _roleType to each user (avoid duplicates by checking if already in results)
+        data.forEach(u => {
+          if (!results.some(r => r.id === u.id)) {
+            results.push({ ...u, _roleType: role });
+          }
+        });
+      }
+      
+      // Sort by nom
+      results.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+      
+      return results;
+    },
+    enabled: roles.length > 0,
+  });
+};
+
 // Get all employees from utilisateurs table (includes finisseurs, interimaires, chefs)
 export const useAllSalaries = () => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");

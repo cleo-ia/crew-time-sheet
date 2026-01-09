@@ -18,42 +18,61 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useAffectations } from "@/hooks/useAffectations";
 
-interface Finisseur {
+interface Employe {
   id: string;
-  prenom: string;
-  nom: string;
+  prenom: string | null;
+  nom: string | null;
+  role_metier?: string | null;
+  agence_interim?: string | null;
+  _roleType?: string;
 }
 
-interface FinisseurComboboxProps {
-  finisseurs: Finisseur[];
-  mesFinisseursActuels: Finisseur[];
-  getAffectedDaysCount: (finisseurId: string) => number;
-  onFinisseurSelect: (finisseurId: string) => void;
+interface EmployeComboboxProps {
+  employes: Employe[];
+  mesEmployesActuels: Employe[];
+  getAffectedDaysCount: (employeId: string) => number;
+  onEmployeSelect: (employeId: string) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
 }
 
-export const FinisseurCombobox = ({
-  finisseurs,
-  mesFinisseursActuels,
+const getRoleLabel = (employe: Employe): string => {
+  if (employe.agence_interim) return "Intérimaire";
+  if (employe._roleType === "interimaire") return "Intérimaire";
+  if (employe.role_metier === "macon" || employe._roleType === "macon") return "Maçon";
+  if (employe.role_metier === "grutier" || employe._roleType === "grutier") return "Grutier";
+  if (employe.role_metier === "finisseur" || employe._roleType === "finisseur") return "Finisseur";
+  return "Employé";
+};
+
+const getRoleBadgeVariant = (employe: Employe): "default" | "secondary" | "outline" => {
+  if (employe.agence_interim || employe._roleType === "interimaire") return "secondary";
+  if (employe.role_metier === "macon" || employe._roleType === "macon") return "default";
+  if (employe.role_metier === "grutier" || employe._roleType === "grutier") return "outline";
+  return "secondary";
+};
+
+export const EmployeCombobox = ({
+  employes,
+  mesEmployesActuels,
   getAffectedDaysCount,
-  onFinisseurSelect,
+  onEmployeSelect,
   searchQuery,
   onSearchChange,
-}: FinisseurComboboxProps) => {
+}: EmployeComboboxProps) => {
   const [open, setOpen] = useState(false);
   
   // Charger les affectations des chefs
   const { data: affectationsChefs } = useAffectations();
 
-  // Tri des finisseurs : Affectés par chef → Non affectés → Partiels → Complets
-  const sortedFinisseurs = useMemo(() => {
-    const withDays = finisseurs.map((f) => ({
-      ...f,
-      affectedDays: getAffectedDaysCount(f.id),
-      isAffected: mesFinisseursActuels.some((mf) => mf.id === f.id),
+  // Tri des employés : Affectés par chef → Non affectés → Partiels → Complets
+  const sortedEmployes = useMemo(() => {
+    const withDays = employes.map((e) => ({
+      ...e,
+      affectedDays: getAffectedDaysCount(e.id),
+      isAffected: mesEmployesActuels.some((me) => me.id === e.id),
       isAffectedByChef: affectationsChefs?.some(
-        (aff: any) => aff.macon_id === f.id && aff.date_fin === null
+        (aff: any) => aff.macon_id === e.id && aff.date_fin === null
       ) ?? false,
     }));
 
@@ -79,56 +98,59 @@ export const FinisseurCombobox = ({
       // 4. Tri alphabétique dans chaque groupe
       return `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`);
     });
-  }, [finisseurs, mesFinisseursActuels, getAffectedDaysCount, affectationsChefs]);
+  }, [employes, mesEmployesActuels, getAffectedDaysCount, affectationsChefs]);
 
   // Grouper par statut pour affichage
-  const groupedFinisseurs = useMemo(() => {
-    const nonAffectes = sortedFinisseurs.filter((f) => f.affectedDays === 0);
-    const partiels = sortedFinisseurs.filter(
-      (f) => f.affectedDays > 0 && f.affectedDays < 5
+  const groupedEmployes = useMemo(() => {
+    const nonAffectes = sortedEmployes.filter((e) => e.affectedDays === 0);
+    const partiels = sortedEmployes.filter(
+      (e) => e.affectedDays > 0 && e.affectedDays < 5
     );
-    const complets = sortedFinisseurs.filter((f) => f.affectedDays === 5);
+    const complets = sortedEmployes.filter((e) => e.affectedDays === 5);
 
     return { nonAffectes, partiels, complets };
-  }, [sortedFinisseurs]);
+  }, [sortedEmployes]);
 
-  const handleSelect = (finisseurId: string) => {
+  const handleSelect = (employeId: string) => {
     setOpen(false);
     onSearchChange("");
-    onFinisseurSelect(finisseurId);
+    onEmployeSelect(employeId);
   };
 
-  const renderFinisseurItem = (f: typeof sortedFinisseurs[0]) => (
+  const renderEmployeItem = (e: typeof sortedEmployes[0]) => (
     <CommandItem
-      key={f.id}
-      value={f.id}
-      keywords={[f.prenom.toLowerCase(), f.nom.toLowerCase()]}
-      onSelect={(value) => !f.isAffectedByChef && handleSelect(value)}
+      key={e.id}
+      value={e.id}
+      keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+      onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
       className={cn(
         "flex items-center justify-between gap-2",
-        f.isAffectedByChef ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+        e.isAffectedByChef ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
       )}
-      disabled={f.isAffectedByChef}
+      disabled={e.isAffectedByChef}
     >
       <div className="flex items-center gap-2 flex-1">
-        {f.isAffected && !f.isAffectedByChef && (
+        {e.isAffected && !e.isAffectedByChef && (
           <Check className="h-4 w-4 text-green-600 shrink-0" />
         )}
-        <span className={cn(!f.isAffected && "ml-6")}>
-          {f.prenom} {f.nom}
+        <span className={cn(!e.isAffected && "ml-6")}>
+          {e.prenom} {e.nom}
         </span>
+        <Badge variant={getRoleBadgeVariant(e)} className="text-xs">
+          {getRoleLabel(e)}
+        </Badge>
       </div>
       <div className="flex items-center gap-2">
-        {f.isAffectedByChef ? (
+        {e.isAffectedByChef ? (
           <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 text-xs shrink-0">
             Affecté à un chef
           </Badge>
-        ) : f.affectedDays > 0 ? (
+        ) : e.affectedDays > 0 ? (
           <Badge
-            variant={f.affectedDays === 5 ? "default" : "secondary"}
+            variant={e.affectedDays === 5 ? "default" : "secondary"}
             className="text-xs shrink-0"
           >
-            {f.affectedDays}/5 jours
+            {e.affectedDays}/5 jours
           </Badge>
         ) : null}
       </div>
@@ -147,7 +169,7 @@ export const FinisseurCombobox = ({
           <div className="flex items-center gap-2 text-muted-foreground">
             <Search className="h-4 w-4" />
             <span>
-              {searchQuery || "🔍 Rechercher un finisseur (nom, prénom)..."}
+              {searchQuery || "🔍 Rechercher un employé (nom, prénom)..."}
             </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -161,26 +183,26 @@ export const FinisseurCombobox = ({
             onValueChange={onSearchChange}
           />
           <CommandList className="max-h-[400px]">
-            <CommandEmpty>Aucun finisseur trouvé</CommandEmpty>
+            <CommandEmpty>Aucun employé trouvé</CommandEmpty>
 
             {/* Groupe : Non affectés */}
-            {groupedFinisseurs.nonAffectes.length > 0 && (
+            {groupedEmployes.nonAffectes.length > 0 && (
               <CommandGroup heading="Non affectés (0/5)">
-                {groupedFinisseurs.nonAffectes.map(renderFinisseurItem)}
+                {groupedEmployes.nonAffectes.map(renderEmployeItem)}
               </CommandGroup>
             )}
 
             {/* Groupe : Partiellement affectés */}
-            {groupedFinisseurs.partiels.length > 0 && (
+            {groupedEmployes.partiels.length > 0 && (
               <CommandGroup heading="Partiellement affectés (1-4/5)">
-                {groupedFinisseurs.partiels.map(renderFinisseurItem)}
+                {groupedEmployes.partiels.map(renderEmployeItem)}
               </CommandGroup>
             )}
 
             {/* Groupe : Semaine complète */}
-            {groupedFinisseurs.complets.length > 0 && (
+            {groupedEmployes.complets.length > 0 && (
               <CommandGroup heading="Semaine complète (5/5)">
-                {groupedFinisseurs.complets.map(renderFinisseurItem)}
+                {groupedEmployes.complets.map(renderEmployeItem)}
               </CommandGroup>
             )}
           </CommandList>
