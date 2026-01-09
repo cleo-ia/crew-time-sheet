@@ -1,4 +1,4 @@
-import { Plus, Trash2, User, AlertTriangle, Users } from "lucide-react";
+import { Plus, Trash2, User, AlertTriangle, Users, CloudRain } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
@@ -27,6 +27,7 @@ interface TransportDayAccordionProps {
   onUpdate: (updatedDay: TransportDayV2) => void;
   isReadOnly?: boolean;
   isAllAbsent?: boolean;
+  isIntemperie?: boolean;
 }
 
 export const TransportDayAccordion = ({
@@ -38,6 +39,7 @@ export const TransportDayAccordion = ({
   onUpdate,
   isReadOnly = false,
   isAllAbsent = false,
+  isIntemperie = false,
 }: TransportDayAccordionProps) => {
   
   // Récupérer le nom du conducteur connecté
@@ -136,23 +138,31 @@ export const TransportDayAccordion = ({
   ).length;
 
   return (
-    <AccordionItem value={day.date} className={`border rounded-lg mb-2 ${isAllAbsent ? 'bg-muted/50 opacity-75' : ''}`}>
+    <AccordionItem value={day.date} className={`border rounded-lg mb-2 ${(isAllAbsent || isIntemperie) ? 'bg-muted/50 opacity-75' : ''}`}>
       <AccordionTrigger className="hover:no-underline px-4 py-3">
         <div className="flex items-center justify-between w-full pr-4">
           <div className="flex items-center gap-2">
             <span className="font-medium capitalize">{dayLabel}</span>
-            {isAllAbsent && (
+            {/* Badge intempérie (priorité sur absent) */}
+            {isIntemperie && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs">
+                <CloudRain className="h-3 w-3 mr-1" />
+                Intempérie
+              </Badge>
+            )}
+            {/* Badge absent (seulement si pas intempérie) */}
+            {isAllAbsent && !isIntemperie && (
               <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
                 <Users className="h-3 w-3 mr-1" />
                 Équipe absente
               </Badge>
             )}
-            {hasTrajetPersoIssue && !isAllAbsent && (
+            {hasTrajetPersoIssue && !isAllAbsent && !isIntemperie && (
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
             )}
           </div>
           <span className="text-sm text-muted-foreground">
-            {isAllAbsent 
+            {(isAllAbsent || isIntemperie)
               ? "Non requis"
               : vehiculeCount === 0 
                 ? "Aucun véhicule" 
@@ -261,9 +271,12 @@ export const TransportDayAccordion = ({
             ))
           )}
           
-          {isAllAbsent ? (
+          {(isAllAbsent || isIntemperie) ? (
             <p className="text-sm text-muted-foreground text-center py-2">
-              Toute l'équipe est absente ce jour — aucun véhicule requis
+              {isIntemperie 
+                ? "Journée intempérie — aucun véhicule requis"
+                : "Toute l'équipe est absente ce jour — aucun véhicule requis"
+              }
             </p>
           ) : (
             <Button

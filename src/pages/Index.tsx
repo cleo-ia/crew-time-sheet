@@ -191,7 +191,7 @@ const Index = () => {
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
 
-  // Calculer les jours où TOUTE l'équipe est absente
+  // Calculer les jours où TOUTE l'équipe est absente OU en intempérie complète
   const allAbsentDays = useMemo(() => {
     if (timeEntries.length === 0) return [];
     
@@ -200,19 +200,48 @@ const Index = () => {
     const monday = parseISOWeek(selectedWeek);
     
     weekDays.forEach((dayName, index) => {
-      // Vérifier si TOUS les employés sont absents ce jour
-      const allAbsent = timeEntries.every(entry => {
+      // Vérifier si TOUS les employés sont absents OU en intempérie complète ce jour
+      const allAbsentOrIntemperie = timeEntries.every(entry => {
         const dayData = entry.days[dayName];
-        return dayData?.absent === true;
+        // Absent classique
+        if (dayData?.absent === true) return true;
+        // Intempérie complète : hours = 0 ET heuresIntemperie > 0
+        if ((dayData?.hours ?? 0) === 0 && (dayData?.heuresIntemperie ?? 0) > 0) return true;
+        return false;
       });
       
-      if (allAbsent) {
+      if (allAbsentOrIntemperie) {
         const dayDate = addDays(monday, index);
         absentDays.push(format(dayDate, "yyyy-MM-dd"));
       }
     });
     
     return absentDays;
+  }, [timeEntries, selectedWeek]);
+
+  // Identifier les jours d'intempérie complète (pour l'indicateur visuel distinct)
+  const allIntempDays = useMemo(() => {
+    if (timeEntries.length === 0) return [];
+    
+    const weekDays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+    const intempDays: string[] = [];
+    const monday = parseISOWeek(selectedWeek);
+    
+    weekDays.forEach((dayName, index) => {
+      // Vérifier si TOUS les employés sont en intempérie complète (pas absent classique)
+      const allIntemp = timeEntries.every(entry => {
+        const dayData = entry.days[dayName];
+        // Intempérie complète : hours = 0 ET heuresIntemperie > 0
+        return (dayData?.hours ?? 0) === 0 && (dayData?.heuresIntemperie ?? 0) > 0;
+      });
+      
+      if (allIntemp) {
+        const dayDate = addDays(monday, index);
+        intempDays.push(format(dayDate, "yyyy-MM-dd"));
+      }
+    });
+    
+    return intempDays;
   }, [timeEntries, selectedWeek]);
 
   // Validation de la fiche transport (en tenant compte des jours d'absence totale)
@@ -621,6 +650,7 @@ const Index = () => {
                           ficheId={ficheId}
                           isReadOnly={!isFicheModifiable || !isOnline}
                           allAbsentDays={allAbsentDays}
+                          allIntempDays={allIntempDays}
                         />
                       </CollapsibleContent>
                     </Collapsible>
