@@ -32,6 +32,9 @@ interface DayData {
   m3_beton: string;
   ml_voile: string;
   m2_coffrage: string;
+  nb_personnes_beton: string;
+  nb_personnes_voile: string;
+  nb_personnes_coffrage: string;
   meteo: string;
   observations: string;
   incident: string;
@@ -55,9 +58,11 @@ export const RatioGlobalSheet = ({
   // État local pour les données du formulaire
   const [formData, setFormData] = useState<Record<string, DayData>>({});
   
-  // Créer une clé stable pour détecter les vrais changements (évite boucle infinie)
+  // Créer une clé stable pour détecter les vrais changements
   const ratiosKey = useMemo(
-    () => existingRatios.map(r => `${r.date}:${r.m3_beton}:${r.ml_voile}:${r.m2_coffrage}:${r.meteo}:${r.observations}:${r.incident}`).join('|'),
+    () => existingRatios.map(r => 
+      `${r.date}:${r.m3_beton}:${r.ml_voile}:${r.m2_coffrage}:${r.nb_personnes_beton}:${r.nb_personnes_voile}:${r.nb_personnes_coffrage}:${r.meteo}:${r.observations}:${r.incident}`
+    ).join('|'),
     [existingRatios]
   );
   
@@ -72,6 +77,9 @@ export const RatioGlobalSheet = ({
         m3_beton: existing?.m3_beton?.toString() ?? "",
         ml_voile: existing?.ml_voile?.toString() ?? "",
         m2_coffrage: existing?.m2_coffrage?.toString() ?? "",
+        nb_personnes_beton: existing?.nb_personnes_beton?.toString() ?? "",
+        nb_personnes_voile: existing?.nb_personnes_voile?.toString() ?? "",
+        nb_personnes_coffrage: existing?.nb_personnes_coffrage?.toString() ?? "",
         meteo: existing?.meteo ?? "",
         observations: existing?.observations ?? "",
         incident: existing?.incident ?? "",
@@ -79,7 +87,7 @@ export const RatioGlobalSheet = ({
     });
     
     setFormData(newFormData);
-  }, [weekDates, ratiosKey]); // Utiliser la clé stable au lieu de existingRatios
+  }, [weekDates, ratiosKey]);
   
   // Fonction pour sauvegarder un champ
   const handleFieldChange = (date: string, field: keyof DayData, value: string) => {
@@ -94,6 +102,21 @@ export const RatioGlobalSheet = ({
     }));
   };
   
+  // Construire l'objet ratio à partir des données du jour
+  const buildRatioPayload = (date: string, dayData: DayData): RatioJournalier => ({
+    fiche_id: ficheId!,
+    date,
+    m3_beton: dayData.m3_beton ? parseFloat(dayData.m3_beton) : null,
+    ml_voile: dayData.ml_voile ? parseFloat(dayData.ml_voile) : null,
+    m2_coffrage: dayData.m2_coffrage ? parseFloat(dayData.m2_coffrage) : null,
+    nb_personnes_beton: dayData.nb_personnes_beton ? parseInt(dayData.nb_personnes_beton) : null,
+    nb_personnes_voile: dayData.nb_personnes_voile ? parseInt(dayData.nb_personnes_voile) : null,
+    nb_personnes_coffrage: dayData.nb_personnes_coffrage ? parseInt(dayData.nb_personnes_coffrage) : null,
+    meteo: dayData.meteo || null,
+    observations: dayData.observations || null,
+    incident: dayData.incident || null,
+  });
+  
   // Auto-save au blur
   const handleBlur = (date: string) => {
     if (!ficheId || isReadOnly) return;
@@ -103,20 +126,12 @@ export const RatioGlobalSheet = ({
     
     // Ne sauvegarder que si au moins un champ est rempli
     const hasData = dayData.m3_beton || dayData.ml_voile || dayData.m2_coffrage || 
+                    dayData.nb_personnes_beton || dayData.nb_personnes_voile || dayData.nb_personnes_coffrage ||
                     dayData.meteo || dayData.observations || dayData.incident;
     
     if (!hasData) return;
     
-    saveRatio.mutate({
-      fiche_id: ficheId,
-      date,
-      m3_beton: dayData.m3_beton ? parseFloat(dayData.m3_beton) : null,
-      ml_voile: dayData.ml_voile ? parseFloat(dayData.ml_voile) : null,
-      m2_coffrage: dayData.m2_coffrage ? parseFloat(dayData.m2_coffrage) : null,
-      meteo: dayData.meteo || null,
-      observations: dayData.observations || null,
-      incident: dayData.incident || null,
-    });
+    saveRatio.mutate(buildRatioPayload(date, dayData));
   };
   
   // Formater la date pour affichage
@@ -124,6 +139,39 @@ export const RatioGlobalSheet = ({
     const date = new Date(dateStr);
     return `${DAYS[dayIndex]} ${format(date, "dd/MM", { locale: fr })}`;
   };
+  
+  // Calculer les totaux et ratios
+  const totals = useMemo(() => {
+    const values = Object.values(formData);
+    
+    const totalBeton = values.reduce((sum, d) => sum + (parseFloat(d.m3_beton) || 0), 0);
+    const totalVoile = values.reduce((sum, d) => sum + (parseFloat(d.ml_voile) || 0), 0);
+    const totalCoffrage = values.reduce((sum, d) => sum + (parseFloat(d.m2_coffrage) || 0), 0);
+    
+    // Calculer la moyenne des personnes (seulement jours avec nb > 0)
+    const betonDays = values.filter(d => parseInt(d.nb_personnes_beton) > 0);
+    const voileDays = values.filter(d => parseInt(d.nb_personnes_voile) > 0);
+    const coffrageDays = values.filter(d => parseInt(d.nb_personnes_coffrage) > 0);
+    
+    const avgBeton = betonDays.length > 0 
+      ? betonDays.reduce((sum, d) => sum + parseInt(d.nb_personnes_beton), 0) / betonDays.length 
+      : 0;
+    const avgVoile = voileDays.length > 0 
+      ? voileDays.reduce((sum, d) => sum + parseInt(d.nb_personnes_voile), 0) / voileDays.length 
+      : 0;
+    const avgCoffrage = coffrageDays.length > 0 
+      ? coffrageDays.reduce((sum, d) => sum + parseInt(d.nb_personnes_coffrage), 0) / coffrageDays.length 
+      : 0;
+    
+    return {
+      totalBeton,
+      totalVoile,
+      totalCoffrage,
+      ratioBeton: avgBeton > 0 ? totalBeton / avgBeton : null,
+      ratioVoile: avgVoile > 0 ? totalVoile / avgVoile : null,
+      ratioCoffrage: avgCoffrage > 0 ? totalCoffrage / avgCoffrage : null,
+    };
+  }, [formData]);
   
   if (!ficheId) {
     return (
@@ -147,9 +195,12 @@ export const RatioGlobalSheet = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-28">Jour</TableHead>
-            <TableHead className="w-24">M³ béton</TableHead>
-            <TableHead className="w-24">ML voile</TableHead>
-            <TableHead className="w-24">M² coffrage</TableHead>
+            <TableHead className="w-20">M³ béton</TableHead>
+            <TableHead className="w-14">Nb</TableHead>
+            <TableHead className="w-20">ML voile</TableHead>
+            <TableHead className="w-14">Nb</TableHead>
+            <TableHead className="w-20">M² coffrage</TableHead>
+            <TableHead className="w-14">Nb</TableHead>
             <TableHead className="w-36">Météo</TableHead>
             <TableHead className="min-w-[150px]">Observations</TableHead>
             <TableHead className="min-w-[150px]">Incident</TableHead>
@@ -162,6 +213,9 @@ export const RatioGlobalSheet = ({
               m3_beton: "",
               ml_voile: "",
               m2_coffrage: "",
+              nb_personnes_beton: "",
+              nb_personnes_voile: "",
+              nb_personnes_coffrage: "",
               meteo: "",
               observations: "",
               incident: "",
@@ -182,7 +236,20 @@ export const RatioGlobalSheet = ({
                     onChange={(e) => handleFieldChange(date, "m3_beton", e.target.value)}
                     onBlur={() => handleBlur(date)}
                     disabled={isReadOnly}
-                    className="h-8 w-20 text-sm"
+                    className="h-8 w-16 text-sm"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="—"
+                    value={dayData.nb_personnes_beton}
+                    onChange={(e) => handleFieldChange(date, "nb_personnes_beton", e.target.value)}
+                    onBlur={() => handleBlur(date)}
+                    disabled={isReadOnly}
+                    className="h-8 w-12 text-sm text-center"
                   />
                 </TableCell>
                 <TableCell>
@@ -195,7 +262,20 @@ export const RatioGlobalSheet = ({
                     onChange={(e) => handleFieldChange(date, "ml_voile", e.target.value)}
                     onBlur={() => handleBlur(date)}
                     disabled={isReadOnly}
-                    className="h-8 w-20 text-sm"
+                    className="h-8 w-16 text-sm"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="—"
+                    value={dayData.nb_personnes_voile}
+                    onChange={(e) => handleFieldChange(date, "nb_personnes_voile", e.target.value)}
+                    onBlur={() => handleBlur(date)}
+                    disabled={isReadOnly}
+                    className="h-8 w-12 text-sm text-center"
                   />
                 </TableCell>
                 <TableCell>
@@ -208,7 +288,20 @@ export const RatioGlobalSheet = ({
                     onChange={(e) => handleFieldChange(date, "m2_coffrage", e.target.value)}
                     onBlur={() => handleBlur(date)}
                     disabled={isReadOnly}
-                    className="h-8 w-20 text-sm"
+                    className="h-8 w-16 text-sm"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="—"
+                    value={dayData.nb_personnes_coffrage}
+                    onChange={(e) => handleFieldChange(date, "nb_personnes_coffrage", e.target.value)}
+                    onBlur={() => handleBlur(date)}
+                    disabled={isReadOnly}
+                    className="h-8 w-12 text-sm text-center"
                   />
                 </TableCell>
                 <TableCell>
@@ -218,16 +311,8 @@ export const RatioGlobalSheet = ({
                       handleFieldChange(date, "meteo", value);
                       // Auto-save immédiat pour le select
                       if (ficheId && !isReadOnly) {
-                        saveRatio.mutate({
-                          fiche_id: ficheId,
-                          date,
-                          m3_beton: dayData.m3_beton ? parseFloat(dayData.m3_beton) : null,
-                          ml_voile: dayData.ml_voile ? parseFloat(dayData.ml_voile) : null,
-                          m2_coffrage: dayData.m2_coffrage ? parseFloat(dayData.m2_coffrage) : null,
-                          meteo: value || null,
-                          observations: dayData.observations || null,
-                          incident: dayData.incident || null,
-                        });
+                        const updatedDayData = { ...dayData, meteo: value };
+                        saveRatio.mutate(buildRatioPayload(date, updatedDayData));
                       }
                     }}
                     disabled={isReadOnly}
@@ -272,16 +357,28 @@ export const RatioGlobalSheet = ({
           {/* Ligne des totaux */}
           <TableRow className="bg-muted/50 font-semibold">
             <TableCell className="text-sm">Total</TableCell>
-            <TableCell className="text-sm">
-              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.m3_beton) || 0), 0).toFixed(2)} m³
+            <TableCell className="text-sm">{totals.totalBeton.toFixed(2)} m³</TableCell>
+            <TableCell></TableCell>
+            <TableCell className="text-sm">{totals.totalVoile.toFixed(2)} ml</TableCell>
+            <TableCell></TableCell>
+            <TableCell className="text-sm">{totals.totalCoffrage.toFixed(2)} m²</TableCell>
+            <TableCell colSpan={4}></TableCell>
+          </TableRow>
+          {/* Ligne des ratios par personne */}
+          <TableRow className="bg-primary/10 font-semibold">
+            <TableCell className="text-sm">Ratio/pers</TableCell>
+            <TableCell className="text-sm text-primary">
+              {totals.ratioBeton !== null ? `${totals.ratioBeton.toFixed(2)} m³/p` : "—"}
             </TableCell>
-            <TableCell className="text-sm">
-              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.ml_voile) || 0), 0).toFixed(2)} ml
+            <TableCell></TableCell>
+            <TableCell className="text-sm text-primary">
+              {totals.ratioVoile !== null ? `${totals.ratioVoile.toFixed(2)} ml/p` : "—"}
             </TableCell>
-            <TableCell className="text-sm">
-              {Object.values(formData).reduce((sum, day) => sum + (parseFloat(day.m2_coffrage) || 0), 0).toFixed(2)} m²
+            <TableCell></TableCell>
+            <TableCell className="text-sm text-primary">
+              {totals.ratioCoffrage !== null ? `${totals.ratioCoffrage.toFixed(2)} m²/p` : "—"}
             </TableCell>
-            <TableCell colSpan={3}></TableCell>
+            <TableCell colSpan={4}></TableCell>
           </TableRow>
         </TableBody>
       </Table>

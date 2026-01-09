@@ -1330,6 +1330,9 @@ export type Database = {
           m3_beton: number | null
           meteo: string | null
           ml_voile: number | null
+          nb_personnes_beton: number | null
+          nb_personnes_coffrage: number | null
+          nb_personnes_voile: number | null
           observations: string | null
           updated_at: string
         }
@@ -1343,6 +1346,9 @@ export type Database = {
           m3_beton?: number | null
           meteo?: string | null
           ml_voile?: number | null
+          nb_personnes_beton?: number | null
+          nb_personnes_coffrage?: number | null
+          nb_personnes_voile?: number | null
           observations?: string | null
           updated_at?: string
         }
@@ -1356,6 +1362,9 @@ export type Database = {
           m3_beton?: number | null
           meteo?: string | null
           ml_voile?: number | null
+          nb_personnes_beton?: number | null
+          nb_personnes_coffrage?: number | null
+          nb_personnes_voile?: number | null
           observations?: string | null
           updated_at?: string
         }

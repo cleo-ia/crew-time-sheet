@@ -8,6 +8,9 @@ export interface RatioJournalier {
   m3_beton: number | null;
   ml_voile: number | null;
   m2_coffrage: number | null;
+  nb_personnes_beton: number | null;
+  nb_personnes_voile: number | null;
+  nb_personnes_coffrage: number | null;
   meteo: string | null;
   observations: string | null;
   incident: string | null;
@@ -57,6 +60,9 @@ export const useSaveRatioJournalier = () => {
             m3_beton: ratio.m3_beton,
             ml_voile: ratio.ml_voile,
             m2_coffrage: ratio.m2_coffrage,
+            nb_personnes_beton: ratio.nb_personnes_beton,
+            nb_personnes_voile: ratio.nb_personnes_voile,
+            nb_personnes_coffrage: ratio.nb_personnes_coffrage,
             meteo: ratio.meteo,
             observations: ratio.observations,
             incident: ratio.incident,
