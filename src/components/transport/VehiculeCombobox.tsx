@@ -18,6 +18,9 @@ import { useActiveVehicules } from "@/hooks/useVehicules";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Constante pour l'option "Véhicule perso" - sélectionnable plusieurs fois
+const VEHICULE_PERSO_VALUE = "VEHICULE_PERSO";
+
 interface VehiculeComboboxProps {
   value: string;
   onChange: (value: string) => void;
@@ -195,7 +198,9 @@ export const VehiculeCombobox = ({
         >
           <div className="flex items-center gap-2">
             <Truck className="h-4 w-4 shrink-0 opacity-50" />
-            {selectedVehicule ? (
+            {value === VEHICULE_PERSO_VALUE ? (
+              <span className="text-blue-600 dark:text-blue-400">Véhicule perso</span>
+            ) : selectedVehicule ? (
               <span>{selectedVehicule.immatriculation}</span>
             ) : (
               <span className="text-muted-foreground">Sélectionner une plaque</span>
@@ -209,6 +214,28 @@ export const VehiculeCombobox = ({
           <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
           <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
+            {/* Option Véhicule perso - toujours disponible, sélectionnable plusieurs fois */}
+            <CommandItem
+              value={VEHICULE_PERSO_VALUE}
+              onSelect={() => {
+                onChange(VEHICULE_PERSO_VALUE);
+                setTimeout(() => setOpen(false), 50);
+              }}
+              className="font-normal text-blue-600 dark:text-blue-400"
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  normalizedValue === VEHICULE_PERSO_VALUE ? "opacity-100" : "opacity-0"
+                )}
+              />
+              <span>Véhicule perso</span>
+              <span className="text-xs text-muted-foreground ml-2">(sélectionnable plusieurs fois)</span>
+            </CommandItem>
+            
+            {/* Séparateur visuel */}
+            <div className="my-1 border-t border-border" />
+
             {vehicules.map((vehicule) => {
               // Mode Chefs/Maçons : vérification simple
               const isUsedSimple = otherVehiculesPlates?.includes(vehicule.immatriculation) ?? false;
