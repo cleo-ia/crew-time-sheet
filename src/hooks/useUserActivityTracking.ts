@@ -6,6 +6,7 @@
  * - 100% asynchrone : n'attend jamais de réponse
  * - 100% non-bloquant : tout est dans des try-catch
  * - Fire-and-forget : si ça échoue, ça échoue silencieusement
+ * - Retry avec fallback sur user_roles si localStorage vide
  */
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -65,10 +66,32 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
   const lastPageRef = useRef<string | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Récupérer l'entreprise_id de manière sécurisée
-  const getEntrepriseId = useCallback((): string | null => {
+  /**
+   * Récupérer l'entreprise_id avec fallback sur user_roles
+   * Si localStorage est vide, on interroge user_roles et on restaure localStorage
+   */
+  const getEntrepriseIdWithFallback = useCallback(async (userId: string): Promise<string | null> => {
     try {
-      return localStorage.getItem('current_entreprise_id');
+      // 1. Priorité au localStorage
+      const storedId = localStorage.getItem('current_entreprise_id');
+      if (storedId) return storedId;
+
+      // 2. Fallback: récupérer depuis user_roles
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('entreprise_id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data?.entreprise_id) return null;
+
+      // 3. Restaurer dans localStorage pour les prochains appels
+      localStorage.setItem('current_entreprise_id', data.entreprise_id);
+      console.log('[activity-tracking] entreprise_id restauré depuis user_roles:', data.entreprise_id);
+
+      return data.entreprise_id;
     } catch {
       return null;
     }
@@ -88,7 +111,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const entrepriseId = getEntrepriseId();
+      const entrepriseId = await getEntrepriseIdWithFallback(user.id);
       if (!entrepriseId) return;
 
       // Fire-and-forget - on n'attend pas le résultat, on gère les erreurs inline
@@ -109,9 +132,9 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
     } catch {
       // Échec silencieux - ne jamais bloquer l'app
     }
-  }, [enabled, getEntrepriseId]);
+  }, [enabled, getEntrepriseIdWithFallback]);
 
-  // Créer une nouvelle session (fire-and-forget)
+  // Créer une nouvelle session avec retry (fire-and-forget)
   const startSession = useCallback(async () => {
     try {
       if (!enabled) return;
@@ -119,8 +142,25 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const entrepriseId = getEntrepriseId();
-      if (!entrepriseId) return;
+      // Retry jusqu'à 3 fois avec délai exponentiel pour récupérer entreprise_id
+      let entrepriseId: string | null = null;
+      const maxRetries = 3;
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        entrepriseId = await getEntrepriseIdWithFallback(user.id);
+        if (entrepriseId) break;
+        
+        // Attendre avant le prochain essai (500ms, 1s, 2s)
+        if (attempt < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+          console.log(`[activity-tracking] Retry ${attempt + 1}/${maxRetries} pour entreprise_id...`);
+        }
+      }
+
+      if (!entrepriseId) {
+        console.warn('[activity-tracking] Impossible de récupérer entreprise_id après 3 tentatives');
+        return;
+      }
 
       // Fermer les anciennes sessions actives de cet utilisateur (fire-and-forget)
       try {
@@ -153,6 +193,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
       if (data?.id) {
         sessionIdRef.current = data.id;
         pagesVisitedRef.current = 0;
+        console.log('[activity-tracking] Session créée:', data.id);
       }
 
       // Log l'événement de login
@@ -160,7 +201,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
     } catch {
       // Échec silencieux
     }
-  }, [enabled, getEntrepriseId, logActivity, location.pathname]);
+  }, [enabled, getEntrepriseIdWithFallback, logActivity, location.pathname]);
 
   // Mettre à jour la session (heartbeat)
   const updateSession = useCallback(async () => {
