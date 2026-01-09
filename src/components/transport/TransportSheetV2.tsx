@@ -22,6 +22,7 @@ interface TransportSheetV2Props {
   conducteurId?: string;
   isReadOnly?: boolean;
   allAbsentDays?: string[];
+  allIntempDays?: string[];
 }
 
 export interface TransportSheetV2Ref {
@@ -37,6 +38,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   conducteurId,
   isReadOnly = false,
   allAbsentDays = [],
+  allIntempDays = [],
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -423,6 +425,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             onUpdate={(updatedDay) => updateDay(day.date, updatedDay)}
             isReadOnly={isReadOnly}
             isAllAbsent={allAbsentDays.includes(day.date)}
+            isIntemperie={allIntempDays.includes(day.date)}
           />
         ))}
       </Accordion>
