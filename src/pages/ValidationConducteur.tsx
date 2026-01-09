@@ -79,18 +79,27 @@ const ValidationConducteur = () => {
   
   const [selectedWeek, setSelectedWeek] = useState<string>(defaultWeek);
   
-  // Mettre à jour selectedWeek quand initialWeek change (sauf si on vient de signer)
+  // État pour tracker si l'utilisateur a manuellement sélectionné une semaine
+  const [userHasManuallySelectedWeek, setUserHasManuallySelectedWeek] = useState(false);
+  
+  // Wrapper pour préserver la sélection manuelle de l'utilisateur
+  const handleWeekChange = (week: string) => {
+    setUserHasManuallySelectedWeek(true);
+    setSelectedWeek(week);
+  };
+  
+  // Mettre à jour selectedWeek quand initialWeek change (sauf si on vient de signer OU sélection manuelle)
   useEffect(() => {
     const isFromSignature = sessionStorage.getItem('fromSignature') === 'true';
     
-    // Si on vient de signer, ne JAMAIS écraser selectedWeek
-    if (isFromSignature) return;
+    // Ne JAMAIS écraser si on vient de signer OU si l'utilisateur a sélectionné manuellement
+    if (isFromSignature || userHasManuallySelectedWeek) return;
     
     // Sinon, suivre la logique normale de useInitialWeek
     if (initialWeek) {
       setSelectedWeek(initialWeek);
     }
-  }, [initialWeek]);
+  }, [initialWeek, userHasManuallySelectedWeek]);
 
   // Synchroniser l'URL avec la semaine et l'onglet actif
   useEffect(() => {
@@ -561,7 +570,7 @@ const ValidationConducteur = () => {
                           <Calendar className="h-4 w-4 text-primary" />
                           Semaine sélectionnée
                         </label>
-                        <WeekSelector value={selectedWeek} onChange={setSelectedWeek} />
+                        <WeekSelector value={selectedWeek} onChange={handleWeekChange} />
                         
                         {/* Alerte rouge si semaine déjà transmise */}
                         {transmissionStatus?.isTransmitted && (
