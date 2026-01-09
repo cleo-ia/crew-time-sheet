@@ -488,7 +488,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
               <h3 className="text-lg font-semibold">👥 Gérer mon équipe</h3>
               <p className="text-sm text-muted-foreground">
                 {viewMode === "accordion"
-                  ? "Affectez et modifiez vos finisseurs jour par jour"
+                  ? "Affectez et modifiez vos employés jour par jour"
                   : "Vue tableau : gérez toutes les affectations en un coup d'œil"}
               </p>
             </div>
@@ -516,7 +516,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tous">Tous les finisseurs</SelectItem>
+                <SelectItem value="tous">Tous les employés</SelectItem>
                 <SelectItem value="non_affecte">Non affectés (0/5)</SelectItem>
                 <SelectItem value="partiel">Partiellement affectés</SelectItem>
                 <SelectItem value="complet">Semaine complète (5/5)</SelectItem>
