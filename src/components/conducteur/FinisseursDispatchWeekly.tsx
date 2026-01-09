@@ -29,7 +29,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useUtilisateursByRoles } from "@/hooks/useUtilisateurs";
-import { EmployeCombobox } from "./EmployeCombobox";
+import { useAffectations } from "@/hooks/useAffectations";
+import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 import { useChantiers } from "@/hooks/useChantiers";
 import {
   useAffectationsFinisseursJours,
@@ -43,7 +44,6 @@ import { useCopyPreviousWeekFinisseurs } from "@/hooks/useCopyPreviousWeekFiniss
 import { useCreateFicheJourForAffectation } from "@/hooks/useCreateFicheJourForAffectation";
 import { useDeleteFicheJourForAffectation } from "@/hooks/useDeleteFicheJourForAffectation";
 import { useFinisseursFichesThisWeek } from "@/hooks/useFinisseursFichesThisWeek";
-import { useAffectations } from "@/hooks/useAffectations";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -101,6 +101,9 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   
   // État pour gérer les finisseurs ajoutés mais sans affectations encore
   const [pendingFinisseurs, setPendingFinisseurs] = useState<string[]>([]);
+  
+  // Dialog création intérimaire
+  const [showCreateInterimaireDialog, setShowCreateInterimaireDialog] = useState(false);
 
   // État local pour gérer les affectations
   const [localState, setLocalState] = useState<
@@ -220,7 +223,32 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     return employes.filter(f => mesEmployesActuelsIds.has(f.id));
   }, [employes, finisseursCurrentIds, finisseursFichesIds]);
 
-  // Employés à afficher selon recherche
+  // Grouper les employés par rôle pour la grille 4 colonnes
+  const groupedEmployes = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    
+    const filterBySearch = (e: typeof employes[0]) => {
+      if (!query) return true;
+      return `${e.prenom} ${e.nom}`.toLowerCase().includes(query);
+    };
+    
+    const macons = employes.filter(e => 
+      (e.role_metier === "macon" || e._roleType === "macon") && !e.agence_interim && filterBySearch(e)
+    );
+    const grutiers = employes.filter(e => 
+      (e.role_metier === "grutier" || e._roleType === "grutier") && !e.agence_interim && filterBySearch(e)
+    );
+    const interimaires = employes.filter(e => 
+      (e.agence_interim || e._roleType === "interimaire") && filterBySearch(e)
+    );
+    const finisseurs = employes.filter(e => 
+      (e.role_metier === "finisseur" || e._roleType === "finisseur") && !e.agence_interim && filterBySearch(e)
+    );
+    
+    return { macons, grutiers, interimaires, finisseurs };
+  }, [employes, searchQuery]);
+
+  // Employés à afficher selon recherche (pour les vues accordion/table)
   const employesToDisplay = useMemo(() => {
     const query = searchQuery.trim();
     
@@ -238,6 +266,67 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       );
     }
   }, [searchQuery, mesEmployesActuels, employes, pendingFinisseurs]);
+  
+  // Vérifier le statut d'un employé pour affichage badge
+  const getEmployeStatus = (employeId: string) => {
+    // Affecté par un chef ?
+    if (isFinisseurAffectedByChef(employeId)) {
+      return { type: "chef", label: "Géré par chef", className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" };
+    }
+    
+    // Déjà dans mon équipe ?
+    const isInTeam = mesEmployesActuels.some(f => f.id === employeId) || pendingFinisseurs.includes(employeId);
+    if (isInTeam) {
+      const days = getAffectedDaysCount(employeId);
+      if (days === 5) {
+        return { type: "complet", label: "5/5 jours", className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20" };
+      } else if (days > 0) {
+        return { type: "partiel", label: `${days}/5 jours`, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" };
+      }
+      return { type: "added", label: "Ajouté", className: "bg-primary/10 text-primary border-primary/20" };
+    }
+    
+    // Affecté à un autre conducteur ?
+    const isAffectedOther = finisseursPartielsIds.includes(employeId) && 
+      !finisseursCurrentIds.includes(employeId);
+    if (isAffectedOther) {
+      return { type: "autre", label: "Autre conducteur", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" };
+    }
+    
+    return { type: "available", label: "Disponible", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" };
+  };
+  
+  // Ajouter un employé à l'équipe
+  const handleAddEmploye = (employeId: string) => {
+    const isInTeam = mesEmployesActuels.some(f => f.id === employeId) || pendingFinisseurs.includes(employeId);
+    if (isInTeam) return;
+    
+    if (isFinisseurAffectedByChef(employeId)) {
+      toast({
+        variant: "destructive",
+        title: "Employé non disponible",
+        description: "Cet employé est déjà géré par un chef de chantier.",
+      });
+      return;
+    }
+    
+    // Ajouter aux pending
+    setPendingFinisseurs(prev => [...prev, employeId]);
+    
+    // Scroll vers l'employé
+    setSelectedFinisseurId(employeId);
+    setTimeout(() => {
+      const element = document.getElementById(`finisseur-${employeId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 50);
+    
+    toast({
+      title: "✅ Employé ajouté",
+      description: "Sélectionnez maintenant ses jours et chantiers d'affectation.",
+    });
+  };
 
   // Filtrage final par statut
   const filteredEmployes = useMemo(() => {
@@ -498,13 +587,11 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
           {/* Barre de recherche + Filtres */}
           <div className="flex gap-4">
             <div className="flex-1">
-              <EmployeCombobox
-                employes={employes}
-                mesEmployesActuels={mesEmployesActuels}
-                getAffectedDaysCount={getAffectedDaysCount}
-                onEmployeSelect={scrollToFinisseur}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+              <Input
+                placeholder="Rechercher un employé..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
               />
             </div>
 
@@ -522,6 +609,187 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
                 <SelectItem value="complet">Semaine complète (5/5)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          {/* Grille 4 colonnes pour ajouter des employés */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">
+            {/* Colonne Maçons */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                👷 Ajouter des Maçons
+              </h4>
+              <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                {groupedEmployes.macons.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun maçon</p>
+                ) : (
+                  groupedEmployes.macons.map((e) => {
+                    const status = getEmployeStatus(e.id);
+                    const isInTeam = status.type === "added" || status.type === "partiel" || status.type === "complet";
+                    const isDisabled = status.type === "chef";
+                    
+                    return (
+                      <div 
+                        key={e.id}
+                        className={`flex items-center justify-between gap-2 p-2 border rounded-md text-sm ${isDisabled ? 'opacity-50' : 'hover:bg-muted/50'}`}
+                      >
+                        <span className="truncate font-medium">{e.prenom} {e.nom}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status.className}`}>
+                            {status.label}
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            variant={isInTeam ? "secondary" : "default"}
+                            className="h-6 px-2 text-xs"
+                            disabled={isInTeam || isDisabled}
+                            onClick={() => handleAddEmploye(e.id)}
+                          >
+                            {isInTeam ? "✓" : "+"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Colonne Grutiers */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                🏗️ Ajouter des Grutiers
+              </h4>
+              <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                {groupedEmployes.grutiers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun grutier</p>
+                ) : (
+                  groupedEmployes.grutiers.map((e) => {
+                    const status = getEmployeStatus(e.id);
+                    const isInTeam = status.type === "added" || status.type === "partiel" || status.type === "complet";
+                    const isDisabled = status.type === "chef";
+                    
+                    return (
+                      <div 
+                        key={e.id}
+                        className={`flex items-center justify-between gap-2 p-2 border rounded-md text-sm ${isDisabled ? 'opacity-50' : 'hover:bg-muted/50'}`}
+                      >
+                        <span className="truncate font-medium">{e.prenom} {e.nom}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status.className}`}>
+                            {status.label}
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            variant={isInTeam ? "secondary" : "default"}
+                            className="h-6 px-2 text-xs"
+                            disabled={isInTeam || isDisabled}
+                            onClick={() => handleAddEmploye(e.id)}
+                          >
+                            {isInTeam ? "✓" : "+"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Colonne Intérimaires */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                🔄 Ajouter des Intérimaires
+              </h4>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mb-2 text-xs"
+                onClick={() => setShowCreateInterimaireDialog(true)}
+              >
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Créer intérimaire d'urgence
+              </Button>
+              <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
+                {groupedEmployes.interimaires.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun intérimaire</p>
+                ) : (
+                  groupedEmployes.interimaires.map((e) => {
+                    const status = getEmployeStatus(e.id);
+                    const isInTeam = status.type === "added" || status.type === "partiel" || status.type === "complet";
+                    const isDisabled = status.type === "chef";
+                    
+                    return (
+                      <div 
+                        key={e.id}
+                        className={`flex items-center justify-between gap-2 p-2 border rounded-md text-sm ${isDisabled ? 'opacity-50' : 'hover:bg-muted/50'}`}
+                      >
+                        <div className="truncate">
+                          <span className="font-medium">{e.prenom} {e.nom}</span>
+                          {e.agence_interim && (
+                            <span className="text-[10px] text-muted-foreground block truncate">{e.agence_interim}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status.className}`}>
+                            {status.label}
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            variant={isInTeam ? "secondary" : "default"}
+                            className="h-6 px-2 text-xs"
+                            disabled={isInTeam || isDisabled}
+                            onClick={() => handleAddEmploye(e.id)}
+                          >
+                            {isInTeam ? "✓" : "+"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Colonne Finisseurs */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                🔨 Ajouter des Finisseurs
+              </h4>
+              <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                {groupedEmployes.finisseurs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun finisseur</p>
+                ) : (
+                  groupedEmployes.finisseurs.map((e) => {
+                    const status = getEmployeStatus(e.id);
+                    const isInTeam = status.type === "added" || status.type === "partiel" || status.type === "complet";
+                    const isDisabled = status.type === "chef";
+                    
+                    return (
+                      <div 
+                        key={e.id}
+                        className={`flex items-center justify-between gap-2 p-2 border rounded-md text-sm ${isDisabled ? 'opacity-50' : 'hover:bg-muted/50'}`}
+                      >
+                        <span className="truncate font-medium">{e.prenom} {e.nom}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status.className}`}>
+                            {status.label}
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            variant={isInTeam ? "secondary" : "default"}
+                            className="h-6 px-2 text-xs"
+                            disabled={isInTeam || isDisabled}
+                            onClick={() => handleAddEmploye(e.id)}
+                          >
+                            {isInTeam ? "✓" : "+"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Réinitialiser filtres */}
@@ -908,6 +1176,17 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Dialog création intérimaire */}
+      <InterimaireFormDialog
+        open={showCreateInterimaireDialog}
+        onOpenChange={setShowCreateInterimaireDialog}
+        onSuccess={(newId) => {
+          if (newId) {
+            handleAddEmploye(newId);
+          }
+        }}
+      />
     </div>
   );
 };
