@@ -71,24 +71,12 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   const addEmployeeMutation = useAddEmployeeToFiche();
   const deleteEmployeeMutation = useDeleteEmployeeFromFiche();
   
-  // Parse ficheId to extract chantierId and semaine
-  const lastHyphenIndex = ficheId.lastIndexOf("-");
-  const secondLastHyphenIndex = ficheId.lastIndexOf("-", lastHyphenIndex - 1);
-  const isComposite = ficheId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-\d{4}-(W|S)\d{2}$/i);
+  // Toujours extraire depuis ficheData une fois chargé (source de vérité)
+  const chantierId = ficheData?.chantier?.id || "";
+  const semaine = ficheData?.semaine || "";
   
-  let chantierId = "";
-  let semaine = "";
-  if (isComposite) {
-    chantierId = ficheId.substring(0, secondLastHyphenIndex);
-    semaine = ficheId.substring(secondLastHyphenIndex + 1);
-  } else if (ficheData) {
-    // Fallback: utiliser les données de ficheData si pas d'identifiant composé
-    chantierId = ficheData.chantier?.id || "";
-    semaine = ficheData.semaine || "";
-  }
-  
-  // Fetch detailed data for editing
-  const { data: detailData } = useFicheDetailForEdit(chantierId, semaine);
+  // Fetch detailed data for editing (uniquement si chantierId et semaine sont disponibles)
+  const { data: detailData, isLoading: isLoadingDetail } = useFicheDetailForEdit(chantierId, semaine);
   
   // Fetch transport data
   const { data: transportData } = useTransportByChantier(chantierId, semaine);
@@ -324,6 +312,15 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   };
 
   const handleStartEdit = () => {
+    if (!detailData || detailData.length === 0) {
+      toast({
+        title: "Données non disponibles",
+        description: "Les données détaillées sont en cours de chargement. Veuillez patienter.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (readOnly || ["VALIDE_CONDUCTEUR", "ENVOYE_RH"].includes(fiche.status)) {
       toast({
         title: "Modification impossible",
@@ -600,8 +597,17 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-foreground">Détail des heures</h3>
           {canEdit && !isEditing && !["VALIDE_CONDUCTEUR", "ENVOYE_RH"].includes(fiche.status) && (
-            <Button variant="outline" size="sm" onClick={handleStartEdit}>
-              <Edit className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleStartEdit}
+              disabled={isLoadingDetail || !detailData || detailData.length === 0}
+            >
+              {isLoadingDetail ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Edit className="h-4 w-4 mr-2" />
+              )}
               Modifier les données
             </Button>
           )}
@@ -706,7 +712,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
                       console.log("🖊️ Début de la signature pour", allFiches.length, "fiches");
                       
                       // Si c'est une fiche composite, signer TOUTES les fiches individuelles
-                      if (isComposite && allFiches.length > 0) {
+                      if (allFiches.length > 1) {
                         // Créer une signature pour chaque fiche individuelle
                         for (const fiche of allFiches) {
                           console.log("✍️ Signature de la fiche:", fiche.id);
@@ -732,7 +738,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
                       
                       // Déclencher automatiquement la validation de TOUTES les fiches
                       console.log("🚀 Déclenchement de la validation automatique...");
-                      console.log("📋 Paramètres:", { chantierId, semaine, isComposite });
+                      console.log("📋 Paramètres:", { chantierId, semaine, nbFiches: allFiches.length });
                       
                       await handleValidate();
                       
