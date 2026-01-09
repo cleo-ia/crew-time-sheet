@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -99,6 +100,24 @@ export const EmployeCombobox = ({
     });
   }, [employes, mesEmployesActuels, getAffectedDaysCount, affectationsChefs]);
 
+  // Grouper les employés par rôle
+  const groupedEmployes = useMemo(() => {
+    const macons = sortedEmployes.filter(e => 
+      (e.role_metier === "macon" || e._roleType === "macon") && !e.agence_interim
+    );
+    const grutiers = sortedEmployes.filter(e => 
+      (e.role_metier === "grutier" || e._roleType === "grutier") && !e.agence_interim
+    );
+    const finisseurs = sortedEmployes.filter(e => 
+      (e.role_metier === "finisseur" || e._roleType === "finisseur") && !e.agence_interim
+    );
+    const interimaires = sortedEmployes.filter(e => 
+      e.agence_interim || e._roleType === "interimaire"
+    );
+    
+    return { macons, grutiers, finisseurs, interimaires };
+  }, [sortedEmployes]);
+
   const handleSelect = (employeId: string) => {
     setOpen(false);
     onSearchChange("");
@@ -130,41 +149,158 @@ export const EmployeCombobox = ({
           <CommandList className="max-h-[300px]">
             <CommandEmpty>Aucun employé trouvé</CommandEmpty>
 
-            {sortedEmployes.map((e) => (
-              <CommandItem
-                key={e.id}
-                value={e.id}
-                keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
-                onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
-                className={cn(
-                  "flex items-center gap-3 py-2",
-                  e.isAffectedByChef && "opacity-40 cursor-not-allowed"
-                )}
-                disabled={e.isAffectedByChef}
-              >
-                <Check 
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    e.isAffected ? "opacity-100 text-primary" : "opacity-0"
-                  )} 
-                />
-                <span className="text-lg">{getRoleIcon(e)}</span>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium truncate">
-                    {e.prenom} {e.nom}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {getRoleLabel(e)}
-                    {e.isAffectedByChef 
-                      ? " • Affecté à un chef"
-                      : e.affectedDays > 0 
-                        ? ` • ${e.affectedDays}/5 jours`
-                        : ""
-                    }
-                  </span>
-                </div>
-              </CommandItem>
-            ))}
+            {groupedEmployes.macons.length > 0 && (
+              <CommandGroup heading="👷 Maçons">
+                {groupedEmployes.macons.map((e) => (
+                  <CommandItem
+                    key={e.id}
+                    value={e.id}
+                    keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+                    onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
+                    className={cn(
+                      "flex items-center gap-3 py-2",
+                      e.isAffectedByChef && "opacity-40 cursor-not-allowed"
+                    )}
+                    disabled={e.isAffectedByChef}
+                  >
+                    <Check 
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        e.isAffected ? "opacity-100 text-primary" : "opacity-0"
+                      )} 
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate">
+                        {e.prenom} {e.nom}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.isAffectedByChef 
+                          ? "Affecté à un chef"
+                          : e.affectedDays > 0 
+                            ? `${e.affectedDays}/5 jours`
+                            : ""
+                        }
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {groupedEmployes.grutiers.length > 0 && (
+              <CommandGroup heading="🏗️ Grutiers">
+                {groupedEmployes.grutiers.map((e) => (
+                  <CommandItem
+                    key={e.id}
+                    value={e.id}
+                    keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+                    onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
+                    className={cn(
+                      "flex items-center gap-3 py-2",
+                      e.isAffectedByChef && "opacity-40 cursor-not-allowed"
+                    )}
+                    disabled={e.isAffectedByChef}
+                  >
+                    <Check 
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        e.isAffected ? "opacity-100 text-primary" : "opacity-0"
+                      )} 
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate">
+                        {e.prenom} {e.nom}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.isAffectedByChef 
+                          ? "Affecté à un chef"
+                          : e.affectedDays > 0 
+                            ? `${e.affectedDays}/5 jours`
+                            : ""
+                        }
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {groupedEmployes.finisseurs.length > 0 && (
+              <CommandGroup heading="🔨 Finisseurs">
+                {groupedEmployes.finisseurs.map((e) => (
+                  <CommandItem
+                    key={e.id}
+                    value={e.id}
+                    keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+                    onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
+                    className={cn(
+                      "flex items-center gap-3 py-2",
+                      e.isAffectedByChef && "opacity-40 cursor-not-allowed"
+                    )}
+                    disabled={e.isAffectedByChef}
+                  >
+                    <Check 
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        e.isAffected ? "opacity-100 text-primary" : "opacity-0"
+                      )} 
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate">
+                        {e.prenom} {e.nom}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.isAffectedByChef 
+                          ? "Affecté à un chef"
+                          : e.affectedDays > 0 
+                            ? `${e.affectedDays}/5 jours`
+                            : ""
+                        }
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {groupedEmployes.interimaires.length > 0 && (
+              <CommandGroup heading="🔄 Intérimaires">
+                {groupedEmployes.interimaires.map((e) => (
+                  <CommandItem
+                    key={e.id}
+                    value={e.id}
+                    keywords={[(e.prenom || '').toLowerCase(), (e.nom || '').toLowerCase()]}
+                    onSelect={(value) => !e.isAffectedByChef && handleSelect(value)}
+                    className={cn(
+                      "flex items-center gap-3 py-2",
+                      e.isAffectedByChef && "opacity-40 cursor-not-allowed"
+                    )}
+                    disabled={e.isAffectedByChef}
+                  >
+                    <Check 
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        e.isAffected ? "opacity-100 text-primary" : "opacity-0"
+                      )} 
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate">
+                        {e.prenom} {e.nom}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.agence_interim || ""}
+                        {e.isAffectedByChef 
+                          ? " • Affecté à un chef"
+                          : e.affectedDays > 0 
+                            ? ` • ${e.affectedDays}/5 jours`
+                            : ""
+                        }
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
