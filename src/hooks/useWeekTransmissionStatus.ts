@@ -19,8 +19,7 @@ export const useWeekTransmissionStatus = (
         .from("fiches")
         .select("id, statut, salarie_id")
         .eq("semaine", semaine)
-        .eq("user_id", conducteurId)
-        .is("chantier_id", null);
+        .eq("user_id", conducteurId);
 
       if (error) {
         console.error("Erreur vérification transmission:", error);
