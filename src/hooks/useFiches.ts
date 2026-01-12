@@ -721,6 +721,8 @@ export const useUpdateFicheStatus = () => {
 
   return useMutation({
     mutationFn: async ({ ficheId, status, comment, chantierId, semaine }: { ficheId?: string; status: string; comment?: string; chantierId?: string; semaine?: string }) => {
+      let updatedFiches: any[] | null = null;
+
       // Prefer explicit chantierId + semaine when provided
       if (chantierId && semaine) {
         const { data, error } = await supabase
@@ -728,28 +730,36 @@ export const useUpdateFicheStatus = () => {
           .update({ statut: status as any })
           .eq("chantier_id", chantierId)
           .eq("semaine", semaine)
-          .select();
+          .select("id, salarie_id, semaine");
 
         if (error) throw error;
-        return data;
-      }
-
-      // Fallbacks
-      if (ficheId) {
+        updatedFiches = data;
+      } else if (ficheId) {
+        // Fallback to ficheId
         const { data, error } = await supabase
           .from("fiches")
           .update({ statut: status as any })
           .eq("id", ficheId)
-          .select();
+          .select("id, salarie_id, semaine");
 
         if (error) throw error;
-        return data;
+        updatedFiches = data;
+      } else {
+        throw new Error("Missing fiche identifier: provide either ficheId or chantierId + semaine");
       }
 
-      throw new Error("Missing fiche identifier: provide either ficheId or chantierId + semaine");
+      // Si transmission au RH, injecter automatiquement les congés validés
+      if (status === "ENVOYE_RH" && updatedFiches && updatedFiches.length > 0) {
+        const { injectValidatedLeaves } = await import("@/hooks/useInjectValidatedLeaves");
+        await injectValidatedLeaves(updatedFiches);
+      }
+
+      return updatedFiches;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["rh-consolidated"] });
+      queryClient.invalidateQueries({ queryKey: ["demandes-conges"] });
       toast({
         title: "Statut mis à jour",
         description: "Le statut de la fiche a été mis à jour avec succès.",

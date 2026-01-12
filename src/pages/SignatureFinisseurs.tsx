@@ -241,6 +241,19 @@ const SignatureFinisseurs = () => {
           console.error("Erreur mise à jour statut finisseurs:", updateError);
           throw updateError;
         }
+
+        // 3. Injecter automatiquement les congés validés pour ces fiches
+        const { data: fichesTransmises } = await supabase
+          .from("fiches")
+          .select("id, salarie_id, semaine")
+          .eq("semaine", semaine)
+          .in("salarie_id", finisseurIds)
+          .is("chantier_id", null);
+
+        if (fichesTransmises && fichesTransmises.length > 0) {
+          const { injectValidatedLeaves } = await import("@/hooks/useInjectValidatedLeaves");
+          await injectValidatedLeaves(fichesTransmises);
+        }
       }
 
       toast({
