@@ -287,8 +287,11 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
   useEffect(() => {
     if (!enabled) return;
 
-    // Démarrer la session de manière asynchrone
-    startSession();
+    // Délai de 500ms pour laisser l'auth se stabiliser côté RLS avant de créer la session
+    // Cela garantit que auth.uid() est disponible lors de l'INSERT dans user_sessions
+    const initTimeout = setTimeout(() => {
+      startSession();
+    }, 500);
 
     // Heartbeat toutes les 5 minutes
     heartbeatIntervalRef.current = setInterval(() => {
@@ -311,6 +314,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      clearTimeout(initTimeout);
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
