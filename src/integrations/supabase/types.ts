@@ -494,6 +494,7 @@ export type Database = {
           demandeur_id: string
           entreprise_id: string
           id: string
+          lu_par_demandeur: boolean
           motif: string | null
           motif_refus: string | null
           refusee_par_at: string | null
@@ -514,6 +515,7 @@ export type Database = {
           demandeur_id: string
           entreprise_id: string
           id?: string
+          lu_par_demandeur?: boolean
           motif?: string | null
           motif_refus?: string | null
           refusee_par_at?: string | null
@@ -534,6 +536,7 @@ export type Database = {
           demandeur_id?: string
           entreprise_id?: string
           id?: string
+          lu_par_demandeur?: boolean
           motif?: string | null
           motif_refus?: string | null
           refusee_par_at?: string | null

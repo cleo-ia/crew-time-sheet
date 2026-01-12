@@ -24,6 +24,7 @@ export const useValidateDemandeConge = () => {
         updateData.statut = "VALIDEE_RH";
         updateData.validee_par_rh_id = valideurId;
         updateData.validee_par_rh_at = new Date().toISOString();
+        updateData.lu_par_demandeur = false; // Notifier le demandeur
       }
 
       const { data, error } = await supabase

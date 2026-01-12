@@ -34,6 +34,7 @@ import { useWeekTransmissionStatus } from "@/hooks/useWeekTransmissionStatus";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesListSheet } from "@/components/conges/CongesListSheet";
 import { useDemandesEnAttente } from "@/hooks/useDemandesConges";
+import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -161,6 +162,18 @@ const ValidationConducteur = () => {
   const finisseurs = useMemo(() => {
     return allFinisseurs.filter(f => f.affectedDays && f.affectedDays.length > 0);
   }, [allFinisseurs]);
+
+  // Calculer les IDs gérés par ce conducteur (pour les notifications de congés)
+  const allManagedIds = useMemo(() => {
+    const ids = finisseurs.map(f => f.id);
+    if (conducteurId && !ids.includes(conducteurId)) {
+      ids.push(conducteurId);
+    }
+    return ids;
+  }, [finisseurs, conducteurId]);
+
+  // Compter les demandes de congés traitées non lues par le demandeur
+  const { data: nbDemandesTraitees = 0 } = useDemandesTraiteesNonLues(allManagedIds);
 
   // Source serveur directe pour affectations
   const { data: affByCond = [] } = useAffectationsByConducteur(conducteurId || "", selectedWeek);
@@ -494,7 +507,7 @@ const ValidationConducteur = () => {
             <>
               <CongesButton
                 onClick={() => setShowConges(true)}
-                pendingCount={nbCongesEnAttente}
+                pendingCount={nbCongesEnAttente + nbDemandesTraitees}
               />
               <ConversationButton
                 onClick={() => setShowConversation(true)}
