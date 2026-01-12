@@ -177,7 +177,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
       }
 
       // Créer une nouvelle session
-      const { data } = await supabase
+      const { data, error: insertError } = await supabase
         .from('user_sessions')
         .insert([{
           user_id: user.id,
@@ -190,10 +190,21 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
         .select('id')
         .single();
 
+      if (insertError) {
+        console.error('[activity-tracking] Erreur création session:', insertError.message, {
+          userId: user.id,
+          entrepriseId,
+          code: insertError.code,
+        });
+        return;
+      }
+
       if (data?.id) {
         sessionIdRef.current = data.id;
         pagesVisitedRef.current = 0;
-        console.log('[activity-tracking] Session créée:', data.id);
+        console.log('[activity-tracking] Session créée:', data.id, 'pour user:', user.id);
+      } else {
+        console.warn('[activity-tracking] Session créée mais pas d\'ID retourné');
       }
 
       // Log l'événement de login
