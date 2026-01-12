@@ -134,29 +134,31 @@ const ConsultationRH = () => {
         icon={FileSpreadsheet}
         theme="consultation-rh"
         actions={
-          <>
-            <CongesButton
-              onClick={() => setShowConges(true)}
-              pendingCount={nbCongesEnAttente}
-            />
-            <ConversationButton
-              onClick={() => setShowConversation(true)}
-              unreadCount={unreadData?.total || 0}
-            />
-            <Button 
-              variant="outline"
-              onClick={() => setShowInterimaireExport(true)}
-            >
-              <Building2 className="h-4 w-4 mr-2" />
-              Export Intérimaires
-            </Button>
-            <Button 
-              variant="default"
-              onClick={() => handleExport("excel")}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exporter Excel
-            </Button>
+          <div className="flex flex-col gap-2 items-end">
+            <div className="flex flex-wrap gap-2">
+              <CongesButton
+                onClick={() => setShowConges(true)}
+                pendingCount={nbCongesEnAttente}
+              />
+              <ConversationButton
+                onClick={() => setShowConversation(true)}
+                unreadCount={unreadData?.total || 0}
+              />
+              <Button 
+                variant="outline"
+                onClick={() => setShowInterimaireExport(true)}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Export Intérimaires
+              </Button>
+              <Button 
+                variant="default"
+                onClick={() => handleExport("excel")}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exporter Excel
+              </Button>
+            </div>
             <Button
               className="bg-accent hover:bg-accent-hover"
               onClick={() => setShowClotureDialog(true)}
@@ -166,7 +168,7 @@ const ConsultationRH = () => {
               <Lock className="h-4 w-4 mr-2" />
               Clôturer la période
             </Button>
-          </>
+          </div>
         }
       />
 
