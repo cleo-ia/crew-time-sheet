@@ -217,31 +217,19 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-md flex flex-col">
           <SheetHeader className="pb-4">
-            <SheetTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {mode === "new" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setMode("list")}
-                    className="h-8 w-8 mr-1"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                <CalendarOff className="h-5 w-5" />
-                {mode === "new" ? "Nouvelle demande" : "Demandes de congés"}
-              </div>
-              {mode === "list" && (
+            <SheetTitle className="flex items-center gap-2">
+              {mode === "new" && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  onClick={() => setMode("new")}
-                  className="h-8 w-8"
+                  onClick={() => setMode("list")}
+                  className="h-8 w-8 mr-1"
                 >
-                  <Plus className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
+              <CalendarOff className="h-5 w-5" />
+              {mode === "new" ? "Nouvelle demande" : "Demandes de congés"}
             </SheetTitle>
           </SheetHeader>
 
@@ -256,19 +244,30 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
               />
             </ScrollArea>
           ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="en-attente" className="relative text-xs">
-                  À valider
-                  {demandesEnAttente.length > 0 && (
-                    <span className="ml-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
-                      {demandesEnAttente.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="traitees" className="text-xs">Traitées</TabsTrigger>
-                <TabsTrigger value="mes-demandes" className="text-xs">Mes demandes</TabsTrigger>
-              </TabsList>
+            <div className="flex-1 flex flex-col">
+              {/* Bouton Nouvelle demande en haut */}
+              <Button
+                variant="outline"
+                onClick={() => setMode("new")}
+                className="w-full mb-4 py-6 border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-medium"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Nouvelle demande
+              </Button>
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="en-attente" className="relative text-xs">
+                    À valider
+                    {demandesEnAttente.length > 0 && (
+                      <span className="ml-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
+                        {demandesEnAttente.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="traitees" className="text-xs">Traitées</TabsTrigger>
+                  <TabsTrigger value="mes-demandes" className="text-xs">Mes demandes</TabsTrigger>
+                </TabsList>
 
               <TabsContent value="en-attente" className="flex-1 mt-4">
                 <ScrollArea className="h-[calc(100vh-220px)]">
@@ -343,7 +342,8 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                 </ScrollArea>
               </TabsContent>
             </Tabs>
-          )}
+          </div>
+        )}
         </SheetContent>
       </Sheet>
 
