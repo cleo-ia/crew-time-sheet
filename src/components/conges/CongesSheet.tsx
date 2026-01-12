@@ -163,6 +163,7 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
                 prenom: chefInfo?.prenom || "",
               }}
               chantierNom={chantierInfo?.nom}
+              existingDemandes={demandes}
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
               isSubmitting={createDemande.isPending}

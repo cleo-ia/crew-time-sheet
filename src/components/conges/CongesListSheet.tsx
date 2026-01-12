@@ -298,6 +298,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
               <DemandeCongeForm
                 employees={employeesForForm}
                 responsable={{ nom: "RH", prenom: "" }}
+                existingDemandes={mesDemandes}
                 onSubmit={handleFormSubmit}
                 onCancel={handleCancel}
                 isSubmitting={createDemande.isPending}

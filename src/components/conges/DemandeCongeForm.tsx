@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,10 +51,18 @@ export interface ResponsableInfo {
   prenom: string;
 }
 
+export interface ExistingDemande {
+  demandeur_id: string;
+  date_debut: string;
+  date_fin: string;
+  statut: string;
+}
+
 interface DemandeCongeFormProps {
   employees: Employee[];
   responsable: ResponsableInfo;
   chantierNom?: string;
+  existingDemandes?: ExistingDemande[];
   onSubmit: (data: {
     demandeur_id: string;
     type_conge: TypeConge;
@@ -87,6 +95,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   employees,
   responsable,
   chantierNom,
+  existingDemandes = [],
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -104,6 +113,45 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [openEmployeeSelect, setOpenEmployeeSelect] = useState(false);
 
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+
+  // Réinitialiser les dates quand l'employé change
+  useEffect(() => {
+    setDateDebut(undefined);
+    setDateFin(undefined);
+  }, [selectedEmployeeId]);
+
+  // Calculer les dates désactivées pour l'employé sélectionné
+  const disabledDates = useMemo(() => {
+    if (!selectedEmployeeId || existingDemandes.length === 0) return [];
+    
+    const employeeDemandes = existingDemandes.filter(d => 
+      d.demandeur_id === selectedEmployeeId &&
+      ["EN_ATTENTE", "VALIDEE_CONDUCTEUR", "VALIDEE_RH"].includes(d.statut)
+    );
+    
+    const dates: Date[] = [];
+    employeeDemandes.forEach(demande => {
+      const start = new Date(demande.date_debut);
+      const end = new Date(demande.date_fin);
+      let current = new Date(start);
+      
+      while (current <= end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    });
+    
+    return dates;
+  }, [selectedEmployeeId, existingDemandes]);
+
+  // Vérifier si une date est désactivée
+  const isDateDisabled = (date: Date) => {
+    return disabledDates.some(d => 
+      d.getFullYear() === date.getFullYear() &&
+      d.getMonth() === date.getMonth() &&
+      d.getDate() === date.getDate()
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,6 +330,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
                 setOpenDateDebut(false);
               }}
               locale={fr}
+              disabled={isDateDisabled}
               initialFocus
               className="pointer-events-auto"
             />
@@ -314,7 +363,11 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
                 setOpenDateFin(false);
               }}
               locale={fr}
-              disabled={(date) => dateDebut ? date < dateDebut : false}
+              disabled={(date) => {
+                // Désactiver si avant la date de début OU si date déjà demandée
+                const beforeStart = dateDebut ? date < dateDebut : false;
+                return beforeStart || isDateDisabled(date);
+              }}
               initialFocus
               className="pointer-events-auto"
             />
