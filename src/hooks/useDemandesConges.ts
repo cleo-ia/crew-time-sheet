@@ -19,6 +19,7 @@ export type DemandeConge = {
   refusee_par_id: string | null;
   refusee_par_at: string | null;
   motif_refus: string | null;
+  exporte_at: string | null;
   created_at: string;
   updated_at: string;
   demandeur?: {
