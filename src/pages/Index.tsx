@@ -174,14 +174,18 @@ const Index = () => {
     selectedChef
   );
 
-  // Récupérer la ville et le nom du chantier sélectionné
+  // Récupérer la ville et le nom du chantier sélectionné + conducteur
   const { data: chantierInfo } = useQuery({
     queryKey: ["chantier-info-chat", selectedChantier],
     queryFn: async () => {
       if (!selectedChantier) return null;
       const { data } = await supabase
         .from("chantiers")
-        .select("ville, nom")
+        .select(`
+          ville, 
+          nom,
+          conducteur:utilisateurs!chantiers_conducteur_id_fkey(nom, prenom)
+        `)
         .eq("id", selectedChantier)
         .single();
       return data || null;
@@ -190,6 +194,24 @@ const Index = () => {
   });
   const chantierVille = chantierInfo?.ville || null;
   const chantierNom = chantierInfo?.nom || "Chantier";
+  const conducteurNom = chantierInfo?.conducteur 
+    ? `${chantierInfo.conducteur.prenom || ""} ${chantierInfo.conducteur.nom || ""}`.trim()
+    : undefined;
+
+  // Récupérer les infos du chef sélectionné (pour le formulaire de congés)
+  const { data: chefInfo } = useQuery({
+    queryKey: ["chef-info-conges", selectedChef],
+    queryFn: async () => {
+      if (!selectedChef) return null;
+      const { data } = await supabase
+        .from("utilisateurs")
+        .select("nom, prenom")
+        .eq("id", selectedChef)
+        .single();
+      return data || null;
+    },
+    enabled: !!selectedChef,
+  });
 
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
@@ -483,6 +505,12 @@ const Index = () => {
           onOpenChange={setShowConges}
           demandeurId={selectedChef}
           entrepriseId={localStorage.getItem("current_entreprise_id") || ""}
+          demandeurInfo={chefInfo ? {
+            nom: chefInfo.nom || "",
+            prenom: chefInfo.prenom || "",
+            chantierNom: chantierNom !== "Chantier" ? chantierNom : undefined,
+            conducteurNom: conducteurNom,
+          } : undefined}
         />
       )}
       {/* Main Content */}
