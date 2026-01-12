@@ -143,7 +143,7 @@ export const DemandeCongeCard: React.FC<DemandeCongeCardProps> = ({
               )}
               
               {/* Actions pour validation */}
-              {showActions && demande.statut === "EN_ATTENTE" && (
+              {showActions && (demande.statut === "EN_ATTENTE" || demande.statut === "VALIDEE_CONDUCTEUR") && (
                 <div className="flex gap-1">
                   <Button
                     size="sm"
