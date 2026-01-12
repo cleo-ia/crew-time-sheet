@@ -11,6 +11,7 @@ type CreateDemandeCongeInput = {
   date_fin: string;
   motif?: string;
   signature_data?: string;
+  site?: string;
   // Si créé par un conducteur, la demande bypass l'étape de validation conducteur
   createdByConducteur?: boolean;
   conducteurId?: string;
@@ -34,6 +35,7 @@ export const useCreateDemandeConge = () => {
         date_fin: input.date_fin,
         motif: input.motif || null,
         signature_data: input.signature_data || null,
+        site: input.site || 'Senozan',
         statut,
         // Auto-validation si créé par conducteur
         ...(input.createdByConducteur && input.conducteurId && {

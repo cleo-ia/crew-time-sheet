@@ -501,6 +501,7 @@ export type Database = {
           refusee_par_at: string | null
           refusee_par_id: string | null
           signature_data: string | null
+          site: string | null
           statut: Database["public"]["Enums"]["statut_demande_conge"]
           type_conge: Database["public"]["Enums"]["type_conge"]
           updated_at: string
@@ -523,6 +524,7 @@ export type Database = {
           refusee_par_at?: string | null
           refusee_par_id?: string | null
           signature_data?: string | null
+          site?: string | null
           statut?: Database["public"]["Enums"]["statut_demande_conge"]
           type_conge: Database["public"]["Enums"]["type_conge"]
           updated_at?: string
@@ -545,6 +547,7 @@ export type Database = {
           refusee_par_at?: string | null
           refusee_par_id?: string | null
           signature_data?: string | null
+          site?: string | null
           statut?: Database["public"]["Enums"]["statut_demande_conge"]
           type_conge?: Database["public"]["Enums"]["type_conge"]
           updated_at?: string
