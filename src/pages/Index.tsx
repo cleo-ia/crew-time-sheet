@@ -42,6 +42,8 @@ import { ConversationSheet } from "@/components/chat/ConversationSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useAuth } from "@/contexts/AuthProvider";
 import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
+import { CongesButton } from "@/components/conges/CongesButton";
+import { CongesSheet } from "@/components/conges/CongesSheet";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -76,6 +78,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("saisie");
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const [showConversation, setShowConversation] = useState(false);
+  const [showConges, setShowConges] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
   const autoSaveFiche = useAutoSaveFiche();
@@ -452,6 +455,7 @@ const Index = () => {
         showNetworkBadge={true}
         actions={
           <>
+            <CongesButton onClick={() => setShowConges(true)} />
             {selectedChantier && (
               <ConversationButton
                 onClick={() => setShowConversation(true)}
@@ -472,6 +476,15 @@ const Index = () => {
         currentUserId={authUserId || ""}
       />
 
+      {/* Congés Sheet */}
+      {selectedChef && (
+        <CongesSheet
+          open={showConges}
+          onOpenChange={setShowConges}
+          demandeurId={selectedChef}
+          entrepriseId={localStorage.getItem("current_entreprise_id") || ""}
+        />
+      )}
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

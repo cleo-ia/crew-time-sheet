@@ -486,6 +486,130 @@ export type Database = {
           },
         ]
       }
+      demandes_conges: {
+        Row: {
+          created_at: string
+          date_debut: string
+          date_fin: string
+          demandeur_id: string
+          entreprise_id: string
+          id: string
+          motif: string | null
+          motif_refus: string | null
+          refusee_par_at: string | null
+          refusee_par_id: string | null
+          statut: Database["public"]["Enums"]["statut_demande_conge"]
+          type_conge: Database["public"]["Enums"]["type_conge"]
+          updated_at: string
+          validee_par_conducteur_at: string | null
+          validee_par_conducteur_id: string | null
+          validee_par_rh_at: string | null
+          validee_par_rh_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          demandeur_id: string
+          entreprise_id: string
+          id?: string
+          motif?: string | null
+          motif_refus?: string | null
+          refusee_par_at?: string | null
+          refusee_par_id?: string | null
+          statut?: Database["public"]["Enums"]["statut_demande_conge"]
+          type_conge: Database["public"]["Enums"]["type_conge"]
+          updated_at?: string
+          validee_par_conducteur_at?: string | null
+          validee_par_conducteur_id?: string | null
+          validee_par_rh_at?: string | null
+          validee_par_rh_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          demandeur_id?: string
+          entreprise_id?: string
+          id?: string
+          motif?: string | null
+          motif_refus?: string | null
+          refusee_par_at?: string | null
+          refusee_par_id?: string | null
+          statut?: Database["public"]["Enums"]["statut_demande_conge"]
+          type_conge?: Database["public"]["Enums"]["type_conge"]
+          updated_at?: string
+          validee_par_conducteur_at?: string | null
+          validee_par_conducteur_id?: string | null
+          validee_par_rh_at?: string | null
+          validee_par_rh_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_conges_demandeur_id_fkey"
+            columns: ["demandeur_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_demandeur_id_fkey"
+            columns: ["demandeur_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_refusee_par_id_fkey"
+            columns: ["refusee_par_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_refusee_par_id_fkey"
+            columns: ["refusee_par_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_validee_par_conducteur_id_fkey"
+            columns: ["validee_par_conducteur_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_validee_par_conducteur_id_fkey"
+            columns: ["validee_par_conducteur_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_validee_par_rh_id_fkey"
+            columns: ["validee_par_rh_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_conges_validee_par_rh_id_fkey"
+            columns: ["validee_par_rh_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entreprises: {
         Row: {
           actif: boolean | null
@@ -2018,6 +2142,11 @@ export type Database = {
         | "grutier"
         | "chef"
         | "conducteur"
+      statut_demande_conge:
+        | "EN_ATTENTE"
+        | "VALIDEE_CONDUCTEUR"
+        | "VALIDEE_RH"
+        | "REFUSEE"
       statut_fiche:
         | "BROUILLON"
         | "EN_SIGNATURE"
@@ -2038,6 +2167,7 @@ export type Database = {
         | "CPSS"
         | "ABS_INJ"
         | "ECOLE"
+      type_conge: "CP" | "RTT" | "MALADIE" | "AUTRE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2167,6 +2297,12 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "rh", "conducteur", "chef"],
       role_metier_type: ["macon", "finisseur", "grutier", "chef", "conducteur"],
+      statut_demande_conge: [
+        "EN_ATTENTE",
+        "VALIDEE_CONDUCTEUR",
+        "VALIDEE_RH",
+        "REFUSEE",
+      ],
       statut_fiche: [
         "BROUILLON",
         "EN_SIGNATURE",
@@ -2189,6 +2325,7 @@ export const Constants = {
         "ABS_INJ",
         "ECOLE",
       ],
+      type_conge: ["CP", "RTT", "MALADIE", "AUTRE"],
     },
   },
 } as const
