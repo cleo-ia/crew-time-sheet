@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, AlertTriangle, User, MapPin, UserCheck } from "lucide-react";
+import { CalendarIcon, Loader2, AlertTriangle, User, MapPin, UserCheck, Users } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -32,16 +32,23 @@ export type TypeConge =
   | "NAISSANCE" 
   | "MARIAGE";
 
-export interface DemandeurInfo {
+export interface Employee {
+  id: string;
   nom: string;
   prenom: string;
-  chantierNom?: string;
-  conducteurNom?: string;
+}
+
+export interface ResponsableInfo {
+  nom: string;
+  prenom: string;
 }
 
 interface DemandeCongeFormProps {
-  demandeur?: DemandeurInfo;
+  employees: Employee[];
+  responsable: ResponsableInfo;
+  chantierNom?: string;
   onSubmit: (data: {
+    demandeur_id: string;
     type_conge: TypeConge;
     date_debut: string;
     date_fin: string;
@@ -68,11 +75,14 @@ const typeCongeOptions: { value: TypeConge; label: string; requiresJustificatif?
 const typesRequiringJustificatif: TypeConge[] = ["MALADIE", "DECES", "NAISSANCE", "MARIAGE"];
 
 export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
-  demandeur,
+  employees,
+  responsable,
+  chantierNom,
   onSubmit,
   onCancel,
   isSubmitting = false,
 }) => {
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [typeConge, setTypeConge] = useState<TypeConge>("CP");
   const [dateDebut, setDateDebut] = useState<Date | undefined>();
   const [dateFin, setDateFin] = useState<Date | undefined>();
@@ -80,11 +90,14 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
 
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dateDebut || !dateFin) return;
+    if (!dateDebut || !dateFin || !selectedEmployeeId) return;
 
     onSubmit({
+      demandeur_id: selectedEmployeeId,
       type_conge: typeConge,
       date_debut: format(dateDebut, "yyyy-MM-dd"),
       date_fin: format(dateFin, "yyyy-MM-dd"),
@@ -99,36 +112,54 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   };
 
   const requiresJustificatif = typesRequiringJustificatif.includes(typeConge);
-  const isValid = dateDebut && dateFin && dateFin >= dateDebut;
+  const isValid = dateDebut && dateFin && dateFin >= dateDebut && selectedEmployeeId;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Infos du demandeur */}
-      {demandeur && (
+      {/* Sélecteur d'employé */}
+      <div className="space-y-2">
+        <Label htmlFor="employee" className="flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Employé concerné
+        </Label>
+        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionner un employé" />
+          </SelectTrigger>
+          <SelectContent>
+            {employees.map((employee) => (
+              <SelectItem key={employee.id} value={employee.id}>
+                {employee.prenom} {employee.nom}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Infos du demandeur (affiché après sélection) */}
+      {selectedEmployee && (
         <Card className="bg-muted/50">
           <CardContent className="pt-4 pb-3 space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">
-                {demandeur.prenom} {demandeur.nom}
+                {selectedEmployee.prenom} {selectedEmployee.nom}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarIcon className="h-4 w-4" />
               <span>Date de demande : {format(new Date(), "d MMMM yyyy", { locale: fr })}</span>
             </div>
-            {demandeur.chantierNom && (
+            {chantierNom && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span>Chantier : {demandeur.chantierNom}</span>
+                <span>Site : {chantierNom}</span>
               </div>
             )}
-            {demandeur.conducteurNom && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <UserCheck className="h-4 w-4" />
-                <span>Responsable : {demandeur.conducteurNom}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <UserCheck className="h-4 w-4" />
+              <span>Responsable : {responsable.prenom} {responsable.nom}</span>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -263,7 +294,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
           </div>
         ) : showSignaturePad ? (
           <SignaturePad
-            employeeName={demandeur ? `${demandeur.prenom} ${demandeur.nom}` : "Demandeur"}
+            employeeName={selectedEmployee ? `${selectedEmployee.prenom} ${selectedEmployee.nom}` : "Demandeur"}
             onSave={handleSignatureSave}
             onCancel={() => setShowSignaturePad(false)}
           />
@@ -274,7 +305,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
             onClick={() => setShowSignaturePad(true)}
             className="w-full"
           >
-            Ajouter ma signature
+            Ajouter la signature
           </Button>
         )}
       </div>
