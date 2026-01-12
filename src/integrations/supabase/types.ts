@@ -1987,6 +1987,17 @@ export type Database = {
     Functions: {
       expire_old_invitations: { Args: never; Returns: undefined }
       get_user_entreprise_id: { Args: never; Returns: string }
+      get_users_with_last_signin: {
+        Args: { p_entreprise_id: string }
+        Returns: {
+          auth_user_id: string
+          email: string
+          id: string
+          last_sign_in_at: string
+          nom: string
+          prenom: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

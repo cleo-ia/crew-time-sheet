@@ -157,12 +157,9 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
       const { data: sessions, error: sessionsError } = await sessionsQuery;
       if (sessionsError) throw sessionsError;
 
-      // Get users info from utilisateurs - uniquement ceux avec un compte app (auth_user_id)
+      // Get users info avec last_sign_in_at depuis auth.users via fonction sécurisée
       const { data: utilisateurs, error: utilisateursError } = await supabase
-        .from('utilisateurs')
-        .select('id, auth_user_id, email, prenom, nom')
-        .eq('entreprise_id', entrepriseId)
-        .not('auth_user_id', 'is', null);
+        .rpc('get_users_with_last_signin', { p_entreprise_id: entrepriseId });
       if (utilisateursError) throw utilisateursError;
 
       const { data: userRoles, error: rolesError } = await supabase
@@ -202,11 +199,13 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
           ? userRoles?.find(r => r.user_id === utilisateur.auth_user_id)
           : null;
 
-        // Last connection
+        // Last connection (sessions prioritaires, sinon fallback sur auth.last_sign_in_at)
         const sortedSessions = [...userSessions].sort(
           (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
         );
-        const lastConnection = sortedSessions[0]?.started_at || null;
+        const lastConnection = sortedSessions[0]?.started_at 
+          || utilisateur.last_sign_in_at 
+          || null;
 
         // Average duration
         const completedSessions = userSessions.filter(s => s.duration_seconds != null);

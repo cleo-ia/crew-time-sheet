@@ -766,6 +766,7 @@ export const AnalyticsManager = () => {
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-muted-foreground">Utilisateur</TableHead>
                     <TableHead className="text-muted-foreground">Rôle</TableHead>
+                    <TableHead className="text-muted-foreground">Dernière connexion</TableHead>
                     <TableHead className="text-muted-foreground">Email</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -784,6 +785,20 @@ export const AnalyticsManager = () => {
                           <Badge variant="outline" className="opacity-70">
                             {user.role}
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {user.lastConnection ? (
+                          <div>
+                            <div className="text-xs">
+                              {formatDistanceToNow(new Date(user.lastConnection), { addSuffix: true, locale: fr })}
+                            </div>
+                            <div className="text-xs opacity-70">
+                              {format(new Date(user.lastConnection), 'dd/MM/yyyy')}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs">Jamais</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
