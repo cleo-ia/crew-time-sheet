@@ -133,7 +133,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
           <Users className="h-4 w-4" />
           Employé concerné
         </Label>
-        <Popover open={openEmployeeSelect} onOpenChange={setOpenEmployeeSelect}>
+        <Popover open={openEmployeeSelect} onOpenChange={setOpenEmployeeSelect} modal={false}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -149,7 +149,12 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <PopoverContent 
+            className="w-[--radix-popover-trigger-width] p-0" 
+            align="start"
+            onWheel={(e) => e.stopPropagation()}
+            style={{ pointerEvents: 'auto' }}
+          >
             <Command>
               <CommandInput placeholder="Rechercher par nom ou prénom..." />
               <CommandList>
