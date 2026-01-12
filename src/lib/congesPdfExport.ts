@@ -36,12 +36,12 @@ export async function generateCongesPdf(
 
     let y = 15;
 
-    // === Logo en haut à gauche (ratio préservé) ===
+    // === Logo en haut à gauche (ratio préservé ~1.2:1) ===
     if (options.entrepriseLogo) {
       try {
-        // Logo rectangulaire avec ratio préservé (environ 3:1)
-        const logoWidth = 45;
-        const logoHeight = 15;
+        // Logo avec ratio préservé (image source environ 600x500 = 1.2:1)
+        const logoHeight = 25;
+        const logoWidth = 30; // 25 * 1.2
         doc.addImage(options.entrepriseLogo, "PNG", margin, y, logoWidth, logoHeight);
       } catch (e) {
         // Ignore logo errors
