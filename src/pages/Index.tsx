@@ -44,6 +44,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesSheet } from "@/components/conges/CongesSheet";
+import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -212,6 +213,18 @@ const Index = () => {
     },
     enabled: !!selectedChef,
   });
+
+  // Calculer les IDs de l'équipe pour les notifications de congés
+  const allTeamIds = useMemo(() => {
+    const ids = macons.map(m => m.id);
+    if (selectedChef && !ids.includes(selectedChef)) {
+      ids.push(selectedChef);
+    }
+    return ids;
+  }, [macons, selectedChef]);
+
+  // Compter les demandes de congés traitées non lues par le demandeur
+  const { data: nbDemandesTraitees = 0 } = useDemandesTraiteesNonLues(allTeamIds);
 
   // Récupérer l'ID de la fiche pour la fiche transport
   const { data: ficheId } = useFicheId(selectedWeek, selectedChef, selectedChantier);
@@ -477,7 +490,7 @@ const Index = () => {
         showNetworkBadge={true}
         actions={
           <>
-            <CongesButton onClick={() => setShowConges(true)} />
+            <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
               <ConversationButton
                 onClick={() => setShowConversation(true)}

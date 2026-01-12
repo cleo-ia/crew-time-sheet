@@ -21,6 +21,7 @@ export const useRefuseDemandeConge = () => {
           refusee_par_id: refuseurId,
           refusee_par_at: new Date().toISOString(),
           motif_refus: motifRefus,
+          lu_par_demandeur: false, // Notifier le demandeur
         })
         .eq("id", demandeId)
         .select()

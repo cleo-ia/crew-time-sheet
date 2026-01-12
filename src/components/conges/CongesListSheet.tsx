@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -33,6 +33,7 @@ import { useCurrentEntrepriseId } from "@/hooks/useCurrentEntrepriseId";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { getCurrentWeek } from "@/lib/weekUtils";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
+import { useMarkDemandesAsRead } from "@/hooks/useMarkDemandesAsRead";
 
 interface CongesListSheetProps {
   open: boolean;
@@ -139,6 +140,14 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const validateMutation = useValidateDemandeConge();
   const refuseMutation = useRefuseDemandeConge();
   const createDemande = useCreateDemandeConge();
+  const markAsRead = useMarkDemandesAsRead();
+
+  // Marquer les demandes comme lues à l'ouverture du panneau
+  useEffect(() => {
+    if (open && allManagedIds.length > 0) {
+      markAsRead.mutate({ demandeurIds: allManagedIds });
+    }
+  }, [open, allManagedIds]);
 
   // Filtrer les demandes par statut
   const demandesEnAttente = demandesAValider.filter((d) => d.statut === "EN_ATTENTE");

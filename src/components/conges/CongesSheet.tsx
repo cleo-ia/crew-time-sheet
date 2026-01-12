@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +15,7 @@ import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
+import { useMarkDemandesAsRead } from "@/hooks/useMarkDemandesAsRead";
 
 interface CongesSheetProps {
   open: boolean;
@@ -100,7 +101,15 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
     enabled: allTeamIds.length > 0,
   });
   
+  const markAsRead = useMarkDemandesAsRead();
   const createDemande = useCreateDemandeConge();
+
+  // Marquer les demandes comme lues à l'ouverture du panneau
+  useEffect(() => {
+    if (open && allTeamIds.length > 0) {
+      markAsRead.mutate({ demandeurIds: allTeamIds });
+    }
+  }, [open, allTeamIds]);
 
   // Transformer l'équipe en liste d'employés pour le formulaire
   const employees: Employee[] = team.map(m => ({
