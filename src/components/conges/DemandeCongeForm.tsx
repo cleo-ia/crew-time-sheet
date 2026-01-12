@@ -88,7 +88,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [dateFin, setDateFin] = useState<Date | undefined>();
   const [motif, setMotif] = useState("");
   const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(true);
   const [openDateDebut, setOpenDateDebut] = useState(false);
   const [openDateFin, setOpenDateFin] = useState(false);
 
