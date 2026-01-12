@@ -98,15 +98,13 @@ export const CongesRHSheet = ({
     setMotifRefus("");
   };
 
-  // Filtrer les demandes validées NON exportées
-  const nonExportees = demandes.filter(
-    (d) => d.statut === "VALIDEE_RH" && !d.exporte_at
-  );
+  // TEMPORAIRE : Désactivé pour tests visuels PDF - inclut TOUTES les demandes validées
+  const nonExportees = demandes.filter((d) => d.statut === "VALIDEE_RH");
   const nbNonExportees = nonExportees.length;
 
   const handleExportPdf = async () => {
     if (nbNonExportees === 0) {
-      toast.info("Aucune nouvelle demande validée à exporter");
+      toast.info("Aucune demande validée à exporter");
       return;
     }
     try {
@@ -114,8 +112,8 @@ export const CongesRHSheet = ({
         entrepriseNom: enterpriseConfig?.nom,
         entrepriseLogo: enterpriseConfig?.theme?.logo,
       });
-      // Marquer comme exportées après génération réussie
-      await markExporteesMutation.mutateAsync(nonExportees.map((d) => d.id));
+      // TEMPORAIRE : Désactivé pour tests visuels PDF
+      // await markExporteesMutation.mutateAsync(nonExportees.map((d) => d.id));
       toast.success(`${nbNonExportees} demande(s) exportée(s) en PDF`);
     } catch (error) {
       toast.error("Erreur lors de l'export PDF");
