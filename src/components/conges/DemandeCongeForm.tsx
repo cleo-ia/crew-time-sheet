@@ -114,7 +114,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   };
 
   const requiresJustificatif = typesRequiringJustificatif.includes(typeConge);
-  const isValid = dateDebut && dateFin && dateFin >= dateDebut && selectedEmployeeId;
+  const isValid = dateDebut && dateFin && dateFin >= dateDebut && selectedEmployeeId && signatureData;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
