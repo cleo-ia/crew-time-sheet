@@ -36,19 +36,19 @@ export async function generateCongesPdf(
 
     let y = 15;
 
-    // === Logo en haut à gauche (ratio préservé ~1.2:1) ===
+    // === Logo en haut à gauche (ratio préservé ~1.5:1) ===
     if (options.entrepriseLogo) {
       try {
-        // Logo avec ratio préservé (image source environ 600x500 = 1.2:1)
-        const logoHeight = 25;
-        const logoWidth = 30; // 25 * 1.2
+        // Logo avec ratio préservé (plus large que haut)
+        const logoHeight = 18;
+        const logoWidth = 27; // ratio ~1.5:1
         doc.addImage(options.entrepriseLogo, "PNG", margin, y, logoWidth, logoHeight);
       } catch (e) {
         // Ignore logo errors
       }
     }
 
-    y += 22; // Espace après le logo
+    y += 30; // Espace suffisant après le logo (18mm logo + 12mm marge)
 
     // === Titre centré en dessous du logo ===
     doc.setFontSize(14);
@@ -59,7 +59,7 @@ export async function generateCongesPdf(
     doc.text(title, (pageWidth - titleWidth) / 2, y);
     doc.setTextColor(0, 0, 0); // Reset couleur
 
-    y += 12;
+    y += 15; // Espace avant le cadre
 
     // === Cadre principal ===
     const boxStartY = y;
