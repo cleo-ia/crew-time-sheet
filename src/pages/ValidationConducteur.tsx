@@ -31,6 +31,9 @@ import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWeekTransmissionStatus } from "@/hooks/useWeekTransmissionStatus";
+import { CongesButton } from "@/components/conges/CongesButton";
+import { CongesListSheet } from "@/components/conges/CongesListSheet";
+import { useDemandesEnAttente } from "@/hooks/useDemandesConges";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -56,10 +59,12 @@ const ValidationConducteur = () => {
   const [affectationsLocal, setAffectationsLocal] = useState<Array<{ finisseur_id: string; date: string; chantier_id: string }> | null>(null);
   const [showWeatherDialog, setShowWeatherDialog] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
+  const [showConges, setShowConges] = useState(false);
   
   // Hook pour compter les fiches en attente de validation pour CE conducteur
   const { data: nbFichesEnAttente = 0 } = useFichesEnAttentePourConducteur(conducteurId);
   const { data: unreadData } = useUnreadMessages(conducteurId);
+  const { data: nbCongesEnAttente = 0 } = useDemandesEnAttente(conducteurId);
   
   const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
   const urlWeek = searchParams.get("semaine");
@@ -487,6 +492,10 @@ const ValidationConducteur = () => {
           theme="validation-conducteur"
           actions={
             <>
+              <CongesButton
+                onClick={() => setShowConges(true)}
+                pendingCount={nbCongesEnAttente}
+              />
               <ConversationButton
                 onClick={() => setShowConversation(true)}
                 unreadCount={unreadData?.total || 0}
@@ -514,6 +523,14 @@ const ValidationConducteur = () => {
           open={showWeatherDialog}
           onOpenChange={setShowWeatherDialog}
         />
+
+        {conducteurId && (
+          <CongesListSheet
+            open={showConges}
+            onOpenChange={setShowConges}
+            conducteurId={conducteurId}
+          />
+        )}
 
         <main className="container mx-auto px-4 py-6 max-w-7xl">
           <Tabs 
