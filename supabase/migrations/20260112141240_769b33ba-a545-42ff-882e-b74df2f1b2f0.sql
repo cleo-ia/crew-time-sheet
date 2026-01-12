@@ -1,0 +1,1 @@
+DELETE FROM demandes_conges WHERE id = '8eec4398-3d67-4249-9065-35a9de797b97';
