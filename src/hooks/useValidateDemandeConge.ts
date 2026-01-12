@@ -42,8 +42,14 @@ export const useValidateDemandeConge = () => {
       return data;
     },
     onSuccess: (_, variables) => {
+      // Invalider les queries chef/conducteur
       queryClient.invalidateQueries({ queryKey: ["demandes-conges"] });
       queryClient.invalidateQueries({ queryKey: ["demandes-conges-en-attente"] });
+      // Invalider les queries RH
+      queryClient.invalidateQueries({ queryKey: ["demandes-conges-rh"] });
+      queryClient.invalidateQueries({ queryKey: ["demandes-conges-en-attente-rh"] });
+      // Invalider les notifications demandeurs
+      queryClient.invalidateQueries({ queryKey: ["demandes-traitees-non-lues"] });
       toast({
         title: "✅ Demande validée",
         description: variables.role === "conducteur" 
