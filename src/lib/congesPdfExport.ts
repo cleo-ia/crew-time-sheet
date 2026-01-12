@@ -40,15 +40,15 @@ export async function generateCongesPdf(
     if (options.entrepriseLogo) {
       try {
         // Logo avec ratio préservé (plus large que haut)
-        const logoHeight = 18;
-        const logoWidth = 27; // ratio ~1.5:1
+        const logoHeight = 22;
+        const logoWidth = 33; // ratio ~1.5:1
         doc.addImage(options.entrepriseLogo, "PNG", margin, y, logoWidth, logoHeight);
       } catch (e) {
         // Ignore logo errors
       }
     }
 
-    y += 30; // Espace suffisant après le logo (18mm logo + 12mm marge)
+    y += 38; // Espace suffisant après le logo (22mm logo + 16mm marge)
 
     // === Titre centré en dessous du logo ===
     doc.setFontSize(14);
