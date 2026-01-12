@@ -89,6 +89,8 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [motif, setMotif] = useState("");
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [openDateDebut, setOpenDateDebut] = useState(false);
+  const [openDateFin, setOpenDateFin] = useState(false);
 
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
@@ -199,7 +201,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
       {/* Date de début */}
       <div className="space-y-2">
         <Label>Date de début</Label>
-        <Popover>
+        <Popover open={openDateDebut} onOpenChange={setOpenDateDebut}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -216,9 +218,13 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
             <Calendar
               mode="single"
               selected={dateDebut}
-              onSelect={setDateDebut}
+              onSelect={(date) => {
+                setDateDebut(date);
+                setOpenDateDebut(false);
+              }}
               locale={fr}
               initialFocus
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
@@ -227,7 +233,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
       {/* Date de fin */}
       <div className="space-y-2">
         <Label>Date de fin (reprise le lendemain)</Label>
-        <Popover>
+        <Popover open={openDateFin} onOpenChange={setOpenDateFin}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -244,10 +250,14 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
             <Calendar
               mode="single"
               selected={dateFin}
-              onSelect={setDateFin}
+              onSelect={(date) => {
+                setDateFin(date);
+                setOpenDateFin(false);
+              }}
               locale={fr}
               disabled={(date) => dateDebut ? date < dateDebut : false}
               initialFocus
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
