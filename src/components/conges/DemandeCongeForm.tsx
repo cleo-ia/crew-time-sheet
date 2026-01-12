@@ -263,18 +263,6 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
         </Popover>
       </div>
 
-      {/* Motif (optionnel) */}
-      <div className="space-y-2">
-        <Label htmlFor="motif">Motif / Observations (optionnel)</Label>
-        <Textarea
-          id="motif"
-          value={motif}
-          onChange={(e) => setMotif(e.target.value)}
-          placeholder="Précisez le motif si nécessaire..."
-          rows={3}
-        />
-      </div>
-
       <Separator />
 
       {/* Signature */}
