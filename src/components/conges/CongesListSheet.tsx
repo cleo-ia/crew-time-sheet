@@ -143,8 +143,8 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   // Filtrer les demandes par statut
   const demandesEnAttente = demandesAValider.filter((d) => d.statut === "EN_ATTENTE");
   const demandesTraitees = demandesAValider.filter((d) => 
-    d.validee_par_conducteur_id === conducteurId ||
-    d.refusee_par_id === conducteurId
+    (d.validee_par_conducteur_id === conducteurId || d.refusee_par_id === conducteurId) &&
+    !allManagedIds.includes(d.demandeur_id)
   );
 
   // Liste des employés pour le formulaire (conducteur + finisseurs + employés sans affectation)
