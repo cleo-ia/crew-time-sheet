@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, AlertTriangle, User, MapPin, UserCheck, Users } from "lucide-react";
+import { CalendarIcon, Loader2, AlertTriangle, User, MapPin, UserCheck, Users, ChevronsUpDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,14 @@ import { SignaturePad } from "@/components/signature/SignaturePad";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export type TypeConge = 
   | "CP" 
@@ -91,6 +99,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [showSignaturePad, setShowSignaturePad] = useState(true);
   const [openDateDebut, setOpenDateDebut] = useState(false);
   const [openDateFin, setOpenDateFin] = useState(false);
+  const [openEmployeeSelect, setOpenEmployeeSelect] = useState(false);
 
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
@@ -118,24 +127,57 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Sélecteur d'employé */}
+      {/* Sélecteur d'employé avec recherche */}
       <div className="space-y-2">
-        <Label htmlFor="employee" className="flex items-center gap-2">
+        <Label className="flex items-center gap-2">
           <Users className="h-4 w-4" />
           Employé concerné
         </Label>
-        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionner un employé" />
-          </SelectTrigger>
-          <SelectContent>
-            {employees.map((employee) => (
-              <SelectItem key={employee.id} value={employee.id}>
-                {employee.prenom} {employee.nom}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover open={openEmployeeSelect} onOpenChange={setOpenEmployeeSelect}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={openEmployeeSelect}
+              className="w-full justify-between font-normal"
+            >
+              {selectedEmployee ? (
+                <span>{selectedEmployee.prenom} {selectedEmployee.nom}</span>
+              ) : (
+                <span className="text-muted-foreground">Rechercher un employé...</span>
+              )}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Rechercher par nom ou prénom..." />
+              <CommandList>
+                <CommandEmpty>Aucun employé trouvé.</CommandEmpty>
+                <CommandGroup>
+                  {employees.map((employee) => (
+                    <CommandItem
+                      key={employee.id}
+                      value={`${employee.prenom} ${employee.nom}`}
+                      onSelect={() => {
+                        setSelectedEmployeeId(employee.id);
+                        setOpenEmployeeSelect(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedEmployeeId === employee.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {employee.prenom} {employee.nom}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Infos du demandeur (affiché après sélection) */}
