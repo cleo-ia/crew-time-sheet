@@ -34,32 +34,32 @@ export async function generateCongesPdf(
     const demande = demandes[index];
     if (index > 0) doc.addPage();
 
-    let y = 20;
+    let y = 15;
 
-    // === Header avec logo ===
+    // === Logo en haut à gauche (ratio préservé) ===
     if (options.entrepriseLogo) {
       try {
-        doc.addImage(options.entrepriseLogo, "PNG", margin, y, 25, 25);
+        // Logo rectangulaire avec ratio préservé (environ 3:1)
+        const logoWidth = 45;
+        const logoHeight = 15;
+        doc.addImage(options.entrepriseLogo, "PNG", margin, y, logoWidth, logoHeight);
       } catch (e) {
         // Ignore logo errors
       }
     }
 
-    // Titre centré
+    y += 22; // Espace après le logo
+
+    // === Titre centré en dessous du logo ===
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 51, 102); // Bleu foncé
     const title = "DEMANDE AUTORISATION D'ABSENCE OU CONGÉ";
     const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, y + 10);
+    doc.text(title, (pageWidth - titleWidth) / 2, y);
+    doc.setTextColor(0, 0, 0); // Reset couleur
 
-    if (options.entrepriseNom) {
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      const nameWidth = doc.getTextWidth(options.entrepriseNom);
-      doc.text(options.entrepriseNom, (pageWidth - nameWidth) / 2, y + 18);
-    }
-
-    y += 35;
+    y += 12;
 
     // === Cadre principal ===
     const boxStartY = y;
