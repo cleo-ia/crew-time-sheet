@@ -7,32 +7,81 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, CalendarOff } from "lucide-react";
+import { Plus, CalendarOff, Loader2 } from "lucide-react";
 import { useDemandesConges } from "@/hooks/useDemandesConges";
 import { useCreateDemandeConge } from "@/hooks/useCreateDemandeConge";
 import { DemandeCongeCard } from "./DemandeCongeCard";
-import { DemandeCongeForm, TypeConge, DemandeurInfo } from "./DemandeCongeForm";
+import { DemandeCongeForm, TypeConge, Employee } from "./DemandeCongeForm";
+import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CongesSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  demandeurId: string;
+  chefId: string;
+  chantierId: string;
+  semaine: string;
   entrepriseId: string;
-  demandeurInfo?: DemandeurInfo;
 }
 
 export const CongesSheet: React.FC<CongesSheetProps> = ({
   open,
   onOpenChange,
-  demandeurId,
+  chefId,
+  chantierId,
+  semaine,
   entrepriseId,
-  demandeurInfo,
 }) => {
   const [showForm, setShowForm] = useState(false);
-  const { data: demandes = [], isLoading } = useDemandesConges(demandeurId);
+  
+  // Récupérer l'équipe du chef (maçons + chef)
+  const { data: team = [], isLoading: teamLoading } = useMaconsByChantier(chantierId, semaine, chefId);
+  
+  // Récupérer les infos du chef (responsable)
+  const { data: chefInfo, isLoading: chefLoading } = useQuery({
+    queryKey: ["chef-info-conges", chefId],
+    queryFn: async () => {
+      if (!chefId) return null;
+      const { data } = await supabase
+        .from("utilisateurs")
+        .select("nom, prenom")
+        .eq("id", chefId)
+        .single();
+      return data || null;
+    },
+    enabled: !!chefId,
+  });
+
+  // Récupérer le nom du chantier
+  const { data: chantierInfo } = useQuery({
+    queryKey: ["chantier-info-conges", chantierId],
+    queryFn: async () => {
+      if (!chantierId) return null;
+      const { data } = await supabase
+        .from("chantiers")
+        .select("nom")
+        .eq("id", chantierId)
+        .single();
+      return data || null;
+    },
+    enabled: !!chantierId,
+  });
+
+  // Historique des demandes pour le chef (pour voir toutes les demandes qu'il a créées)
+  const { data: demandes = [], isLoading: demandesLoading } = useDemandesConges(chefId);
+  
   const createDemande = useCreateDemandeConge();
 
+  // Transformer l'équipe en liste d'employés pour le formulaire
+  const employees: Employee[] = team.map(m => ({
+    id: m.id,
+    nom: m.nom,
+    prenom: m.prenom,
+  }));
+
   const handleSubmit = async (data: {
+    demandeur_id: string;
     type_conge: TypeConge;
     date_debut: string;
     date_fin: string;
@@ -40,12 +89,18 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
     signature_data?: string;
   }) => {
     await createDemande.mutateAsync({
-      demandeur_id: demandeurId,
+      demandeur_id: data.demandeur_id,
       entreprise_id: entrepriseId,
-      ...data,
+      type_conge: data.type_conge,
+      date_debut: data.date_debut,
+      date_fin: data.date_fin,
+      motif: data.motif,
+      signature_data: data.signature_data,
     });
     setShowForm(false);
   };
+
+  const isLoading = teamLoading || chefLoading;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -53,14 +108,23 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <CalendarOff className="h-5 w-5" />
-            Mes demandes de congés
+            Demandes de congés
           </SheetTitle>
         </SheetHeader>
 
-        {showForm ? (
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : showForm ? (
           <ScrollArea className="flex-1 -mx-6 px-6">
             <DemandeCongeForm
-              demandeur={demandeurInfo}
+              employees={employees}
+              responsable={{
+                nom: chefInfo?.nom || "",
+                prenom: chefInfo?.prenom || "",
+              }}
+              chantierNom={chantierInfo?.nom}
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
               isSubmitting={createDemande.isPending}
@@ -71,13 +135,20 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
             <Button
               onClick={() => setShowForm(true)}
               className="w-full mb-4"
+              disabled={employees.length === 0}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle demande
             </Button>
 
+            {employees.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                Aucun employé dans l'équipe pour ce chantier.
+              </p>
+            )}
+
             <ScrollArea className="flex-1 -mx-6 px-6">
-              {isLoading ? (
+              {demandesLoading ? (
                 <p className="text-center text-muted-foreground py-8">
                   Chargement...
                 </p>

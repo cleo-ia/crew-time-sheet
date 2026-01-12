@@ -499,18 +499,14 @@ const Index = () => {
       />
 
       {/* Congés Sheet */}
-      {selectedChef && (
+      {showConges && selectedChef && selectedChantier && (
         <CongesSheet
           open={showConges}
           onOpenChange={setShowConges}
-          demandeurId={selectedChef}
+          chefId={selectedChef}
+          chantierId={selectedChantier}
+          semaine={selectedWeek}
           entrepriseId={localStorage.getItem("current_entreprise_id") || ""}
-          demandeurInfo={chefInfo ? {
-            nom: chefInfo.nom || "",
-            prenom: chefInfo.prenom || "",
-            chantierNom: chantierNom !== "Chantier" ? chantierNom : undefined,
-            conducteurNom: conducteurNom,
-          } : undefined}
         />
       )}
       {/* Main Content */}
