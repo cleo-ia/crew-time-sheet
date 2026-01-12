@@ -71,6 +71,36 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
     enabled: !!conducteurId,
   });
 
+  // Récupérer les employés sans affectation active (maçons, grutiers, finisseurs non affectés à un chef)
+  const { data: employesSansAffectation = [] } = useQuery({
+    queryKey: ["employes-sans-affectation", entrepriseId],
+    queryFn: async () => {
+      if (!entrepriseId) return [];
+      
+      // Récupérer les IDs des employés qui ONT une affectation active (dans une équipe chef)
+      const { data: affectationsActives } = await supabase
+        .from("affectations")
+        .select("macon_id")
+        .is("date_fin", null);
+      
+      const idsAvecAffectation = (affectationsActives || []).map(a => a.macon_id);
+      
+      // Récupérer tous les employés (maçons, grutiers, finisseurs) de l'entreprise
+      const { data, error } = await supabase
+        .from("utilisateurs")
+        .select("id, nom, prenom, role_metier")
+        .eq("entreprise_id", entrepriseId)
+        .in("role_metier", ["macon", "grutier", "finisseur"])
+        .order("nom");
+      
+      if (error) throw error;
+      
+      // Filtrer côté client pour exclure ceux avec affectation active
+      return (data || []).filter(emp => !idsAvecAffectation.includes(emp.id));
+    },
+    enabled: !!entrepriseId,
+  });
+
   // Construire la liste des IDs : conducteur + finisseurs
   const allManagedIds = useMemo(() => {
     const ids = finisseurs.map(f => f.id);
@@ -114,32 +144,47 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const demandesEnAttente = demandesAValider.filter((d) => d.statut === "EN_ATTENTE");
   const demandesTraitees = demandesAValider.filter((d) => d.statut !== "EN_ATTENTE");
 
-  // Liste des employés pour le formulaire (conducteur + finisseurs)
+  // Liste des employés pour le formulaire (conducteur + finisseurs + employés sans affectation)
   const employeesForForm: Employee[] = useMemo(() => {
     const list: Employee[] = [];
+    const addedIds = new Set<string>();
     
-    // Ajouter le conducteur lui-même
+    // 1. Ajouter le conducteur lui-même
     if (conducteurInfo) {
       list.push({
         id: conducteurInfo.id,
         nom: conducteurInfo.nom || "",
         prenom: conducteurInfo.prenom || "",
       });
+      addedIds.add(conducteurInfo.id);
     }
     
-    // Ajouter les finisseurs
+    // 2. Ajouter les finisseurs affectés cette semaine
     finisseurs.forEach(f => {
-      if (!list.some(e => e.id === f.id)) {
+      if (!addedIds.has(f.id)) {
         list.push({
           id: f.id,
           nom: f.nom || "",
           prenom: f.prenom || "",
         });
+        addedIds.add(f.id);
+      }
+    });
+    
+    // 3. Ajouter les employés sans affectation à une équipe chef
+    employesSansAffectation.forEach(e => {
+      if (!addedIds.has(e.id)) {
+        list.push({
+          id: e.id,
+          nom: e.nom || "",
+          prenom: e.prenom || "",
+        });
+        addedIds.add(e.id);
       }
     });
     
     return list;
-  }, [conducteurInfo, finisseurs]);
+  }, [conducteurInfo, finisseurs, employesSansAffectation]);
 
   const handleValidate = (demandeId: string) => {
     validateMutation.mutate({
