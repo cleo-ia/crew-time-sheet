@@ -57,7 +57,7 @@ export const RappelsManager = () => {
 
   const rappelConducteursConfig = {
     title: "Rappel Conducteurs",
-    schedule: "Tous les vendredis à 17h00 (heure de Paris)",
+    schedule: "Tous les vendredis à 12h00 (heure de Paris)",
     scheduleDetails: "Adaptation automatique heure d'été/hiver",
     description: "Envoie des rappels aux conducteurs ayant des fiches en attente de validation",
     active: true,
@@ -73,7 +73,7 @@ export const RappelsManager = () => {
 
   const rappelConducteursFinisseursConfig = {
     title: "Rappel Conducteurs Finisseurs",
-    schedule: "Tous les vendredis à 17h00 (heure de Paris)",
+    schedule: "Tous les vendredis à 12h00 (heure de Paris)",
     scheduleDetails: "Adaptation automatique heure d'été/hiver",
     description: "Envoie des rappels aux conducteurs pour valider/exporter les heures des finisseurs",
     active: true,
