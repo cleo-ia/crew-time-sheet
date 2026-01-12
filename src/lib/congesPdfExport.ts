@@ -40,23 +40,47 @@ export async function generateCongesPdf(
     const demandeurNom = demande.demandeur?.nom || "";
     const demandeurPrenom = demande.demandeur?.prenom || "";
 
-    let y = margin + 5;
+    let y = margin;
 
-    // ========== CADRE GLOBAL DU FORMULAIRE ==========
+    // ========== LOGO EN HAUT À GAUCHE ==========
+    if (options.entrepriseLogo) {
+      try {
+        const logoHeight = 22;
+        const logoWidth = 33; // ratio ~1.5:1
+        doc.addImage(options.entrepriseLogo, "PNG", margin, y, logoWidth, logoHeight);
+      } catch (e) {
+        // Ignore logo errors
+      }
+    }
+
+    y += 28;
+
+    // ========== TITRE CENTRÉ ==========
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 51, 102); // Bleu foncé
+    const title = "DEMANDE AUTORISATION D'ABSENCE OU CONGÉ";
+    const titleWidth = doc.getTextWidth(title);
+    doc.text(title, (pageWidth - titleWidth) / 2, y);
+    doc.setTextColor(0, 0, 0);
+
+    y += 12;
+
+    // ========== CADRE PRINCIPAL DU FORMULAIRE ==========
+    const boxStartY = y;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
-    doc.rect(margin, margin, contentWidth, pageHeight - 2 * margin);
 
     // ========== EN-TÊTE "Salarié" ==========
     doc.setFontSize(12);
     doc.setFont("helvetica", "bolditalic");
-    doc.text("Salarié", margin + 5, y);
+    doc.text("Salarié", margin + 5, y + 5);
     // Soulignement
     const salarieWidth = doc.getTextWidth("Salarié");
     doc.setLineWidth(0.3);
-    doc.line(margin + 5, y + 1, margin + 5 + salarieWidth, y + 1);
+    doc.line(margin + 5, y + 6, margin + 5 + salarieWidth, y + 6);
 
-    y += 12;
+    y += 17;
 
     // ========== LIGNE 1: NOM + Date de la demande ==========
     doc.setFont("helvetica", "normal");
@@ -268,13 +292,18 @@ export async function generateCongesPdf(
     }
 
     // ========== NOTE BAS DE PAGE ==========
-    const noteY = pageHeight - margin - 10;
+    const noteY = pageHeight - margin - 5;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
     doc.text("*", margin + 5, noteY);
     doc.setFont("helvetica", "italic");
     doc.text("pièces justificatives à fournir impérativement", margin + 8, noteY);
+
+    // ========== DESSINER LE CADRE AUTOUR DU FORMULAIRE ==========
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, boxStartY - 5, contentWidth, noteY - boxStartY + 12);
   }
 
   // Nom du fichier
