@@ -19,7 +19,7 @@ interface DemandeCongeCardProps {
 const statutConfig = {
   EN_ATTENTE: { label: "En attente", variant: "secondary" as const, icon: Clock },
   VALIDEE_CONDUCTEUR: { label: "Validée conducteur", variant: "outline" as const, icon: CheckCircle2 },
-  VALIDEE_RH: { label: "Validée", variant: "default" as const, icon: CheckCircle2 },
+  VALIDEE_RH: { label: "Validée", variant: "success" as const, icon: CheckCircle2 },
   REFUSEE: { label: "Refusée", variant: "destructive" as const, icon: XCircle },
 };
 
