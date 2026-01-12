@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Sheet,
   SheetContent,
@@ -8,13 +8,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, CalendarOff, Loader2 } from "lucide-react";
-import { useDemandesConges } from "@/hooks/useDemandesConges";
 import { useCreateDemandeConge } from "@/hooks/useCreateDemandeConge";
 import { DemandeCongeCard } from "./DemandeCongeCard";
 import { DemandeCongeForm, TypeConge, Employee } from "./DemandeCongeForm";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { DemandeConge } from "@/hooks/useDemandesConges";
 
 interface CongesSheetProps {
   open: boolean;
@@ -47,7 +47,7 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
         .from("utilisateurs")
         .select("nom, prenom")
         .eq("id", chefId)
-        .single();
+        .maybeSingle();
       return data || null;
     },
     enabled: !!chefId,
@@ -62,14 +62,43 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
         .from("chantiers")
         .select("nom")
         .eq("id", chantierId)
-        .single();
+        .maybeSingle();
       return data || null;
     },
     enabled: !!chantierId,
   });
 
-  // Historique des demandes pour le chef (pour voir toutes les demandes qu'il a créées)
-  const { data: demandes = [], isLoading: demandesLoading } = useDemandesConges(chefId);
+  // Construire la liste des IDs : chef + tous les membres de l'équipe
+  const allTeamIds = useMemo(() => {
+    const ids = team.map(m => m.id);
+    if (chefId && !ids.includes(chefId)) {
+      ids.push(chefId);
+    }
+    return ids;
+  }, [team, chefId]);
+
+  // Récupérer toutes les demandes pour le chef ET son équipe
+  const { data: demandes = [], isLoading: demandesLoading } = useQuery({
+    queryKey: ["demandes-conges-equipe", allTeamIds],
+    queryFn: async () => {
+      if (allTeamIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("demandes_conges")
+        .select(`
+          *,
+          demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, nom, prenom)
+        `)
+        .in("demandeur_id", allTeamIds)
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("Erreur chargement demandes congés équipe:", error);
+        throw error;
+      }
+      return (data || []) as DemandeConge[];
+    },
+    enabled: allTeamIds.length > 0,
+  });
   
   const createDemande = useCreateDemandeConge();
 
