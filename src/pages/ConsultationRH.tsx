@@ -28,6 +28,9 @@ import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
 import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
 import { RHModificationsTab } from "@/components/rh/RHModificationsTab";
+import { CongesButton } from "@/components/conges/CongesButton";
+import { CongesRHSheet } from "@/components/conges/CongesRHSheet";
+import { useDemandesEnAttenteRH } from "@/hooks/useDemandesCongesRH";
 
 
 const ConsultationRH = () => {
@@ -36,7 +39,9 @@ const ConsultationRH = () => {
   const [showClotureDialog, setShowClotureDialog] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
   const [showInterimaireExport, setShowInterimaireExport] = useState(false);
+  const [showConges, setShowConges] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [entrepriseId, setEntrepriseId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     periode: format(new Date(), "yyyy-MM"),
     semaine: "all",
@@ -49,6 +54,7 @@ const ConsultationRH = () => {
 
   const { data: summary } = useRHSummary(filters);
   const { data: unreadData } = useUnreadMessages(currentUserId);
+  const { data: nbCongesEnAttente = 0 } = useDemandesEnAttenteRH(entrepriseId);
 
   // Récupérer l'auth.uid() de l'utilisateur connecté (requis pour le tracking des messages lus)
   useEffect(() => {
@@ -59,6 +65,11 @@ const ConsultationRH = () => {
       }
     };
     fetchUserId();
+    // Récupérer l'entreprise_id
+    const storedEntrepriseId = localStorage.getItem("current_entreprise_id");
+    if (storedEntrepriseId) {
+      setEntrepriseId(storedEntrepriseId);
+    }
   }, []);
 
   const handleExport = async (exportFormat: "csv" | "excel") => {
@@ -124,6 +135,10 @@ const ConsultationRH = () => {
         theme="consultation-rh"
         actions={
           <>
+            <CongesButton
+              onClick={() => setShowConges(true)}
+              pendingCount={nbCongesEnAttente}
+            />
             <ConversationButton
               onClick={() => setShowConversation(true)}
               unreadCount={unreadData?.total || 0}
@@ -288,6 +303,14 @@ const ConsultationRH = () => {
         onOpenChange={setShowInterimaireExport}
         filters={filters}
       />
+
+      {entrepriseId && (
+        <CongesRHSheet
+          open={showConges}
+          onOpenChange={setShowConges}
+          entrepriseId={entrepriseId}
+        />
+      )}
       </div>
     </PageLayout>
   );
