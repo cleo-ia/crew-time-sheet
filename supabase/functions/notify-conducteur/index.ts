@@ -1,11 +1,19 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { 
+  generateEmailHtml, 
+  createAlertBox, 
+  createChantierCard, 
+  createClosingMessage 
+} from "../_shared/emailTemplate.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const n8nUrl = Deno.env.get("N8N_WEBHOOK_URL")!;
-const n8nSecret = Deno.env.get("N8N_WEBHOOK_SECRET")!;
+const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
+
+const resend = new Resend(resendApiKey);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,18 +26,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
     console.log("[notify-conducteur] 🚀 Démarrage de la vérification des lots...");
-
-    // Log de l'URL cible pour diagnostic
-    try {
-      const url = new URL(n8nUrl)
-      console.log(`[notify-conducteur] 🎯 URL cible: ${url.host}${url.pathname}`)
-    } catch (e) {
-      console.error(`[notify-conducteur] ⚠️ URL webhook invalide: ${n8nUrl}`)
-    }
 
     // 1) Récupérer les lots prêts depuis la vue v_lots_pret_conducteur
     const { data: lotsView, error: viewError } = await supabase
@@ -79,11 +80,11 @@ serve(async (req) => {
         continue;
       }
 
-      // Récupérer les infos du conducteur
+      // Récupérer les infos du conducteur - CORRECTION: utiliser "id" au lieu de "auth_user_id"
       const { data: conducteur, error: conducteurError } = await supabase
         .from("utilisateurs")
         .select("email, prenom, nom")
-        .eq("auth_user_id", lot.conducteur_id)
+        .eq("id", lot.conducteur_id)
         .single();
 
       if (conducteurError || !conducteur || !conducteur.email) {
@@ -95,88 +96,116 @@ serve(async (req) => {
         continue;
       }
 
-      // Récupérer les infos du chef
-      const { data: chef, error: chefError } = await supabase
+      // Récupérer les infos du chef - CORRECTION: utiliser "id" au lieu de "auth_user_id"
+      const { data: chef } = await supabase
         .from("utilisateurs")
         .select("prenom, nom")
-        .eq("auth_user_id", lot.chef_id)
+        .eq("id", lot.chef_id)
         .maybeSingle();
 
-      const payload = {
-        type: 'notify_conducteur',
-        chantier_id: lot.chantier_id,
-        semaine: lot.semaine,
-        chantier_nom: chantier.nom || "Chantier",
-        code_chantier: chantier.code_chantier || "",
-        ville: chantier.ville || "",
-        conducteur_email: conducteur.email,
-        conducteur_prenom: conducteur.prenom || "",
-        conducteur_nom: conducteur.nom || "",
-        chef_prenom: chef?.prenom || "",
-        chef_nom: chef?.nom || "",
-        nb_prets: lot.nb_prets,
-        appBaseUrl: 'https://crew-time-sheet.lovable.app/validation-conducteur',
-      };
+      const chefNomComplet = chef ? `${chef.prenom || ''} ${chef.nom || ''}`.trim() : 'Le chef d\'équipe';
 
-      console.log(`[notify-conducteur] 📧 Envoi webhook n8n pour: ${payload.chantier_nom} - ${payload.semaine}`);
+      // Construire le contenu HTML avec les templates partagés
+      const emailContent = `
+        ${createAlertBox(
+          `<strong>${chefNomComplet}</strong> vient de transmettre <strong>${lot.nb_prets} fiche(s)</strong> pour validation.`,
+          'info'
+        )}
+        ${createChantierCard(chantier.nom, lot.nb_prets)}
+        ${createClosingMessage('Merci de valider ces fiches dès que possible.')}
+      `;
 
-      // 3) Appeler le webhook n8n
+      const emailHtml = generateEmailHtml(
+        conducteur.prenom || 'Conducteur',
+        emailContent,
+        'https://crew-time-sheet.lovable.app/validation-conducteur',
+        'Valider les fiches',
+        'validation'
+      );
+
+      console.log(`[notify-conducteur] 📧 Envoi email Resend pour: ${chantier.nom} - ${lot.semaine} à ${conducteur.email}`);
+
+      // 3) Envoyer l'email via Resend
       try {
-        const resp = await fetch(n8nUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-N8N-Secret": n8nSecret,
-          },
-          body: JSON.stringify(payload),
+        const emailResponse = await resend.emails.send({
+          from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
+          to: [conducteur.email],
+          subject: `${lot.nb_prets} fiche(s) transmise(s) - ${chantier.nom} (${lot.semaine})`,
+          html: emailHtml,
         });
 
-        if (!resp.ok) {
-          const errorText = await resp.text();
-          console.error(`[notify-conducteur] ❌ Réponse n8n (${resp.status}): ${errorText}`);
-          results.push({ 
-            lot: payload, 
-            status: "webhook_failed", 
-            detail: `HTTP ${resp.status}: ${errorText}` 
-          });
-          continue;
-        }
-
-        console.log(`[notify-conducteur] ✅ Webhook n8n OK pour ${payload.semaine}`);
+        console.log(`[notify-conducteur] ✅ Email envoyé avec succès:`, emailResponse);
 
         // 4) Marquer le lot comme notifié (anti-doublon)
         const { error: updErr } = await supabase
           .from("fiches")
           .update({ notification_conducteur_envoyee_at: new Date().toISOString() })
-          .eq("chantier_id", payload.chantier_id)
-          .eq("semaine", payload.semaine)
-          .is("notification_conducteur_envoyee_at", null); // Évite les double-updates
+          .eq("chantier_id", lot.chantier_id)
+          .eq("semaine", lot.semaine)
+          .is("notification_conducteur_envoyee_at", null);
 
         if (updErr) {
           console.error("[notify-conducteur] ⚠️ Erreur lors de la mise à jour du flag de notification:", updErr);
           results.push({ 
-            lot: payload, 
+            lot: { 
+              chantier_id: lot.chantier_id, 
+              semaine: lot.semaine, 
+              chantier_nom: chantier.nom,
+              conducteur_email: conducteur.email 
+            }, 
             status: "notified_but_update_failed", 
             detail: updErr 
           });
         } else {
-          console.log(`[notify-conducteur] 🎯 Lot marqué comme notifié: ${payload.semaine}`);
+          console.log(`[notify-conducteur] 🎯 Lot marqué comme notifié: ${lot.semaine}`);
           results.push({ 
-            lot: payload, 
+            lot: { 
+              chantier_id: lot.chantier_id, 
+              semaine: lot.semaine, 
+              chantier_nom: chantier.nom,
+              conducteur_email: conducteur.email 
+            }, 
             status: "notified" 
           });
         }
       } catch (e) {
-        console.error("[notify-conducteur] ❌ Exception lors de l'appel webhook:", e);
+        console.error("[notify-conducteur] ❌ Exception lors de l'envoi email:", e);
         results.push({ 
-          lot: payload, 
-          status: "webhook_error", 
+          lot: { 
+            chantier_id: lot.chantier_id, 
+            semaine: lot.semaine, 
+            chantier_nom: chantier.nom 
+          }, 
+          status: "email_error", 
           detail: String(e) 
         });
       }
     }
 
-    console.log(`[notify-conducteur] ✨ Traitement terminé. ${results.filter(r => r.status === 'notified').length}/${results.length} lot(s) notifié(s) avec succès`);
+    const endTime = Date.now();
+    const nbSuccess = results.filter(r => r.status === 'notified' || r.status === 'notified_but_update_failed').length;
+    const nbEchecs = results.filter(r => !['notified', 'notified_but_update_failed'].includes(r.status)).length;
+
+    console.log(`[notify-conducteur] ✨ Traitement terminé. ${nbSuccess}/${results.length} lot(s) notifié(s) avec succès`);
+
+    // 5) Enregistrer dans rappels_historique
+    if (results.length > 0) {
+      const { error: histError } = await supabase.from('rappels_historique').insert({
+        type: 'notify_conducteur',
+        execution_mode: 'cron',
+        nb_destinataires: results.length,
+        nb_succes: nbSuccess,
+        nb_echecs: nbEchecs,
+        duration_ms: endTime - startTime,
+        details: { lots: results }
+      });
+
+      if (histError) {
+        console.error("[notify-conducteur] ⚠️ Erreur lors de l'enregistrement dans rappels_historique:", histError);
+      } else {
+        console.log("[notify-conducteur] 📝 Historique enregistré dans rappels_historique");
+      }
+    }
 
     return new Response(JSON.stringify({ ok: true, results }), {
       status: 200,
