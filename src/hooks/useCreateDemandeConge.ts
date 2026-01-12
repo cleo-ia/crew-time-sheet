@@ -11,6 +11,9 @@ type CreateDemandeCongeInput = {
   date_fin: string;
   motif?: string;
   signature_data?: string;
+  // Si créé par un conducteur, la demande bypass l'étape de validation conducteur
+  createdByConducteur?: boolean;
+  conducteurId?: string;
 };
 
 export const useCreateDemandeConge = () => {
@@ -19,7 +22,10 @@ export const useCreateDemandeConge = () => {
 
   return useMutation({
     mutationFn: async (input: CreateDemandeCongeInput) => {
-      // Cast needed because signature_data was added via migration and types may not be regenerated yet
+      // Si créé par un conducteur, la demande est directement au statut VALIDEE_CONDUCTEUR
+      // pour être transmise au RH sans passer par l'étape de validation conducteur
+      const statut = input.createdByConducteur ? "VALIDEE_CONDUCTEUR" : "EN_ATTENTE";
+      
       const insertData = {
         demandeur_id: input.demandeur_id,
         entreprise_id: input.entreprise_id,
@@ -28,7 +34,12 @@ export const useCreateDemandeConge = () => {
         date_fin: input.date_fin,
         motif: input.motif || null,
         signature_data: input.signature_data || null,
-        statut: "EN_ATTENTE" as const,
+        statut,
+        // Auto-validation si créé par conducteur
+        ...(input.createdByConducteur && input.conducteurId && {
+          validee_par_conducteur_id: input.conducteurId,
+          validee_par_conducteur_at: new Date().toISOString(),
+        }),
       };
       
       const { data, error } = await supabase
@@ -44,11 +55,14 @@ export const useCreateDemandeConge = () => {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["demandes-conges"] });
+      queryClient.invalidateQueries({ queryKey: ["demandes-conges-conducteur"] });
       toast({
         title: "✅ Demande envoyée",
-        description: "Votre demande de congé a été transmise pour validation.",
+        description: variables.createdByConducteur
+          ? "La demande a été transmise au RH pour validation."
+          : "Votre demande de congé a été transmise pour validation.",
       });
     },
     onError: (error) => {

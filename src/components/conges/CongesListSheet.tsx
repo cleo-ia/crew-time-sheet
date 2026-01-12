@@ -233,6 +233,9 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
         date_fin: data.date_fin,
         motif: data.motif,
         signature_data: data.signature_data,
+        // Conducteur crée la demande → bypass validation conducteur, envoi direct au RH
+        createdByConducteur: true,
+        conducteurId: conducteurId,
       },
       {
         onSuccess: () => {
