@@ -22,12 +22,21 @@ import { RHAdminManager } from "@/components/admin/RHAdminManager";
 import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
 import { DashboardManager } from "@/components/admin/DashboardManager";
 import { HistoriqueManager } from "@/components/admin/HistoriqueManager";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useAuth } from "@/contexts/AuthProvider";
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "dashboard");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
+
+  const { user } = useAuth();
+  const currentUserId = user?.id || "";
+  const { data: unreadData } = useUnreadMessages(currentUserId);
 
   // Sync tab with URL parameter
   useEffect(() => {
@@ -52,6 +61,10 @@ const AdminPanel = () => {
         theme="admin"
         actions={
           <div className="flex gap-2">
+            <ConversationButton
+              onClick={() => setShowConversation(true)}
+              unreadCount={unreadData?.total || 0}
+            />
             <Button 
               variant="outline"
               onClick={() => handleTabChange("analyse")}
@@ -197,6 +210,12 @@ const AdminPanel = () => {
           </Tabs>
         </Card>
       </main>
+
+      <ConversationListSheet
+        open={showConversation}
+        onOpenChange={setShowConversation}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 };
