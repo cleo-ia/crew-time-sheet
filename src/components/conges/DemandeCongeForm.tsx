@@ -62,6 +62,7 @@ interface DemandeCongeFormProps {
     date_fin: string;
     motif?: string;
     signature_data?: string;
+    site?: string;
   }) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -95,6 +96,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   const [dateDebut, setDateDebut] = useState<Date | undefined>();
   const [dateFin, setDateFin] = useState<Date | undefined>();
   const [motif, setMotif] = useState("");
+  const [site, setSite] = useState<string>("Senozan");
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [showSignaturePad, setShowSignaturePad] = useState(true);
   const [openDateDebut, setOpenDateDebut] = useState(false);
@@ -114,6 +116,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
       date_fin: format(dateFin, "yyyy-MM-dd"),
       motif: motif.trim() || undefined,
       signature_data: signatureData || undefined,
+      site: site.trim() || undefined,
     });
   };
 
@@ -185,6 +188,21 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
         </Popover>
       </div>
 
+      {/* Champ Site - toujours visible et pré-rempli */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <MapPin className="h-4 w-4" />
+          Site
+        </Label>
+        <input
+          type="text"
+          value={site}
+          onChange={(e) => setSite(e.target.value)}
+          placeholder="Site de travail"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </div>
+
       {/* Infos du demandeur (affiché après sélection) */}
       {selectedEmployee && (
         <Card className="bg-muted/50">
@@ -199,12 +217,6 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
               <CalendarIcon className="h-4 w-4" />
               <span>Date de demande : {format(new Date(), "d MMMM yyyy", { locale: fr })}</span>
             </div>
-            {chantierNom && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>Site : {chantierNom}</span>
-              </div>
-            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <UserCheck className="h-4 w-4" />
               <span>Responsable : {responsable.prenom} {responsable.nom}</span>

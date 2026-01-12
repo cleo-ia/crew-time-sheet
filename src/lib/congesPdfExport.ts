@@ -80,6 +80,11 @@ export async function generateCongesPdf(
     doc.text(demande.demandeur?.prenom || "", margin + 30, y + 16);
 
     doc.setFont("helvetica", "bold");
+    doc.text("Site :", margin + 5, y + 24);
+    doc.setFont("helvetica", "normal");
+    doc.text((demande as any).site || "Senozan", margin + 22, y + 24);
+
+    doc.setFont("helvetica", "bold");
     doc.text("Date :", margin + contentWidth / 2, y + 8);
     doc.setFont("helvetica", "normal");
     doc.text(
@@ -88,7 +93,7 @@ export async function generateCongesPdf(
       y + 8
     );
 
-    y += 25;
+    y += 33;
 
     // === Types d'absence ===
     doc.setFont("helvetica", "bold");
