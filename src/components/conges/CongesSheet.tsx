@@ -11,13 +11,14 @@ import { Plus, CalendarOff } from "lucide-react";
 import { useDemandesConges } from "@/hooks/useDemandesConges";
 import { useCreateDemandeConge } from "@/hooks/useCreateDemandeConge";
 import { DemandeCongeCard } from "./DemandeCongeCard";
-import { DemandeCongeForm } from "./DemandeCongeForm";
+import { DemandeCongeForm, TypeConge, DemandeurInfo } from "./DemandeCongeForm";
 
 interface CongesSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   demandeurId: string;
   entrepriseId: string;
+  demandeurInfo?: DemandeurInfo;
 }
 
 export const CongesSheet: React.FC<CongesSheetProps> = ({
@@ -25,16 +26,18 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
   onOpenChange,
   demandeurId,
   entrepriseId,
+  demandeurInfo,
 }) => {
   const [showForm, setShowForm] = useState(false);
   const { data: demandes = [], isLoading } = useDemandesConges(demandeurId);
   const createDemande = useCreateDemandeConge();
 
   const handleSubmit = async (data: {
-    type_conge: "CP" | "RTT" | "MALADIE" | "AUTRE";
+    type_conge: TypeConge;
     date_debut: string;
     date_fin: string;
     motif?: string;
+    signature_data?: string;
   }) => {
     await createDemande.mutateAsync({
       demandeur_id: demandeurId,
@@ -55,13 +58,14 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
         </SheetHeader>
 
         {showForm ? (
-          <div className="flex-1 overflow-auto">
+          <ScrollArea className="flex-1 -mx-6 px-6">
             <DemandeCongeForm
+              demandeur={demandeurInfo}
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
               isSubmitting={createDemande.isPending}
             />
-          </div>
+          </ScrollArea>
         ) : (
           <>
             <Button

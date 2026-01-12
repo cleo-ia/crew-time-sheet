@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TypeConge } from "@/components/conges/DemandeCongeForm";
 
 export type DemandeConge = {
   id: string;
   demandeur_id: string;
   entreprise_id: string;
-  type_conge: "CP" | "RTT" | "MALADIE" | "AUTRE";
+  type_conge: TypeConge;
   date_debut: string;
   date_fin: string;
   motif: string | null;
+  signature_data: string | null;
   statut: "EN_ATTENTE" | "VALIDEE_CONDUCTEUR" | "VALIDEE_RH" | "REFUSEE";
   validee_par_conducteur_id: string | null;
   validee_par_conducteur_at: string | null;
