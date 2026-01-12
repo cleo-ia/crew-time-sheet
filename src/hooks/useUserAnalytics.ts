@@ -11,6 +11,7 @@ export type PeriodFilter = 'today' | '7days' | '30days' | 'all';
 
 interface UserActivityStats {
   userId: string;
+  authUserId: string | null;
   email: string;
   firstName: string | null;
   lastName: string | null;
@@ -137,7 +138,7 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
 
   // Stats par utilisateur
   const userStatsQuery = useQuery({
-    queryKey: ['user-analytics-users', entrepriseId, period],
+    queryKey: ['user-analytics-users-v2', entrepriseId, period],
     queryFn: async (): Promise<UserActivityStats[]> => {
       if (!entrepriseId) throw new Error('No entreprise selected');
 
@@ -180,8 +181,22 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
 
       // Build user stats
       const userStats: UserActivityStats[] = (utilisateurs || []).map(utilisateur => {
-        // Sessions are keyed by utilisateurs.id
-        const userSessions = userSessionsMap.get(utilisateur.id) || [];
+        // CORRECTION: Fusionner les sessions de auth_user_id ET id pour couvrir tous les cas
+        // - Sessions récentes: enregistrées avec auth_user_id
+        // - Sessions historiques: peuvent être enregistrées avec utilisateurs.id
+        const sessionsFromAuthId = utilisateur.auth_user_id 
+          ? userSessionsMap.get(utilisateur.auth_user_id) || []
+          : [];
+        const sessionsFromId = userSessionsMap.get(utilisateur.id) || [];
+        
+        // Dédupliquer par ID de session (au cas où les deux clés pointent vers les mêmes sessions)
+        const sessionIds = new Set<string>();
+        const userSessions = [...sessionsFromAuthId, ...sessionsFromId].filter(session => {
+          if (sessionIds.has(session.id)) return false;
+          sessionIds.add(session.id);
+          return true;
+        });
+
         // Roles are keyed by auth_user_id
         const userRole = utilisateur.auth_user_id 
           ? userRoles?.find(r => r.user_id === utilisateur.auth_user_id)
@@ -219,6 +234,7 @@ export const useUserAnalytics = (period: PeriodFilter = '7days') => {
 
         return {
           userId: utilisateur.id,
+          authUserId: utilisateur.auth_user_id,
           email: utilisateur.email || '',
           firstName: utilisateur.prenom,
           lastName: utilisateur.nom,
