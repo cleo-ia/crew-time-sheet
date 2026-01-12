@@ -25,6 +25,7 @@ import { useRefuseDemandeConge } from "@/hooks/useRefuseDemandeConge";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { DemandeCongeCard } from "./DemandeCongeCard";
 import { generateCongesPdf } from "@/lib/congesPdfExport";
+import { useMarkDemandesExportees } from "@/hooks/useMarkDemandesExportees";
 import { toast } from "sonner";
 
 interface CongesRHSheetProps {
@@ -47,6 +48,7 @@ export const CongesRHSheet = ({
   const { data: demandes = [], isLoading } = useDemandesCongesRH(entrepriseId);
   const validateMutation = useValidateDemandeConge();
   const refuseMutation = useRefuseDemandeConge();
+  const markExporteesMutation = useMarkDemandesExportees();
   const enterpriseConfig = useEnterpriseConfig();
 
   // Récupérer l'ID de l'utilisateur connecté
@@ -96,17 +98,29 @@ export const CongesRHSheet = ({
     setMotifRefus("");
   };
 
+  // Filtrer les demandes validées NON exportées
+  const nonExportees = demandes.filter(
+    (d) => d.statut === "VALIDEE_RH" && !d.exporte_at
+  );
+  const nbNonExportees = nonExportees.length;
+
   const handleExportPdf = async () => {
-    const validees = demandes.filter((d) => d.statut === "VALIDEE_RH");
-    if (validees.length === 0) {
-      toast.info("Aucune demande validée à exporter");
+    if (nbNonExportees === 0) {
+      toast.info("Aucune nouvelle demande validée à exporter");
       return;
     }
-    await generateCongesPdf(validees, {
-      entrepriseNom: enterpriseConfig?.nom,
-      entrepriseLogo: enterpriseConfig?.theme?.logo,
-    });
-    toast.success(`${validees.length} demande(s) exportée(s) en PDF`);
+    try {
+      await generateCongesPdf(nonExportees, {
+        entrepriseNom: enterpriseConfig?.nom,
+        entrepriseLogo: enterpriseConfig?.theme?.logo,
+      });
+      // Marquer comme exportées après génération réussie
+      await markExporteesMutation.mutateAsync(nonExportees.map((d) => d.id));
+      toast.success(`${nbNonExportees} demande(s) exportée(s) en PDF`);
+    } catch (error) {
+      toast.error("Erreur lors de l'export PDF");
+      console.error(error);
+    }
   };
 
   return (
@@ -185,16 +199,17 @@ export const CongesRHSheet = ({
               </TabsContent>
 
               <TabsContent value="traitees" className="space-y-3 mt-0">
-                {/* Bouton export PDF */}
-                {traitees.filter((d) => d.statut === "VALIDEE_RH").length > 0 && (
+                {/* Bouton export PDF - uniquement si demandes non exportées */}
+                {nbNonExportees > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleExportPdf}
                     className="w-full mb-3"
+                    disabled={markExporteesMutation.isPending}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Exporter les demandes validées en PDF
+                    Exporter {nbNonExportees} nouvelle(s) demande(s) en PDF
                   </Button>
                 )}
                 {isLoading ? (

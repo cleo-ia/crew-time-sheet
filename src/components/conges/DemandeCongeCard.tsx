@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Check, X, Clock, CheckCircle2, XCircle, FileWarning, PenLine } from "lucide-react";
+import { Check, X, Clock, CheckCircle2, XCircle, FileWarning, PenLine, FileDown } from "lucide-react";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { DemandeCongeDetailDialog } from "./DemandeCongeDetailDialog";
 
@@ -126,10 +126,21 @@ export const DemandeCongeCard: React.FC<DemandeCongeCardProps> = ({
             </div>
             
             <div className="flex flex-col items-end gap-2">
-              <Badge variant={config.variant} className="whitespace-nowrap">
-                <StatusIcon className="h-3 w-3 mr-1" />
-                {config.label}
-              </Badge>
+              <div className="flex flex-wrap items-center gap-1 justify-end">
+                <Badge variant={config.variant} className="whitespace-nowrap">
+                  <StatusIcon className="h-3 w-3 mr-1" />
+                  {config.label}
+                </Badge>
+                {demande.exporte_at && demande.statut === "VALIDEE_RH" && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs border-blue-300 bg-blue-50 text-blue-700 whitespace-nowrap"
+                  >
+                    <FileDown className="h-3 w-3 mr-1" />
+                    Exporté
+                  </Badge>
+                )}
+              </div>
               
               {/* Miniature signature si présente */}
               {hasSignature && demande.signature_data && (

@@ -493,6 +493,7 @@ export type Database = {
           date_fin: string
           demandeur_id: string
           entreprise_id: string
+          exporte_at: string | null
           id: string
           lu_par_demandeur: boolean
           motif: string | null
@@ -514,6 +515,7 @@ export type Database = {
           date_fin: string
           demandeur_id: string
           entreprise_id: string
+          exporte_at?: string | null
           id?: string
           lu_par_demandeur?: boolean
           motif?: string | null
@@ -535,6 +537,7 @@ export type Database = {
           date_fin?: string
           demandeur_id?: string
           entreprise_id?: string
+          exporte_at?: string | null
           id?: string
           lu_par_demandeur?: boolean
           motif?: string | null
