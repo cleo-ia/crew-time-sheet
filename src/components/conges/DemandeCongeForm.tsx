@@ -92,7 +92,7 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
   isSubmitting = false,
 }) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
-  const [typeConge, setTypeConge] = useState<TypeConge>("CP");
+  const [typeConge, setTypeConge] = useState<TypeConge | "">("");
   const [dateDebut, setDateDebut] = useState<Date | undefined>();
   const [dateFin, setDateFin] = useState<Date | undefined>();
   const [motif, setMotif] = useState("");
@@ -107,11 +107,11 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dateDebut || !dateFin || !selectedEmployeeId) return;
+    if (!dateDebut || !dateFin || !selectedEmployeeId || !typeConge) return;
 
     onSubmit({
       demandeur_id: selectedEmployeeId,
-      type_conge: typeConge,
+      type_conge: typeConge as TypeConge,
       date_debut: format(dateDebut, "yyyy-MM-dd"),
       date_fin: format(dateFin, "yyyy-MM-dd"),
       motif: motif.trim() || undefined,
@@ -125,8 +125,8 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
     setShowSignaturePad(false);
   };
 
-  const requiresJustificatif = typesRequiringJustificatif.includes(typeConge);
-  const isValid = dateDebut && dateFin && dateFin >= dateDebut && selectedEmployeeId && signatureData;
+  const requiresJustificatif = typeConge ? typesRequiringJustificatif.includes(typeConge as TypeConge) : false;
+  const isValid = dateDebut && dateFin && dateFin >= dateDebut && selectedEmployeeId && signatureData && typeConge;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -228,9 +228,9 @@ export const DemandeCongeForm: React.FC<DemandeCongeFormProps> = ({
       {/* Type de congé */}
       <div className="space-y-2">
         <Label htmlFor="type">Type de congé / absence</Label>
-        <Select value={typeConge} onValueChange={(v) => setTypeConge(v as TypeConge)}>
+      <Select value={typeConge} onValueChange={(v) => setTypeConge(v as TypeConge)}>
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Sélectionner un type de congé..." />
           </SelectTrigger>
           <SelectContent>
             {typeCongeOptions.map((option) => (
