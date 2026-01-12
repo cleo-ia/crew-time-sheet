@@ -29,43 +29,58 @@ export interface UserDetailStats {
   averageSessionDuration: number;
 }
 
-export const useUserDetailAnalytics = (userId: string | null, entrepriseId: string | null) => {
+// CORRECTION: Accepte un tableau d'IDs pour supporter auth_user_id ET utilisateurs.id
+export const useUserDetailAnalytics = (userIds: string[], entrepriseId: string | null) => {
   const sessionsQuery = useQuery({
-    queryKey: ['user-sessions-detail', userId, entrepriseId],
+    queryKey: ['user-sessions-detail-v2', userIds, entrepriseId],
     queryFn: async () => {
-      if (!userId || !entrepriseId) return [];
+      if (!userIds.length || !entrepriseId) return [];
 
       const { data, error } = await supabase
         .from('user_sessions')
         .select('*')
-        .eq('user_id', userId)
+        .in('user_id', userIds)
         .eq('entreprise_id', entrepriseId)
         .order('started_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return data as SessionDetail[];
+      
+      // Dédupliquer par ID de session
+      const seen = new Set<string>();
+      return (data as SessionDetail[]).filter(session => {
+        if (seen.has(session.id)) return false;
+        seen.add(session.id);
+        return true;
+      });
     },
-    enabled: !!userId && !!entrepriseId,
+    enabled: userIds.length > 0 && !!entrepriseId,
   });
 
   const activityQuery = useQuery({
-    queryKey: ['user-activity-detail', userId, entrepriseId],
+    queryKey: ['user-activity-detail-v2', userIds, entrepriseId],
     queryFn: async () => {
-      if (!userId || !entrepriseId) return [];
+      if (!userIds.length || !entrepriseId) return [];
 
       const { data, error } = await supabase
         .from('user_activity_logs')
         .select('*')
-        .eq('user_id', userId)
+        .in('user_id', userIds)
         .eq('entreprise_id', entrepriseId)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
-      return data as ActivityLog[];
+      
+      // Dédupliquer par ID
+      const seen = new Set<string>();
+      return (data as ActivityLog[]).filter(log => {
+        if (seen.has(log.id)) return false;
+        seen.add(log.id);
+        return true;
+      });
     },
-    enabled: !!userId && !!entrepriseId,
+    enabled: userIds.length > 0 && !!entrepriseId,
   });
 
   const stats: UserDetailStats | null = sessionsQuery.data && activityQuery.data ? (() => {

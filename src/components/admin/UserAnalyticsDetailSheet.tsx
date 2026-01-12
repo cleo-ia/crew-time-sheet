@@ -25,6 +25,7 @@ interface UserAnalyticsDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   user: {
     userId: string;
+    authUserId: string | null;
     userName: string;
     role: string | null;
   } | null;
@@ -108,8 +109,13 @@ export const UserAnalyticsDetailSheet = ({
   user,
   entrepriseId,
 }: UserAnalyticsDetailSheetProps) => {
+  // Construire la liste des IDs à utiliser pour les requêtes (authUserId prioritaire + userId fallback)
+  const userIds = user 
+    ? [user.authUserId, user.userId].filter((id): id is string => !!id)
+    : [];
+  
   const { sessions, activities, stats, isLoading } = useUserDetailAnalytics(
-    user?.userId || null,
+    userIds,
     entrepriseId
   );
 

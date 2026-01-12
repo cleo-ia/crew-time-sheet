@@ -87,6 +87,7 @@ export const AnalyticsManager = () => {
   const [period, setPeriod] = useState<PeriodFilter>('30days');
   const [selectedUser, setSelectedUser] = useState<{
     userId: string;
+    authUserId: string | null;
     userName: string;
     role: string | null;
   } | null>(null);
@@ -666,6 +667,7 @@ export const AnalyticsManager = () => {
                           className={`cursor-pointer group transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'} hover:bg-primary/5`}
                           onClick={() => setSelectedUser({
                             userId: user.userId,
+                            authUserId: user.authUserId,
                             userName,
                             role: user.role,
                           })}
