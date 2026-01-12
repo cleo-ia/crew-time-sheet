@@ -17,11 +17,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemandesCongesRH } from "@/hooks/useDemandesCongesRH";
 import { useValidateDemandeConge } from "@/hooks/useValidateDemandeConge";
 import { useRefuseDemandeConge } from "@/hooks/useRefuseDemandeConge";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { DemandeCongeCard } from "./DemandeCongeCard";
+import { generateCongesPdf } from "@/lib/congesPdfExport";
+import { toast } from "sonner";
 
 interface CongesRHSheetProps {
   open: boolean;
@@ -43,6 +47,7 @@ export const CongesRHSheet = ({
   const { data: demandes = [], isLoading } = useDemandesCongesRH(entrepriseId);
   const validateMutation = useValidateDemandeConge();
   const refuseMutation = useRefuseDemandeConge();
+  const enterpriseConfig = useEnterpriseConfig();
 
   // Récupérer l'ID de l'utilisateur connecté
   useEffect(() => {
@@ -89,6 +94,19 @@ export const CongesRHSheet = ({
     setShowRefusDialog(false);
     setSelectedDemandeId(null);
     setMotifRefus("");
+  };
+
+  const handleExportPdf = async () => {
+    const validees = demandes.filter((d) => d.statut === "VALIDEE_RH");
+    if (validees.length === 0) {
+      toast.info("Aucune demande validée à exporter");
+      return;
+    }
+    await generateCongesPdf(validees, {
+      entrepriseNom: enterpriseConfig?.nom,
+      entrepriseLogo: enterpriseConfig?.theme?.logo,
+    });
+    toast.success(`${validees.length} demande(s) exportée(s) en PDF`);
   };
 
   return (
@@ -167,6 +185,18 @@ export const CongesRHSheet = ({
               </TabsContent>
 
               <TabsContent value="traitees" className="space-y-3 mt-0">
+                {/* Bouton export PDF */}
+                {traitees.filter((d) => d.statut === "VALIDEE_RH").length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPdf}
+                    className="w-full mb-3"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exporter les demandes validées en PDF
+                  </Button>
+                )}
                 {isLoading ? (
                   <p className="text-muted-foreground text-center py-8">
                     Chargement...
