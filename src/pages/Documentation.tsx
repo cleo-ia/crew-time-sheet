@@ -1099,25 +1099,50 @@ const Documentation = () => {
                       <ArrowRight className="h-4 w-4" />
                       Parcours d'une demande de congé
                     </h4>
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
-                        1. Chef crée la demande
-                      </Badge>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
-                        2. Conducteur valide
-                      </Badge>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
-                        3. RH valide
-                      </Badge>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <Badge className="bg-green-600">
-                        ✓ Congé validé
-                      </Badge>
+                    
+                    {/* Flux 1 : Chef de chantier */}
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Demande par un Chef de chantier :</p>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
+                          1. Chef crée la demande
+                        </Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                          2. Conducteur valide
+                        </Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                          3. RH valide
+                        </Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge className="bg-green-600">
+                          ✓ Congé validé
+                        </Badge>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      Note : Les demandes créées par un conducteur pour ses finisseurs sont envoyées directement au RH.
+
+                    {/* Flux 2 : Conducteur */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Demande par un Conducteur (pour lui-même ou son équipe) :</p>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                          1. Conducteur crée la demande
+                        </Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                          2. RH valide
+                        </Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge className="bg-green-600">
+                          ✓ Congé validé
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mt-4 border-t pt-3">
+                      Note : Les conducteurs peuvent créer des demandes pour eux-mêmes, leurs finisseurs ou tout membre de leur équipe. 
+                      Ces demandes sont envoyées directement au RH (pas besoin d'auto-validation).
                     </p>
                   </CardContent>
                 </Card>
@@ -1185,7 +1210,7 @@ const Documentation = () => {
                   </div>
                 </div>
 
-                {/* Étapes pour créer une demande */}
+                {/* Étapes pour créer une demande - Chef */}
                 <div className="space-y-5 mb-6">
                   <h4 className="font-semibold">Créer une demande (Chef de chantier)</h4>
                   <DocStep number={1} title="Accéder aux demandes">
@@ -1209,8 +1234,40 @@ const Documentation = () => {
                   </DocStep>
                 </div>
 
+                {/* Étapes pour créer une demande - Conducteur */}
+                <div className="space-y-5 mb-6">
+                  <h4 className="font-semibold">Créer une demande (Conducteur)</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Les conducteurs peuvent créer des demandes de congés pour eux-mêmes, leurs finisseurs 
+                    ou tout autre membre de leur équipe. Ces demandes sont envoyées directement au RH.
+                  </p>
+                  <DocStep number={1} title="Accéder aux demandes">
+                    <p>
+                      Depuis la page de validation, cliquez sur le bouton 
+                      <Badge variant="outline" className="mx-1">Congés</Badge> pour ouvrir le panneau des demandes.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Sélectionner le bénéficiaire">
+                    <p>
+                      Choisissez pour qui vous créez la demande : vous-même, un finisseur de votre équipe, 
+                      ou tout autre employé affecté à vos chantiers.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Remplir et envoyer">
+                    <p>
+                      Complétez le formulaire (type de congé, dates, motif) puis validez. 
+                      La demande est envoyée directement au RH sans étape de validation intermédiaire.
+                    </p>
+                  </DocStep>
+                </div>
+
+                <DocNote type="info">
+                  Le conducteur peut également valider ou refuser les demandes créées par ses chefs de chantier. 
+                  Un badge de notification indique les demandes en attente de sa validation.
+                </DocNote>
+
                 {/* Statuts */}
-                <Card className="bg-muted/30">
+                <Card className="bg-muted/30 mt-6">
                   <CardContent className="pt-6">
                     <h4 className="font-semibold mb-4">Statuts des demandes</h4>
                     <div className="space-y-3">
@@ -1219,7 +1276,7 @@ const Documentation = () => {
                           En attente
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                          Demande créée, en attente de validation par le conducteur
+                          Demande créée par un chef, en attente de validation par le conducteur
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1249,11 +1306,6 @@ const Documentation = () => {
                     </div>
                   </CardContent>
                 </Card>
-
-                <DocNote type="info">
-                  Un badge de notification apparaît sur le bouton Congés lorsque des demandes 
-                  sont en attente de validation ou ont été traitées récemment.
-                </DocNote>
               </DocSubsection>
 
               <DocSubsection id="commun-theme" title="Mode sombre">
