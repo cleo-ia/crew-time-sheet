@@ -4,7 +4,8 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw } from "lucide-react";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
 import { RHSummary } from "@/components/rh/RHSummary";
@@ -286,9 +287,23 @@ const ConsultationRH = () => {
         ) : (
           <RHFicheDetail ficheId={selectedFiche} onBack={() => setSelectedFiche(null)} />
         )}
+        {/* Bouton discret de purge cache */}
+        <div className="flex justify-center py-4">
+          <button
+            onClick={() => {
+              if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
+                clearCacheAndReload();
+              }
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Problème d'affichage ? Vider le cache
+          </button>
+        </div>
       </main>
 
-      <ClotureDialog 
+      <ClotureDialog
         open={showClotureDialog} 
         onOpenChange={setShowClotureDialog}
         filters={filters}

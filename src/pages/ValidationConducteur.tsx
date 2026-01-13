@@ -5,7 +5,8 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw } from "lucide-react";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { FichesFilters } from "@/components/validation/FichesFilters";
@@ -748,6 +749,21 @@ const ValidationConducteur = () => {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* Bouton discret de purge cache */}
+          <div className="flex justify-center py-4">
+            <button
+              onClick={() => {
+                if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
+                  clearCacheAndReload();
+                }
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Problème d'affichage ? Vider le cache
+            </button>
+          </div>
         </main>
       </div>
     </PageLayout>
