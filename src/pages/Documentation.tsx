@@ -44,6 +44,7 @@ import {
   Sparkles,
   ChevronUp,
   Search,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,6 +109,7 @@ const sections: Section[] = [
     subsections: [
       { id: "commun-messagerie", title: "Messagerie interne" },
       { id: "commun-meteo", title: "Météo du chantier" },
+      { id: "commun-conges", title: "Demandes de congés" },
       { id: "commun-theme", title: "Mode sombre" },
       { id: "commun-pwa", title: "Application mobile (PWA)" },
     ],
@@ -1082,6 +1084,176 @@ const Documentation = () => {
                     </ul>
                   </CardContent>
                 </Card>
+              </DocSubsection>
+
+              <DocSubsection id="commun-conges" title="Demandes de congés">
+                <p className="text-muted-foreground mb-5">
+                  Le système de demandes de congés permet aux employés de soumettre leurs demandes d'absence 
+                  avec un workflow de validation à deux niveaux : conducteur puis RH.
+                </p>
+
+                {/* Schéma du flux */}
+                <Card className="mb-6 bg-muted/30">
+                  <CardContent className="pt-6">
+                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                      <ArrowRight className="h-4 w-4" />
+                      Parcours d'une demande de congé
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
+                        1. Chef crée la demande
+                      </Badge>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                        2. Conducteur valide
+                      </Badge>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                        3. RH valide
+                      </Badge>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <Badge className="bg-green-600">
+                        ✓ Congé validé
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Note : Les demandes créées par un conducteur pour ses finisseurs sont envoyées directement au RH.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Types de congés */}
+                <div className="space-y-5 mb-6">
+                  <h4 className="font-semibold">Types de congés disponibles</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Card className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <span className="font-medium">CP</span>
+                        <span className="text-muted-foreground text-sm">- Congés Payés</span>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <span className="font-medium">RTT</span>
+                        <span className="text-muted-foreground text-sm">- Récupération temps</span>
+                      </div>
+                    </Card>
+                    <Card className="p-3 border-orange-500/30">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-orange-500" />
+                        <span className="font-medium">Maladie</span>
+                        <Badge variant="outline" className="text-xs ml-auto">Justificatif requis</Badge>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <span className="font-medium">CSS</span>
+                        <span className="text-muted-foreground text-sm">- Congé sans solde</span>
+                      </div>
+                    </Card>
+                    <Card className="p-3 border-orange-500/30">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-orange-500" />
+                        <span className="font-medium">Paternité</span>
+                        <Badge variant="outline" className="text-xs ml-auto">Justificatif requis</Badge>
+                      </div>
+                    </Card>
+                    <Card className="p-3 border-orange-500/30">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-orange-500" />
+                        <span className="font-medium">Événement familial</span>
+                        <Badge variant="outline" className="text-xs ml-auto">Justificatif requis</Badge>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Récupération</span>
+                        <span className="text-muted-foreground text-sm">- Heures récupérées</span>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Formation</span>
+                        <span className="text-muted-foreground text-sm">- Session de formation</span>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Étapes pour créer une demande */}
+                <div className="space-y-5 mb-6">
+                  <h4 className="font-semibold">Créer une demande (Chef de chantier)</h4>
+                  <DocStep number={1} title="Accéder aux demandes">
+                    <p>
+                      Depuis la page de saisie hebdomadaire, cliquez sur le bouton 
+                      <Badge variant="outline" className="mx-1">Congés</Badge> dans la barre d'outils.
+                    </p>
+                  </DocStep>
+                  <DocStep number={2} title="Remplir le formulaire">
+                    <p>
+                      Sélectionnez l'employé concerné, le type de congé, les dates de début et de fin, 
+                      puis ajoutez un motif si nécessaire.
+                    </p>
+                  </DocStep>
+                  <DocStep number={3} title="Signer et envoyer">
+                    <p>
+                      Signez la demande avec votre doigt ou stylet, puis cliquez sur 
+                      <Badge className="mx-1 bg-primary">Envoyer la demande</Badge>.
+                      La demande est transmise au conducteur pour validation.
+                    </p>
+                  </DocStep>
+                </div>
+
+                {/* Statuts */}
+                <Card className="bg-muted/30">
+                  <CardContent className="pt-6">
+                    <h4 className="font-semibold mb-4">Statuts des demandes</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 min-w-[140px]">
+                          En attente
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Demande créée, en attente de validation par le conducteur
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 min-w-[140px]">
+                          Validée conducteur
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Validée par le conducteur, en attente de validation RH
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-green-600 min-w-[140px]">
+                          Validée
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Demande validée définitivement par le RH
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="destructive" className="min-w-[140px]">
+                          Refusée
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Demande refusée (motif obligatoire fourni)
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <DocNote type="info">
+                  Un badge de notification apparaît sur le bouton Congés lorsque des demandes 
+                  sont en attente de validation ou ont été traitées récemment.
+                </DocNote>
               </DocSubsection>
 
               <DocSubsection id="commun-theme" title="Mode sombre">
