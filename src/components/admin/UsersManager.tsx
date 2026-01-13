@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, RefreshCw, X } from "lucide-react";
+import { Edit, Trash2, RefreshCw, X, Search } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ export const UsersManager = () => {
   const [editDialog, setEditDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "", role: "" });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
@@ -277,10 +278,35 @@ export const UsersManager = () => {
     );
   }
 
+  // Filtrage des utilisateurs par recherche
+  const filteredProfiles = profiles?.filter((profile) => {
+    if (!searchQuery.trim()) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    const fullName = `${profile.prenom || ""} ${profile.nom || ""}`.toLowerCase();
+    const email = (profile.email || "").toLowerCase();
+    const role = getRoleForUser(profile).toLowerCase();
+    
+    return fullName.includes(searchLower) || 
+           email.includes(searchLower) || 
+           role.includes(searchLower);
+  }) || [];
+
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Utilisateurs actifs</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Utilisateurs actifs</h3>
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom, email ou rôle..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -294,8 +320,8 @@ export const UsersManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles && profiles.length > 0 ? (
-                [...profiles].sort((a, b) => {
+              {filteredProfiles.length > 0 ? (
+                [...filteredProfiles].sort((a, b) => {
                   const roleA = getRoleForUser(a);
                   const roleB = getRoleForUser(b);
                   const priorityA = getRolePriority(roleA);
