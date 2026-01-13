@@ -1355,26 +1355,50 @@ const Documentation = () => {
                   Si vous rencontrez une erreur dans l'application, suivez ces étapes dans l'ordre :
                 </p>
                 <div className="space-y-5">
-                  <DocStep number={1} title="Rafraîchir la page">
+                  <DocStep number={1} title="Utiliser le bouton « Vider le cache » intégré">
+                    <p>
+                      En bas de chaque page principale (Chef, Conducteur, RH), un bouton 
+                      <strong> "Problème d'affichage ? Vider le cache"</strong> est disponible.
+                    </p>
+                    <p className="mt-2">
+                      Ce bouton résout la majorité des problèmes d'affichage liés au cache de l'application :
+                    </p>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                      <li>Données qui ne se mettent pas à jour</li>
+                      <li>Affichage incohérent ou bloqué</li>
+                      <li>Anciennes versions de l'application en cache</li>
+                      <li>Problèmes après une mise à jour</li>
+                    </ul>
+                    <p className="mt-2 text-sm">
+                      Cliquez sur ce bouton, confirmez l'action, et l'application se rechargera avec un cache propre.
+                      <strong> Vos identifiants de connexion sont préservés.</strong>
+                    </p>
+                  </DocStep>
+                  <DocNote type="success">
+                    Le bouton "Vider le cache" est la solution la plus simple et la plus rapide.
+                    Il nettoie automatiquement le cache PWA, les Service Workers et le stockage local
+                    tout en préservant votre contexte de connexion.
+                  </DocNote>
+                  <DocStep number={2} title="Rafraîchir la page">
                     <p>
                       Appuyez sur <strong>F5</strong> (ordinateur) ou tirez vers le bas pour actualiser (mobile).
                       Cela résout la plupart des problèmes temporaires.
                     </p>
                   </DocStep>
-                  <DocStep number={2} title="Vérifier votre connexion internet">
+                  <DocStep number={3} title="Vérifier votre connexion internet">
                     <p>
                       Assurez-vous d'être connecté au Wi-Fi ou au réseau mobile.
                       L'icône de connexion dans l'application indique l'état du réseau.
                     </p>
                   </DocStep>
-                  <DocStep number={3} title="Vider le cache du navigateur">
+                  <DocStep number={4} title="Vider le cache du navigateur (méthode manuelle)">
                     <p>
-                      Si le problème persiste, videz le cache de votre navigateur :
+                      Si le bouton intégré ne résout pas le problème, videz le cache manuellement :
                       <br />
                       <strong>Chrome :</strong> Menu → Paramètres → Confidentialité → Effacer les données de navigation
                     </p>
                   </DocStep>
-                  <DocStep number={4} title="Se déconnecter et se reconnecter">
+                  <DocStep number={5} title="Se déconnecter et se reconnecter">
                     <p>
                       Déconnectez-vous de l'application puis reconnectez-vous pour réinitialiser votre session.
                     </p>
