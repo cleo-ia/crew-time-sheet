@@ -66,6 +66,7 @@ import docPreExportDetail from "@/assets/doc-pre-export-detail.png";
 import docExportInterimaire from "@/assets/doc-export-interimaire.png";
 import docCloturePeriode from "@/assets/doc-cloture-periode.png";
 import docGestionUtilisateurs from "@/assets/doc-gestion-utilisateurs.png";
+import docBoutonViderCache from "@/assets/doc-bouton-vider-cache.png";
 
 // Types
 interface Section {
@@ -1360,6 +1361,11 @@ const Documentation = () => {
                       En bas de chaque page principale (Chef, Conducteur, RH), un bouton 
                       <strong> "Problème d'affichage ? Vider le cache"</strong> est disponible.
                     </p>
+                    <DocImage 
+                      src={docBoutonViderCache} 
+                      alt="Bouton Vider le cache" 
+                      caption="Le bouton se trouve en bas de chaque page principale"
+                    />
                     <p className="mt-2">
                       Ce bouton résout la majorité des problèmes d'affichage liés au cache de l'application :
                     </p>
