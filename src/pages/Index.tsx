@@ -772,17 +772,21 @@ const Index = () => {
                    )}
                   
                   {/* Bouton discret de purge cache */}
-                  <button
-                    onClick={() => {
-                      if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
-                        clearCacheAndReload();
-                      }
-                    }}
-                    className="mt-4 text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Problème d'affichage ? Vider le cache
-                  </button>
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
+                          clearCacheAndReload();
+                        }
+                      }}
+                      className="text-muted-foreground"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Problème d'affichage ? Vider le cache
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </>

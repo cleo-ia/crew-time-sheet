@@ -752,17 +752,19 @@ const ValidationConducteur = () => {
 
           {/* Bouton discret de purge cache */}
           <div className="flex justify-center py-4">
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
                   clearCacheAndReload();
                 }
               }}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+              className="text-muted-foreground"
             >
-              <RefreshCw className="h-3 w-3" />
+              <RefreshCw className="h-3.5 w-3.5" />
               Problème d'affichage ? Vider le cache
-            </button>
+            </Button>
           </div>
         </main>
       </div>
