@@ -1405,6 +1405,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                       updateDayValue(entry.employeeId, day, "trajet", true);
                                       updateDayValue(entry.employeeId, day, "codeTrajet", "A_COMPLETER");
                                       updateDayValue(entry.employeeId, day, "trajetPerso", false);
+                                      updateDayValue(entry.employeeId, day, "grandDeplacement", false);
                                     } else {
                                       updateDayValue(entry.employeeId, day, "trajet", false);
                                       updateDayValue(entry.employeeId, day, "codeTrajet", null);
