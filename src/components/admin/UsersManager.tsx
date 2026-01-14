@@ -205,6 +205,7 @@ export const UsersManager = () => {
 
   const getRolePriority = (role: string): number => {
     const priorities: Record<string, number> = {
+      super_admin: 0,
       admin: 1,
       rh: 2,
       conducteur: 3,
