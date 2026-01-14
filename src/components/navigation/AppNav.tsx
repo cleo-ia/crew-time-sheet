@@ -68,11 +68,12 @@ export const AppNav = () => {
   };
 
   // Define which roles can see which nav items
-  const canSeeSaisieChef = userRole && ["admin", "chef"].includes(userRole);
-  const canSeeConducteur = userRole && ["admin", "conducteur"].includes(userRole);
-  const canSeeValidation = userRole && ["admin", "rh", "conducteur"].includes(userRole);
-  const canSeeRH = userRole && ["admin", "rh"].includes(userRole);
-  const canSeeAdmin = userRole === "admin";
+  // super_admin voit tout, admin ne voit que Administration
+  const canSeeSaisieChef = userRole && ["super_admin", "chef"].includes(userRole);
+  const canSeeConducteur = userRole && ["super_admin", "conducteur"].includes(userRole);
+  const canSeeValidation = userRole && ["super_admin", "rh", "conducteur"].includes(userRole);
+  const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
+  const canSeeAdmin = userRole && ["super_admin", "admin"].includes(userRole);
 
   if (isLoading) return null;
 

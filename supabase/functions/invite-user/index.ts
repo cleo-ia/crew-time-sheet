@@ -180,21 +180,22 @@ serve(async (req) => {
 
     // Vérifications d'autorisation
     if (!isBootstrap) {
+      // Vérifier si l'utilisateur est admin OU super_admin
       const { data: userRoles, error: rolesError } = await supabaseClient
         .from('user_roles')
         .select('role')
         .eq('user_id', invitedByUserId as string)
-        .eq('role', 'admin')
-        .single();
+        .in('role', ['admin', 'super_admin'])
+        .limit(1);
 
-      if (rolesError || !userRoles) {
+      if (rolesError || !userRoles || userRoles.length === 0) {
         console.error('Admin role check failed:', rolesError);
         return new Response(
           JSON.stringify({ error: 'Forbidden: Admin role required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      console.log('Admin role verified');
+      console.log('Admin role verified:', userRoles[0].role);
     } else {
       // En mode bootstrap, seul le rôle 'admin' est autorisé
       if (role !== 'admin') {

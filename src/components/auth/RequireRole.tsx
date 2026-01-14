@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface RequireRoleProps {
   children: ReactNode;
-  allowedRoles: Array<"admin" | "rh" | "conducteur" | "chef">;
+  allowedRoles: Array<"super_admin" | "admin" | "rh" | "conducteur" | "chef">;
   redirectTo?: string;
 }
 
@@ -28,7 +28,9 @@ export const RequireRole = ({
     // Redirection intelligente selon le rôle
     let fallbackRoute = redirectTo;
     
-    if (userRole === "conducteur") {
+    if (userRole === "super_admin") {
+      fallbackRoute = "/admin";
+    } else if (userRole === "conducteur") {
       fallbackRoute = "/validation-conducteur";
     } else if (userRole === "chef") {
       fallbackRoute = "/";
