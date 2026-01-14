@@ -2147,7 +2147,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "rh" | "conducteur" | "chef"
+      app_role: "super_admin" | "admin" | "rh" | "conducteur" | "chef"
       role_metier_type:
         | "macon"
         | "finisseur"
@@ -2307,7 +2307,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "rh", "conducteur", "chef"],
+      app_role: ["super_admin", "admin", "rh", "conducteur", "chef"],
       role_metier_type: ["macon", "finisseur", "grutier", "chef", "conducteur"],
       statut_demande_conge: [
         "EN_ATTENTE",
