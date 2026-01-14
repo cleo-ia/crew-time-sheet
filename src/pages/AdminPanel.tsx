@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard, History } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard, History, RefreshCw } from "lucide-react";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
 import { ConducteursManager } from "@/components/admin/ConducteursManager";
@@ -209,6 +210,23 @@ const AdminPanel = () => {
           </TabsContent>
           </Tabs>
         </Card>
+
+        {/* Bouton vider le cache */}
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (confirm("Vider le cache peut résoudre les problèmes d'affichage. Voulez-vous continuer ?")) {
+                clearCacheAndReload();
+              }
+            }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-2" />
+            Problème d'affichage ? Vider le cache
+          </Button>
+        </div>
       </main>
 
       <ConversationListSheet
