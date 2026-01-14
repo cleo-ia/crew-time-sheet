@@ -7,6 +7,10 @@ import { registerSW } from 'virtual:pwa-register';
 const updateSW = registerSW({
   onNeedRefresh() {
     console.log('🔄 Nouvelle version disponible');
+    // Demander confirmation avant de mettre à jour
+    if (confirm('Une nouvelle version est disponible. Voulez-vous recharger la page pour l\'appliquer ?')) {
+      updateSW(true);
+    }
   },
   onOfflineReady() {
     console.log('✅ Application prête pour une utilisation hors-ligne');

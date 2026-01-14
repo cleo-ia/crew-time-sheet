@@ -204,6 +204,9 @@ export const UsersManager = () => {
   });
 
   const getRolePriority = (role: string): number => {
+    // Normalisation pour gérer les variantes (super-admin, Super_Admin, etc.)
+    const normalizedRole = role?.toLowerCase().trim().replace(/-/g, '_') || '';
+    
     const priorities: Record<string, number> = {
       super_admin: 0,
       admin: 1,
@@ -215,7 +218,7 @@ export const UsersManager = () => {
       finisseur: 7,
       interimaire: 8,
     };
-    return priorities[role] || 999;
+    return priorities[normalizedRole] ?? 999;
   };
 
   const getRoleForUser = (utilisateur: any) => {
