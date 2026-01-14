@@ -47,11 +47,11 @@ const App = () => (
           <Route path="/bootstrap" element={<Bootstrap />} />
           <Route path="/install" element={<Install />} />
           <Route element={<RequireAuth />}>
-            {/* Saisie Chef - Accessible par: admin, chef */}
+            {/* Saisie Chef - Accessible par: super_admin, chef */}
             <Route 
               path="/" 
               element={
-                <RequireRole allowedRoles={["admin", "chef"]}>
+                <RequireRole allowedRoles={["super_admin", "chef"]}>
                   <Index />
                 </RequireRole>
               } 
@@ -63,21 +63,21 @@ const App = () => (
               element={<Navigate to="/validation-conducteur" replace />}
             />
             
-            {/* Validation Conducteur - Accessible par: admin, conducteur */}
+            {/* Validation Conducteur - Accessible par: super_admin, conducteur */}
             <Route 
               path="/validation-conducteur" 
               element={
-                <RequireRole allowedRoles={["admin", "conducteur"]}>
+                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
                   <ValidationConducteur />
                 </RequireRole>
               } 
             />
             
-            {/* Consultation RH - Accessible par: admin, rh */}
+            {/* Consultation RH - Accessible par: super_admin, rh */}
             <Route 
               path="/consultation-rh" 
               element={
-                <RequireRole allowedRoles={["admin", "rh"]}>
+                <RequireRole allowedRoles={["super_admin", "rh"]}>
                   <ConsultationRH />
                 </RequireRole>
               } 
@@ -89,31 +89,31 @@ const App = () => (
             {/* Documentation - Accessible par tous les authentifiés */}
             <Route path="/documentation" element={<Documentation />} />
             
-            {/* Signature Finisseurs - Accessible par: admin, conducteur */}
+            {/* Signature Finisseurs - Accessible par: super_admin, conducteur */}
             <Route 
               path="/signature-finisseurs" 
               element={
-                <RequireRole allowedRoles={["admin", "conducteur"]}>
+                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
                   <SignatureFinisseurs />
                 </RequireRole>
               } 
             />
             
-            {/* Admin Panel - Accessible UNIQUEMENT par: admin */}
+            {/* Admin Panel - Accessible par: super_admin, admin */}
             <Route 
               path="/admin" 
               element={
-                <RequireRole allowedRoles={["admin"]}>
+                <RequireRole allowedRoles={["super_admin", "admin"]}>
                   <AdminPanel />
                 </RequireRole>
               } 
             />
             
-            {/* Chantier Detail - Accessible par: admin */}
+            {/* Chantier Detail - Accessible par: super_admin, admin */}
             <Route 
               path="/admin/chantiers/:id" 
               element={
-                <RequireRole allowedRoles={["admin"]}>
+                <RequireRole allowedRoles={["super_admin", "admin"]}>
                   <ChantierDetail />
                 </RequireRole>
               } 

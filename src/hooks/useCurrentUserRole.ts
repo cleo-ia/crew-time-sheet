@@ -25,8 +25,8 @@ export const useCurrentUserRole = () => {
       if (error) throw error;
       if (!data || data.length === 0) return null;
 
-      // Priorité des rôles : admin > rh > conducteur > chef
-      const priority: Array<"admin" | "rh" | "conducteur" | "chef"> = ['admin', 'rh', 'conducteur', 'chef'];
+      // Priorité des rôles : super_admin > admin > rh > conducteur > chef
+      const priority: Array<"super_admin" | "admin" | "rh" | "conducteur" | "chef"> = ['super_admin', 'admin', 'rh', 'conducteur', 'chef'];
       const roles = data.map(r => r.role);
 
       for (const role of priority) {
