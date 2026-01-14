@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { semaine } = await req.json();
+    const { semaine, chantier_id } = await req.json();
 
     // Validate semaine parameter
     if (!semaine || typeof semaine !== 'string') {
@@ -40,7 +40,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`🚀 Starting purge for week: ${semaine}`);
+    const filterByChantier = chantier_id && typeof chantier_id === 'string';
+    console.log(`🚀 Starting purge for week: ${semaine}${filterByChantier ? ` (chantier: ${chantier_id})` : ' (all chantiers)'}`);
 
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -51,10 +52,16 @@ Deno.serve(async (req) => {
 
     // Step 1: Delete affectations_finisseurs_jours
     console.log('Step 1: Deleting affectations_finisseurs_jours...');
-    const { error: affError, count: affCount } = await supabase
+    let affQuery = supabase
       .from('affectations_finisseurs_jours')
       .delete({ count: 'exact' })
       .eq('semaine', semaine);
+    
+    if (filterByChantier) {
+      affQuery = affQuery.eq('chantier_id', chantier_id);
+    }
+    
+    const { error: affError, count: affCount } = await affQuery;
     
     if (affError) throw affError;
     results.affectations_finisseurs_jours = affCount || 0;
@@ -78,11 +85,17 @@ Deno.serve(async (req) => {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      const { error: affMaconsError, count: affMaconsCount } = await supabase
+      let affMaconsQuery = supabase
         .from('affectations')
         .delete({ count: 'exact' })
         .gte('date_debut', startDateStr)
         .lte('date_debut', endDateStr);
+      
+      if (filterByChantier) {
+        affMaconsQuery = affMaconsQuery.eq('chantier_id', chantier_id);
+      }
+      
+      const { error: affMaconsError, count: affMaconsCount } = await affMaconsQuery;
       
       if (affMaconsError) throw affMaconsError;
       results.affectations = affMaconsCount || 0;
@@ -91,13 +104,22 @@ Deno.serve(async (req) => {
       results.affectations = 0;
     }
 
-    // Step 2: Delete signatures
-    console.log('Step 2: Deleting signatures...');
-    const { data: fichesIds } = await supabase
+    // Step 2: Get fiches for this week (and optionally chantier)
+    console.log('Step 2: Getting fiches...');
+    let fichesQuery = supabase
       .from('fiches')
       .select('id')
       .eq('semaine', semaine);
     
+    if (filterByChantier) {
+      fichesQuery = fichesQuery.eq('chantier_id', chantier_id);
+    }
+    
+    const { data: fichesIds } = await fichesQuery;
+    console.log(`Found ${fichesIds?.length || 0} fiches to delete`);
+
+    // Step 3: Delete signatures
+    console.log('Step 3: Deleting signatures...');
     if (fichesIds && fichesIds.length > 0) {
       const ficheIdsList = fichesIds.map(f => f.id);
       const { error: sigError, count: sigCount } = await supabase
@@ -112,12 +134,24 @@ Deno.serve(async (req) => {
       results.signatures = 0;
     }
 
-    // Step 3: Delete fiches_transport_finisseurs_jours
-    console.log('Step 3: Deleting fiches_transport_finisseurs_jours...');
-    const { data: ftfIds } = await supabase
+    // Step 4: Delete fiches_transport_finisseurs_jours
+    console.log('Step 4: Deleting fiches_transport_finisseurs_jours...');
+    let ftfQuery = supabase
       .from('fiches_transport_finisseurs')
       .select('id')
       .eq('semaine', semaine);
+    
+    // Filter by fiche_id if we have filtered fiches
+    if (filterByChantier && fichesIds && fichesIds.length > 0) {
+      const ficheIdsList = fichesIds.map(f => f.id);
+      ftfQuery = ftfQuery.in('fiche_id', ficheIdsList);
+    } else if (filterByChantier && (!fichesIds || fichesIds.length === 0)) {
+      // No fiches for this chantier, skip
+      results.fiches_transport_finisseurs_jours = 0;
+      results.fiches_transport_finisseurs = 0;
+    }
+    
+    const { data: ftfIds } = await ftfQuery;
     
     if (ftfIds && ftfIds.length > 0) {
       const ftfIdsList = ftfIds.map(f => f.id);
@@ -130,26 +164,37 @@ Deno.serve(async (req) => {
       results.fiches_transport_finisseurs_jours = ftfjCount || 0;
       console.log(`✅ Deleted ${ftfjCount} fiches_transport_finisseurs_jours`);
     } else {
-      results.fiches_transport_finisseurs_jours = 0;
+      results.fiches_transport_finisseurs_jours = results.fiches_transport_finisseurs_jours ?? 0;
     }
 
-    // Step 4: Delete fiches_transport_finisseurs
-    console.log('Step 4: Deleting fiches_transport_finisseurs...');
-    const { error: ftfError, count: ftfCount } = await supabase
-      .from('fiches_transport_finisseurs')
-      .delete({ count: 'exact' })
-      .eq('semaine', semaine);
-    
-    if (ftfError) throw ftfError;
-    results.fiches_transport_finisseurs = ftfCount || 0;
-    console.log(`✅ Deleted ${ftfCount} fiches_transport_finisseurs`);
+    // Step 5: Delete fiches_transport_finisseurs
+    console.log('Step 5: Deleting fiches_transport_finisseurs...');
+    if (ftfIds && ftfIds.length > 0) {
+      const ftfIdsList = ftfIds.map(f => f.id);
+      const { error: ftfError, count: ftfCount } = await supabase
+        .from('fiches_transport_finisseurs')
+        .delete({ count: 'exact' })
+        .in('id', ftfIdsList);
+      
+      if (ftfError) throw ftfError;
+      results.fiches_transport_finisseurs = ftfCount || 0;
+      console.log(`✅ Deleted ${ftfCount} fiches_transport_finisseurs`);
+    } else {
+      results.fiches_transport_finisseurs = results.fiches_transport_finisseurs ?? 0;
+    }
 
-    // Step 5: Delete fiches_transport_jours
-    console.log('Step 5: Deleting fiches_transport_jours...');
-    const { data: ftIds } = await supabase
+    // Step 6: Delete fiches_transport_jours
+    console.log('Step 6: Deleting fiches_transport_jours...');
+    let ftQuery = supabase
       .from('fiches_transport')
       .select('id')
       .eq('semaine', semaine);
+    
+    if (filterByChantier) {
+      ftQuery = ftQuery.eq('chantier_id', chantier_id);
+    }
+    
+    const { data: ftIds } = await ftQuery;
     
     if (ftIds && ftIds.length > 0) {
       const ftIdsList = ftIds.map(f => f.id);
@@ -165,19 +210,24 @@ Deno.serve(async (req) => {
       results.fiches_transport_jours = 0;
     }
 
-    // Step 6: Delete fiches_transport
-    console.log('Step 6: Deleting fiches_transport...');
-    const { error: ftError, count: ftCount } = await supabase
-      .from('fiches_transport')
-      .delete({ count: 'exact' })
-      .eq('semaine', semaine);
-    
-    if (ftError) throw ftError;
-    results.fiches_transport = ftCount || 0;
-    console.log(`✅ Deleted ${ftCount} fiches_transport`);
+    // Step 7: Delete fiches_transport
+    console.log('Step 7: Deleting fiches_transport...');
+    if (ftIds && ftIds.length > 0) {
+      const ftIdsList = ftIds.map(f => f.id);
+      const { error: ftError, count: ftCount } = await supabase
+        .from('fiches_transport')
+        .delete({ count: 'exact' })
+        .in('id', ftIdsList);
+      
+      if (ftError) throw ftError;
+      results.fiches_transport = ftCount || 0;
+      console.log(`✅ Deleted ${ftCount} fiches_transport`);
+    } else {
+      results.fiches_transport = 0;
+    }
 
-    // Step 7: Delete fiches_jours
-    console.log('Step 7: Deleting fiches_jours...');
+    // Step 8: Delete fiches_jours
+    console.log('Step 8: Deleting fiches_jours...');
     if (fichesIds && fichesIds.length > 0) {
       const ficheIdsList = fichesIds.map(f => f.id);
       const { error: fjError, count: fjCount } = await supabase
@@ -192,16 +242,21 @@ Deno.serve(async (req) => {
       results.fiches_jours = 0;
     }
 
-    // Step 8: Delete fiches
-    console.log('Step 8: Deleting fiches...');
-    const { error: fichesError, count: fichesCount } = await supabase
-      .from('fiches')
-      .delete({ count: 'exact' })
-      .eq('semaine', semaine);
-    
-    if (fichesError) throw fichesError;
-    results.fiches = fichesCount || 0;
-    console.log(`✅ Deleted ${fichesCount} fiches`);
+    // Step 9: Delete fiches
+    console.log('Step 9: Deleting fiches...');
+    if (fichesIds && fichesIds.length > 0) {
+      const ficheIdsList = fichesIds.map(f => f.id);
+      const { error: fichesError, count: fichesCount } = await supabase
+        .from('fiches')
+        .delete({ count: 'exact' })
+        .in('id', ficheIdsList);
+      
+      if (fichesError) throw fichesError;
+      results.fiches = fichesCount || 0;
+      console.log(`✅ Deleted ${fichesCount} fiches`);
+    } else {
+      results.fiches = 0;
+    }
 
     // Calculate total
     const total = Object.values(results).reduce((sum, count) => sum + count, 0);
@@ -212,6 +267,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         semaine,
+        chantier_id: filterByChantier ? chantier_id : null,
         deleted: results,
         total
       }),
