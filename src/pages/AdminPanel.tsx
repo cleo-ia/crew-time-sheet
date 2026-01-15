@@ -45,6 +45,7 @@ const AdminPanel = () => {
   const { data: userRole } = useCurrentUserRole();
 
   const isGestionnaire = userRole === "gestionnaire";
+  const isRH = userRole === "rh";
 
   // Sync tab with URL parameter
   useEffect(() => {
@@ -79,7 +80,7 @@ const AdminPanel = () => {
               onClick={() => setShowConversation(true)}
               unreadCount={unreadData?.total || 0}
             />
-            {!isGestionnaire && (
+            {!isGestionnaire && !isRH && (
               <Button 
                 variant="outline"
                 onClick={() => handleTabChange("analyse")}
@@ -164,7 +165,7 @@ const AdminPanel = () => {
                 <Truck className="h-4 w-4" />
                 <span className="hidden sm:inline">Véhicules</span>
               </TabsTrigger>
-              {!isGestionnaire && (
+              {!isGestionnaire && !isRH && (
                 <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Bell className="h-4 w-4" />
                   <span className="hidden sm:inline">Rappels</span>
@@ -176,7 +177,7 @@ const AdminPanel = () => {
                   <span className="hidden sm:inline">Historique</span>
                 </TabsTrigger>
               )}
-              {!isGestionnaire && (
+              {!isGestionnaire && !isRH && (
                 <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Debug</span>
@@ -240,13 +241,13 @@ const AdminPanel = () => {
               <VehiculesManager />
             </TabsContent>
 
-            {!isGestionnaire && (
+            {!isGestionnaire && !isRH && (
               <TabsContent value="rappels" className="p-6">
                 <RappelsManager />
               </TabsContent>
             )}
 
-            {!isGestionnaire && (
+            {!isGestionnaire && !isRH && (
               <TabsContent value="analyse" className="p-6">
                 <AnalyticsManager />
               </TabsContent>
@@ -258,7 +259,7 @@ const AdminPanel = () => {
               </TabsContent>
             )}
 
-            {!isGestionnaire && (
+            {!isGestionnaire && !isRH && (
               <TabsContent value="debug" className="p-6">
                 <TransportDebugManager />
               </TabsContent>
