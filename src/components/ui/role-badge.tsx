@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface RoleBadgeProps {
-  role: "super_admin" | "admin" | "chef" | "macon" | "finisseur" | "interimaire" | "conducteur" | "rh" | "grutier";
+  role: "super_admin" | "admin" | "gestionnaire" | "chef" | "macon" | "finisseur" | "interimaire" | "conducteur" | "rh" | "grutier";
   size?: "sm" | "md";
 }
 
@@ -34,6 +34,21 @@ export const RoleBadge = ({ role, size = "md" }: RoleBadgeProps) => {
         }}
       >
         Admin
+      </Badge>
+    );
+  }
+  
+  if (role === "gestionnaire") {
+    return (
+      <Badge 
+        variant="default" 
+        className={sizeClass}
+        style={{ 
+          backgroundColor: 'hsl(210 70% 50%)', 
+          color: 'white' 
+        }}
+      >
+        Gestionnaire
       </Badge>
     );
   }
