@@ -73,7 +73,7 @@ export const AppNav = () => {
   const canSeeConducteur = userRole && ["super_admin", "conducteur"].includes(userRole);
   const canSeeValidation = userRole && ["super_admin", "rh", "conducteur"].includes(userRole);
   const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
-  const canSeeAdmin = userRole && ["super_admin", "admin"].includes(userRole);
+  const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire"].includes(userRole);
 
   if (isLoading) return null;
 
