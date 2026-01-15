@@ -103,7 +103,7 @@ const App = () => (
             <Route 
               path="/admin" 
               element={
-                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire"]}>
+                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
                   <AdminPanel />
                 </RequireRole>
               } 
@@ -113,7 +113,7 @@ const App = () => (
             <Route 
               path="/admin/chantiers/:id" 
               element={
-                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire"]}>
+                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
                   <ChantierDetail />
                 </RequireRole>
               } 
