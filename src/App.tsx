@@ -99,21 +99,21 @@ const App = () => (
               } 
             />
             
-            {/* Admin Panel - Accessible par: super_admin, admin */}
+            {/* Admin Panel - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin" 
               element={
-                <RequireRole allowedRoles={["super_admin", "admin"]}>
+                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire"]}>
                   <AdminPanel />
                 </RequireRole>
               } 
             />
             
-            {/* Chantier Detail - Accessible par: super_admin, admin */}
+            {/* Chantier Detail - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin/chantiers/:id" 
               element={
-                <RequireRole allowedRoles={["super_admin", "admin"]}>
+                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire"]}>
                   <ChantierDetail />
                 </RequireRole>
               } 

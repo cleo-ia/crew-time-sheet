@@ -27,6 +27,10 @@ import { ConversationButton } from "@/components/chat/ConversationButton";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useAuth } from "@/contexts/AuthProvider";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+
+// Onglets autorisés pour le rôle gestionnaire
+const GESTIONNAIRE_TABS = ['dashboard', 'utilisateurs', 'chantiers', 'interimaires', 'vehicules'];
 
 const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,13 +42,22 @@ const AdminPanel = () => {
   const { user } = useAuth();
   const currentUserId = user?.id || "";
   const { data: unreadData } = useUnreadMessages(currentUserId);
+  const { data: userRole } = useCurrentUserRole();
+
+  const isGestionnaire = userRole === "gestionnaire";
 
   // Sync tab with URL parameter
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
+      // Pour gestionnaire, vérifier que l'onglet est autorisé
+      if (isGestionnaire && !GESTIONNAIRE_TABS.includes(tabFromUrl)) {
+        setActiveTab("dashboard");
+        setSearchParams({ tab: "dashboard" });
+      } else {
+        setActiveTab(tabFromUrl);
+      }
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, isGestionnaire]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -66,17 +79,21 @@ const AdminPanel = () => {
               onClick={() => setShowConversation(true)}
               unreadCount={unreadData?.total || 0}
             />
-            <Button 
-              variant="outline"
-              onClick={() => handleTabChange("analyse")}
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analyse
-            </Button>
-            <Button onClick={() => setInviteDialogOpen(true)}>
-              <Users className="h-4 w-4 mr-2" />
-              Inviter un utilisateur
-            </Button>
+            {!isGestionnaire && (
+              <Button 
+                variant="outline"
+                onClick={() => handleTabChange("analyse")}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Analyse
+              </Button>
+            )}
+            {!isGestionnaire && (
+              <Button onClick={() => setInviteDialogOpen(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Inviter un utilisateur
+              </Button>
+            )}
           </div>
         }
       />
@@ -103,50 +120,68 @@ const AdminPanel = () => {
                 <Building2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Chantiers</span>
               </TabsTrigger>
-              <TabsTrigger value="conducteurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Briefcase className="h-4 w-4" />
-                <span className="hidden sm:inline">Conducteurs</span>
-              </TabsTrigger>
-              <TabsTrigger value="chefs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <UserCog className="h-4 w-4" />
-                <span className="hidden sm:inline">Chefs</span>
-              </TabsTrigger>
-              <TabsTrigger value="macons" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <HardHat className="h-4 w-4" />
-                <span className="hidden sm:inline">Maçons</span>
-              </TabsTrigger>
-              <TabsTrigger value="grutiers" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <HardHat className="h-4 w-4" />
-                <span className="hidden sm:inline">Grutiers</span>
-              </TabsTrigger>
+              {!isGestionnaire && (
+                <TabsTrigger value="conducteurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Conducteurs</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="chefs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <UserCog className="h-4 w-4" />
+                  <span className="hidden sm:inline">Chefs</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="macons" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <HardHat className="h-4 w-4" />
+                  <span className="hidden sm:inline">Maçons</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="grutiers" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <HardHat className="h-4 w-4" />
+                  <span className="hidden sm:inline">Grutiers</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="interimaires" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <UserCheck className="h-4 w-4" />
                 <span className="hidden sm:inline">Intérimaires</span>
               </TabsTrigger>
-              <TabsTrigger value="finisseurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Finisseurs</span>
-              </TabsTrigger>
-              <TabsTrigger value="rh" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <FileUser className="h-4 w-4" />
-                <span className="hidden sm:inline">RH</span>
-              </TabsTrigger>
+              {!isGestionnaire && (
+                <TabsTrigger value="finisseurs" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">Finisseurs</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="rh" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <FileUser className="h-4 w-4" />
+                  <span className="hidden sm:inline">RH</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="vehicules" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Truck className="h-4 w-4" />
                 <span className="hidden sm:inline">Véhicules</span>
               </TabsTrigger>
-              <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Bell className="h-4 w-4" />
-                <span className="hidden sm:inline">Rappels</span>
-              </TabsTrigger>
-              <TabsTrigger value="historique" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <History className="h-4 w-4" />
-                <span className="hidden sm:inline">Historique</span>
-              </TabsTrigger>
-              <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Debug</span>
-              </TabsTrigger>
+              {!isGestionnaire && (
+                <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Bell className="h-4 w-4" />
+                  <span className="hidden sm:inline">Rappels</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="historique" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">Historique</span>
+                </TabsTrigger>
+              )}
+              {!isGestionnaire && (
+                <TabsTrigger value="debug" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Debug</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="dashboard" className="p-6">
@@ -161,53 +196,73 @@ const AdminPanel = () => {
               <ChantiersManager />
             </TabsContent>
 
-            <TabsContent value="conducteurs" className="p-6">
-              <ConducteursManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="conducteurs" className="p-6">
+                <ConducteursManager />
+              </TabsContent>
+            )}
 
-            <TabsContent value="chefs" className="p-6">
-              <ChefsManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="chefs" className="p-6">
+                <ChefsManager />
+              </TabsContent>
+            )}
 
-            <TabsContent value="macons" className="p-6">
-              <MaconsManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="macons" className="p-6">
+                <MaconsManager />
+              </TabsContent>
+            )}
 
-            <TabsContent value="grutiers" className="p-6">
-              <GrutiersManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="grutiers" className="p-6">
+                <GrutiersManager />
+              </TabsContent>
+            )}
 
             <TabsContent value="interimaires" className="p-6">
               <InterimairesManager />
             </TabsContent>
 
-            <TabsContent value="finisseurs" className="p-6">
-              <FinisseursManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="finisseurs" className="p-6">
+                <FinisseursManager />
+              </TabsContent>
+            )}
 
-            <TabsContent value="rh" className="p-6">
-              <RHAdminManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="rh" className="p-6">
+                <RHAdminManager />
+              </TabsContent>
+            )}
 
             <TabsContent value="vehicules" className="p-6">
               <VehiculesManager />
             </TabsContent>
 
-            <TabsContent value="rappels" className="p-6">
-              <RappelsManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="rappels" className="p-6">
+                <RappelsManager />
+              </TabsContent>
+            )}
 
-            <TabsContent value="analyse" className="p-6">
-              <AnalyticsManager />
-            </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="analyse" className="p-6">
+                <AnalyticsManager />
+              </TabsContent>
+            )}
 
-          <TabsContent value="historique" className="p-6">
-            <HistoriqueManager />
-          </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="historique" className="p-6">
+                <HistoriqueManager />
+              </TabsContent>
+            )}
 
-          <TabsContent value="debug" className="p-6">
-            <TransportDebugManager />
-          </TabsContent>
+            {!isGestionnaire && (
+              <TabsContent value="debug" className="p-6">
+                <TransportDebugManager />
+              </TabsContent>
+            )}
           </Tabs>
         </Card>
 
