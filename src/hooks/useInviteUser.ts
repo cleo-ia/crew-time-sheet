@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 interface InviteUserParams {
   email: string;
-  role: "admin" | "rh" | "conducteur" | "chef";
+  role: "admin" | "gestionnaire" | "rh" | "conducteur" | "chef";
   conducteur_id?: string;
   entreprise_id?: string;
 }

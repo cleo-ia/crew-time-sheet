@@ -13,7 +13,7 @@ interface InviteUserDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type UserRole = "admin" | "rh" | "conducteur" | "chef";
+type UserRole = "admin" | "gestionnaire" | "rh" | "conducteur" | "chef";
 
 export const InviteUserDialog = ({ open, onOpenChange }: InviteUserDialogProps) => {
   const [email, setEmail] = useState("");
@@ -73,6 +73,7 @@ export const InviteUserDialog = ({ open, onOpenChange }: InviteUserDialogProps) 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="gestionnaire">Gestionnaire</SelectItem>
                 <SelectItem value="rh">RH</SelectItem>
                 <SelectItem value="conducteur">Conducteur</SelectItem>
                 <SelectItem value="chef">Chef de chantier</SelectItem>
