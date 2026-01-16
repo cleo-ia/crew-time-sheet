@@ -480,34 +480,30 @@ export const generateInterimaireSimplifiedPdf = async (
   // Dessiner l'en-tête de la première page
   drawPageHeader();
 
-  // Générer le contenu - une semaine par page
-  let isFirstWeek = true;
-  for (const weekKey of sortedWeeks) {
-    // Trouver les données de cette semaine
-    const weekEmployees = employees
-      .map((emp) => {
-        const weeks = groupByWeek(emp.detailJours);
-        const weekData = weeks.find(
-          (w) => `${w.year}-W${w.weekNumber}` === weekKey
-        );
-        return weekData ? { employee: emp, weekData } : null;
-      })
-      .filter(Boolean) as { employee: RHExportEmployee; weekData: WeekData }[];
+  // Générer le contenu - UNE PAGE par intérimaire par semaine
+  let isFirstPage = true;
 
-    if (weekEmployees.length === 0) continue;
-
-    const firstWeekData = weekEmployees[0].weekData;
-
-    // Saut de page forcé pour chaque nouvelle semaine (sauf la première)
-    if (!isFirstWeek) {
-      addNewPage();
-    }
-    isFirstWeek = false;
-
-    drawWeekHeader(firstWeekData);
-
-    // Blocs employés
-    for (const { employee, weekData } of weekEmployees) {
+  for (const employee of employees) {
+    // Grouper les jours de cet employé par semaine
+    const weeks = groupByWeek(employee.detailJours);
+    
+    // Trier les semaines par date
+    const sortedEmployeeWeeks = weeks.sort(
+      (a, b) => a.startDate.getTime() - b.startDate.getTime()
+    );
+    
+    // Une page par semaine pour cet employé
+    for (const weekData of sortedEmployeeWeeks) {
+      // Nouvelle page (sauf la première)
+      if (!isFirstPage) {
+        addNewPage();
+      }
+      isFirstPage = false;
+      
+      // Header complet de la semaine (signature responsable, cachet client, légende)
+      drawWeekHeader(weekData);
+      
+      // UN SEUL bloc employé par page
       drawEmployeeBlock(employee, weekData);
     }
   }
