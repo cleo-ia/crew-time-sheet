@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { dayNameToDate } from "@/lib/date";
 
+type RepasType = "PANIER" | "RESTO" | null;
+
 interface TimeEntry {
   employeeId: string;
   employeeName: string;
@@ -13,6 +15,7 @@ interface TimeEntry {
       overtime: number;
       absent: boolean;
       panierRepas: boolean;
+      repasType?: RepasType;
       trajet: boolean;
       trajetPerso: boolean;
       heuresIntemperie: number;
@@ -79,6 +82,7 @@ export const useSaveFicheJours = () => {
               HNORM: dayData.hours,
               HI: dayData.heuresIntemperie,
               PA: dayData.panierRepas,
+              repas_type: dayData.repasType ?? (dayData.panierRepas ? "PANIER" : null),
               T: dayData.trajet ? 1 : 0,
               trajet_perso: dayData.trajetPerso || dayData.codeTrajet === "T_PERSO",
               code_trajet: dayData.codeTrajet ?? null,
@@ -131,6 +135,7 @@ export const useSaveFicheJours = () => {
                   HNORM: dayData.hours,
                   HI: dayData.heuresIntemperie,
                   PA: dayData.panierRepas,
+                  repas_type: dayData.repasType ?? (dayData.panierRepas ? "PANIER" : null),
                   T: dayData.trajet ? 1 : 0,
                   trajet_perso: dayData.trajetPerso || dayData.codeTrajet === "T_PERSO",
                   code_trajet: dayData.codeTrajet ?? null,

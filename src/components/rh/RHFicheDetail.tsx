@@ -171,6 +171,7 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   heuresNormales: jour.heuresNormales,
                   heuresIntemperics: jour.heuresIntemperics,
                   panier: jour.panier,
+                  repasType: (jour as any).repasType,
                   codeTrajet: (jour as any).codeTrajet,
                   trajetPerso: jour.trajetPerso,
                   commentaire: jour.commentaire || "",
@@ -214,7 +215,19 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
                   </TableCell>
                   <TableCell className="text-right">{jour.heuresNormales}h</TableCell>
                   <TableCell className="text-right">{jour.heuresIntemperics}h</TableCell>
-                  <TableCell className="text-center">{jour.panier ? "✓" : "-"}</TableCell>
+                  <TableCell className="text-center">
+                    {(jour as any).repasType === "RESTO" ? (
+                      <span className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                        Resto
+                      </span>
+                    ) : jour.panier ? (
+                      <span className="text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                        Panier
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     {(jour as any).codeTrajet ? (
                       <span className="font-mono text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded font-medium">
