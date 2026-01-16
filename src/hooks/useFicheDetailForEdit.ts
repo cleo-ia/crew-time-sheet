@@ -20,6 +20,7 @@ export const useFicheDetailForEdit = (chantierId: string, semaine: string) => {
             HNORM,
             HI,
             PA,
+            repas_type,
             T,
             pause_minutes,
             code_chantier_du_jour,

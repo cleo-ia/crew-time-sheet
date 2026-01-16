@@ -291,6 +291,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
           overtime: 0,
           absent: (jourData?.heures || 0) === 0,
           panierRepas: jourData?.PA || false,
+          repasType: jourData?.repas_type || null,
           trajet: jourData?.trajet_perso || (jourData?.code_trajet && jourData.code_trajet !== ''),
           trajetPerso: jourData?.trajet_perso === true,
           codeTrajet: jourData?.code_trajet || null,
