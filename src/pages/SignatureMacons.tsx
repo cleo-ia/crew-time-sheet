@@ -351,7 +351,11 @@ const SignatureMacons = () => {
                                       )}
                                     </td>
                                     <td className="text-center py-2 px-3">
-                                      {jour.PA ? (
+                                      {(jour as any).repas_type === "RESTO" ? (
+                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+                                          Resto
+                                        </Badge>
+                                      ) : jour.PA ? (
                                         <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
                                           ✓
                                         </Badge>

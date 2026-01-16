@@ -376,7 +376,8 @@ const Index = () => {
           code_chantier_du_jour: entry.days.Lundi.chantierCode,
           ville_du_jour: entry.days.Lundi.chantierVille,
           code_trajet: entry.days.Lundi.codeTrajet || null,
-          commentaire: entry.days.Lundi.commentaire || null
+          commentaire: entry.days.Lundi.commentaire || null,
+          repas_type: entry.days.Lundi.repasType ?? (entry.days.Lundi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[1], 
@@ -390,7 +391,8 @@ const Index = () => {
           code_chantier_du_jour: entry.days.Mardi.chantierCode,
           ville_du_jour: entry.days.Mardi.chantierVille,
           code_trajet: entry.days.Mardi.codeTrajet || null,
-          commentaire: entry.days.Mardi.commentaire || null
+          commentaire: entry.days.Mardi.commentaire || null,
+          repas_type: entry.days.Mardi.repasType ?? (entry.days.Mardi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[2], 
@@ -404,7 +406,8 @@ const Index = () => {
           code_chantier_du_jour: entry.days.Mercredi.chantierCode,
           ville_du_jour: entry.days.Mercredi.chantierVille,
           code_trajet: entry.days.Mercredi.codeTrajet || null,
-          commentaire: entry.days.Mercredi.commentaire || null
+          commentaire: entry.days.Mercredi.commentaire || null,
+          repas_type: entry.days.Mercredi.repasType ?? (entry.days.Mercredi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[3], 
@@ -418,7 +421,8 @@ const Index = () => {
           code_chantier_du_jour: entry.days.Jeudi.chantierCode,
           ville_du_jour: entry.days.Jeudi.chantierVille,
           code_trajet: entry.days.Jeudi.codeTrajet || null,
-          commentaire: entry.days.Jeudi.commentaire || null
+          commentaire: entry.days.Jeudi.commentaire || null,
+          repas_type: entry.days.Jeudi.repasType ?? (entry.days.Jeudi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[4], 
@@ -432,7 +436,8 @@ const Index = () => {
           code_chantier_du_jour: entry.days.Vendredi.chantierCode,
           ville_du_jour: entry.days.Vendredi.chantierVille,
           code_trajet: entry.days.Vendredi.codeTrajet || null,
-          commentaire: entry.days.Vendredi.commentaire || null
+          commentaire: entry.days.Vendredi.commentaire || null,
+          repas_type: entry.days.Vendredi.repasType ?? (entry.days.Vendredi.panierRepas ? "PANIER" : null),
         },
       ],
     }));
