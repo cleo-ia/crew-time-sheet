@@ -770,6 +770,7 @@ export type Database = {
           PA: boolean | null
           pause_minutes: number
           regularisation_m1: string | null
+          repas_type: Database["public"]["Enums"]["repas_type"] | null
           T: number | null
           total_jour: number | null
           trajet_perso: boolean | null
@@ -794,6 +795,7 @@ export type Database = {
           PA?: boolean | null
           pause_minutes?: number
           regularisation_m1?: string | null
+          repas_type?: Database["public"]["Enums"]["repas_type"] | null
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null
@@ -818,6 +820,7 @@ export type Database = {
           PA?: boolean | null
           pause_minutes?: number
           regularisation_m1?: string | null
+          repas_type?: Database["public"]["Enums"]["repas_type"] | null
           T?: number | null
           total_jour?: number | null
           trajet_perso?: boolean | null
@@ -2154,6 +2157,7 @@ export type Database = {
         | "conducteur"
         | "chef"
         | "gestionnaire"
+      repas_type: "PANIER" | "RESTO"
       role_metier_type:
         | "macon"
         | "finisseur"
@@ -2321,6 +2325,7 @@ export const Constants = {
         "chef",
         "gestionnaire",
       ],
+      repas_type: ["PANIER", "RESTO"],
       role_metier_type: ["macon", "finisseur", "grutier", "chef", "conducteur"],
       statut_demande_conge: [
         "EN_ATTENTE",
