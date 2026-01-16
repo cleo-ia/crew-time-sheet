@@ -78,6 +78,7 @@ export interface RHExportEmployee {
     heures: number;
     intemperie: number;
     panier: boolean;
+    repasType?: "PANIER" | "RESTO" | null;
     trajet: string | null;
     trajetPerso: boolean;
     typeAbsence?: string;

@@ -21,6 +21,7 @@ export interface EmployeeDetail {
   heures: number;
   intemperie: number;
   panier: boolean;
+  repasType?: "PANIER" | "RESTO" | null;
   trajet: string | null;
   trajetPerso: boolean;
   typeAbsence?: string;
@@ -368,7 +369,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les jours de toutes les fiches
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
+    .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
     .in("fiche_id", ficheIds);
 
   if (joursError) throw joursError;
@@ -502,6 +503,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           heures: heuresDuJour,
           intemperie,
           panier,
+          repasType: (jour as any).repas_type || null,
           trajet: (jour as any).code_trajet || null,  // ✅ Code trajet
           trajetPerso: (jour as any).code_trajet === "T_PERSO",
           typeAbsence: (jour as any).type_absence || null,
