@@ -119,11 +119,14 @@ interface TimeEntryTableProps {
 }
 
 // Type pour les données d'un jour
+type RepasType = "PANIER" | "RESTO" | null;
+
 type DayData = {
   hours: number;
   overtime: number;
   absent: boolean;
   panierRepas: boolean;
+  repasType?: RepasType; // Nouveau: type de repas (PANIER ou RESTO)
   trajet: boolean;
   trajetPerso: boolean;
   grandDeplacement: boolean;
@@ -384,11 +387,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     if (isConducteurMode && chefId && weekId && !hasLoadedData && finisseursData.length > 0 && chantiers.length > 0) {
       const finisseurEntries = finisseursData.map((finisseur) => {
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
         };
 
         // Appliquer les données existantes si disponibles
@@ -422,6 +425,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 hours,
                 overtime: 0,
                 panierRepas: PA,
+                repasType: ((j as any).repas_type as RepasType) || (PA ? "PANIER" : null),
                 trajet,
                 trajetPerso: !!j.trajet_perso,
                 grandDeplacement: (j as any).code_trajet === "GD",
@@ -1377,22 +1381,52 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                               </div>
                             </div>
 
-                            {/* Panier Repas */}
-                            <div className="flex items-center gap-2 p-2 rounded bg-background/50">
-                              <Checkbox
-                                checked={dayData.panierRepas}
-                                onCheckedChange={(checked) =>
-                                  updateDayValue(entry.employeeId, day, "panierRepas", !!checked)
-                                }
-                                disabled={isReadOnly || isDayBlocked}
-                                id={`panier-${entry.employeeId}-${day}`}
-                              />
-                              <label
-                                htmlFor={`panier-${entry.employeeId}-${day}`}
-                                className="text-xs text-muted-foreground cursor-pointer flex-1"
-                              >
-                                Panier repas
-                              </label>
+                            {/* Repas: Panier ou Restaurant */}
+                            <div className="flex flex-col gap-1 p-2 rounded bg-background/50">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={dayData.repasType === "PANIER" || (dayData.panierRepas && dayData.repasType !== "RESTO")}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      updateDayValue(entry.employeeId, day, "repasType", "PANIER");
+                                      updateDayValue(entry.employeeId, day, "panierRepas", true);
+                                    } else {
+                                      updateDayValue(entry.employeeId, day, "repasType", null);
+                                      updateDayValue(entry.employeeId, day, "panierRepas", false);
+                                    }
+                                  }}
+                                  disabled={isReadOnly || isDayBlocked}
+                                  id={`panier-${entry.employeeId}-${day}`}
+                                />
+                                <label
+                                  htmlFor={`panier-${entry.employeeId}-${day}`}
+                                  className="text-xs text-muted-foreground cursor-pointer"
+                                >
+                                  Panier
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={dayData.repasType === "RESTO"}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      updateDayValue(entry.employeeId, day, "repasType", "RESTO");
+                                      updateDayValue(entry.employeeId, day, "panierRepas", true);
+                                    } else {
+                                      updateDayValue(entry.employeeId, day, "repasType", null);
+                                      updateDayValue(entry.employeeId, day, "panierRepas", false);
+                                    }
+                                  }}
+                                  disabled={isReadOnly || isDayBlocked}
+                                  id={`resto-${entry.employeeId}-${day}`}
+                                />
+                                <label
+                                  htmlFor={`resto-${entry.employeeId}-${day}`}
+                                  className="text-xs text-muted-foreground cursor-pointer"
+                                >
+                                  Restaurant
+                                </label>
+                              </div>
                             </div>
 
                             {/* Trajet - 2 checkboxes simples */}

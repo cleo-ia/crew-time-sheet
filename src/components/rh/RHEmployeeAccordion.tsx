@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RoleBadge } from "@/components/ui/role-badge";
 
+type RepasType = "PANIER" | "RESTO" | null;
+
 interface RHEmployeeAccordionProps {
   employee: {
     id: string;
@@ -22,6 +24,7 @@ interface RHEmployeeAccordionProps {
     heuresNormales: number;
     heuresIntemperics: number;
     panier: boolean;
+    repasType?: RepasType;
     codeTrajet: string | null;
     trajetPerso: boolean;
     commentaire?: string;
@@ -81,7 +84,17 @@ export const RHEmployeeAccordion = ({ employee, joursSalarie }: RHEmployeeAccord
                     {jour.heuresIntemperics > 0 ? `${jour.heuresIntemperics}h` : "-"}
                   </TableCell>
                   <TableCell className="text-center">
-                    {jour.panier ? "✓" : "-"}
+                    {jour.repasType === "RESTO" ? (
+                      <span className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                        Resto
+                      </span>
+                    ) : jour.panier || jour.repasType === "PANIER" ? (
+                      <span className="text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                        Panier
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     {(jour as any).codeTrajet ? (

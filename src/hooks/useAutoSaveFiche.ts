@@ -2,11 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+type RepasType = "PANIER" | "RESTO" | null;
+
 interface DayData {
   hours: number;
   overtime: number;
   absent: boolean;
   panierRepas: boolean;
+  repasType?: RepasType;
   codeTrajet?: string | null;  // Code trajet (T_PERSO, T1-T17, T31, T35, GD)
   heuresIntemperie: number;
   chantierId?: string | null;
@@ -217,6 +220,7 @@ export const useAutoSaveFiche = () => {
             T: 1,  // Trajet coché par défaut
             code_trajet: dayData?.codeTrajet || 'A_COMPLETER',  // A_COMPLETER par défaut si pas déjà défini
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
+            repas_type: dayData?.repasType ?? (dayData?.panierRepas === false ? null : "PANIER"), // PANIER par défaut
             pause_minutes: 0,
             commentaire: dayData?.commentaire || null,
           };

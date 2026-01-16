@@ -338,6 +338,7 @@ export interface RHFicheDetailData {
     heuresNormales: number;
     heuresIntemperics: number;
     panier: boolean;
+    repasType?: "PANIER" | "RESTO" | null;
     codeTrajet: string | null;
     trajetPerso: boolean;
     typeAbsence?: string;
@@ -443,6 +444,7 @@ export const useRHFicheDetail = (ficheId: string) => {
           heuresNormales: Number(jour.heures) || Number(jour.HNORM) || 0,
           heuresIntemperics: Number(jour.HI) || 0,
           panier: jour.PA || false,
+          repasType: jour.repas_type || null,
           codeTrajet: jour.code_trajet || null,
           trajetPerso: jour.trajet_perso === true,
           typeAbsence: (jour as any).type_absence || null,
@@ -481,6 +483,7 @@ export const useRHFicheDetail = (ficheId: string) => {
         heuresNormales: item.heuresNormales,
         heuresIntemperics: item.heuresIntemperics,
         panier: item.panier,
+        repasType: (item as any).repasType,
         codeTrajet: item.codeTrajet,
         trajetPerso: item.trajetPerso,
         typeAbsence: item.typeAbsence,
