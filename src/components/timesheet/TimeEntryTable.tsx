@@ -687,11 +687,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
 
       const defaults = {
-        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
-        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
-        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
-        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
-        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Lundi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mardi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Jeudi:    { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
+        Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, codeTrajet: "A_COMPLETER" as CodeTrajet },
       } as const;
 
       const toAdd = macons
@@ -714,6 +714,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                   hours,
                   overtime: 0,
                   panierRepas: PA,
+                  repasType: ((j as any).repas_type as RepasType) || (PA ? "PANIER" : null),
                   trajet: T > 0,
                   trajetPerso: !!j.trajet_perso,
                   grandDeplacement: (j as any).code_trajet === "GD",
