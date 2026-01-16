@@ -65,7 +65,7 @@ serve(async (req) => {
     
     // Parser les données de la requête en premier pour le mode bootstrap par entreprise
     const { email, role, conducteur_id, entreprise_id: requestedEntrepriseId, entreprise_slug } = await req.json();
-    console.log('Invitation request:', { email, role, conducteur_id, requestedEntrepriseId, entreprise_slug });
+    console.log('📧 Invitation request:', { email, role, conducteur_id, requestedEntrepriseId, entreprise_slug });
 
     // Résoudre l'entreprise_id depuis le slug si fourni
     let bootstrapEntrepriseId: string | null = requestedEntrepriseId || null;
@@ -220,6 +220,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Database error while checking existing user' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Vérifier si une fiche utilisateurs existe (liaison automatique future via trigger)
+    const { data: existingUtilisateur } = await supabaseAdmin
+      .from('utilisateurs')
+      .select('id, prenom, nom, role_metier')
+      .eq('email', email.toLowerCase())
+      .eq('entreprise_id', finalEntrepriseId)
+      .maybeSingle();
+
+    if (existingUtilisateur) {
+      console.log('📋 Fiche RH existante trouvée:', {
+        id: existingUtilisateur.id,
+        nom: `${existingUtilisateur.prenom} ${existingUtilisateur.nom}`,
+        role_metier: existingUtilisateur.role_metier,
+      });
+      console.log('✅ Le trigger handle_new_user_signup liera automatiquement auth_user_id lors de l\'acceptation');
     }
 
     // Si l'utilisateur existe déjà

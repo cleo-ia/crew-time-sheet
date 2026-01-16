@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Mail, Building2, User } from "lucide-react";
+import { Plus, Edit, Trash2, Mail, Building2, User, Send, Clock, CheckCircle2, UserX } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useCreateUtilisateur, useUpdateUtilisateur, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useAffectations } from "@/hooks/useAffectations";
+import { useInvitations } from "@/hooks/useInvitations";
+import { InviteUserDialog } from "./InviteUserDialog";
 
 export const ChefsManager = () => {
   const { toast } = useToast();
@@ -40,9 +42,37 @@ export const ChefsManager = () => {
   const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
   const { data: chantiers = [] } = useChantiers();
   const { data: affectations = [] } = useAffectations();
+  const { data: invitations = [] } = useInvitations();
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
   const deleteUtilisateur = useDeleteUtilisateur();
+
+  // État pour le dialog d'invitation
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState<string | undefined>(undefined);
+
+  // Fonction pour déterminer le statut d'invitation d'un chef
+  const getInvitationStatus = (chef: any) => {
+    // Si auth_user_id est défini, l'utilisateur est connecté
+    if (chef.auth_user_id) {
+      return "connected";
+    }
+    // Vérifier s'il y a une invitation en attente
+    const pendingInvitation = invitations.find(
+      (inv) => inv.email?.toLowerCase() === chef.email?.toLowerCase() && inv.status === "pending"
+    );
+    if (pendingInvitation) {
+      return "pending";
+    }
+    return "not_invited";
+  };
+
+  const handleInvite = (chef: any) => {
+    if (chef.email) {
+      setInviteEmail(chef.email);
+      setShowInviteDialog(true);
+    }
+  };
 
   const handleSave = async () => {
     if (editingChef) {
@@ -141,6 +171,7 @@ export const ChefsManager = () => {
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead>Conducteur</TableHead>
               <TableHead>Chantier</TableHead>
               <TableHead>Maçons</TableHead>
@@ -150,13 +181,13 @@ export const ChefsManager = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : chefs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Aucun chef enregistré
                 </TableCell>
               </TableRow>
@@ -165,6 +196,7 @@ export const ChefsManager = () => {
                 const chantier = getChantierForChef(chef.id);
                 const conducteur = getConducteurForChef(chef.id);
                 const nbMacons = getMaconsCount(chef.id);
+                const invitationStatus = getInvitationStatus(chef);
                 return (
                   <TableRow key={chef.id}>
                     <TableCell className="font-medium">{chef.nom}</TableCell>
@@ -174,6 +206,26 @@ export const ChefsManager = () => {
                         <Mail className="h-3 w-3" />
                         {chef.email || "-"}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {invitationStatus === "connected" && (
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Connecté
+                        </Badge>
+                      )}
+                      {invitationStatus === "pending" && (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          En attente
+                        </Badge>
+                      )}
+                      {invitationStatus === "not_invited" && (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <UserX className="h-3 w-3 mr-1" />
+                          Non invité
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
@@ -192,6 +244,17 @@ export const ChefsManager = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {invitationStatus === "not_invited" && chef.email && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleInvite(chef)}
+                            className="text-primary"
+                          >
+                            <Send className="h-4 w-4 mr-1" />
+                            Inviter
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -381,6 +444,17 @@ export const ChefsManager = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog d'invitation */}
+      <InviteUserDialog
+        open={showInviteDialog}
+        onOpenChange={(open) => {
+          setShowInviteDialog(open);
+          if (!open) setInviteEmail(undefined);
+        }}
+        prefillEmail={inviteEmail}
+        prefillRole="chef"
+      />
     </div>
   );
 };
