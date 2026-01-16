@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Mail } from "lucide-react";
@@ -36,6 +36,17 @@ export const FinisseursManager = () => {
     forfait_jours: false,
     salaire: undefined as number | undefined,
   });
+
+  // Calcul automatique du taux horaire
+  useEffect(() => {
+    const salaire = formData.salaire;
+    const horaire = parseFloat(formData.horaire);
+    
+    if (salaire && horaire && horaire > 0) {
+      const calculatedRate = Math.round((salaire / horaire) * 100) / 100;
+      setFormData(prev => ({ ...prev, taux_horaire: calculatedRate }));
+    }
+  }, [formData.salaire, formData.horaire]);
 
   const { data: finisseurs = [], isLoading } = useUtilisateursByRole("finisseur");
   const createUtilisateur = useCreateUtilisateur();
