@@ -67,6 +67,7 @@ export const useAddEmployeeToFiche = () => {
           HI: 0,
           T: 1, // Trajet par défaut
           PA: true, // Panier repas par défaut
+          repas_type: "PANIER" as const, // Cohérent avec PA: true
           code_chantier_du_jour: chantier.code_chantier,
           ville_du_jour: chantier.ville,
           trajet_perso: false,

@@ -1414,7 +1414,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       updateDayValue(entry.employeeId, day, "repasType", "RESTO");
-                                      updateDayValue(entry.employeeId, day, "panierRepas", true);
+                                      updateDayValue(entry.employeeId, day, "panierRepas", false); // RESTO => PA=false
                                     } else {
                                       updateDayValue(entry.employeeId, day, "repasType", null);
                                       updateDayValue(entry.employeeId, day, "panierRepas", false);

@@ -292,6 +292,7 @@ const ValidationConducteur = () => {
           code_chantier_du_jour: entry.days.Lundi.chantierCode || null,
           ville_du_jour: entry.days.Lundi.chantierVille || null,
           commentaire: entry.days.Lundi.commentaire || null,
+          repas_type: entry.days.Lundi.repasType ?? (entry.days.Lundi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[1], 
@@ -306,6 +307,7 @@ const ValidationConducteur = () => {
           code_chantier_du_jour: entry.days.Mardi.chantierCode || null,
           ville_du_jour: entry.days.Mardi.chantierVille || null,
           commentaire: entry.days.Mardi.commentaire || null,
+          repas_type: entry.days.Mardi.repasType ?? (entry.days.Mardi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[2], 
@@ -320,6 +322,7 @@ const ValidationConducteur = () => {
           code_chantier_du_jour: entry.days.Mercredi.chantierCode || null,
           ville_du_jour: entry.days.Mercredi.chantierVille || null,
           commentaire: entry.days.Mercredi.commentaire || null,
+          repas_type: entry.days.Mercredi.repasType ?? (entry.days.Mercredi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[3], 
@@ -334,6 +337,7 @@ const ValidationConducteur = () => {
           code_chantier_du_jour: entry.days.Jeudi.chantierCode || null,
           ville_du_jour: entry.days.Jeudi.chantierVille || null,
           commentaire: entry.days.Jeudi.commentaire || null,
+          repas_type: entry.days.Jeudi.repasType ?? (entry.days.Jeudi.panierRepas ? "PANIER" : null),
         },
         { 
           date: days[4], 
@@ -348,6 +352,7 @@ const ValidationConducteur = () => {
           code_chantier_du_jour: entry.days.Vendredi.chantierCode || null,
           ville_du_jour: entry.days.Vendredi.chantierVille || null,
           commentaire: entry.days.Vendredi.commentaire || null,
+          repas_type: entry.days.Vendredi.repasType ?? (entry.days.Vendredi.panierRepas ? "PANIER" : null),
         },
       ],
     }));

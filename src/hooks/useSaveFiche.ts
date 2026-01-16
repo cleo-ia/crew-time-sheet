@@ -20,6 +20,7 @@ export interface EmployeeData {
     ville_du_jour?: string;
     code_trajet?: string | null;
     commentaire?: string | null;
+    repas_type?: "PANIER" | "RESTO" | null;
   }[];
 }
 
@@ -132,24 +133,31 @@ export const useSaveFiche = () => {
         await supabase.from("fiches_jours").delete().eq("fiche_id", ficheId);
 
         // 3. Insérer les nouvelles entrées journalières
-        const jourEntries = employee.dailyHours.map((day) => ({
-          fiche_id: ficheId,
-          date: day.date,
-          heures: day.heures,
-          pause_minutes: day.pause_minutes,
-          heure_debut: day.heure_debut,
-          heure_fin: day.heure_fin,
-          HNORM: day.HNORM,
-          HI: day.HI,
-          T: day.T,
-          PA: day.PA,
-          trajet_perso: day.trajet_perso ?? false,
-          code_chantier_du_jour: day.code_chantier_du_jour || null,
-          ville_du_jour: day.ville_du_jour || null,
-          code_trajet: day.code_trajet || null,
-          commentaire: day.commentaire ?? null,
-          // total_jour est une colonne générée, ne pas l'insérer
-        }));
+        const jourEntries = employee.dailyHours.map((day) => {
+          // Normaliser repas_type et PA pour cohérence
+          const repas_type = day.repas_type ?? (day.PA ? "PANIER" : null);
+          const PA = repas_type === "PANIER";
+          
+          return {
+            fiche_id: ficheId,
+            date: day.date,
+            heures: day.heures,
+            pause_minutes: day.pause_minutes,
+            heure_debut: day.heure_debut,
+            heure_fin: day.heure_fin,
+            HNORM: day.HNORM,
+            HI: day.HI,
+            T: day.T,
+            PA,
+            repas_type,
+            trajet_perso: day.trajet_perso ?? false,
+            code_chantier_du_jour: day.code_chantier_du_jour || null,
+            ville_du_jour: day.ville_du_jour || null,
+            code_trajet: day.code_trajet || null,
+            commentaire: day.commentaire ?? null,
+            // total_jour est une colonne générée, ne pas l'insérer
+          };
+        });
 
         const { error: joursError } = await supabase
           .from("fiches_jours")

@@ -106,6 +106,7 @@ export const useInitializeNextWeekMacons = () => {
               T: 1,  // Trajet coché par défaut
               code_trajet: 'A_COMPLETER',  // RH devra compléter
               PA: true,
+              repas_type: 'PANIER' as const, // Cohérent avec PA: true
               pause_minutes: 0,
               code_chantier_du_jour: chantierCode,
               ville_du_jour: chantierVille,
