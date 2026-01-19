@@ -347,7 +347,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             <Table className="w-auto">
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-20">
                 <TableRow>
                   <TableHead className="bg-slate-100 min-w-[100px]">Matricule</TableHead>
                   <TableHead className="bg-slate-100 min-w-[120px]">Nom</TableHead>
@@ -378,7 +378,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             {/* Conteneur déplacé horizontalement via transform */}
             <div style={{ transform: `translateX(-${scrollLeft}px)`, width: 'fit-content' }}>
               <Table ref={scrollableTableRef} className="min-w-[5000px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-20">
                   <TableRow>
                     {/* DONNÉES CONTRACTUELLES (suite) */}
                     <TableHead className="bg-slate-100 min-w-[80px]">Echelon</TableHead>
