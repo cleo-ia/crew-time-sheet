@@ -98,7 +98,8 @@ export interface EmployeeWithDetails {
  */
 export const calculateHeuresSuppBTP = (
   detailJours: EmployeeDetail[],
-  moisCible: string
+  moisCible: string,
+  heuresSuppMensualisees: number = 0 // Heures supp déjà incluses dans le salaire
 ): { heuresSupp25: number; heuresSupp50: number } => {
   const [annee, mois] = moisCible.split("-").map(Number);
   
@@ -143,19 +144,22 @@ export const calculateHeuresSuppBTP = (
       })
       .reduce((sum, j) => sum + j.heures, 0);
     
-    // Logique BTP : base 39h, 4h structurelles (36-39)
-    // - Heures 36-43 (inclus) → 25% (max 8h)
-    // - Heures > 43 → 50%
-    if (heuresSemaine > 35) {
-      const heuresAuDelaDe35 = heuresSemaine - 35;
+    // Logique BTP : seuil dynamique basé sur les heures supp mensualisées
+    // Si heuresSuppMensualisees > 0, on relève le seuil hebdo
+    // Exemple : 17.33h mensualisées → seuil = 35 + (17.33/4.33) ≈ 39h/semaine
+    const NB_SEMAINES_PAR_MOIS = 4.33;
+    const seuilHebdo = 35 + (heuresSuppMensualisees / NB_SEMAINES_PAR_MOIS);
+    
+    if (heuresSemaine > seuilHebdo) {
+      const heuresAuDelaDuSeuil = heuresSemaine - seuilHebdo;
       
-      if (heuresAuDelaDe35 <= 8) {
-        // Toutes les heures au-delà de 35h vont en 25%
-        totalHeuresSupp25 += heuresAuDelaDe35;
+      if (heuresAuDelaDuSeuil <= 8) {
+        // Toutes les heures au-delà du seuil vont en 25%
+        totalHeuresSupp25 += heuresAuDelaDuSeuil;
       } else {
-        // 8 premières heures (36-43) en 25%, le reste en 50%
+        // 8 premières heures en 25%, le reste en 50%
         totalHeuresSupp25 += 8;
-        totalHeuresSupp50 += heuresAuDelaDe35 - 8;
+        totalHeuresSupp50 += heuresAuDelaDuSeuil - 8;
       }
     }
   });
@@ -537,8 +541,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
       );
 
-      // Calculer les heures supplémentaires BTP
-      const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(detailJours, mois);
+      // Calculer les heures supplémentaires BTP (avec seuil dynamique si heures mensualisées)
+      const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(
+        detailJours, 
+        mois,
+        salarie.heures_supp_mensualisees || 0
+      );
       const heuresSupp = heuresSupp25 + heuresSupp50;
 
       employeeMap.set(salarieId, {
