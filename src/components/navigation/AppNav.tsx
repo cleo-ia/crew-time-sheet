@@ -78,7 +78,7 @@ export const AppNav = () => {
   if (isLoading) return null;
 
   return (
-    <nav className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
+    <nav className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-20">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-2">
           <Link to="/" className="flex-shrink-0">
