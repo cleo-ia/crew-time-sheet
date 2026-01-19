@@ -134,12 +134,12 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="inline-block border-2 border-destructive rounded px-2 py-0.5 text-destructive font-semibold">
+                          <span className="inline-block border-2 border-blue-500 rounded px-2 py-0.5 text-blue-600 dark:text-blue-400 font-semibold">
                             {emp.trajets}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="font-semibold">{emp.nbGD} jour(s) en Grand Déplacement</p>
+                          <p className="font-semibold">ℹ️ {emp.nbGD} jour(s) en Grand Déplacement</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
