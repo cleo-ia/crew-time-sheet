@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Download, RotateCcw, AlertCircle, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -72,6 +71,76 @@ type EditableRow = {
   isModified: boolean;
 };
 
+// Définition des colonnes pour le header droit
+const RIGHT_COLUMNS = [
+  { key: "echelon", label: "Echelon", width: 80, bg: "bg-slate-100" },
+  { key: "niveau", label: "Niveau", width: 80, bg: "bg-slate-100" },
+  { key: "degre", label: "Degré", width: 80, bg: "bg-slate-100" },
+  { key: "statut", label: "Statut", width: 100, bg: "bg-slate-100" },
+  { key: "libelleEmploi", label: "Libellé emploi", width: 150, bg: "bg-slate-100" },
+  { key: "typeContrat", label: "Type contrat", width: 100, bg: "bg-slate-100" },
+  { key: "horaire", label: "Horaire mensuel", width: 100, bg: "bg-slate-100" },
+  { key: "heuresSuppMensualisees", label: "Heures supp mensualisées", width: 120, bg: "bg-slate-100" },
+  { key: "forfaitJours", label: "Forfait jours", width: 100, bg: "bg-slate-100" },
+  { key: "heuresReelles", label: "Heures réelles effectuées", width: 120, bg: "bg-slate-100" },
+  { key: "salaire", label: "Salaire de base", width: 100, bg: "bg-slate-100" },
+  // Absences
+  { key: "absenceDate", label: "DATE", width: 150, bg: "bg-amber-50" },
+  { key: "absenceCP", label: "CP", width: 70, bg: "bg-amber-50" },
+  { key: "absenceRTT", label: "RTT", width: 70, bg: "bg-amber-50" },
+  { key: "absenceAM", label: "AM", width: 70, bg: "bg-amber-50" },
+  { key: "absenceMP", label: "MP", width: 70, bg: "bg-amber-50" },
+  { key: "absenceAT", label: "AT", width: 70, bg: "bg-amber-50" },
+  { key: "absenceCongeParental", label: "Congé parental", width: 120, bg: "bg-amber-50" },
+  { key: "absenceIntemperies", label: "Intempéries", width: 100, bg: "bg-amber-50" },
+  { key: "absenceCPSS", label: "CPSS", width: 70, bg: "bg-amber-50" },
+  { key: "absenceAbsInj", label: "ABS INJ", width: 80, bg: "bg-amber-50" },
+  { key: "absenceEcole", label: "ECOLE", width: 70, bg: "bg-amber-50" },
+  // Heures supp
+  { key: "heuresSupp25", label: "h supp à 25%", width: 100, bg: "bg-blue-50" },
+  { key: "heuresSupp50", label: "h supp à 50%", width: 100, bg: "bg-blue-50" },
+  // Repas
+  { key: "indemnitesRepas", label: "NB PANIERS", width: 100, bg: "bg-green-50" },
+  // Trajets
+  { key: "trajetTotal", label: "TOTAL", width: 100, bg: "bg-cyan-50" },
+  { key: "trajetTPerso", label: "T Perso", width: 80, bg: "bg-cyan-50" },
+  { key: "trajetT1", label: "T1", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT2", label: "T2", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT3", label: "T3", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT4", label: "T4", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT5", label: "T5", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT6", label: "T6", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT7", label: "T7", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT8", label: "T8", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT9", label: "T9", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT10", label: "T10", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT11", label: "T11", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT12", label: "T12", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT13", label: "T13", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT14", label: "T14", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT15", label: "T15", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT16", label: "T16", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT17", label: "T17", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT31", label: "T31", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetT35", label: "T35", width: 70, bg: "bg-cyan-50" },
+  { key: "trajetGD", label: "GD", width: 70, bg: "bg-cyan-50" },
+  // Administratif
+  { key: "acomptes", label: "ACOMPTES", width: 100, bg: "bg-green-50" },
+  { key: "prets", label: "PRETS", width: 100, bg: "bg-green-50" },
+  { key: "commentairesAdmin", label: "COMMENTAIRES", width: 150, bg: "bg-green-50" },
+  { key: "totalSaisie", label: "TOTAL SAISIE", width: 120, bg: "bg-orange-50" },
+  { key: "saisieDuMois", label: "SAISIE DU MOIS", width: 120, bg: "bg-orange-50" },
+  { key: "commentairesSaisie", label: "COMMENTAIRES", width: 150, bg: "bg-orange-50" },
+  // Régularisation
+  { key: "regularisationM1", label: "REGULARISATION M-1", width: 200, bg: "bg-purple-50" },
+  { key: "autresElements", label: "Autres éléments", width: 200, bg: "bg-purple-50" },
+  // Commentaires du mois
+  { key: "commentaires", label: "COMMENTAIRES DU MOIS", width: 180, bg: "bg-blue-50" },
+];
+
+const FIXED_WIDTH = 340; // Largeur zone fixe gauche
+const ROW_HEIGHT = 40; // Hauteur de ligne unifiée
+
 export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
@@ -84,22 +153,17 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [tableWidth, setTableWidth] = useState(6000);
   const stickyScrollRef = useRef<HTMLDivElement>(null);
-  const scrollableTableRef = useRef<HTMLTableElement>(null);
-  const fixedScrollRef = useRef<HTMLDivElement>(null);
-  const scrollableScrollRef = useRef<HTMLDivElement>(null);
+  const dataContainerRef = useRef<HTMLDivElement>(null);
+
+  // Calculer la largeur totale du tableau droit
+  const totalRightWidth = useMemo(() => {
+    return RIGHT_COLUMNS.reduce((acc, col) => acc + col.width, 0);
+  }, []);
 
   // Mesurer la largeur réelle du tableau scrollable
   useEffect(() => {
-    const updateTableWidth = () => {
-      if (scrollableTableRef.current) {
-        setTableWidth(scrollableTableRef.current.scrollWidth);
-      }
-    };
-    
-    updateTableWidth();
-    window.addEventListener('resize', updateTableWidth);
-    return () => window.removeEventListener('resize', updateTableWidth);
-  }, [rows]);
+    setTableWidth(totalRightWidth);
+  }, [totalRightWidth]);
 
   // La scrollbar sticky contrôle la position horizontale
   const handleStickyScroll = () => {
@@ -107,20 +171,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       setScrollLeft(stickyScrollRef.current.scrollLeft);
     }
   };
-
-  // Synchroniser le scroll vertical entre les deux zones
-  const handleFixedScroll = () => {
-    if (fixedScrollRef.current && scrollableScrollRef.current) {
-      scrollableScrollRef.current.scrollTop = fixedScrollRef.current.scrollTop;
-    }
-  };
-
-  const handleScrollableScroll = () => {
-    if (fixedScrollRef.current && scrollableScrollRef.current) {
-      fixedScrollRef.current.scrollTop = scrollableScrollRef.current.scrollTop;
-    }
-  };
-
 
   const loadData = async () => {
     setIsLoading(true);
@@ -289,6 +339,115 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   const modifiedCount = useMemo(() => rows.filter(r => r.isModified).length, [rows]);
 
+  // Fonction pour obtenir la valeur d'une cellule
+  const getCellValue = (row: EditableRow, colKey: string) => {
+    const data = { ...row.original, ...row.modified };
+    
+    // Calculer les absences par type EN HEURES (1 jour = 7 heures)
+    const absencesByType: Record<string, number> = {};
+    data.detailJours?.forEach(jour => {
+      if (jour.isAbsent && jour.typeAbsence) {
+        absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + 7;
+      }
+    });
+    
+    // Calculer les dates d'absence (pour colonne DATE)
+    const datesAbsence: string[] = [];
+    data.detailJours?.forEach(jour => {
+      if (jour.isAbsent) {
+        const dateObj = new Date(jour.date);
+        const jour_str = String(dateObj.getDate()).padStart(2, '0');
+        const mois_str = String(dateObj.getMonth() + 1).padStart(2, '0');
+        datesAbsence.push(`${jour_str}/${mois_str}`);
+      }
+    });
+    const datesAbsenceFormatted = datesAbsence.length > 0 ? datesAbsence.join(', ') : '-';
+
+    switch (colKey) {
+      case "echelon": return data.echelon || "-";
+      case "niveau": return data.niveau || "-";
+      case "degre": return data.degre || "-";
+      case "statut": return data.statut || "-";
+      case "libelleEmploi": return data.libelle_emploi || data.metier;
+      case "typeContrat": return data.type_contrat || "-";
+      case "horaire": return data.horaire || "-";
+      case "heuresSuppMensualisees": return data.heures_supp_mensualisees || "-";
+      case "forfaitJours": return data.forfait_jours ? "Oui" : "-";
+      case "heuresReelles": return data.heuresNormales;
+      case "salaire": return data.salaire;
+      // Absences
+      case "absenceDate": return row.modified.absenceDate ?? datesAbsenceFormatted;
+      case "absenceCP": return row.modified.absenceCP ?? absencesByType.CP ?? 0;
+      case "absenceRTT": return row.modified.absenceRTT ?? absencesByType.RTT ?? 0;
+      case "absenceAM": return row.modified.absenceAM ?? absencesByType.AM ?? 0;
+      case "absenceMP": return row.modified.absenceMP ?? absencesByType.MP ?? 0;
+      case "absenceAT": return row.modified.absenceAT ?? absencesByType.AT ?? 0;
+      case "absenceCongeParental": return row.modified.absenceCongeParental ?? absencesByType.CONGE_PARENTAL ?? 0;
+      case "absenceIntemperies": return row.modified.absenceIntemperies ?? absencesByType.HI ?? 0;
+      case "absenceCPSS": return row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0;
+      case "absenceAbsInj": return row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0;
+      case "absenceEcole": return row.modified.absenceEcole ?? absencesByType.ECOLE ?? 0;
+      // Heures supp
+      case "heuresSupp25": return row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0;
+      case "heuresSupp50": return row.modified.heuresSupp50 ?? data.heuresSupp50 ?? 0;
+      // Repas
+      case "indemnitesRepas": return row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0;
+      // Trajets
+      case "trajetTotal": return row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0));
+      case "trajetTPerso": return row.modified.trajetTPerso ?? data.trajetTPerso ?? 0;
+      case "trajetT1": return row.modified.trajetT1 ?? data.trajetT1 ?? 0;
+      case "trajetT2": return row.modified.trajetT2 ?? data.trajetT2 ?? 0;
+      case "trajetT3": return row.modified.trajetT3 ?? data.trajetT3 ?? 0;
+      case "trajetT4": return row.modified.trajetT4 ?? data.trajetT4 ?? 0;
+      case "trajetT5": return row.modified.trajetT5 ?? data.trajetT5 ?? 0;
+      case "trajetT6": return row.modified.trajetT6 ?? data.trajetT6 ?? 0;
+      case "trajetT7": return row.modified.trajetT7 ?? data.trajetT7 ?? 0;
+      case "trajetT8": return row.modified.trajetT8 ?? data.trajetT8 ?? 0;
+      case "trajetT9": return row.modified.trajetT9 ?? data.trajetT9 ?? 0;
+      case "trajetT10": return row.modified.trajetT10 ?? data.trajetT10 ?? 0;
+      case "trajetT11": return row.modified.trajetT11 ?? data.trajetT11 ?? 0;
+      case "trajetT12": return row.modified.trajetT12 ?? data.trajetT12 ?? 0;
+      case "trajetT13": return row.modified.trajetT13 ?? data.trajetT13 ?? 0;
+      case "trajetT14": return row.modified.trajetT14 ?? data.trajetT14 ?? 0;
+      case "trajetT15": return row.modified.trajetT15 ?? data.trajetT15 ?? 0;
+      case "trajetT16": return row.modified.trajetT16 ?? data.trajetT16 ?? 0;
+      case "trajetT17": return row.modified.trajetT17 ?? data.trajetT17 ?? 0;
+      case "trajetT31": return row.modified.trajetT31 ?? data.trajetT31 ?? 0;
+      case "trajetT35": return row.modified.trajetT35 ?? data.trajetT35 ?? 0;
+      case "trajetGD": return row.modified.trajetGD ?? data.trajetGD ?? 0;
+      // Administratif
+      case "acomptes": return row.modified.acomptes ?? data.acomptes ?? "-";
+      case "prets": return row.modified.prets ?? data.prets ?? "-";
+      case "commentairesAdmin": return row.modified.commentairesAdmin ?? data.commentaire_rh ?? "-";
+      case "totalSaisie": return row.modified.totalSaisie ?? data.totalSaisie ?? "-";
+      case "saisieDuMois": return row.modified.saisieDuMois ?? data.saisieDuMois ?? "-";
+      case "commentairesSaisie": return row.modified.commentairesSaisie ?? data.commentaireSaisie ?? "-";
+      // Régularisation
+      case "regularisationM1": return row.modified.regularisationM1 ?? data.regularisationM1 ?? "-";
+      case "autresElements": return row.modified.autresElements ?? data.autresElements ?? "-";
+      // Commentaires du mois
+      case "commentaires": return row.modified.commentaires ?? data.commentaires ?? "-";
+      default: return "-";
+    }
+  };
+
+  // Vérifier si une cellule est éditable
+  const isEditableColumn = (colKey: string) => {
+    const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", "typeContrat", "horaire", "heuresSuppMensualisees", "forfaitJours", "heuresReelles", "salaire"];
+    return !nonEditable.includes(colKey);
+  };
+
+  // Vérifier si une cellule est modifiée
+  const isCellModified = (row: EditableRow, colKey: string) => {
+    return (row.modified as any)[colKey] !== undefined;
+  };
+
+  // Type de cellule
+  const getCellType = (colKey: string): "number" | "text" => {
+    const textColumns = ["absenceDate", "acomptes", "prets", "commentairesAdmin", "totalSaisie", "saisieDuMois", "commentairesSaisie", "regularisationM1", "autresElements", "commentaires"];
+    return textColumns.includes(colKey) ? "text" : "number";
+  };
+
   if (!isDataLoaded) {
     return (
       <div className="space-y-4 py-8">
@@ -336,233 +495,145 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         </p>
       </div>
 
-      {/* Table avec colonnes sticky à gauche */}
-      <div className="border rounded-lg h-[600px] flex flex-col">
-        <div className="flex-1 flex overflow-hidden">
-          {/* Zone fixe à gauche (Matricule, Nom, Prénom) */}
+      {/* Table avec colonnes sticky */}
+      <div className="border rounded-lg h-[600px] flex flex-col overflow-hidden">
+        
+        {/* ZONE EN-TÊTES FIXES */}
+        <div className="flex flex-shrink-0 border-b bg-background">
+          {/* En-têtes gauche (Matricule, Nom, Prénom) - STICKY */}
           <div 
-            ref={fixedScrollRef}
-            onScroll={handleFixedScroll}
-            className="flex-shrink-0 overflow-y-auto overflow-x-hidden border-r shadow-[2px_0_5px_rgba(0,0,0,0.1)] z-10 bg-background"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex-shrink-0 border-r shadow-[2px_0_5px_rgba(0,0,0,0.1)] z-20 bg-slate-100"
+            style={{ width: FIXED_WIDTH }}
           >
-            <Table className="w-auto">
-              <TableHeader className="sticky top-0 z-20">
-                <TableRow>
-                  <TableHead className="bg-slate-100 min-w-[100px]">Matricule</TableHead>
-                  <TableHead className="bg-slate-100 min-w-[120px]">Nom</TableHead>
-                  <TableHead className="bg-slate-100 min-w-[120px]">Prénom</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row, index) => {
-                  const data = { ...row.original, ...row.modified };
-                  return (
-                    <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
-                      <TableCell className="font-mono text-xs bg-background">{data.matricule}</TableCell>
-                      <TableCell className="font-medium bg-background">{data.nom}</TableCell>
-                      <TableCell className="bg-background">{data.prenom}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Zone scrollable à droite */}
-          <div 
-            ref={scrollableScrollRef}
-            onScroll={handleScrollableScroll}
-            className="flex-1 overflow-y-auto overflow-x-hidden"
-          >
-            {/* Conteneur déplacé horizontalement via transform */}
-            <div style={{ transform: `translateX(-${scrollLeft}px)`, width: 'fit-content' }}>
-              <Table ref={scrollableTableRef} className="min-w-[5000px]">
-                <TableHeader className="sticky top-0 z-20">
-                  <TableRow>
-                    {/* DONNÉES CONTRACTUELLES (suite) */}
-                    <TableHead className="bg-slate-100 min-w-[80px]">Echelon</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[80px]">Niveau</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[80px]">Degré</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[100px]">Statut</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[150px]">Libellé emploi</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[100px]">Type contrat</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[100px]">Horaire mensuel</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[120px]">Heures supp mensualisées</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[100px]">Forfait jours</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[120px]">Heures réelles effectuées</TableHead>
-                    <TableHead className="bg-slate-100 min-w-[100px]">Salaire de base</TableHead>
-                    
-                    {/* ABSENCES EN HEURES (10 colonnes) */}
-                    <TableHead className="bg-amber-50 min-w-[150px]">DATE</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">CP</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">RTT</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">AM</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">MP</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">AT</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[120px]">Congé parental</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[100px]">Intempéries</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">CPSS</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[80px]">ABS INJ</TableHead>
-                    <TableHead className="bg-amber-50 min-w-[70px]">ECOLE</TableHead>
-                    
-                    {/* HEURES SUPP (2 colonnes) */}
-                    <TableHead className="bg-blue-50 min-w-[100px]">h supp à 25%</TableHead>
-                    <TableHead className="bg-blue-50 min-w-[100px]">h supp à 50%</TableHead>
-                    
-                    {/* REPAS (1 colonne) */}
-                    <TableHead className="bg-green-50 min-w-[100px]">NB PANIERS</TableHead>
-                    
-                    {/* TRAJETS (20 colonnes) */}
-                    <TableHead className="bg-cyan-50 min-w-[100px]">TOTAL</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[80px]">T Perso</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T1</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T2</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T3</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T4</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T5</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T6</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T7</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T8</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T9</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T10</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T11</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T12</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T13</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T14</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T15</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T16</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T17</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T31</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">T35</TableHead>
-                    <TableHead className="bg-cyan-50 min-w-[70px]">GD</TableHead>
-                    
-                    {/* ADMINISTRATIF (6 colonnes) */}
-                    <TableHead className="bg-green-50 min-w-[100px]">ACOMPTES</TableHead>
-                    <TableHead className="bg-green-50 min-w-[100px]">PRETS</TableHead>
-                    <TableHead className="bg-green-50 min-w-[150px]">COMMENTAIRES</TableHead>
-                    <TableHead className="bg-orange-50 min-w-[120px]">TOTAL SAISIE</TableHead>
-                    <TableHead className="bg-orange-50 min-w-[120px]">SAISIE DU MOIS</TableHead>
-                    <TableHead className="bg-orange-50 min-w-[150px]">COMMENTAIRES</TableHead>
-                    
-                    {/* RÉGULARISATION (2 colonnes) */}
-                    <TableHead className="bg-purple-50 min-w-[200px]">REGULARISATION M-1</TableHead>
-                    <TableHead className="bg-purple-50 min-w-[200px]">Autres éléments</TableHead>
-                    
-                    {/* COMMENTAIRES DU MOIS */}
-                    <TableHead className="bg-blue-50 min-w-[180px]">COMMENTAIRES DU MOIS</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row, index) => {
-                    const data = { ...row.original, ...row.modified };
-                    
-                    // Calculer les absences par type EN HEURES (1 jour = 7 heures)
-                    const absencesByType: Record<string, number> = {};
-                    data.detailJours?.forEach(jour => {
-                      if (jour.isAbsent && jour.typeAbsence) {
-                        absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + 7;
-                      }
-                    });
-                    
-                    // Calculer les dates d'absence (pour colonne DATE)
-                    const datesAbsence: string[] = [];
-                    data.detailJours?.forEach(jour => {
-                      if (jour.isAbsent) {
-                        const dateObj = new Date(jour.date);
-                        const jour_str = String(dateObj.getDate()).padStart(2, '0');
-                        const mois_str = String(dateObj.getMonth() + 1).padStart(2, '0');
-                        datesAbsence.push(`${jour_str}/${mois_str}`);
-                      }
-                    });
-                    const datesAbsenceFormatted = datesAbsence.length > 0 ? datesAbsence.join(', ') : '-';
-                    
-                    return (
-                      <TableRow key={index} className={row.isModified ? "bg-blue-50/30" : ""}>
-                        {/* DONNÉES CONTRACTUELLES (suite) */}
-                        <TableCell className="text-xs">{data.echelon || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.niveau || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.degre || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.statut || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.libelle_emploi || data.metier}</TableCell>
-                        <TableCell className="text-xs">{data.type_contrat || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.horaire || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.heures_supp_mensualisees || "-"}</TableCell>
-                        <TableCell className="text-xs">{data.forfait_jours ? "Oui" : "-"}</TableCell>
-                        <TableCell className="text-xs font-medium">{data.heuresNormales}</TableCell>
-                        <TableCell className="text-xs">{data.salaire}</TableCell>
-                        
-                        {/* ABSENCES EN HEURES */}
-                        <EditableCell value={row.modified.absenceDate ?? datesAbsenceFormatted} onChange={(v) => handleCellChange(index, 'absenceDate', v)} type="text" isModified={row.modified.absenceDate !== undefined} />
-                        <EditableCell value={row.modified.absenceCP ?? absencesByType.CP ?? 0} onChange={(v) => handleCellChange(index, 'absenceCP', v)} type="number" isModified={row.modified.absenceCP !== undefined} />
-                        <EditableCell value={row.modified.absenceRTT ?? absencesByType.RTT ?? 0} onChange={(v) => handleCellChange(index, 'absenceRTT', v)} type="number" isModified={row.modified.absenceRTT !== undefined} />
-                        <EditableCell value={row.modified.absenceAM ?? absencesByType.AM ?? 0} onChange={(v) => handleCellChange(index, 'absenceAM', v)} type="number" isModified={row.modified.absenceAM !== undefined} />
-                        <EditableCell value={row.modified.absenceMP ?? absencesByType.MP ?? 0} onChange={(v) => handleCellChange(index, 'absenceMP', v)} type="number" isModified={row.modified.absenceMP !== undefined} />
-                        <EditableCell value={row.modified.absenceAT ?? absencesByType.AT ?? 0} onChange={(v) => handleCellChange(index, 'absenceAT', v)} type="number" isModified={row.modified.absenceAT !== undefined} />
-                        <EditableCell value={row.modified.absenceCongeParental ?? absencesByType.CONGE_PARENTAL ?? 0} onChange={(v) => handleCellChange(index, 'absenceCongeParental', v)} type="number" isModified={row.modified.absenceCongeParental !== undefined} />
-                        <EditableCell value={row.modified.absenceIntemperies ?? absencesByType.HI ?? 0} onChange={(v) => handleCellChange(index, 'absenceIntemperies', v)} type="number" isModified={row.modified.absenceIntemperies !== undefined} />
-                        <EditableCell value={row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0} onChange={(v) => handleCellChange(index, 'absenceCPSS', v)} type="number" isModified={row.modified.absenceCPSS !== undefined} />
-                        <EditableCell value={row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0} onChange={(v) => handleCellChange(index, 'absenceAbsInj', v)} type="number" isModified={row.modified.absenceAbsInj !== undefined} />
-                        <EditableCell value={row.modified.absenceEcole ?? absencesByType.ECOLE ?? 0} onChange={(v) => handleCellChange(index, 'absenceEcole', v)} type="number" isModified={row.modified.absenceEcole !== undefined} />
-                        
-                        {/* HEURES SUPP */}
-                        <EditableCell value={row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp25', v)} type="number" isModified={row.modified.heuresSupp25 !== undefined} />
-                        <EditableCell value={row.modified.heuresSupp50 ?? data.heuresSupp50 ?? 0} onChange={(v) => handleCellChange(index, 'heuresSupp50', v)} type="number" isModified={row.modified.heuresSupp50 !== undefined} />
-                        
-                        {/* REPAS */}
-                        <EditableCell value={row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0} onChange={(v) => handleCellChange(index, 'indemnitesRepas', v)} type="number" isModified={row.modified.indemnitesRepas !== undefined} />
-                        
-                        {/* TRAJETS */}
-                        <EditableCell value={row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0))} onChange={(v) => handleCellChange(index, 'trajetTotal', v)} type="number" isModified={row.modified.trajetTotal !== undefined} />
-                        <EditableCell value={row.modified.trajetTPerso ?? data.trajetTPerso ?? 0} onChange={(v) => handleCellChange(index, 'trajetTPerso', v)} type="number" isModified={row.modified.trajetTPerso !== undefined} />
-                        <EditableCell value={row.modified.trajetT1 ?? data.trajetT1 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT1', v)} type="number" isModified={row.modified.trajetT1 !== undefined} />
-                        <EditableCell value={row.modified.trajetT2 ?? data.trajetT2 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT2', v)} type="number" isModified={row.modified.trajetT2 !== undefined} />
-                        <EditableCell value={row.modified.trajetT3 ?? data.trajetT3 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT3', v)} type="number" isModified={row.modified.trajetT3 !== undefined} />
-                        <EditableCell value={row.modified.trajetT4 ?? data.trajetT4 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT4', v)} type="number" isModified={row.modified.trajetT4 !== undefined} />
-                        <EditableCell value={row.modified.trajetT5 ?? data.trajetT5 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT5', v)} type="number" isModified={row.modified.trajetT5 !== undefined} />
-                        <EditableCell value={row.modified.trajetT6 ?? data.trajetT6 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT6', v)} type="number" isModified={row.modified.trajetT6 !== undefined} />
-                        <EditableCell value={row.modified.trajetT7 ?? data.trajetT7 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT7', v)} type="number" isModified={row.modified.trajetT7 !== undefined} />
-                        <EditableCell value={row.modified.trajetT8 ?? data.trajetT8 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT8', v)} type="number" isModified={row.modified.trajetT8 !== undefined} />
-                        <EditableCell value={row.modified.trajetT9 ?? data.trajetT9 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT9', v)} type="number" isModified={row.modified.trajetT9 !== undefined} />
-                        <EditableCell value={row.modified.trajetT10 ?? data.trajetT10 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT10', v)} type="number" isModified={row.modified.trajetT10 !== undefined} />
-                        <EditableCell value={row.modified.trajetT11 ?? data.trajetT11 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT11', v)} type="number" isModified={row.modified.trajetT11 !== undefined} />
-                        <EditableCell value={row.modified.trajetT12 ?? data.trajetT12 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT12', v)} type="number" isModified={row.modified.trajetT12 !== undefined} />
-                        <EditableCell value={row.modified.trajetT13 ?? data.trajetT13 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT13', v)} type="number" isModified={row.modified.trajetT13 !== undefined} />
-                        <EditableCell value={row.modified.trajetT14 ?? data.trajetT14 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT14', v)} type="number" isModified={row.modified.trajetT14 !== undefined} />
-                        <EditableCell value={row.modified.trajetT15 ?? data.trajetT15 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT15', v)} type="number" isModified={row.modified.trajetT15 !== undefined} />
-                        <EditableCell value={row.modified.trajetT16 ?? data.trajetT16 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT16', v)} type="number" isModified={row.modified.trajetT16 !== undefined} />
-                        <EditableCell value={row.modified.trajetT17 ?? data.trajetT17 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT17', v)} type="number" isModified={row.modified.trajetT17 !== undefined} />
-                        <EditableCell value={row.modified.trajetT31 ?? data.trajetT31 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT31', v)} type="number" isModified={row.modified.trajetT31 !== undefined} />
-                        <EditableCell value={row.modified.trajetT35 ?? data.trajetT35 ?? 0} onChange={(v) => handleCellChange(index, 'trajetT35', v)} type="number" isModified={row.modified.trajetT35 !== undefined} />
-                        <EditableCell value={row.modified.trajetGD ?? data.trajetGD ?? 0} onChange={(v) => handleCellChange(index, 'trajetGD', v)} type="number" isModified={row.modified.trajetGD !== undefined} />
-                        
-                        {/* ADMINISTRATIF */}
-                        <EditableCell value={row.modified.acomptes ?? data.acomptes ?? "-"} onChange={(v) => handleCellChange(index, 'acomptes', v)} type="text" isModified={row.modified.acomptes !== undefined} />
-                        <EditableCell value={row.modified.prets ?? data.prets ?? "-"} onChange={(v) => handleCellChange(index, 'prets', v)} type="text" isModified={row.modified.prets !== undefined} />
-                        <EditableCell value={row.modified.commentairesAdmin ?? data.commentaire_rh ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesAdmin', v)} type="text" isModified={row.modified.commentairesAdmin !== undefined} />
-                        <EditableCell value={row.modified.totalSaisie ?? data.totalSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'totalSaisie', v)} type="text" isModified={row.modified.totalSaisie !== undefined} />
-                        <EditableCell value={row.modified.saisieDuMois ?? data.saisieDuMois ?? "-"} onChange={(v) => handleCellChange(index, 'saisieDuMois', v)} type="text" isModified={row.modified.saisieDuMois !== undefined} />
-                        <EditableCell value={row.modified.commentairesSaisie ?? data.commentaireSaisie ?? "-"} onChange={(v) => handleCellChange(index, 'commentairesSaisie', v)} type="text" isModified={row.modified.commentairesSaisie !== undefined} />
-                        
-                        {/* RÉGULARISATION */}
-                        <EditableCell value={row.modified.regularisationM1 ?? data.regularisationM1 ?? "-"} onChange={(v) => handleCellChange(index, 'regularisationM1', v)} type="text" isModified={row.modified.regularisationM1 !== undefined} />
-                        <EditableCell value={row.modified.autresElements ?? data.autresElements ?? "-"} onChange={(v) => handleCellChange(index, 'autresElements', v)} type="text" isModified={row.modified.autresElements !== undefined} />
-                        
-                        {/* COMMENTAIRES DU MOIS */}
-                        <EditableCell value={row.modified.commentaires ?? data.commentaires ?? "-"} onChange={(v) => handleCellChange(index, 'commentaires', v)} type="text" isModified={row.modified.commentaires !== undefined} />
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="flex" style={{ height: ROW_HEIGHT }}>
+              <div className="flex items-center justify-center font-medium text-sm border-r" style={{ width: 100 }}>
+                Matricule
+              </div>
+              <div className="flex items-center justify-center font-medium text-sm border-r" style={{ width: 120 }}>
+                Nom
+              </div>
+              <div className="flex items-center justify-center font-medium text-sm" style={{ width: 120 }}>
+                Prénom
+              </div>
             </div>
           </div>
+          
+          {/* En-têtes droite (scrollable horizontalement, synchronisé) */}
+          <div className="flex-1 overflow-hidden">
+            <div 
+              className="flex"
+              style={{ 
+                transform: `translateX(-${scrollLeft}px)`, 
+                width: 'fit-content',
+                height: ROW_HEIGHT
+              }}
+            >
+              {RIGHT_COLUMNS.map((col) => (
+                <div 
+                  key={col.key}
+                  className={`flex items-center justify-center font-medium text-sm border-r ${col.bg}`}
+                  style={{ minWidth: col.width, width: col.width }}
+                >
+                  {col.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* ZONE DONNÉES (scroll vertical unifié) */}
+        <div 
+          ref={dataContainerRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+        >
+          {rows.map((row, rowIndex) => {
+            const data = { ...row.original, ...row.modified };
+            
+            return (
+              <div 
+                key={rowIndex} 
+                className={`flex border-b ${row.isModified ? "bg-blue-50/30" : ""}`}
+                style={{ height: ROW_HEIGHT }}
+              >
+                {/* Données gauche (Matricule, Nom, Prénom) - STICKY */}
+                <div 
+                  className="flex-shrink-0 flex border-r shadow-[2px_0_5px_rgba(0,0,0,0.1)] z-10 bg-background"
+                  style={{ width: FIXED_WIDTH }}
+                >
+                  <div 
+                    className="flex items-center justify-center font-mono text-xs border-r px-2"
+                    style={{ width: 100 }}
+                  >
+                    {data.matricule}
+                  </div>
+                  <div 
+                    className="flex items-center font-medium text-sm border-r px-2 truncate"
+                    style={{ width: 120 }}
+                  >
+                    {data.nom}
+                  </div>
+                  <div 
+                    className="flex items-center text-sm px-2 truncate"
+                    style={{ width: 120 }}
+                  >
+                    {data.prenom}
+                  </div>
+                </div>
+                
+                {/* Données droite (scrollable horizontalement, synchronisé) */}
+                <div className="flex-1 overflow-hidden">
+                  <div 
+                    className="flex"
+                    style={{ 
+                      transform: `translateX(-${scrollLeft}px)`, 
+                      width: 'fit-content',
+                      height: ROW_HEIGHT
+                    }}
+                  >
+                    {RIGHT_COLUMNS.map((col) => {
+                      const value = getCellValue(row, col.key);
+                      const isEditable = isEditableColumn(col.key);
+                      const isModified = isCellModified(row, col.key);
+                      const cellType = getCellType(col.key);
+                      
+                      if (isEditable) {
+                        return (
+                          <div 
+                            key={col.key}
+                            className="flex items-center justify-center p-1 border-r"
+                            style={{ minWidth: col.width, width: col.width }}
+                          >
+                            <Input
+                              type={cellType}
+                              value={value}
+                              onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
+                              className={`h-8 text-xs text-center ${isModified ? 'border-blue-500 border-2' : ''}`}
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div 
+                            key={col.key}
+                            className="flex items-center justify-center text-xs border-r px-2"
+                            style={{ minWidth: col.width, width: col.width }}
+                          >
+                            {value}
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
         
         {/* Scrollbar horizontale sticky en bas - SEULE source de scroll H */}
         <div className="flex border-t flex-shrink-0">
           {/* Placeholder pour aligner avec la zone fixe */}
-          <div className="flex-shrink-0" style={{ width: '340px' }}></div>
+          <div className="flex-shrink-0" style={{ width: FIXED_WIDTH }}></div>
           {/* Scrollbar pour la zone scrollable */}
           <div 
             ref={stickyScrollRef}
@@ -574,34 +645,5 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         </div>
       </div>
     </div>
-  );
-};
-
-// Composant cellule éditable
-const EditableCell = ({ 
-  value, 
-  onChange, 
-  type = "number", 
-  isModified = false,
-  disabled = false,
-  cellClassName = ""
-}: { 
-  value: number | string; 
-  onChange: (v: any) => void; 
-  type?: "number" | "text";
-  isModified?: boolean;
-  disabled?: boolean;
-  cellClassName?: string;
-}) => {
-  return (
-    <TableCell className={`p-1 ${cellClassName}`}>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`h-8 text-xs text-center ${isModified ? 'border-blue-500 border-2' : ''} ${disabled ? 'bg-muted' : ''}`}
-      />
-    </TableCell>
   );
 };
