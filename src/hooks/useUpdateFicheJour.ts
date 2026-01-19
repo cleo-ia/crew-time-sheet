@@ -49,15 +49,20 @@ export const useUpdateFicheJour = () => {
       return { ficheJourId, field, value };
     },
     onSuccess: () => {
-      // Invalider toutes les queries RH pour rafraîchir les données
+      // Rafraîchir immédiatement les données de l'employé sélectionné
+      queryClient.refetchQueries({ 
+        queryKey: ["rh-employee-detail"],
+        exact: false
+      });
+      
+      // Invalider les autres queries RH (rafraîchissement différé acceptable)
       queryClient.invalidateQueries({ 
         queryKey: ["rh-fiche-detail"],
-        exact: false  // Invalider toutes les queries qui commencent par ["rh-fiche-detail"]
+        exact: false
       });
       queryClient.invalidateQueries({ queryKey: ["rh-consolidated"] });
       queryClient.invalidateQueries({ queryKey: ["rh-summary"] });
       queryClient.invalidateQueries({ queryKey: ["rh-details"] });
-      queryClient.invalidateQueries({ queryKey: ["rh-employee-detail"] });
 
       toast.success("✓ Modification enregistrée");
     },
