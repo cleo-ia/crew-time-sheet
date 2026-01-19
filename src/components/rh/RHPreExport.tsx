@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, RotateCcw, AlertCircle, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { generateRHExcel } from "@/lib/excelExport";
@@ -10,7 +11,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePreExportSave } from "@/hooks/usePreExportSave";
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
-
 interface RHPreExportProps {
   filters: RHFilters;
 }
@@ -145,6 +145,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [filterMetier, setFilterMetier] = useState<string>("all");
   const savePreExportMutation = usePreExportSave();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
@@ -339,6 +340,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   const modifiedCount = useMemo(() => rows.filter(r => r.isModified).length, [rows]);
 
+  // Filtrer les lignes par métier
+  const filteredRows = useMemo(() => {
+    if (filterMetier === "all") return rows;
+    return rows.filter(row => row.original.metier === filterMetier);
+  }, [rows, filterMetier]);
+
   // Fonction pour obtenir la valeur d'une cellule
   const getCellValue = (row: EditableRow, colKey: string) => {
     const data = { ...row.original, ...row.modified };
@@ -490,9 +497,24 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             </Button>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
-          {rows.length} salarié{rows.length > 1 ? 's' : ''}
-        </p>
+        <div className="flex items-center gap-4">
+          <Select value={filterMetier} onValueChange={setFilterMetier}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrer par métier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les métiers</SelectItem>
+              <SelectItem value="Chef">Chefs</SelectItem>
+              <SelectItem value="Maçon">Maçons</SelectItem>
+              <SelectItem value="Grutier">Grutiers</SelectItem>
+              <SelectItem value="Finisseur">Finisseurs</SelectItem>
+              <SelectItem value="Intérimaire">Intérimaires</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            {filteredRows.length} / {rows.length} salarié{rows.length > 1 ? 's' : ''}
+          </p>
+        </div>
       </div>
 
       {/* Table avec colonnes sticky */}
@@ -546,12 +568,13 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           ref={dataContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden"
         >
-          {rows.map((row, rowIndex) => {
+          {filteredRows.map((row) => {
+            const realIndex = rows.indexOf(row);
             const data = { ...row.original, ...row.modified };
             
             return (
               <div 
-                key={rowIndex} 
+                key={realIndex} 
                 className={`flex border-b ${row.isModified ? "bg-blue-50/30" : ""}`}
                 style={{ height: ROW_HEIGHT }}
               >
@@ -606,7 +629,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                             <Input
                               type={cellType}
                               value={value}
-                              onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
+                              onChange={(e) => handleCellChange(realIndex, col.key, e.target.value)}
                               className={`h-8 text-xs text-center ${isModified ? 'border-blue-500 border-2' : ''}`}
                             />
                           </div>
