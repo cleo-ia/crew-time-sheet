@@ -4,7 +4,13 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
@@ -192,28 +198,29 @@ const ConsultationRH = () => {
                 onClick={() => setShowConversation(true)}
                 unreadCount={unreadData?.total || 0}
               />
-              <Button 
-                variant="outline"
-                onClick={() => setShowInterimaireExport(true)}
-              >
-                <Building2 className="h-4 w-4 mr-2" />
-                Export Intérimaires
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={handleExportChefs2CB}
-                className="border-blue-300 hover:bg-blue-50 dark:border-blue-700 dark:hover:bg-blue-900"
-              >
-                <HardHat className="h-4 w-4 mr-2" />
-                Export Chefs 2CB
-              </Button>
-              <Button 
-                variant="default"
-                onClick={() => handleExport("excel")}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exporter Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="default">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exports Excel
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleExport("excel")}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export RH complet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportChefs2CB}>
+                    <HardHat className="h-4 w-4 mr-2" />
+                    Export Chefs 2CB
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowInterimaireExport(true)}>
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Export Intérimaires
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <Button
               className="bg-accent hover:bg-accent-hover"
