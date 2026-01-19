@@ -103,8 +103,12 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
 
   // Convertir vers le format RHExportEmployee
   const result: RHExportEmployee[] = consolidatedData.map(emp => {
-    // 🆕 CALCUL AUTOMATIQUE DES HEURES SUPP BTP
-    const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(emp.detailJours, mois);
+    // 🆕 CALCUL AUTOMATIQUE DES HEURES SUPP BTP (avec seuil dynamique si heures mensualisées)
+    const { heuresSupp25, heuresSupp50 } = calculateHeuresSuppBTP(
+      emp.detailJours, 
+      mois,
+      emp.heures_supp_mensualisees || 0
+    );
     
     // 🆕 Récupérer les overrides si présents (pas encore implémenté dans buildRHConsolidation)
     const absencesOverride = (emp as any).absences_export_override;
