@@ -290,7 +290,7 @@ export function generateWeekDetailPdf(
   doc.setTextColor(0, 0, 0);
 
   days.forEach((day, rowIdx) => {
-    const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
+    const isAbsent = day.heuresNormales === 0;
     
     // Alternance de couleur
     if (rowIdx % 2 === 0) {

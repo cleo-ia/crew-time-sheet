@@ -336,7 +336,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
             </TableHeader>
             <TableBody>
               {data.dailyDetails.map((day, idx) => {
-                const isAbsent = day.heuresNormales === 0 && day.heuresIntemperies === 0;
+                const isAbsent = day.heuresNormales === 0;
                 
                 // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
                 const sameSiteDays = data.dailyDetails.filter(
@@ -452,7 +452,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   <TableCell className="py-4 px-4">
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
-                      isAbsent={day.heuresNormales === 0 && day.heuresIntemperies === 0}
+                      isAbsent={day.heuresNormales === 0}
                       allDays={data.dailyDetails.map(d => ({
                         date: d.date,
                         ficheJourId: d.ficheJourId,
