@@ -521,15 +521,16 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
 
     for (let c = 1; c <= totalCols; c++) {
       let bg = isEven ? "FFFFFF" : "F9F9F9";
+      // Colonnes alignées avec les en-têtes (lignes 491-499)
       if (c >= 1 && c <= 14) bg = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
-      else if (c >= 15 && c <= 24) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD;
-      else if (c >= 25 && c <= 26) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD;
-      else if (c === 27) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD;
-      else if (c >= 28 && c <= 49) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD;
-      else if (c >= 50 && c <= 52) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
-      else if (c >= 53 && c <= 55) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
-      else if (c === 56) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
-      else if (c === 57) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
+      else if (c >= 15 && c <= 25) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD; // Absences (15-25 inclut ECOLE)
+      else if (c >= 26 && c <= 27) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD; // Heures supp
+      else if (c === 28) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD; // Paniers
+      else if (c >= 29 && c <= 50) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD; // Trajets
+      else if (c >= 51 && c <= 53) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
+      else if (c >= 54 && c <= 56) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
+      else if (c === 57) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
+      else if (c === 58) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
 
       const cell = sheet.getRow(r).getCell(c);
       const align: "left" | "right" = c >= 15 ? "right" : "left";
