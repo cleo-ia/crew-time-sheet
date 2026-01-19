@@ -597,7 +597,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   const result = Array.from(employeeMap.values()).sort((a, b) => {
     // Tri par métier puis par nom
-    const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Intérimaire: 3, Finisseur: 4 };
+    const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
     const aOrder = metierOrder[a.metier as keyof typeof metierOrder] ?? 4;
     const bOrder = metierOrder[b.metier as keyof typeof metierOrder] ?? 4;
     
