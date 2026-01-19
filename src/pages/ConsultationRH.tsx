@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RHFilters } from "@/components/rh/RHFilters";
@@ -124,6 +124,53 @@ const ConsultationRH = () => {
     }
   };
 
+  const handleExportChefs2CB = async () => {
+    try {
+      const mois = (!filters.periode || filters.periode === "all") 
+        ? format(new Date(), "yyyy-MM") 
+        : filters.periode;
+
+      console.log(`[Export Chefs 2CB] Export pour ${mois}`);
+
+      // Récupérer les données en forçant le filtre "chef"
+      const data = await fetchRHExportData(mois, {
+        ...filters,
+        typeSalarie: "chef",
+      });
+
+      if (data.length === 0) {
+        toast.error("Aucun chef de chantier à exporter pour cette période");
+        return;
+      }
+
+      // Vérifier les absences non justifiées
+      const employesAvecAbsencesNonQualifiees = data.filter(emp => {
+        return emp.detailJours?.some(
+          jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
+        );
+      });
+
+      if (employesAvecAbsencesNonQualifiees.length > 0) {
+        const nomsSalaries = employesAvecAbsencesNonQualifiees
+          .map(e => `${e.prenom} ${e.nom}`)
+          .join(", ");
+        
+        toast.error(
+          `Impossible d'exporter : des absences non justifiées.\n\nChefs concernés : ${nomsSalaries}`,
+          { duration: 8000 }
+        );
+        return;
+      }
+
+      // Générer le fichier avec préfixe "2CB-Chefs"
+      const fileName = await generateRHExcel(data, mois, "2CB-Chefs");
+      toast.success(`Export Chefs 2CB généré : ${fileName}`);
+    } catch (error) {
+      console.error("[Export Chefs 2CB] Erreur:", error);
+      toast.error("Erreur lors de la génération de l'export Chefs 2CB");
+    }
+  };
+
   return (
     <PageLayout>
       <div className="bg-gradient-to-br from-background to-muted/30">
@@ -151,6 +198,14 @@ const ConsultationRH = () => {
               >
                 <Building2 className="h-4 w-4 mr-2" />
                 Export Intérimaires
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleExportChefs2CB}
+                className="border-blue-300 hover:bg-blue-50 dark:border-blue-700 dark:hover:bg-blue-900"
+              >
+                <HardHat className="h-4 w-4 mr-2" />
+                Export Chefs 2CB
               </Button>
               <Button 
                 variant="default"
