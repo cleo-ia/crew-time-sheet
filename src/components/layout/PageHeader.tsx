@@ -14,7 +14,7 @@ interface PageHeaderProps {
 export const PageHeader = ({ title, subtitle, icon: Icon, theme, actions, showNetworkBadge = false }: PageHeaderProps) => {
   return (
     <header 
-      className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-10 shadow-sm"
+      className="border-b border-border/50 backdrop-blur-sm sticky top-[48px] z-10 shadow-sm"
       style={{
         backgroundColor: `hsl(var(--theme-${theme}) / 0.4)`,
       }}
