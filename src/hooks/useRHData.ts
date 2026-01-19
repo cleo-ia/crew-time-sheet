@@ -262,10 +262,17 @@ export const useRHDetails = (filters: any) => {
         detail.totalHeures += heuresMap.get(fiche.id) || 0;
       });
 
-      return Array.from(groupMap.values()).map(detail => ({
-        ...detail,
-        totalHeures: Math.round(detail.totalHeures * 100) / 100,
-      }));
+      return Array.from(groupMap.values())
+        .map(detail => ({
+          ...detail,
+          totalHeures: Math.round(detail.totalHeures * 100) / 100,
+        }))
+        .sort((a, b) => {
+          // Trier par semaine décroissante (plus récente en premier)
+          const dateA = parseISOWeek(a.semaine);
+          const dateB = parseISOWeek(b.semaine);
+          return dateB.getTime() - dateA.getTime();
+        });
     },
   });
 };
