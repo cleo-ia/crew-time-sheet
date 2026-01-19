@@ -66,7 +66,7 @@ export const EditableAbsenceTypeCell = ({
             const nextDay = allDays[i];
             
             // Vérifier si c'est un jour absent
-            const isNextDayAbsent = nextDay.heuresNormales === 0 && nextDay.heuresIntemperies === 0;
+            const isNextDayAbsent = nextDay.heuresNormales === 0;
             
             // Si le jour n'est pas absent (jour travaillé), arrêter la propagation
             if (!isNextDayAbsent) {
