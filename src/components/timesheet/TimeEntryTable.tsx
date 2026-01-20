@@ -28,6 +28,7 @@ import { TeamMemberCombobox } from "@/components/chef/TeamMemberCombobox";
 import { TransportFinisseurAccordion } from "@/components/transport/TransportFinisseurAccordion";
 import { TransportFinisseurDay, CodeTrajet } from "@/types/transport";
 import { ChantierSelector } from "./ChantierSelector";
+import { useAffectationsJoursByChef, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
 
 import { format, addDays } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
@@ -241,6 +242,43 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     isConducteurMode ? chefId : null,
     isConducteurMode ? weekId : ""
   );
+
+  // Charger les affectations jours chef pour le mode chef (pas conducteur)
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+    !isConducteurMode && mode !== "edit" ? chefId || null : null,
+    weekId
+  );
+
+  // Helper pour vérifier si un employé est autorisé à travailler un jour donné
+  const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
+    // En mode conducteur, on utilise les props affectationsJours
+    if (isConducteurMode) return true; // Géré par getVisibleDaysForFinisseur
+    
+    // En mode edit, on autorise tout
+    if (mode === "edit") return true;
+    
+    // Si pas d'affectations jours configurées, autoriser tout (rétrocompatibilité)
+    if (!affectationsJoursChef || affectationsJoursChef.length === 0) return true;
+    
+    // Vérifier si l'employé a une affectation pour ce jour
+    const monday = parseISOWeek(weekId);
+    const dayIndexMap: Record<string, number> = {
+      "Lundi": 0,
+      "Mardi": 1,
+      "Mercredi": 2,
+      "Jeudi": 3,
+      "Vendredi": 4,
+    };
+    
+    const dayIndex = dayIndexMap[dayName];
+    if (dayIndex === undefined) return true;
+    
+    const targetDate = format(addDays(monday, dayIndex), "yyyy-MM-dd");
+    
+    return affectationsJoursChef.some(
+      aff => aff.macon_id === employeeId && aff.jour === targetDate
+    );
+  }, [isConducteurMode, mode, affectationsJoursChef, weekId]);
 
   // Charger tous les maçons, grutiers, intérimaires et finisseurs pour le combobox d'ajout (mode edit seulement)
   const { data: allMacons = [] } = useUtilisateursByRole(mode === "edit" ? "macon" : undefined);

@@ -222,6 +222,102 @@ export type Database = {
           },
         ]
       }
+      affectations_jours_chef: {
+        Row: {
+          affectation_id: string | null
+          chantier_id: string
+          chef_id: string
+          created_at: string | null
+          entreprise_id: string | null
+          id: string
+          jour: string
+          macon_id: string
+          semaine: string
+          updated_at: string | null
+        }
+        Insert: {
+          affectation_id?: string | null
+          chantier_id: string
+          chef_id: string
+          created_at?: string | null
+          entreprise_id?: string | null
+          id?: string
+          jour: string
+          macon_id: string
+          semaine: string
+          updated_at?: string | null
+        }
+        Update: {
+          affectation_id?: string | null
+          chantier_id?: string
+          chef_id?: string
+          created_at?: string | null
+          entreprise_id?: string | null
+          id?: string
+          jour?: string
+          macon_id?: string
+          semaine?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affectations_jours_chef_affectation_id_fkey"
+            columns: ["affectation_id"]
+            isOneToOne: false
+            referencedRelation: "affectations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_affectation_id_fkey"
+            columns: ["affectation_id"]
+            isOneToOne: false
+            referencedRelation: "affectations_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_chef_id_fkey"
+            columns: ["chef_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_chef_id_fkey"
+            columns: ["chef_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_macon_id_fkey"
+            columns: ["macon_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_jours_chef_macon_id_fkey"
+            columns: ["macon_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chantiers: {
         Row: {
           actif: boolean | null
