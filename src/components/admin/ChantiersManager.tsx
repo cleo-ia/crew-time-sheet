@@ -243,7 +243,7 @@ export const ChantiersManager = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Code chantier</Label>
+                  <Label>Code chantier analytique</Label>
                   <Input 
                     placeholder="Ex: CHT-001" 
                     value={formData.code_chantier}
