@@ -21,7 +21,9 @@ import { useTransfererEquipe } from "@/hooks/useTransfererEquipe";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { DaysSelectionDialog } from "./DaysSelectionDialog";
-import { useAffectationsJoursByChef, useCreateDefaultAffectationsJours, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
+import { useAffectationsJoursChef, useAffectationsJoursByChef, useCreateDefaultAffectationsJours, useUpdateJoursForMember, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
+import { format, addDays } from "date-fns";
+import { parseISOWeek } from "@/lib/weekUtils";
 import { useCurrentEntrepriseId } from "@/hooks/useCurrentEntrepriseId";
 
 interface ChefMaconsManagerProps {
@@ -67,6 +69,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   // Récupérer les affectations jours pour ce chef et cette semaine
   const { data: affectationsJoursChef, refetch: refetchAffectationsJours } = useAffectationsJoursByChef(chefId, semaine);
   
+  // Récupérer TOUTES les affectations jours de la semaine (tous les chefs)
+  const { data: allAffectationsJoursWeek } = useAffectationsJoursChef(semaine);
+  
   // Hook pour créer une affectation
   const createAffectation = useCreateAffectation();
   
@@ -78,6 +83,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   
   // Hook pour créer les affectations jours par défaut
   const createDefaultAffectationsJours = useCreateDefaultAffectationsJours();
+  
+  // Hook pour créer les affectations jours partielles
+  const updateJoursForMember = useUpdateJoursForMember();
 
   // Hooks pour dissolution et transfert
   const dissoudreEquipe = useDissoudreEquipe();
@@ -105,23 +113,33 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
     return false;
   };
 
-  // Récupérer le statut d'un maçon (affectation active)
-  const getMaconStatus = (maconId: string) => {
-    // Vérifier si le maçon a une affectation active sur un autre chantier
-    if (allAffectations) {
-      const hasOtherAssignment = allAffectations.some(
-        (aff: any) => 
-          aff.macon_id === maconId && 
-          aff.chantier_id !== chantierId && 
-          aff.date_fin === null
-      );
-      
-      if (hasOtherAssignment) {
-        return { type: "assigned", label: "Déjà affecté" };
-      }
+  // Récupérer le statut d'un maçon basé sur les jours disponibles cette semaine
+  const getMaconStatus = (maconId: string): { type: "available" | "partial" | "unavailable"; label: string; availableDays?: string[] } => {
+    // Récupérer les jours déjà pris par un AUTRE chef cette semaine
+    const daysTakenByOthers = allAffectationsJoursWeek?.filter(
+      aff => aff.macon_id === maconId && aff.chef_id !== chefId
+    ) || [];
+    
+    const allDays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+    const takenDayNames = getDayNamesFromDates(daysTakenByOthers.map(a => a.jour), semaine);
+    const availableDays = allDays.filter(d => !takenDayNames.includes(d));
+    
+    // Si les 5 jours sont pris → Indisponible
+    if (availableDays.length === 0) {
+      return { type: "unavailable", label: "Indisponible" };
     }
     
-    return { type: "available", label: "Disponible" };
+    // Si certains jours sont pris → Partiellement disponible
+    if (availableDays.length < 5) {
+      return { 
+        type: "partial", 
+        label: `${availableDays.length} jour(s) dispo`,
+        availableDays 
+      };
+    }
+    
+    // Tous les jours sont libres
+    return { type: "available", label: "Disponible", availableDays };
   };
 
   // Vérifier si un finisseur est déjà géré par un conducteur pour cette semaine
@@ -187,12 +205,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
       return;
     }
 
-    // Vérifier si déjà affecté à un autre chantier
+    // Vérifier les jours disponibles pour cet employé
     const status = getMaconStatus(maconId);
-    if (status.type === "assigned") {
+    if (status.type === "unavailable") {
       toast({
-        title: "Employé déjà affecté",
-        description: `${maconPrenom} ${maconNom} est déjà affecté à un autre chantier.`,
+        title: "Employé indisponible",
+        description: `${maconPrenom} ${maconNom} est indisponible cette semaine (tous les jours sont pris).`,
         variant: "destructive",
       });
       return;
@@ -233,16 +251,30 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
         affectationId = newAffectation?.id || null;
       }
 
-      // Créer les affectations jours par défaut (tous les jours de la semaine)
+      // Créer les affectations jours
       if (entrepriseId) {
-        await createDefaultAffectationsJours.mutateAsync({
-          maconId,
-          chefId,
-          chantierId,
-          semaine,
-          affectationId,
-          entrepriseId,
-        });
+        if (status.type === "partial" && status.availableDays) {
+          // Cas partiel : créer uniquement les jours disponibles
+          await updateJoursForMember.mutateAsync({
+            maconId,
+            chefId,
+            chantierId,
+            semaine,
+            affectationId,
+            entrepriseId,
+            selectedDays: status.availableDays,
+          });
+        } else {
+          // Cas complet : créer tous les jours par défaut
+          await createDefaultAffectationsJours.mutateAsync({
+            maconId,
+            chefId,
+            chantierId,
+            semaine,
+            affectationId,
+            entrepriseId,
+          });
+        }
       }
 
       // Rafraîchir les données pour mettre à jour l'UI immédiatement
@@ -255,9 +287,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
       ]);
 
       const roleLabel = getRoleLabel(role);
+      const daysMessage = status.type === "partial" && status.availableDays
+        ? `pour ${status.availableDays.length} jour(s) (${status.availableDays.join(", ")})`
+        : "pour toute la semaine";
       toast({
         title: `${roleLabel} ajouté`,
-        description: `${maconPrenom} ${maconNom} a été ajouté à votre équipe pour toute la semaine.`,
+        description: `${maconPrenom} ${maconNom} a été ajouté à votre équipe ${daysMessage}.`,
       });
     } catch (error: any) {
       toast({
@@ -603,10 +638,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                             <div 
                               key={macon.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "assigned") {
+                                if (!inTeam && !isAdding && status.type !== "unavailable") {
                                   handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                 }
                               }}
@@ -632,9 +667,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                     className={`whitespace-nowrap ${
                                       status.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
-                                        : status.type === "assigned"
-                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                        : "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "partial"
+                                        ? "bg-warning/10 text-warning border-warning/20"
+                                        : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
                                     {status.label}
@@ -643,7 +678,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "assigned"}
+                                  disabled={inTeam || isAdding || status.type === "unavailable"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -652,8 +687,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
-                                      : status.type === "assigned"
-                                      ? "Déjà affecté à un autre chantier"
+                                      : status.type === "unavailable"
+                                      ? "Indisponible cette semaine"
+                                      : status.type === "partial"
+                                      ? `${status.availableDays?.length || 0} jour(s) disponible(s)`
                                       : "Ajouter à l'équipe"
                                   }
                                 >
@@ -703,10 +740,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                             <div 
                               key={grutier.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "assigned") {
+                                if (!inTeam && !isAdding && status.type !== "unavailable") {
                                   handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                 }
                               }}
@@ -732,9 +769,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                     className={`whitespace-nowrap ${
                                       status.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
-                                        : status.type === "assigned"
-                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                        : "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "partial"
+                                        ? "bg-warning/10 text-warning border-warning/20"
+                                        : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
                                     {status.label}
@@ -743,7 +780,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "assigned"}
+                                  disabled={inTeam || isAdding || status.type === "unavailable"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -752,8 +789,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
-                                      : status.type === "assigned"
-                                      ? "Déjà affecté à un autre chantier"
+                                      : status.type === "unavailable"
+                                      ? "Indisponible cette semaine"
+                                      : status.type === "partial"
+                                      ? `${status.availableDays?.length || 0} jour(s) disponible(s)`
                                       : "Ajouter à l'équipe"
                                   }
                                 >
@@ -816,10 +855,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                             <div 
                               key={interimaire.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "assigned" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "assigned") {
+                                if (!inTeam && !isAdding && status.type !== "unavailable") {
                                   handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                 }
                               }}
@@ -845,9 +884,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                     className={`whitespace-nowrap ${
                                       status.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
-                                        : status.type === "assigned"
-                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                        : "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "partial"
+                                        ? "bg-warning/10 text-warning border-warning/20"
+                                        : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
                                     {status.label}
@@ -856,7 +895,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "assigned"}
+                                  disabled={inTeam || isAdding || status.type === "unavailable"}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -865,8 +904,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
-                                      : status.type === "assigned"
-                                      ? "Déjà affecté à un autre chantier"
+                                      : status.type === "unavailable"
+                                      ? "Indisponible cette semaine"
+                                      : status.type === "partial"
+                                      ? `${status.availableDays?.length || 0} jour(s) disponible(s)`
                                       : "Ajouter à l'équipe"
                                   }
                                 >
@@ -917,11 +958,11 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                           
                           // Calculer le statut à afficher
                           const displayStatus = isManagedByConducteur 
-                            ? { type: "managed-conducteur", label: "Géré par conducteur" }
+                            ? { type: "managed-conducteur" as const, label: "Géré par conducteur" }
                             : status;
                           
-                          // Bloquer si géré par conducteur
-                          const isBlocked = inTeam || isAdding || status.type === "assigned" || isManagedByConducteur;
+                          // Bloquer si géré par conducteur ou indisponible
+                          const isBlocked = inTeam || isAdding || status.type === "unavailable" || isManagedByConducteur;
 
                           return (
                             <div 
@@ -957,10 +998,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                       displayStatus.type === "available" 
                                         ? "bg-success/10 text-success border-success/20" 
                                         : displayStatus.type === "managed-conducteur"
-                                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-                                        : displayStatus.type === "assigned"
-                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                        : "bg-warning/10 text-warning border-warning/20"
+                                        ? "bg-accent/50 text-accent-foreground border-accent"
+                                        : displayStatus.type === "partial"
+                                        ? "bg-warning/10 text-warning border-warning/20"
+                                        : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
                                     {displayStatus.label}
@@ -980,8 +1021,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                       ? "Déjà dans votre équipe" 
                                       : isManagedByConducteur
                                       ? "Ce finisseur est géré par un conducteur cette semaine"
-                                      : status.type === "assigned"
-                                      ? "Déjà affecté à un autre chantier"
+                                      : status.type === "unavailable"
+                                      ? "Indisponible cette semaine"
+                                      : status.type === "partial"
+                                      ? `${status.availableDays?.length || 0} jour(s) disponible(s)`
                                       : "Ajouter à l'équipe"
                                   }
                                 >
