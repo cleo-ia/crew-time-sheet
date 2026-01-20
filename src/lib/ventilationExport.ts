@@ -603,9 +603,382 @@ export const exportVentilationCompletePdf = async (
   
   drawPageFooter();
 
-  // Générer le fichier
+// Générer le fichier
   const fileName = `Ventilation-Analytique-${periode}.pdf`;
   pdf.save(fileName);
   
+  return fileName;
+};
+
+// ============= EXPORTS PDF INDIVIDUELS =============
+
+// Export PDF individuel - Récap Chantier
+export const exportRecapChantierPdf = async (data: RecapChantierRow[], periode: string): Promise<string> => {
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const headerHeight = 25;
+  const footerHeight = 12;
+  const contentWidth = pageWidth - 2 * margin;
+  
+  const periodeLabel = formatPeriodeLabel(periode);
+  const entrepriseName = getEntrepriseName();
+  const entrepriseLogo = getEntrepriseLogo();
+  const generationDate = new Date();
+  
+  let currentY = margin + headerHeight;
+
+  const drawText = (text: string, x: number, y: number, options?: { 
+    bold?: boolean; 
+    white?: boolean; 
+    align?: "left" | "center" | "right";
+    fontSize?: number;
+    color?: { r: number; g: number; b: number };
+  }) => {
+    pdf.setFontSize(options?.fontSize || 9);
+    pdf.setFont("helvetica", options?.bold ? "bold" : "normal");
+    if (options?.color) {
+      pdf.setTextColor(options.color.r, options.color.g, options.color.b);
+    } else if (options?.white) {
+      pdf.setTextColor(255, 255, 255);
+    } else {
+      pdf.setTextColor(0, 0, 0);
+    }
+    
+    if (options?.align === "center") {
+      pdf.text(text, x, y, { align: "center" });
+    } else if (options?.align === "right") {
+      pdf.text(text, x, y, { align: "right" });
+    } else {
+      pdf.text(text, x, y);
+    }
+  };
+
+  // Header
+  pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.rect(0, 0, pageWidth, 5, "F");
+
+  try {
+    pdf.addImage(entrepriseLogo, "PNG", margin, 7, 25, 12);
+  } catch (error) {
+    console.error("Erreur logo:", error);
+  }
+
+  drawText(entrepriseName, pageWidth / 2, 15, { bold: true, fontSize: 14, align: "center", color: COLORS.black });
+  drawText("VENTILATION PAR CHANTIER", pageWidth - margin, 11, { bold: true, fontSize: 11, align: "right" });
+  drawText(periodeLabel, pageWidth - margin, 17, { fontSize: 9, align: "right" });
+
+  pdf.setDrawColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.setLineWidth(0.5);
+  pdf.line(margin, 22, pageWidth - margin, 22);
+  pdf.setLineWidth(0.2);
+
+  // Table
+  const colWidths = [35, 100, 30, 30, 30, 30];
+  const headers = ["Code analytique", "Libellé", "INTERIM", "MO", "MOAPP", "TOTAL"];
+  const tableStartX = margin + (contentWidth - colWidths.reduce((a, b) => a + b, 0)) / 2;
+  
+  // Header row
+  let x = tableStartX;
+  headers.forEach((header, i) => {
+    pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+    pdf.rect(x, currentY, colWidths[i], 8, "FD");
+    drawText(header, x + colWidths[i] / 2, currentY + 5.5, { bold: true, white: true, align: "center" });
+    x += colWidths[i];
+  });
+  currentY += 8;
+  
+  let totalInterim = 0, totalMO = 0, totalMOAPP = 0, grandTotal = 0;
+  
+  data.forEach((row, idx) => {
+    x = tableStartX;
+    const isAlternate = idx % 2 === 1;
+    const values = [row.codeAnalytique, row.libelle, row.heuresInterim.toFixed(2), row.heuresMO.toFixed(2), row.heuresMOAPP.toFixed(2), row.total.toFixed(2)];
+    
+    values.forEach((val, i) => {
+      pdf.setFillColor(isAlternate ? COLORS.gray.r : COLORS.white.r, isAlternate ? COLORS.gray.g : COLORS.white.g, isAlternate ? COLORS.gray.b : COLORS.white.b);
+      pdf.rect(x, currentY, colWidths[i], 6, "FD");
+      const align = i === 1 ? "left" : "center";
+      const textX = i === 1 ? x + 2 : x + colWidths[i] / 2;
+      drawText(val, textX, currentY + 4.2, { align, fontSize: 8 });
+      x += colWidths[i];
+    });
+    currentY += 6;
+    
+    totalInterim += row.heuresInterim;
+    totalMO += row.heuresMO;
+    totalMOAPP += row.heuresMOAPP;
+    grandTotal += row.total;
+  });
+  
+  // Total row
+  x = tableStartX;
+  const totalValues = ["TOTAL", "", totalInterim.toFixed(2), totalMO.toFixed(2), totalMOAPP.toFixed(2), grandTotal.toFixed(2)];
+  totalValues.forEach((val, i) => {
+    pdf.setFillColor(COLORS.lightGreen.r, COLORS.lightGreen.g, COLORS.lightGreen.b);
+    pdf.rect(x, currentY, colWidths[i], 6, "FD");
+    const align = i === 1 ? "left" : "center";
+    const textX = i === 1 ? x + 2 : x + colWidths[i] / 2;
+    drawText(val, textX, currentY + 4.2, { bold: true, align, fontSize: 8 });
+    x += colWidths[i];
+  });
+  
+  // Footer
+  const footerY = pageHeight - footerHeight + 3;
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+  pdf.setLineWidth(0.2);
+
+  drawText(entrepriseName, margin, footerY + 4, { fontSize: 8 });
+  drawText(`Document généré le ${format(generationDate, "dd/MM/yyyy")} à ${format(generationDate, "HH:mm")}`, pageWidth / 2, footerY + 4, { fontSize: 8, align: "center" });
+  drawText("Page 1/1", pageWidth - margin, footerY + 4, { fontSize: 8, align: "right" });
+
+  const fileName = `Ventil-Chantier-${periode}.pdf`;
+  pdf.save(fileName);
+  return fileName;
+};
+
+// Export PDF individuel - Ventilation Ouvriers
+export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[], periode: string): Promise<string> => {
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const headerHeight = 25;
+  const footerHeight = 12;
+  const contentWidth = pageWidth - 2 * margin;
+  
+  const periodeLabel = formatPeriodeLabel(periode);
+  const entrepriseName = getEntrepriseName();
+  const entrepriseLogo = getEntrepriseLogo();
+  const generationDate = new Date();
+  
+  let currentY = margin + headerHeight;
+
+  const drawText = (text: string, x: number, y: number, options?: { 
+    bold?: boolean; 
+    white?: boolean; 
+    align?: "left" | "center" | "right";
+    fontSize?: number;
+    color?: { r: number; g: number; b: number };
+  }) => {
+    pdf.setFontSize(options?.fontSize || 9);
+    pdf.setFont("helvetica", options?.bold ? "bold" : "normal");
+    if (options?.color) {
+      pdf.setTextColor(options.color.r, options.color.g, options.color.b);
+    } else if (options?.white) {
+      pdf.setTextColor(255, 255, 255);
+    } else {
+      pdf.setTextColor(0, 0, 0);
+    }
+    
+    if (options?.align === "center") {
+      pdf.text(text, x, y, { align: "center" });
+    } else if (options?.align === "right") {
+      pdf.text(text, x, y, { align: "right" });
+    } else {
+      pdf.text(text, x, y);
+    }
+  };
+
+  // Header
+  pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.rect(0, 0, pageWidth, 5, "F");
+
+  try {
+    pdf.addImage(entrepriseLogo, "PNG", margin, 7, 25, 12);
+  } catch (error) {
+    console.error("Erreur logo:", error);
+  }
+
+  drawText(entrepriseName, pageWidth / 2, 15, { bold: true, fontSize: 14, align: "center", color: COLORS.black });
+  drawText("VENTILATION OUVRIERS", pageWidth - margin, 11, { bold: true, fontSize: 11, align: "right" });
+  drawText(periodeLabel, pageWidth - margin, 17, { fontSize: 9, align: "right" });
+
+  pdf.setDrawColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.setLineWidth(0.5);
+  pdf.line(margin, 22, pageWidth - margin, 22);
+  pdf.setLineWidth(0.2);
+
+  // Table
+  const colWidths = [50, 50, 60, 30, 30, 30];
+  const headers = ["Nom", "Prénom", "Code analytique", "Type MO", "Quantité", "%"];
+  const tableStartX = margin + (contentWidth - colWidths.reduce((a, b) => a + b, 0)) / 2;
+  
+  // Header row
+  let x = tableStartX;
+  headers.forEach((header, i) => {
+    pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+    pdf.rect(x, currentY, colWidths[i], 8, "FD");
+    drawText(header, x + colWidths[i] / 2, currentY + 5.5, { bold: true, white: true, align: "center" });
+    x += colWidths[i];
+  });
+  currentY += 8;
+  
+  data.forEach((row, idx) => {
+    x = tableStartX;
+    const isTotal = row.isTotal || false;
+    const isAlternate = idx % 2 === 1;
+    const values = [row.nom, row.prenom, row.codeAnalytique, row.typeMO, row.quantite.toFixed(2), isTotal ? "100%" : `${row.pourcentage.toFixed(2)}%`];
+    
+    values.forEach((val, i) => {
+      if (isTotal) {
+        pdf.setFillColor(COLORS.lightGreen.r, COLORS.lightGreen.g, COLORS.lightGreen.b);
+      } else if (isAlternate) {
+        pdf.setFillColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
+      } else {
+        pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+      }
+      pdf.rect(x, currentY, colWidths[i], 6, "FD");
+      drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: isTotal, align: "center", fontSize: 8 });
+      x += colWidths[i];
+    });
+    currentY += 6;
+  });
+  
+  // Footer
+  const footerY = pageHeight - footerHeight + 3;
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+  pdf.setLineWidth(0.2);
+
+  drawText(entrepriseName, margin, footerY + 4, { fontSize: 8 });
+  drawText(`Document généré le ${format(generationDate, "dd/MM/yyyy")} à ${format(generationDate, "HH:mm")}`, pageWidth / 2, footerY + 4, { fontSize: 8, align: "center" });
+  drawText("Page 1/1", pageWidth - margin, footerY + 4, { fontSize: 8, align: "right" });
+
+  const fileName = `Ventil-Ouvriers-${periode}.pdf`;
+  pdf.save(fileName);
+  return fileName;
+};
+
+// Export PDF individuel - Ventilation Intérim
+export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[], periode: string): Promise<string> => {
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const headerHeight = 25;
+  const footerHeight = 12;
+  const contentWidth = pageWidth - 2 * margin;
+  
+  const periodeLabel = formatPeriodeLabel(periode);
+  const entrepriseName = getEntrepriseName();
+  const entrepriseLogo = getEntrepriseLogo();
+  const generationDate = new Date();
+  
+  let currentY = margin + headerHeight;
+
+  const drawText = (text: string, x: number, y: number, options?: { 
+    bold?: boolean; 
+    white?: boolean; 
+    align?: "left" | "center" | "right";
+    fontSize?: number;
+    color?: { r: number; g: number; b: number };
+  }) => {
+    pdf.setFontSize(options?.fontSize || 9);
+    pdf.setFont("helvetica", options?.bold ? "bold" : "normal");
+    if (options?.color) {
+      pdf.setTextColor(options.color.r, options.color.g, options.color.b);
+    } else if (options?.white) {
+      pdf.setTextColor(255, 255, 255);
+    } else {
+      pdf.setTextColor(0, 0, 0);
+    }
+    
+    if (options?.align === "center") {
+      pdf.text(text, x, y, { align: "center" });
+    } else if (options?.align === "right") {
+      pdf.text(text, x, y, { align: "right" });
+    } else {
+      pdf.text(text, x, y);
+    }
+  };
+
+  // Header
+  pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.rect(0, 0, pageWidth, 5, "F");
+
+  try {
+    pdf.addImage(entrepriseLogo, "PNG", margin, 7, 25, 12);
+  } catch (error) {
+    console.error("Erreur logo:", error);
+  }
+
+  drawText(entrepriseName, pageWidth / 2, 15, { bold: true, fontSize: 14, align: "center", color: COLORS.black });
+  drawText("VENTILATION INTÉRIM", pageWidth - margin, 11, { bold: true, fontSize: 11, align: "right" });
+  drawText(periodeLabel, pageWidth - margin, 17, { fontSize: 9, align: "right" });
+
+  pdf.setDrawColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+  pdf.setLineWidth(0.5);
+  pdf.line(margin, 22, pageWidth - margin, 22);
+  pdf.setLineWidth(0.2);
+
+  // Table
+  const colWidths = [45, 45, 50, 55, 30, 30];
+  const headers = ["Nom", "Prénom", "Agence", "Code analytique", "Quantité", "%"];
+  const tableStartX = margin + (contentWidth - colWidths.reduce((a, b) => a + b, 0)) / 2;
+  
+  // Header row
+  let x = tableStartX;
+  headers.forEach((header, i) => {
+    pdf.setFillColor(COLORS.darkGreen.r, COLORS.darkGreen.g, COLORS.darkGreen.b);
+    pdf.rect(x, currentY, colWidths[i], 8, "FD");
+    drawText(header, x + colWidths[i] / 2, currentY + 5.5, { bold: true, white: true, align: "center" });
+    x += colWidths[i];
+  });
+  currentY += 8;
+  
+  data.forEach((row, idx) => {
+    x = tableStartX;
+    const isTotal = row.isTotal || false;
+    const isAlternate = idx % 2 === 1;
+    const values = [row.nom, row.prenom, row.agenceInterim || "", row.codeAnalytique, row.quantite.toFixed(2), isTotal ? "100%" : `${row.pourcentage.toFixed(2)}%`];
+    
+    values.forEach((val, i) => {
+      if (isTotal) {
+        pdf.setFillColor(COLORS.lightGreen.r, COLORS.lightGreen.g, COLORS.lightGreen.b);
+      } else if (isAlternate) {
+        pdf.setFillColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
+      } else {
+        pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+      }
+      pdf.rect(x, currentY, colWidths[i], 6, "FD");
+      drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: isTotal, align: "center", fontSize: 8 });
+      x += colWidths[i];
+    });
+    currentY += 6;
+  });
+  
+  // Footer
+  const footerY = pageHeight - footerHeight + 3;
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+  pdf.setLineWidth(0.2);
+
+  drawText(entrepriseName, margin, footerY + 4, { fontSize: 8 });
+  drawText(`Document généré le ${format(generationDate, "dd/MM/yyyy")} à ${format(generationDate, "HH:mm")}`, pageWidth / 2, footerY + 4, { fontSize: 8, align: "center" });
+  drawText("Page 1/1", pageWidth - margin, footerY + 4, { fontSize: 8, align: "right" });
+
+  const fileName = `Ventil-Interim-${periode}.pdf`;
+  pdf.save(fileName);
   return fileName;
 };
