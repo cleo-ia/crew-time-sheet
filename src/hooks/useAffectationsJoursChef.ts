@@ -135,7 +135,7 @@ export const useDeleteAffectationJourChef = () => {
   });
 };
 
-// Mettre à jour tous les jours d'un membre en une fois
+// Mettre à jour tous les jours d'un membre en une fois (pour ce chef uniquement)
 export const useUpdateJoursForMember = () => {
   const queryClient = useQueryClient();
   
@@ -157,11 +157,13 @@ export const useUpdateJoursForMember = () => {
       entrepriseId: string;
       selectedDays: string[];
     }) => {
-      // D'abord supprimer toutes les affectations existantes pour ce membre cette semaine
+      // D'abord supprimer les affectations existantes pour CE CHEF et ce membre cette semaine
+      // (ne pas supprimer les affectations des autres chefs)
       const { error: deleteError } = await supabase
         .from("affectations_jours_chef")
         .delete()
         .eq("macon_id", maconId)
+        .eq("chef_id", chefId)
         .eq("semaine", semaine);
       
       if (deleteError) throw deleteError;
