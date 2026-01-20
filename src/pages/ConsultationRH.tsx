@@ -4,11 +4,12 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
@@ -38,6 +39,11 @@ import { RHModificationsTab } from "@/components/rh/RHModificationsTab";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesRHSheet } from "@/components/conges/CongesRHSheet";
 import { useDemandesEnAttenteRH } from "@/hooks/useDemandesCongesRH";
+import { VentilationRecapChantier } from "@/components/rh/VentilationRecapChantier";
+import { VentilationOuvrier } from "@/components/rh/VentilationOuvrier";
+import { VentilationInterim } from "@/components/rh/VentilationInterim";
+import { useRecapChantier, useVentilationOuvrier, useVentilationInterim } from "@/hooks/useVentilationAnalytique";
+import { exportVentilationCompleteExcel } from "@/lib/ventilationExport";
 
 
 const ConsultationRH = () => {
@@ -62,6 +68,11 @@ const ConsultationRH = () => {
   const { data: summary } = useRHSummary(filters);
   const { data: unreadData } = useUnreadMessages(currentUserId);
   const { data: nbCongesEnAttente = 0 } = useDemandesEnAttenteRH(entrepriseId);
+  
+  // Ventilation data hooks for combined export
+  const { data: recapChantierData } = useRecapChantier(filters.periode);
+  const { data: ventilationOuvrierData } = useVentilationOuvrier(filters.periode);
+  const { data: ventilationInterimData } = useVentilationInterim(filters.periode);
 
   // Récupérer l'auth.uid() de l'utilisateur connecté (requis pour le tracking des messages lus)
   useEffect(() => {
@@ -177,6 +188,35 @@ const ConsultationRH = () => {
     }
   };
 
+  const handleExportVentilation = async () => {
+    try {
+      const mois = (!filters.periode || filters.periode === "all") 
+        ? format(new Date(), "yyyy-MM") 
+        : filters.periode;
+
+      if (!recapChantierData || !ventilationOuvrierData || !ventilationInterimData) {
+        toast.error("Données de ventilation non disponibles");
+        return;
+      }
+
+      if (recapChantierData.length === 0 && ventilationOuvrierData.length === 0 && ventilationInterimData.length === 0) {
+        toast.error("Aucune donnée de ventilation pour cette période");
+        return;
+      }
+
+      const fileName = await exportVentilationCompleteExcel(
+        recapChantierData,
+        ventilationOuvrierData,
+        ventilationInterimData,
+        mois
+      );
+      toast.success(`Export Ventilation Analytique généré : ${fileName}`);
+    } catch (error) {
+      console.error("[Export Ventilation] Erreur:", error);
+      toast.error("Erreur lors de la génération de l'export Ventilation");
+    }
+  };
+
   return (
     <PageLayout>
       <div className="bg-gradient-to-br from-background to-muted/30">
@@ -218,6 +258,11 @@ const ConsultationRH = () => {
                   <DropdownMenuItem onClick={() => setShowInterimaireExport(true)}>
                     <Building2 className="h-4 w-4 mr-2" />
                     Export Intérimaires
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleExportVentilation} disabled={!filters.periode || filters.periode === "all"}>
+                    <PieChart className="h-4 w-4 mr-2" />
+                    Export Ventilation Analytique
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -269,24 +314,38 @@ const ConsultationRH = () => {
             {/* Tabs */}
             <Card className="shadow-md border-border/50 overflow-hidden">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-5 rounded-none border-b">
-                  <TabsTrigger value="consolide" className="rounded-none">
-                    Consolidé par salarié
-                  </TabsTrigger>
-                  <TabsTrigger value="preexport" className="rounded-none">
-                    Pré-export Excel
-                  </TabsTrigger>
-                  <TabsTrigger value="detail" className="rounded-none">
-                    Détail chantier/semaine
-                  </TabsTrigger>
-                  <TabsTrigger value="historique" className="rounded-none">
-                    Historique clôturé
-                  </TabsTrigger>
-                  <TabsTrigger value="modifications" className="rounded-none flex items-center gap-1">
-                    <History className="h-3 w-3" />
-                    Historique modifs
-                  </TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto">
+                  <TabsList className="w-full inline-flex min-w-max rounded-none border-b">
+                    <TabsTrigger value="consolide" className="rounded-none">
+                      Consolidé par salarié
+                    </TabsTrigger>
+                    <TabsTrigger value="preexport" className="rounded-none">
+                      Pré-export Excel
+                    </TabsTrigger>
+                    <TabsTrigger value="detail" className="rounded-none">
+                      Détail chantier/semaine
+                    </TabsTrigger>
+                    <TabsTrigger value="historique" className="rounded-none">
+                      Historique clôturé
+                    </TabsTrigger>
+                    <TabsTrigger value="modifications" className="rounded-none flex items-center gap-1">
+                      <History className="h-3 w-3" />
+                      Historique modifs
+                    </TabsTrigger>
+                    <TabsTrigger value="recap-chantier" className="rounded-none flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Récap Chantiers
+                    </TabsTrigger>
+                    <TabsTrigger value="ventilation-ouvrier" className="rounded-none flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      Ventil. Ouvriers
+                    </TabsTrigger>
+                    <TabsTrigger value="ventilation-interim" className="rounded-none flex items-center gap-1">
+                      <UserCheck className="h-3 w-3" />
+                      Ventil. Intérim
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="consolide" className="p-6">
                   <RHConsolidated filters={filters} onSelectFiche={setSelectedFiche} />
@@ -306,6 +365,18 @@ const ConsultationRH = () => {
 
                 <TabsContent value="modifications" className="p-6">
                   <RHModificationsTab entrepriseId={localStorage.getItem("current_entreprise_id")} />
+                </TabsContent>
+
+                <TabsContent value="recap-chantier" className="p-6">
+                  <VentilationRecapChantier filters={filters} />
+                </TabsContent>
+
+                <TabsContent value="ventilation-ouvrier" className="p-6">
+                  <VentilationOuvrier filters={filters} />
+                </TabsContent>
+
+                <TabsContent value="ventilation-interim" className="p-6">
+                  <VentilationInterim filters={filters} />
                 </TabsContent>
               </Tabs>
             </Card>
