@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { UserPlus, Loader2, X, Crown, AlertTriangle, Users, ArrowRightLeft } from "lucide-react";
+import { UserPlus, Loader2, X, Crown, AlertTriangle, Users, ArrowRightLeft, CalendarDays } from "lucide-react";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { useAffectations, useCreateAffectation, useUpdateAffectation } from "@/hooks/useAffectations";
 import { useDeleteFichesByMacon } from "@/hooks/useFiches";
@@ -20,6 +20,10 @@ import { useDissoudreEquipe } from "@/hooks/useDissoudreEquipe";
 import { useTransfererEquipe } from "@/hooks/useTransfererEquipe";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { DaysSelectionDialog } from "./DaysSelectionDialog";
+import { useAffectationsJoursByChef, useCreateDefaultAffectationsJours, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
+import { useCurrentEntrepriseId } from "@/hooks/useCurrentEntrepriseId";
+
 interface ChefMaconsManagerProps {
   chefId: string;
   chantierId: string;
@@ -37,8 +41,10 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   const [showDissolutionDialog, setShowDissolutionDialog] = useState(false);
   const [showTransfertDialog, setShowTransfertDialog] = useState(false);
   const [destinationChantierId, setDestinationChantierId] = useState<string>("");
+  const [memberToEditDays, setMemberToEditDays] = useState<{id: string, nom: string, prenom: string, role: string, affectationId: string | null} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: entrepriseId } = useCurrentEntrepriseId();
 
   // Récupérer tous les maçons, grutiers, intérimaires et finisseurs du système
   const { data: allMacons, isLoading: loadingMacons } = useUtilisateursByRole("macon");
@@ -58,6 +64,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   // Récupérer les affectations finisseurs conducteur pour cette semaine
   const { data: affectationsFinisseursJours } = useAffectationsFinisseursJours(semaine);
   
+  // Récupérer les affectations jours pour ce chef et cette semaine
+  const { data: affectationsJoursChef, refetch: refetchAffectationsJours } = useAffectationsJoursByChef(chefId, semaine);
+  
   // Hook pour créer une affectation
   const createAffectation = useCreateAffectation();
   
@@ -66,6 +75,9 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   
   // Hook pour supprimer les fiches lors du retrait
   const deleteFichesByMacon = useDeleteFichesByMacon();
+  
+  // Hook pour créer les affectations jours par défaut
+  const createDefaultAffectationsJours = useCreateDefaultAffectationsJours();
 
   // Hooks pour dissolution et transfert
   const dissoudreEquipe = useDissoudreEquipe();
@@ -201,19 +213,35 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
           aff.date_fin !== null // Affectation fermée
       );
 
+      let affectationId: string | null = null;
+      
       if (existingAffectation) {
         // Réactiver l'affectation existante
         await updateAffectation.mutateAsync({
           id: existingAffectation.id,
           date_fin: null, // Retirer la date de fin pour réactiver
         });
+        affectationId = existingAffectation.id;
       } else {
         // Créer une nouvelle affectation
-        await createAffectation.mutateAsync({
+        const newAffectation = await createAffectation.mutateAsync({
           macon_id: maconId,
           chantier_id: chantierId,
           date_debut: today,
           date_fin: null,
+        });
+        affectationId = newAffectation?.id || null;
+      }
+
+      // Créer les affectations jours par défaut (tous les jours de la semaine)
+      if (entrepriseId) {
+        await createDefaultAffectationsJours.mutateAsync({
+          maconId,
+          chefId,
+          chantierId,
+          semaine,
+          affectationId,
+          entrepriseId,
         });
       }
 
@@ -221,13 +249,15 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
       await Promise.all([
         refetchAffectations(),
         refetchTeam(),
-        queryClient.invalidateQueries({ queryKey: ["macons-chantier"] })
+        refetchAffectationsJours(),
+        queryClient.invalidateQueries({ queryKey: ["macons-chantier"] }),
+        queryClient.invalidateQueries({ queryKey: ["affectations-jours-chef"] })
       ]);
 
       const roleLabel = getRoleLabel(role);
       toast({
         title: `${roleLabel} ajouté`,
-        description: `${maconPrenom} ${maconNom} a été ajouté à votre équipe.`,
+        description: `${maconPrenom} ${maconNom} a été ajouté à votre équipe pour toute la semaine.`,
       });
     } catch (error: any) {
       toast({
@@ -367,6 +397,31 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                       return (a.nom || "").localeCompare(b.nom || "", 'fr');
                     }).map((macon) => {
                       const isRemoving = removingIds.has(macon.id);
+                      
+                      // Calculer les jours affectés pour ce membre
+                      const memberDaysAffected = affectationsJoursChef
+                        ?.filter(a => a.macon_id === macon.id)
+                        .map(a => getDayNamesFromDates([a.jour], semaine)[0])
+                        .filter(Boolean) || [];
+                      
+                      // Trouver l'affectation_id pour ce membre
+                      const memberAffectation = allAffectations?.find(
+                        (aff: any) => aff.macon_id === macon.id && aff.chantier_id === chantierId && aff.date_fin === null
+                      );
+                      
+                      // Afficher les jours sous forme de badges courts
+                      const getDayBadges = () => {
+                        if (memberDaysAffected.length === 0 || memberDaysAffected.length === 5) {
+                          return <Badge variant="outline" className="text-xs">Lun→Ven</Badge>;
+                        }
+                        const shortDays = memberDaysAffected.map(d => d.substring(0, 3));
+                        return (
+                          <Badge variant="outline" className="text-xs">
+                            {shortDays.join(" ")}
+                          </Badge>
+                        );
+                      };
+                      
                       return (
                         <div 
                           key={macon.id}
@@ -384,6 +439,12 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                               <p className="font-medium">
                                 {macon.prenom} {macon.nom}
                               </p>
+                              {/* Afficher les jours d'affectation sous le nom (sauf chef) */}
+                              {!macon.isChef && (
+                                <div className="mt-1">
+                                  {getDayBadges()}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -423,6 +484,23 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                               >
                                 Maçon
                               </Badge>
+                            )}
+                            {/* Bouton pour modifier les jours d'affectation (sauf chef) */}
+                            {!macon.isChef && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setMemberToEditDays({
+                                  id: macon.id,
+                                  nom: macon.nom || "",
+                                  prenom: macon.prenom || "",
+                                  role: macon.role || "macon",
+                                  affectationId: memberAffectation?.id || null,
+                                })}
+                                title="Modifier les jours d'affectation"
+                              >
+                                <CalendarDays className="h-4 w-4" />
+                              </Button>
                             )}
                             <Button
                               size="sm"
@@ -1093,6 +1171,22 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de sélection des jours d'affectation */}
+      <DaysSelectionDialog
+        open={!!memberToEditDays}
+        onOpenChange={(open) => !open && setMemberToEditDays(null)}
+        member={memberToEditDays}
+        chefId={chefId}
+        chantierId={chantierId}
+        semaine={semaine}
+        affectationId={memberToEditDays?.affectationId || null}
+        entrepriseId={entrepriseId || ""}
+        onSuccess={() => {
+          refetchTeam();
+          refetchAffectationsJours();
+        }}
+      />
     </>
   );
 };
