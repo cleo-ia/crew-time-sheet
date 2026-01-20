@@ -743,6 +743,62 @@ export const exportVentilationCompletePdf = async (
     currentY += rowHeight;
   });
   
+  // ===== SECTION 4: Récap Chantier (copie en fin de PDF) =====
+  pdf.addPage();
+  currentY = margin + headerHeight;
+  
+  drawPageHeader("RECAP HEURES par Chantier par type main d'oeuvre");
+  drawTableHeaderRow(headers1, colWidths1, tableStartX1);
+  
+  const headerHeightMinimal4 = 18;
+  
+  const drawPageHeaderMinimal4 = () => {
+    drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+    drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
+  };
+  
+  const drawHeaderRow4 = () => {
+    let x = tableStartX1;
+    headers1.forEach((header, i) => {
+      pdf.setFillColor(COLORS.green.r, COLORS.green.g, COLORS.green.b);
+      pdf.setDrawColor(0, 0, 0);
+      pdf.rect(x, currentY, colWidths1[i], headerRowHeight, "FD");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(header, x + colWidths1[i] / 2, currentY + 5, { align: "center" });
+      x += colWidths1[i];
+    });
+    pdf.setTextColor(0, 0, 0);
+    currentY += headerRowHeight;
+  };
+  
+  const checkPageBreak4 = () => {
+    if (currentY + rowHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeightMinimal4;
+      drawPageHeaderMinimal4();
+      drawHeaderRow4();
+    }
+  };
+  
+  recap.forEach((row) => {
+    checkPageBreak4();
+    const values = [
+      row.codeAnalytique,
+      row.libelle,
+      formatNumberFR(row.heuresInterim),
+      formatNumberFR(row.heuresMO),
+      formatNumberFR(row.heuresMOAPP),
+      formatNumberFR(row.total)
+    ];
+    drawTableDataRow(values, colWidths1, tableStartX1, false);
+  });
+  
+  checkPageBreak4();
+  const totalValues4 = ["TOTAL", "", formatNumberFR(totalInterim), formatNumberFR(totalMO), formatNumberFR(totalMOAPP), formatNumberFR(grandTotal)];
+  drawTableDataRow(totalValues4, colWidths1, tableStartX1, true);
+
   // Pagination 2-pass : dessiner les footers sur toutes les pages
   const totalPages = pdf.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
