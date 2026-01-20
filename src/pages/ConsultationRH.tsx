@@ -334,7 +334,7 @@ const ConsultationRH = () => {
                     </TabsTrigger>
                     <TabsTrigger value="recap-chantier" className="rounded-none flex items-center gap-1">
                       <Building2 className="h-3 w-3" />
-                      Récap Chantiers
+                      Ventil. Chantier
                     </TabsTrigger>
                     <TabsTrigger value="ventilation-ouvrier" className="rounded-none flex items-center gap-1">
                       <Users className="h-3 w-3" />
