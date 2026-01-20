@@ -43,7 +43,7 @@ import { VentilationRecapChantier } from "@/components/rh/VentilationRecapChanti
 import { VentilationOuvrier } from "@/components/rh/VentilationOuvrier";
 import { VentilationInterim } from "@/components/rh/VentilationInterim";
 import { useRecapChantier, useVentilationOuvrier, useVentilationInterim } from "@/hooks/useVentilationAnalytique";
-import { exportVentilationCompleteExcel } from "@/lib/ventilationExport";
+import { exportVentilationCompletePdf } from "@/lib/ventilationExport";
 
 
 const ConsultationRH = () => {
@@ -204,13 +204,13 @@ const ConsultationRH = () => {
         return;
       }
 
-      const fileName = await exportVentilationCompleteExcel(
+      const fileName = await exportVentilationCompletePdf(
         recapChantierData,
         ventilationOuvrierData,
         ventilationInterimData,
         mois
       );
-      toast.success(`Export Ventilation Analytique généré : ${fileName}`);
+      toast.success(`Export Ventilation Analytique PDF généré : ${fileName}`);
     } catch (error) {
       console.error("[Export Ventilation] Erreur:", error);
       toast.error("Erreur lors de la génération de l'export Ventilation");
@@ -262,7 +262,7 @@ const ConsultationRH = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportVentilation} disabled={!filters.periode || filters.periode === "all"}>
                     <PieChart className="h-4 w-4 mr-2" />
-                    Export Ventilation Analytique
+                    Export Ventilation PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
