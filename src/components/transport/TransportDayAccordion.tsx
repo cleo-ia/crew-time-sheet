@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
 import {
   AccordionItem,
   AccordionTrigger,
@@ -63,6 +64,9 @@ export const TransportDayAccordion = ({
   
   // Récupérer les maçons pour détecter les trajets perso
   const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
+  
+  // Récupérer les affectations journalières pour ce chef
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(chefId, semaine);
 
   // Détecter si un conducteur assigné est en "Trajet perso"
   const hasTrajetPersoIssue = useMemo(() => {
@@ -245,6 +249,8 @@ export const TransportDayAccordion = ({
                               .map(v => v.conducteurMatinId)
                               .filter(Boolean)
                           }
+                          affectationsJoursChef={affectationsJoursChef}
+                          chefId={chefId}
                         />
                       </div>
                       
@@ -262,6 +268,8 @@ export const TransportDayAccordion = ({
                               .map(v => v.conducteurSoirId)
                               .filter(Boolean)
                           }
+                          affectationsJoursChef={affectationsJoursChef}
+                          chefId={chefId}
                         />
                       </div>
                     </>

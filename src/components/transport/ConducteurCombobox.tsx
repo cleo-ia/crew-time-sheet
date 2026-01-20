@@ -25,6 +25,8 @@ interface ConducteurComboboxProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   otherConducteursIds?: string[];
+  affectationsJoursChef?: Array<{ macon_id: string; jour: string; chef_id: string }>;
+  chefId?: string;
 }
 
 export const ConducteurCombobox = ({ 
@@ -33,21 +35,42 @@ export const ConducteurCombobox = ({
   value, 
   onChange, 
   disabled = false, 
-  otherConducteursIds = [] 
+  otherConducteursIds = [],
+  affectationsJoursChef,
+  chefId,
 }: ConducteurComboboxProps) => {
   const [open, setOpen] = useState(false);
 
   // Fonction helper pour détecter si un maçon est en trajet perso ce jour-là ou déjà affecté
   const getMaconStatus = (macon: MaconData) => {
-    if (!macon.ficheJours || macon.ficheJours.length === 0) return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false };
+    // Toujours autoriser le chef lui-même
+    if (chefId && macon.id === chefId) {
+      return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday: false };
+    }
+
+    // Vérifier si l'employé est affecté pour ce jour
+    const hasAffectationToday = affectationsJoursChef?.some(
+      aff => aff.macon_id === macon.id && aff.jour === date
+    ) ?? true;
+    
+    // Si affectationsJoursChef existe et non vide mais l'employé n'a pas ce jour → bloqué
+    const isNotAffectedToday = affectationsJoursChef && 
+      affectationsJoursChef.length > 0 && 
+      !hasAffectationToday;
+
+    if (!macon.ficheJours || macon.ficheJours.length === 0) {
+      return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday };
+    }
     
     const jourData = macon.ficheJours.find((j) => j.date === date);
-    if (!jourData) return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false };
+    if (!jourData) {
+      return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday };
+    }
     
     const isDejaAffecte = otherConducteursIds.includes(macon.id);
     const isAbsent = Number(jourData.heures || 0) === 0;
     
-    return { isTrajetPerso: jourData.trajet_perso || false, isDejaAffecte, isAbsent };
+    return { isTrajetPerso: jourData.trajet_perso || false, isDejaAffecte, isAbsent, isNotAffectedToday };
   };
 
   const selectedMacon = macons.find(macon => macon.id === value);
@@ -55,6 +78,7 @@ export const ConducteurCombobox = ({
   const isSelectedInTrajetPerso = selectedStatus.isTrajetPerso;
   const isSelectedDejaAffecte = selectedStatus.isDejaAffecte;
   const isSelectedAbsent = selectedStatus.isAbsent;
+  const isSelectedNotAffected = selectedStatus.isNotAffectedToday;
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -74,13 +98,16 @@ export const ConducteurCombobox = ({
                 <span className="text-xs text-muted-foreground">(Chef)</span>
               )}
               {isSelectedInTrajetPerso && (
-                <span className="text-xs text-amber-600 dark:text-amber-500">⚠️ Trajet perso</span>
+                <span className="text-xs text-warning">⚠️ Trajet perso</span>
               )}
               {isSelectedDejaAffecte && (
-                <span className="text-xs text-amber-600 dark:text-amber-500">⚠️ Déjà affecté</span>
+                <span className="text-xs text-warning">⚠️ Déjà affecté</span>
               )}
               {isSelectedAbsent && (
-                <span className="text-xs text-red-600 dark:text-red-500">⚠️ Absent</span>
+                <span className="text-xs text-destructive">⚠️ Absent</span>
+              )}
+              {isSelectedNotAffected && (
+                <span className="text-xs text-accent-foreground">⚠️ Non affecté ce jour</span>
               )}
             </span>
           ) : (
@@ -96,8 +123,8 @@ export const ConducteurCombobox = ({
             <CommandEmpty>Aucun conducteur trouvé.</CommandEmpty>
             <CommandGroup>
               {macons.map((macon) => {
-                const { isTrajetPerso, isDejaAffecte, isAbsent } = getMaconStatus(macon);
-                const isDisabled = isTrajetPerso || isDejaAffecte || isAbsent;
+                const { isTrajetPerso, isDejaAffecte, isAbsent, isNotAffectedToday } = getMaconStatus(macon);
+                const isDisabled = isTrajetPerso || isDejaAffecte || isAbsent || isNotAffectedToday;
                 
                 return (
                   <CommandItem
@@ -130,7 +157,10 @@ export const ConducteurCombobox = ({
                         <span className="text-xs text-muted-foreground">(Déjà affecté)</span>
                       )}
                       {isAbsent && (
-                        <span className="text-xs text-red-600">(Absent)</span>
+                        <span className="text-xs text-destructive">(Absent)</span>
+                      )}
+                      {isNotAffectedToday && (
+                        <span className="text-xs text-accent-foreground">(Non affecté ce jour)</span>
                       )}
                     </div>
                   </CommandItem>
