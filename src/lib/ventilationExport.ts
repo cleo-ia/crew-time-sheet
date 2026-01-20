@@ -394,7 +394,7 @@ export const exportVentilationCompletePdf = async (
   const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
   const margin = 10;
   const headerHeight = 32;
-  const footerReserved = 12;
+  const footerReserved = 20; // Augmenté pour éviter coupure bas de page
   const rowHeight = 6;
   const headerRowHeight = 7;
   const maxY = pageHeight - footerReserved;
@@ -613,7 +613,7 @@ export const exportVentilationCompletePdf = async (
   const totalPages = pdf.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     pdf.setPage(p);
-    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { fontSize: 8, align: "right" });
   }
 
   const fileName = `Ventilation-Analytique-${periode}.pdf`;
@@ -740,7 +740,7 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const headerHeight = 32;
   const rowHeight = 6;
   const headerRowHeight = 7;
-  const footerReserved = 12;
+  const footerReserved = 20; // Augmenté pour éviter coupure bas de page
   const maxY = pageHeight - footerReserved;
   const contentWidth = pageWidth - 2 * margin;
   
@@ -750,7 +750,6 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const dateStr = format(new Date(), "dd/MM/yyyy");
   
   let currentY = margin + headerHeight;
-  let pageNumber = 1;
 
   const drawText = (text: string, x: number, y: number, options?: { 
     bold?: boolean; 
@@ -801,7 +800,6 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const checkPageBreak = (requiredHeight: number = rowHeight) => {
     if (currentY + requiredHeight > maxY) {
       pdf.addPage();
-      pageNumber++;
       currentY = margin + headerHeight;
       drawPageHeader();
       drawHeaderRow();
@@ -813,10 +811,22 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   drawHeaderRow();
 
   // Données - Structure EXACTE conforme Excel:
+  // - En-tête vert répété AVANT chaque nouvel employé (comme l'original)
   // - Lignes données = jaune pâle (#FFFFD7) avec Nom, Prénom, Analytique, Type MO, Quantité, %
   // - Lignes TOTAL = blanc avec Nom/Prénom/Analytique vides, "TOTAL" dans Type MO
+  let previousEmployeeKey = "";
+  
   data.forEach((row) => {
     const isTotal = row.isTotal || false;
+    const currentEmployeeKey = `${row.nom}-${row.prenom}`;
+    const isNewEmployee = !isTotal && currentEmployeeKey !== previousEmployeeKey;
+    
+    // Répéter l'en-tête vert avant chaque nouvel employé (sauf le premier)
+    if (isNewEmployee && previousEmployeeKey !== "") {
+      checkPageBreak(headerRowHeight + rowHeight);
+      drawHeaderRow();
+    }
+    
     const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
     checkPageBreak(neededHeight);
     
@@ -842,6 +852,11 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
     });
     currentY += rowHeight;
     
+    // Mémoriser l'employé pour détecter le changement
+    if (!isTotal) {
+      previousEmployeeKey = currentEmployeeKey;
+    }
+    
     // Espacement visuel après chaque bloc employé (ligne TOTAL)
     if (isTotal) {
       currentY += 2;
@@ -849,20 +864,35 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   });
   
   // TOTAL ETABLISSEMENT et TOTAL SOCIETE (blanc)
-  currentY += 2;
+  // S'assurer qu'il y a assez d'espace pour les 2 lignes finales
+  currentY += 4;
+  checkPageBreak(rowHeight * 2 + 10);
+  
   const grandTotal = data.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
   
   [["TOTAL ETABLISSEMENT", grandTotal], ["TOTAL SOCIETE", grandTotal]].forEach(([label, total]) => {
-    checkPageBreak(rowHeight);
     let x = tableStartX;
-    const values = [label as string, "", "", "", formatNumberFR(total as number), ""];
-    values.forEach((val, i) => {
-      pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
-      pdf.setDrawColor(0, 0, 0);
-      pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
-      drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
-      x += colWidths[i];
-    });
+    // Fusion visuelle: dessiner cellules vides puis centrer le label sur les 4 premières colonnes
+    const mergedWidth = colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3];
+    
+    // Cellule fusionnée (blanc)
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.setDrawColor(0, 0, 0);
+    pdf.rect(x, currentY, mergedWidth, rowHeight, "FD");
+    drawText(label as string, x + mergedWidth / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    x += mergedWidth;
+    
+    // Colonne Quantité
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.rect(x, currentY, colWidths[4], rowHeight, "FD");
+    drawText(formatNumberFR(total as number), x + colWidths[4] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    x += colWidths[4];
+    
+    // Colonne Pourcentage (vide)
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.rect(x, currentY, colWidths[5], rowHeight, "FD");
+    drawText("", x + colWidths[5] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    
     currentY += rowHeight;
   });
   
@@ -870,7 +900,7 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const totalPages = pdf.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     pdf.setPage(p);
-    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { fontSize: 8, align: "right" });
   }
 
   const fileName = `Ventil-Ouvriers-${periode}.pdf`;
@@ -892,7 +922,7 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const headerHeight = 32;
   const rowHeight = 6;
   const headerRowHeight = 7;
-  const footerReserved = 12;
+  const footerReserved = 20; // Augmenté pour éviter coupure bas de page
   const maxY = pageHeight - footerReserved;
   const contentWidth = pageWidth - 2 * margin;
   
@@ -902,7 +932,6 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const dateStr = format(new Date(), "dd/MM/yyyy");
   
   let currentY = margin + headerHeight;
-  let pageNumber = 1;
 
   const drawText = (text: string, x: number, y: number, options?: { 
     bold?: boolean; 
@@ -953,7 +982,6 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const checkPageBreak = (requiredHeight: number = rowHeight) => {
     if (currentY + requiredHeight > maxY) {
       pdf.addPage();
-      pageNumber++;
       currentY = margin + headerHeight;
       drawPageHeader();
       drawHeaderRow();
@@ -964,10 +992,22 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   drawHeaderRow();
 
   // Données - Structure EXACTE conforme Excel:
+  // - En-tête vert répété AVANT chaque nouvel employé
   // - Lignes données = jaune pâle (#FFFFD7)
   // - Lignes TOTAL = blanc avec "TOTAL" dans colonne Analytique (index 3)
+  let previousEmployeeKey = "";
+  
   data.forEach((row) => {
     const isTotal = row.isTotal || false;
+    const currentEmployeeKey = `${row.nom}-${row.prenom}`;
+    const isNewEmployee = !isTotal && currentEmployeeKey !== previousEmployeeKey;
+    
+    // Répéter l'en-tête vert avant chaque nouvel employé (sauf le premier)
+    if (isNewEmployee && previousEmployeeKey !== "") {
+      checkPageBreak(headerRowHeight + rowHeight);
+      drawHeaderRow();
+    }
+    
     const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
     checkPageBreak(neededHeight);
     
@@ -992,6 +1032,11 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
     });
     currentY += rowHeight;
     
+    // Mémoriser l'employé pour détecter le changement
+    if (!isTotal) {
+      previousEmployeeKey = currentEmployeeKey;
+    }
+    
     // Espacement visuel après chaque bloc employé
     if (isTotal) {
       currentY += 2;
@@ -999,20 +1044,35 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   });
   
   // TOTAL ETABLISSEMENT et TOTAL SOCIETE (blanc)
-  currentY += 2;
+  // S'assurer qu'il y a assez d'espace pour les 2 lignes finales
+  currentY += 4;
+  checkPageBreak(rowHeight * 2 + 10);
+  
   const grandTotal = data.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
   
   [["TOTAL ETABLISSEMENT", grandTotal], ["TOTAL SOCIETE", grandTotal]].forEach(([label, total]) => {
-    checkPageBreak(rowHeight);
     let x = tableStartX;
-    const values = [label as string, "", "", "", formatNumberFR(total as number), ""];
-    values.forEach((val, i) => {
-      pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
-      pdf.setDrawColor(0, 0, 0);
-      pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
-      drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
-      x += colWidths[i];
-    });
+    // Fusion visuelle: dessiner cellules vides puis centrer le label sur les 4 premières colonnes
+    const mergedWidth = colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3];
+    
+    // Cellule fusionnée (blanc)
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.setDrawColor(0, 0, 0);
+    pdf.rect(x, currentY, mergedWidth, rowHeight, "FD");
+    drawText(label as string, x + mergedWidth / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    x += mergedWidth;
+    
+    // Colonne Quantité
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.rect(x, currentY, colWidths[4], rowHeight, "FD");
+    drawText(formatNumberFR(total as number), x + colWidths[4] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    x += colWidths[4];
+    
+    // Colonne Pourcentage (vide)
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+    pdf.rect(x, currentY, colWidths[5], rowHeight, "FD");
+    drawText("", x + colWidths[5] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
+    
     currentY += rowHeight;
   });
   
@@ -1020,7 +1080,7 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const totalPages = pdf.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     pdf.setPage(p);
-    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { fontSize: 8, align: "right" });
   }
 
   const fileName = `Ventil-Interim-${periode}.pdf`;
