@@ -16,32 +16,48 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Compter les demandes avant suppression
-    const { count: countBefore } = await supabase
-      .from("demandes_conges")
-      .select("*", { count: "exact", head: true });
-
-    // Supprimer toutes les demandes de congés
-    const { error } = await supabase
-      .from("demandes_conges")
-      .delete()
-      .gte("created_at", "1900-01-01");
-
-    if (error) {
-      throw error;
+    // Parse request body for optional IDs
+    let ids: string[] | null = null;
+    try {
+      const body = await req.json();
+      if (body.ids && Array.isArray(body.ids)) {
+        ids = body.ids;
+      }
+    } catch {
+      // No body or invalid JSON - delete all
     }
 
-    // Vérifier après suppression
-    const { count: countAfter } = await supabase
-      .from("demandes_conges")
-      .select("*", { count: "exact", head: true });
+    let deleted = 0;
+
+    if (ids && ids.length > 0) {
+      // Delete specific demandes by ID
+      const { error, count } = await supabase
+        .from("demandes_conges")
+        .delete({ count: "exact" })
+        .in("id", ids);
+
+      if (error) throw error;
+      deleted = count || 0;
+    } else {
+      // Delete all demandes (original behavior)
+      const { count: countBefore } = await supabase
+        .from("demandes_conges")
+        .select("*", { count: "exact", head: true });
+
+      const { error } = await supabase
+        .from("demandes_conges")
+        .delete()
+        .gte("created_at", "1900-01-01");
+
+      if (error) throw error;
+      deleted = countBefore || 0;
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${countBefore || 0} demandes de congés supprimées`,
-        deleted: countBefore || 0,
-        remaining: countAfter || 0,
+        message: `${deleted} demande(s) de congés supprimée(s)`,
+        deleted,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
