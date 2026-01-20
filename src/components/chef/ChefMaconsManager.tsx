@@ -113,9 +113,30 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
     return false;
   };
 
-  // Récupérer le statut d'un maçon basé sur les jours disponibles cette semaine
-  const getMaconStatus = (maconId: string): { type: "available" | "partial" | "unavailable"; label: string; availableDays?: string[] } => {
-    // Récupérer les jours déjà pris par un AUTRE chef cette semaine
+  // Récupérer le statut d'un maçon basé sur les affectations actives et les jours disponibles cette semaine
+  const getMaconStatus = (maconId: string): { 
+    type: "available" | "partial" | "unavailable" | "assigned"; 
+    label: string; 
+    availableDays?: string[];
+    assignedChantier?: string;
+  } => {
+    // 1. Vérifier si l'employé a une affectation ACTIVE sur un AUTRE chantier
+    const activeAffectationOnOtherSite = allAffectations?.find(
+      (aff: any) => 
+        aff.macon_id === maconId && 
+        aff.chantier_id !== chantierId && 
+        aff.date_fin === null
+    );
+    
+    if (activeAffectationOnOtherSite) {
+      return { 
+        type: "assigned", 
+        label: `Affecté à ${activeAffectationOnOtherSite.chantier_nom || "autre chantier"}`,
+        assignedChantier: activeAffectationOnOtherSite.chantier_nom || "autre chantier"
+      };
+    }
+    
+    // 2. Récupérer les jours déjà pris par un AUTRE chef cette semaine
     const daysTakenByOthers = allAffectationsJoursWeek?.filter(
       aff => aff.macon_id === maconId && aff.chef_id !== chefId
     ) || [];
@@ -207,6 +228,14 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
     // Vérifier les jours disponibles pour cet employé
     const status = getMaconStatus(maconId);
+    if (status.type === "assigned") {
+      toast({
+        title: "Employé déjà affecté",
+        description: `${maconPrenom} ${maconNom} est déjà affecté au chantier ${status.assignedChantier || "autre chantier"}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (status.type === "unavailable") {
       toast({
         title: "Employé indisponible",
@@ -645,14 +674,16 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                           const status = getMaconStatus(macon.id);
                           const isAdding = addingIds.has(macon.id);
 
+                          const isBlocked = status.type === "unavailable" || status.type === "assigned";
+                          
                           return (
                             <div 
                               key={macon.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && !isBlocked ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "unavailable") {
+                                if (!inTeam && !isAdding && !isBlocked) {
                                   handleAddMacon(macon.id, macon.nom || "", macon.prenom || "", "macon");
                                 }
                               }}
@@ -680,6 +711,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                         ? "bg-success/10 text-success border-success/20" 
                                         : status.type === "partial"
                                         ? "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "assigned"
+                                        ? "bg-accent text-accent-foreground border-accent"
                                         : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
@@ -689,7 +722,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "unavailable"}
+                                  disabled={inTeam || isAdding || isBlocked}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -698,6 +731,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? `Affecté au chantier ${status.assignedChantier}`
                                       : status.type === "unavailable"
                                       ? "Indisponible cette semaine"
                                       : status.type === "partial"
@@ -746,15 +781,16 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                           const inTeam = isMaconInTeam(grutier.id);
                           const status = getMaconStatus(grutier.id);
                           const isAdding = addingIds.has(grutier.id);
+                          const isBlocked = status.type === "unavailable" || status.type === "assigned";
 
                           return (
                             <div 
                               key={grutier.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && !isBlocked ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "unavailable") {
+                                if (!inTeam && !isAdding && !isBlocked) {
                                   handleAddMacon(grutier.id, grutier.nom || "", grutier.prenom || "", "grutier");
                                 }
                               }}
@@ -782,6 +818,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                         ? "bg-success/10 text-success border-success/20" 
                                         : status.type === "partial"
                                         ? "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "assigned"
+                                        ? "bg-accent text-accent-foreground border-accent"
                                         : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
@@ -791,7 +829,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "unavailable"}
+                                  disabled={inTeam || isAdding || isBlocked}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -800,6 +838,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? `Affecté au chantier ${status.assignedChantier}`
                                       : status.type === "unavailable"
                                       ? "Indisponible cette semaine"
                                       : status.type === "partial"
@@ -861,15 +901,16 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                           const inTeam = isMaconInTeam(interimaire.id);
                           const status = getMaconStatus(interimaire.id);
                           const isAdding = addingIds.has(interimaire.id);
+                          const isBlocked = status.type === "unavailable" || status.type === "assigned";
 
                           return (
                             <div 
                               key={interimaire.id}
                               className={`flex items-center justify-between gap-2 p-3 border border-border rounded-lg transition-colors ${
-                                !inTeam && !isAdding && status.type !== "unavailable" ? "hover:bg-muted/50 cursor-pointer" : ""
+                                !inTeam && !isAdding && !isBlocked ? "hover:bg-muted/50 cursor-pointer" : ""
                               }`}
                               onClick={() => {
-                                if (!inTeam && !isAdding && status.type !== "unavailable") {
+                                if (!inTeam && !isAdding && !isBlocked) {
                                   handleAddMacon(interimaire.id, interimaire.nom || "", interimaire.prenom || "", "interimaire");
                                 }
                               }}
@@ -897,6 +938,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                         ? "bg-success/10 text-success border-success/20" 
                                         : status.type === "partial"
                                         ? "bg-warning/10 text-warning border-warning/20"
+                                        : status.type === "assigned"
+                                        ? "bg-accent text-accent-foreground border-accent"
                                         : "bg-muted text-muted-foreground border-muted"
                                     }`}
                                   >
@@ -906,7 +949,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
 
                                 <Button
                                   size="sm"
-                                  disabled={inTeam || isAdding || status.type === "unavailable"}
+                                  disabled={inTeam || isAdding || isBlocked}
                                   className="whitespace-nowrap"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -915,6 +958,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                   title={
                                     inTeam 
                                       ? "Déjà dans votre équipe" 
+                                      : status.type === "assigned"
+                                      ? `Affecté au chantier ${status.assignedChantier}`
                                       : status.type === "unavailable"
                                       ? "Indisponible cette semaine"
                                       : status.type === "partial"
@@ -972,8 +1017,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                             ? { type: "managed-conducteur" as const, label: "Géré par conducteur" }
                             : status;
                           
-                          // Bloquer si géré par conducteur ou indisponible
-                          const isBlocked = inTeam || isAdding || status.type === "unavailable" || isManagedByConducteur;
+                          // Bloquer si géré par conducteur, indisponible ou affecté ailleurs
+                          const isBlocked = inTeam || isAdding || status.type === "unavailable" || status.type === "assigned" || isManagedByConducteur;
 
                           return (
                             <div 
@@ -1010,6 +1055,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                         ? "bg-success/10 text-success border-success/20" 
                                         : displayStatus.type === "managed-conducteur"
                                         ? "bg-accent/50 text-accent-foreground border-accent"
+                                        : displayStatus.type === "assigned"
+                                        ? "bg-accent text-accent-foreground border-accent"
                                         : displayStatus.type === "partial"
                                         ? "bg-warning/10 text-warning border-warning/20"
                                         : "bg-muted text-muted-foreground border-muted"
@@ -1032,6 +1079,8 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
                                       ? "Déjà dans votre équipe" 
                                       : isManagedByConducteur
                                       ? "Ce finisseur est géré par un conducteur cette semaine"
+                                      : status.type === "assigned"
+                                      ? `Affecté au chantier ${status.assignedChantier}`
                                       : status.type === "unavailable"
                                       ? "Indisponible cette semaine"
                                       : status.type === "partial"
