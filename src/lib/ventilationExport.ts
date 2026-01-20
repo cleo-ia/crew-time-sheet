@@ -334,13 +334,17 @@ export const exportVentilationCompleteExcel = async (
 
 // ============= PDF EXPORT =============
 
-// Nouvelles couleurs conformes aux tableaux Excel de référence
+// Couleurs conformes aux tableaux Excel de référence
 const COLORS = {
-  green: { r: 0, g: 128, b: 0 },           // #008000 - En-têtes colonnes (vert vif)
-  yellow: { r: 255, g: 255, b: 0 },         // #FFFF00 - Lignes TOTAL (jaune)
-  white: { r: 255, g: 255, b: 255 },
+  green: { r: 0, g: 128, b: 0 },             // #008000 - En-têtes colonnes (vert vif)
+  yellowPale: { r: 255, g: 255, b: 215 },    // #FFFFD7 - Lignes DONNÉES (jaune pâle)
+  white: { r: 255, g: 255, b: 255 },         // Lignes TOTAL (blanc)
   black: { r: 0, g: 0, b: 0 },
 };
+
+// Helper pour formater les nombres au format FR (virgule décimale)
+const formatNumberFR = (n: number): string => n.toFixed(2).replace(".", ",");
+const formatPercentFR = (n: number): string => `${n.toFixed(2).replace(".", ",")} %`;
 
 const getEntrepriseName = (): string => {
   const slug = localStorage.getItem("entreprise_slug");
@@ -373,7 +377,7 @@ const getPeriodeDates = (periode: string): { debut: string; fin: string } => {
   };
 };
 
-// Export complet PDF (3 sections) - Nouveau design conforme Excel
+// Export complet PDF (3 sections) - Portrait A4 avec pagination robuste
 export const exportVentilationCompletePdf = async (
   recap: RecapChantierRow[],
   ouvrier: VentilationEmployeeRow[],
@@ -381,27 +385,28 @@ export const exportVentilationCompletePdf = async (
   periode: string
 ): Promise<string> => {
   const pdf = new jsPDF({
-    orientation: "landscape",
+    orientation: "portrait",
     unit: "mm",
     format: "a4",
   });
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+  const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+  const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
   const margin = 10;
-  const headerHeight = 30;
-  const footerHeight = 10;
+  const headerHeight = 32;
+  const footerReserved = 12;
+  const rowHeight = 6;
+  const headerRowHeight = 7;
+  const maxY = pageHeight - footerReserved;
   const contentWidth = pageWidth - 2 * margin;
   
   const entrepriseName = getEntrepriseName();
   const location = getEntrepriseLocation();
   const periodeDates = getPeriodeDates(periode);
-  const generationDate = new Date();
-  const dateStr = format(generationDate, "dd/MM/yyyy");
+  const dateStr = format(new Date(), "dd/MM/yyyy");
   
   let currentY = margin + headerHeight;
-  let pageNumber = 1;
-  const totalPages = 3;
+  let currentTitle = "";
 
   const drawText = (text: string, x: number, y: number, options?: { 
     bold?: boolean; 
@@ -424,78 +429,81 @@ export const exportVentilationCompletePdf = async (
   };
 
   const drawPageHeader = (title: string) => {
-    // Nom entreprise à gauche
+    currentTitle = title;
     drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
-    
-    // Lieu et date à droite
     drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
-    
-    // Titre centré
-    drawText(title, pageWidth / 2, 20, { bold: true, fontSize: 12, align: "center" });
-    
-    // Sous-titre période
-    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 27, { fontSize: 10, align: "center" });
-  };
-
-  const drawPageFooter = () => {
-    drawText(`Page ${pageNumber} de ${totalPages}`, pageWidth / 2, pageHeight - 5, { fontSize: 8, align: "center" });
+    drawText(title, pageWidth / 2, 22, { bold: true, fontSize: 12, align: "center" });
+    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 29, { fontSize: 10, align: "center" });
   };
 
   const drawTableHeaderRow = (headers: string[], colWidths: number[], startX: number) => {
     let x = startX;
-    const rowHeight = 7;
-    
     headers.forEach((header, i) => {
       pdf.setFillColor(COLORS.green.r, COLORS.green.g, COLORS.green.b);
       pdf.setDrawColor(0, 0, 0);
-      pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
-      drawText(header, x + colWidths[i] / 2, currentY + 5, { bold: true, align: "center", fontSize: 8 });
+      pdf.rect(x, currentY, colWidths[i], headerRowHeight, "FD");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(header, x + colWidths[i] / 2, currentY + 5, { align: "center" });
       x += colWidths[i];
     });
-    
-    currentY += rowHeight;
+    pdf.setTextColor(0, 0, 0);
+    currentY += headerRowHeight;
   };
 
   const drawTableDataRow = (values: string[], colWidths: number[], startX: number, isTotal: boolean) => {
     let x = startX;
-    const rowHeight = 6;
-    
     values.forEach((val, i) => {
+      // Conforme Excel : données = jaune pâle, TOTAL = blanc
       if (isTotal) {
-        pdf.setFillColor(COLORS.yellow.r, COLORS.yellow.g, COLORS.yellow.b);
-      } else {
         pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
+      } else {
+        pdf.setFillColor(COLORS.yellowPale.r, COLORS.yellowPale.g, COLORS.yellowPale.b);
       }
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
       drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: isTotal, align: "center", fontSize: 8 });
       x += colWidths[i];
     });
-    
     currentY += rowHeight;
   };
 
   // ===== SECTION 1: Récap Chantier =====
   drawPageHeader("RECAP HEURES par Chantier par type main d'oeuvre");
   
-  const colWidths1 = [35, 100, 30, 30, 30, 30];
+  const colWidths1 = [30, 75, 22, 22, 22, 22]; // Total ~193mm pour portrait
   const headers1 = ["Code", "Libelle", "INTERIM", "MO", "MOAPP", "TOTAL"];
-  const tableStartX = margin + (contentWidth - colWidths1.reduce((a, b) => a + b, 0)) / 2;
+  const tableStartX1 = margin + (contentWidth - colWidths1.reduce((a, b) => a + b, 0)) / 2;
   
-  drawTableHeaderRow(headers1, colWidths1, tableStartX);
+  let currentHeaders1 = headers1;
+  let currentColWidths1 = colWidths1;
+  let currentStartX1 = tableStartX1;
+  
+  const checkPageBreak1 = () => {
+    if (currentY + rowHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeight;
+      drawPageHeader(currentTitle);
+      drawTableHeaderRow(currentHeaders1, currentColWidths1, currentStartX1);
+    }
+  };
+  
+  drawTableHeaderRow(headers1, colWidths1, tableStartX1);
   
   let totalInterim = 0, totalMO = 0, totalMOAPP = 0, grandTotal = 0;
   
   recap.forEach((row) => {
+    checkPageBreak1();
     const values = [
       row.codeAnalytique,
       row.libelle,
-      row.heuresInterim.toFixed(2),
-      row.heuresMO.toFixed(2),
-      row.heuresMOAPP.toFixed(2),
-      row.total.toFixed(2)
+      formatNumberFR(row.heuresInterim),
+      formatNumberFR(row.heuresMO),
+      formatNumberFR(row.heuresMOAPP),
+      formatNumberFR(row.total)
     ];
-    drawTableDataRow(values, colWidths1, tableStartX, false);
+    drawTableDataRow(values, colWidths1, tableStartX1, false);
     
     totalInterim += row.heuresInterim;
     totalMO += row.heuresMO;
@@ -503,50 +511,66 @@ export const exportVentilationCompletePdf = async (
     grandTotal += row.total;
   });
   
-  // Ligne TOTAL
-  const totalValues1 = ["TOTAL", "", totalInterim.toFixed(2), totalMO.toFixed(2), totalMOAPP.toFixed(2), grandTotal.toFixed(2)];
-  drawTableDataRow(totalValues1, colWidths1, tableStartX, true);
-  
-  drawPageFooter();
+  checkPageBreak1();
+  const totalValues1 = ["TOTAL", "", formatNumberFR(totalInterim), formatNumberFR(totalMO), formatNumberFR(totalMOAPP), formatNumberFR(grandTotal)];
+  drawTableDataRow(totalValues1, colWidths1, tableStartX1, true);
 
   // ===== SECTION 2: Ventilation Ouvriers =====
   pdf.addPage();
-  pageNumber = 2;
   currentY = margin + headerHeight;
   
   drawPageHeader("VENTILATION ANALYTIQUE % par Ouvrier");
   
-  const colWidths2 = [45, 45, 55, 30, 30, 30];
+  const colWidths2 = [35, 35, 50, 22, 24, 24]; // 190mm pour portrait
   const headers2 = ["Nom salarie", "Prenom salarie", "Analytique", "Type MO", "Quantite", "Pourcentage"];
   const tableStartX2 = margin + (contentWidth - colWidths2.reduce((a, b) => a + b, 0)) / 2;
   
+  currentHeaders1 = headers2;
+  currentColWidths1 = colWidths2;
+  currentStartX1 = tableStartX2;
+  
   drawTableHeaderRow(headers2, colWidths2, tableStartX2);
   
-  // Données sans répétition d'en-têtes
   ouvrier.forEach((row) => {
     const isTotal = row.isTotal || false;
+    const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
+    if (currentY + neededHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeight;
+      drawPageHeader(currentTitle);
+      drawTableHeaderRow(headers2, colWidths2, tableStartX2);
+    }
+    
+    // Conforme Excel : TOTAL = blanc avec "TOTAL" dans Type MO
     const values = isTotal
-      ? [row.nom, row.prenom, "TOTAL", "", row.quantite.toFixed(2), "100,00 %"]
-      : [row.nom, row.prenom, row.codeAnalytique, row.typeMO, row.quantite.toFixed(2), `${row.pourcentage.toFixed(2)} %`];
+      ? ["", "", "", "TOTAL", formatNumberFR(row.quantite), "100,00 %"]
+      : [row.nom, row.prenom, row.codeAnalytique, row.typeMO, formatNumberFR(row.quantite), formatPercentFR(row.pourcentage)];
     drawTableDataRow(values, colWidths2, tableStartX2, isTotal);
+    
+    if (isTotal) currentY += 2;
   });
   
   // TOTAL ETABLISSEMENT et TOTAL SOCIETE
-  currentY += 4;
+  currentY += 2;
   const grandTotalOuvrier = ouvrier.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
-  drawTableDataRow(["TOTAL ETABLISSEMENT", "", "", "", grandTotalOuvrier.toFixed(2), "100,00 %"], colWidths2, tableStartX2, true);
-  drawTableDataRow(["TOTAL SOCIETE", "", "", "", grandTotalOuvrier.toFixed(2), "100,00 %"], colWidths2, tableStartX2, true);
   
-  drawPageFooter();
+  [["TOTAL ETABLISSEMENT", grandTotalOuvrier], ["TOTAL SOCIETE", grandTotalOuvrier]].forEach(([label, total]) => {
+    if (currentY + rowHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeight;
+      drawPageHeader(currentTitle);
+      drawTableHeaderRow(headers2, colWidths2, tableStartX2);
+    }
+    drawTableDataRow([label as string, "", "", "", formatNumberFR(total as number), ""], colWidths2, tableStartX2, true);
+  });
 
   // ===== SECTION 3: Ventilation Intérim =====
   pdf.addPage();
-  pageNumber = 3;
   currentY = margin + headerHeight;
   
   drawPageHeader("VENTILATION ANALYTIQUE % par Interimaire");
   
-  const colWidths3 = [40, 40, 45, 55, 30, 30];
+  const colWidths3 = [30, 30, 40, 45, 22, 23]; // 190mm pour portrait
   const headers3 = ["Nom salarie", "Prenom salarie", "Agence", "Analytique", "Quantite", "Pourcentage"];
   const tableStartX3 = margin + (contentWidth - colWidths3.reduce((a, b) => a + b, 0)) / 2;
   
@@ -554,21 +578,44 @@ export const exportVentilationCompletePdf = async (
   
   interim.forEach((row) => {
     const isTotal = row.isTotal || false;
+    const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
+    if (currentY + neededHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeight;
+      drawPageHeader(currentTitle);
+      drawTableHeaderRow(headers3, colWidths3, tableStartX3);
+    }
+    
+    // Conforme Excel : TOTAL = blanc avec "TOTAL" dans Analytique
     const values = isTotal
-      ? [row.nom, row.prenom, row.agenceInterim || "", "TOTAL", row.quantite.toFixed(2), "100,00 %"]
-      : [row.nom, row.prenom, row.agenceInterim || "", row.codeAnalytique, row.quantite.toFixed(2), `${row.pourcentage.toFixed(2)} %`];
+      ? ["", "", "", "TOTAL", formatNumberFR(row.quantite), "100,00 %"]
+      : [row.nom, row.prenom, row.agenceInterim || "", row.codeAnalytique, formatNumberFR(row.quantite), formatPercentFR(row.pourcentage)];
     drawTableDataRow(values, colWidths3, tableStartX3, isTotal);
+    
+    if (isTotal) currentY += 2;
   });
   
   // TOTAL ETABLISSEMENT et TOTAL SOCIETE
-  currentY += 4;
+  currentY += 2;
   const grandTotalInterim = interim.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
-  drawTableDataRow(["TOTAL ETABLISSEMENT", "", "", "", grandTotalInterim.toFixed(2), "100,00 %"], colWidths3, tableStartX3, true);
-  drawTableDataRow(["TOTAL SOCIETE", "", "", "", grandTotalInterim.toFixed(2), "100,00 %"], colWidths3, tableStartX3, true);
   
-  drawPageFooter();
+  [["TOTAL ETABLISSEMENT", grandTotalInterim], ["TOTAL SOCIETE", grandTotalInterim]].forEach(([label, total]) => {
+    if (currentY + rowHeight > maxY) {
+      pdf.addPage();
+      currentY = margin + headerHeight;
+      drawPageHeader(currentTitle);
+      drawTableHeaderRow(headers3, colWidths3, tableStartX3);
+    }
+    drawTableDataRow([label as string, "", "", "", formatNumberFR(total as number), ""], colWidths3, tableStartX3, true);
+  });
+  
+  // Pagination 2-pass : dessiner les footers sur toutes les pages
+  const totalPages = pdf.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+  }
 
-  // Générer le fichier
   const fileName = `Ventilation-Analytique-${periode}.pdf`;
   pdf.save(fileName);
   
@@ -660,11 +707,11 @@ export const exportRecapChantierPdf = async (data: RecapChantierRow[], periode: 
     grandTotal += row.total;
   });
   
-  // Ligne TOTAL (jaune)
+  // Ligne TOTAL (blanc, conforme Excel)
   x = tableStartX;
-  const totalValues = ["TOTAL", "", totalInterim.toFixed(2), totalMO.toFixed(2), totalMOAPP.toFixed(2), grandTotal.toFixed(2)];
+  const totalValues = ["TOTAL", "", formatNumberFR(totalInterim), formatNumberFR(totalMO), formatNumberFR(totalMOAPP), formatNumberFR(grandTotal)];
   totalValues.forEach((val, i) => {
-    pdf.setFillColor(COLORS.yellow.r, COLORS.yellow.g, COLORS.yellow.b);
+    pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
     pdf.setDrawColor(0, 0, 0);
     pdf.rect(x, currentY, colWidths[i], 6, "FD");
     drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
@@ -690,29 +737,17 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm en portrait
   const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm en portrait
   const margin = 10;
-  const headerHeight = 30;
+  const headerHeight = 32;
   const rowHeight = 6;
   const headerRowHeight = 7;
-  const maxY = pageHeight - 15;
+  const footerReserved = 12;
+  const maxY = pageHeight - footerReserved;
   const contentWidth = pageWidth - 2 * margin;
   
   const entrepriseName = getEntrepriseName();
   const location = getEntrepriseLocation();
   const periodeDates = getPeriodeDates(periode);
-  const generationDate = new Date();
-  const dateStr = format(generationDate, "dd/MM/yyyy");
-  
-  // Couleurs conformes Excel
-  const yellowPale = { r: 255, g: 255, b: 215 }; // #FFFFD7 - lignes données
-  const yellowBright = { r: 255, g: 255, b: 0 };  // #FFFF00 - lignes TOTAL
-  
-  // Calculer espacement entre employés pour le total de pages
-  let extraSpacing = 0;
-  data.forEach(row => { if (row.isTotal) extraSpacing += 2; });
-  
-  const rowsPerPage = Math.floor((maxY - margin - headerHeight - headerRowHeight) / rowHeight);
-  const totalDataRows = data.length + 2 + Math.ceil(extraSpacing / rowHeight); // +2 pour TOTAL ETABLISSEMENT/SOCIETE
-  const totalPages = Math.max(1, Math.ceil(totalDataRows / rowsPerPage));
+  const dateStr = format(new Date(), "dd/MM/yyyy");
   
   let currentY = margin + headerHeight;
   let pageNumber = 1;
@@ -738,13 +773,8 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   const drawPageHeader = () => {
     drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
     drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
-    drawText("VENTILATION ANALYTIQUE % par Ouvrier", pageWidth / 2, 20, { bold: true, fontSize: 12, align: "center" });
-    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 27, { fontSize: 10, align: "center" });
-  };
-
-  const drawPageFooter = () => {
-    // Pagination à droite
-    drawText(`Page ${pageNumber} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+    drawText("VENTILATION ANALYTIQUE % par Ouvrier", pageWidth / 2, 22, { bold: true, fontSize: 12, align: "center" });
+    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 29, { fontSize: 10, align: "center" });
   };
 
   // Colonnes ajustées pour portrait A4 (largeur 210mm - 20mm marges = 190mm)
@@ -758,15 +788,18 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
       pdf.setFillColor(COLORS.green.r, COLORS.green.g, COLORS.green.b);
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], headerRowHeight, "FD");
-      drawText(header, x + colWidths[i] / 2, currentY + 5, { bold: true, align: "center", fontSize: 8 });
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(header, x + colWidths[i] / 2, currentY + 5, { align: "center" });
       x += colWidths[i];
     });
+    pdf.setTextColor(0, 0, 0);
     currentY += headerRowHeight;
   };
 
-  const checkPageBreak = () => {
-    if (currentY + rowHeight > maxY) {
-      drawPageFooter();
+  const checkPageBreak = (requiredHeight: number = rowHeight) => {
+    if (currentY + requiredHeight > maxY) {
       pdf.addPage();
       pageNumber++;
       currentY = margin + headerHeight;
@@ -779,24 +812,28 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
   drawPageHeader();
   drawHeaderRow();
 
-  // Données - Structure conforme Excel
+  // Données - Structure EXACTE conforme Excel:
+  // - Lignes données = jaune pâle (#FFFFD7) avec Nom, Prénom, Analytique, Type MO, Quantité, %
+  // - Lignes TOTAL = blanc avec Nom/Prénom/Analytique vides, "TOTAL" dans Type MO
   data.forEach((row) => {
-    checkPageBreak();
+    const isTotal = row.isTotal || false;
+    const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
+    checkPageBreak(neededHeight);
     
     let x = tableStartX;
-    const isTotal = row.isTotal || false;
     
-    // Pour les lignes TOTAL: afficher "TOTAL" dans la colonne Analytique, Type MO vide
+    // Conforme Excel : TOTAL = blanc avec "TOTAL" dans colonne Type MO (index 3)
+    // Données = jaune pâle avec toutes les infos
     const values = isTotal
-      ? [row.nom, row.prenom, "TOTAL", "", row.quantite.toFixed(2), "100,00 %"]
-      : [row.nom, row.prenom, row.codeAnalytique, row.typeMO, row.quantite.toFixed(2), `${row.pourcentage.toFixed(2)} %`];
+      ? ["", "", "", "TOTAL", formatNumberFR(row.quantite), "100,00 %"]
+      : [row.nom, row.prenom, row.codeAnalytique, row.typeMO, formatNumberFR(row.quantite), formatPercentFR(row.pourcentage)];
     
     values.forEach((val, i) => {
-      // Jaune vif pour TOTAL, jaune pâle pour données normales
+      // Conforme Excel : données = jaune pâle, TOTAL = blanc
       if (isTotal) {
-        pdf.setFillColor(yellowBright.r, yellowBright.g, yellowBright.b);
+        pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
       } else {
-        pdf.setFillColor(yellowPale.r, yellowPale.g, yellowPale.b);
+        pdf.setFillColor(COLORS.yellowPale.r, COLORS.yellowPale.g, COLORS.yellowPale.b);
       }
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
@@ -811,16 +848,16 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
     }
   });
   
-  // TOTAL ETABLISSEMENT et TOTAL SOCIETE
+  // TOTAL ETABLISSEMENT et TOTAL SOCIETE (blanc)
   currentY += 2;
   const grandTotal = data.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
   
   [["TOTAL ETABLISSEMENT", grandTotal], ["TOTAL SOCIETE", grandTotal]].forEach(([label, total]) => {
-    checkPageBreak();
+    checkPageBreak(rowHeight);
     let x = tableStartX;
-    const values = [label as string, "", "", "", (total as number).toFixed(2), "100,00 %"];
+    const values = [label as string, "", "", "", formatNumberFR(total as number), ""];
     values.forEach((val, i) => {
-      pdf.setFillColor(yellowBright.r, yellowBright.g, yellowBright.b);
+      pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
       drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
@@ -829,7 +866,12 @@ export const exportVentilationOuvrierPdf = async (data: VentilationEmployeeRow[]
     currentY += rowHeight;
   });
   
-  drawPageFooter();
+  // Pagination 2-pass : dessiner les footers sur toutes les pages
+  const totalPages = pdf.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+  }
 
   const fileName = `Ventil-Ouvriers-${periode}.pdf`;
   pdf.save(fileName);
@@ -847,29 +889,17 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 10;
-  const headerHeight = 30;
+  const headerHeight = 32;
   const rowHeight = 6;
   const headerRowHeight = 7;
-  const maxY = pageHeight - 15;
+  const footerReserved = 12;
+  const maxY = pageHeight - footerReserved;
   const contentWidth = pageWidth - 2 * margin;
   
   const entrepriseName = getEntrepriseName();
   const location = getEntrepriseLocation();
   const periodeDates = getPeriodeDates(periode);
-  const generationDate = new Date();
-  const dateStr = format(generationDate, "dd/MM/yyyy");
-  
-  // Couleurs conformes Excel
-  const yellowPale = { r: 255, g: 255, b: 215 }; // #FFFFD7 - lignes données
-  const yellowBright = { r: 255, g: 255, b: 0 };  // #FFFF00 - lignes TOTAL
-  
-  // Calculer espacement entre employés pour le total de pages
-  let extraSpacing = 0;
-  data.forEach(row => { if (row.isTotal) extraSpacing += 2; });
-  
-  const rowsPerPage = Math.floor((maxY - margin - headerHeight - headerRowHeight) / rowHeight);
-  const totalDataRows = data.length + 2 + Math.ceil(extraSpacing / rowHeight);
-  const totalPages = Math.max(1, Math.ceil(totalDataRows / rowsPerPage));
+  const dateStr = format(new Date(), "dd/MM/yyyy");
   
   let currentY = margin + headerHeight;
   let pageNumber = 1;
@@ -895,13 +925,8 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   const drawPageHeader = () => {
     drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
     drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
-    drawText("VENTILATION ANALYTIQUE % par Interimaire", pageWidth / 2, 20, { bold: true, fontSize: 12, align: "center" });
-    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 27, { fontSize: 10, align: "center" });
-  };
-
-  const drawPageFooter = () => {
-    // Pagination à droite
-    drawText(`Page ${pageNumber} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+    drawText("VENTILATION ANALYTIQUE % par Interimaire", pageWidth / 2, 22, { bold: true, fontSize: 12, align: "center" });
+    drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 29, { fontSize: 10, align: "center" });
   };
 
   // Colonnes ajustées pour portrait A4 (190mm disponible)
@@ -915,15 +940,18 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
       pdf.setFillColor(COLORS.green.r, COLORS.green.g, COLORS.green.b);
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], headerRowHeight, "FD");
-      drawText(header, x + colWidths[i] / 2, currentY + 5, { bold: true, align: "center", fontSize: 8 });
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(header, x + colWidths[i] / 2, currentY + 5, { align: "center" });
       x += colWidths[i];
     });
+    pdf.setTextColor(0, 0, 0);
     currentY += headerRowHeight;
   };
 
-  const checkPageBreak = () => {
-    if (currentY + rowHeight > maxY) {
-      drawPageFooter();
+  const checkPageBreak = (requiredHeight: number = rowHeight) => {
+    if (currentY + requiredHeight > maxY) {
       pdf.addPage();
       pageNumber++;
       currentY = margin + headerHeight;
@@ -935,22 +963,27 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   drawPageHeader();
   drawHeaderRow();
 
+  // Données - Structure EXACTE conforme Excel:
+  // - Lignes données = jaune pâle (#FFFFD7)
+  // - Lignes TOTAL = blanc avec "TOTAL" dans colonne Analytique (index 3)
   data.forEach((row) => {
-    checkPageBreak();
+    const isTotal = row.isTotal || false;
+    const neededHeight = isTotal ? rowHeight + 2 : rowHeight;
+    checkPageBreak(neededHeight);
     
     let x = tableStartX;
-    const isTotal = row.isTotal || false;
     
+    // Conforme Excel : TOTAL = blanc avec "TOTAL" dans colonne Analytique
     const values = isTotal
-      ? [row.nom, row.prenom, row.agenceInterim || "", "TOTAL", row.quantite.toFixed(2), "100,00 %"]
-      : [row.nom, row.prenom, row.agenceInterim || "", row.codeAnalytique, row.quantite.toFixed(2), `${row.pourcentage.toFixed(2)} %`];
+      ? ["", "", "", "TOTAL", formatNumberFR(row.quantite), "100,00 %"]
+      : [row.nom, row.prenom, row.agenceInterim || "", row.codeAnalytique, formatNumberFR(row.quantite), formatPercentFR(row.pourcentage)];
     
     values.forEach((val, i) => {
-      // Jaune vif pour TOTAL, jaune pâle pour données normales
+      // Conforme Excel : données = jaune pâle, TOTAL = blanc
       if (isTotal) {
-        pdf.setFillColor(yellowBright.r, yellowBright.g, yellowBright.b);
+        pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
       } else {
-        pdf.setFillColor(yellowPale.r, yellowPale.g, yellowPale.b);
+        pdf.setFillColor(COLORS.yellowPale.r, COLORS.yellowPale.g, COLORS.yellowPale.b);
       }
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
@@ -965,15 +998,16 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
     }
   });
   
+  // TOTAL ETABLISSEMENT et TOTAL SOCIETE (blanc)
   currentY += 2;
   const grandTotal = data.filter(r => r.isTotal).reduce((sum, r) => sum + r.quantite, 0);
   
   [["TOTAL ETABLISSEMENT", grandTotal], ["TOTAL SOCIETE", grandTotal]].forEach(([label, total]) => {
-    checkPageBreak();
+    checkPageBreak(rowHeight);
     let x = tableStartX;
-    const values = [label as string, "", "", "", (total as number).toFixed(2), "100,00 %"];
+    const values = [label as string, "", "", "", formatNumberFR(total as number), ""];
     values.forEach((val, i) => {
-      pdf.setFillColor(yellowBright.r, yellowBright.g, yellowBright.b);
+      pdf.setFillColor(COLORS.white.r, COLORS.white.g, COLORS.white.b);
       pdf.setDrawColor(0, 0, 0);
       pdf.rect(x, currentY, colWidths[i], rowHeight, "FD");
       drawText(val, x + colWidths[i] / 2, currentY + 4.2, { bold: true, align: "center", fontSize: 8 });
@@ -982,7 +1016,12 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
     currentY += rowHeight;
   });
   
-  drawPageFooter();
+  // Pagination 2-pass : dessiner les footers sur toutes les pages
+  const totalPages = pdf.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+    drawText(`Page ${p} de ${totalPages}`, pageWidth - margin, pageHeight - 5, { fontSize: 8, align: "right" });
+  }
 
   const fileName = `Ventil-Interim-${periode}.pdf`;
   pdf.save(fileName);
