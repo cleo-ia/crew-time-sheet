@@ -1285,7 +1285,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                         const dateISO = format(addDays(monday, dayIndex), "yyyy-MM-dd");
                         
                         // Vérifier si ce jour est affecté par un autre conducteur
-                        const isDayBlocked = isDayAffectedByOtherConducteur(entry.employeeId, dateISO);
+                        const isBlockedByConducteur = isDayAffectedByOtherConducteur(entry.employeeId, dateISO);
+                        
+                        // Vérifier si ce jour est autorisé pour ce chef (mode chef uniquement)
+                        const isBlockedByChefAffectation = !isConducteurMode && mode !== "edit" && !isDayAuthorizedForEmployee(entry.employeeId, day);
+                        
+                        const isDayBlocked = isBlockedByConducteur || isBlockedByChefAffectation;
                         
                         return (
                       <div
@@ -1302,7 +1307,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                             <span className="font-medium text-sm">{day}</span>
                             {isDayBlocked && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">
-                                🔒 Autre conducteur
+                                {isBlockedByConducteur ? "🔒 Autre conducteur" : "🔒 Jour non affecté"}
                               </span>
                             )}
                           </div>
