@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { useMaconsByChantier, type MaconWithFiche } from "@/hooks/useMaconsByCha
 import { useSaveSignature } from "@/hooks/useSaveSignature";
 import { useUpdateFicheStatus } from "@/hooks/useFiches";
 import { useTransportByChantier } from "@/hooks/useTransportByChantier";
+import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -30,12 +31,52 @@ const SignatureMacons = () => {
 
   const { data: maconsData, isLoading } = useMaconsByChantier(chantierId || "", semaine || "", chefId || undefined);
   const { data: transportData } = useTransportByChantier(chantierId, semaine);
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(chefId || null, semaine || "");
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
   const initializeNextWeek = useInitializeNextWeekFromPrevious();
 
   const [macons, setMacons] = useState<MaconWithFiche[]>([]);
   const [selectedMacon, setSelectedMacon] = useState<MaconWithFiche | null>(null);
+
+  // Fonction pour filtrer les données d'un maçon selon ses jours affectés
+  const getFilteredMaconData = useMemo(() => {
+    return (macon: MaconWithFiche): MaconWithFiche => {
+      // Le chef n'est jamais filtré
+      if (macon.isChef) {
+        return macon;
+      }
+
+      // Si pas d'affectations configurées, retourner tel quel (rétrocompatibilité)
+      if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
+        return macon;
+      }
+
+      // Récupérer les jours autorisés pour ce maçon
+      const joursAutorises = affectationsJoursChef
+        .filter(aff => aff.macon_id === macon.id)
+        .map(aff => aff.jour);
+
+      // Si aucune affectation spécifique pour ce maçon, afficher tout
+      // (il est peut-être affecté avant la mise en place du système de jours)
+      if (joursAutorises.length === 0) {
+        return macon;
+      }
+
+      // Filtrer les ficheJours
+      const filteredJours = macon.ficheJours?.filter(j => joursAutorises.includes(j.date)) || [];
+
+      // Recalculer les totaux basés sur les jours filtrés
+      return {
+        ...macon,
+        ficheJours: filteredJours,
+        totalHeures: filteredJours.reduce((sum, j) => sum + Number(j.heures || 0), 0),
+        paniers: filteredJours.filter(j => j.PA).length,
+        trajets: filteredJours.filter(j => j.trajet_perso || (j.code_trajet && j.code_trajet !== '')).length,
+        intemperie: filteredJours.reduce((sum, j) => sum + Number(j.HI || 0), 0),
+      };
+    };
+  }, [affectationsJoursChef]);
 
   // Update local state when data loads and sort: non-temporary workers first, then temporary workers
   useEffect(() => {
@@ -312,98 +353,101 @@ const SignatureMacons = () => {
                     )}
 
                     {/* Récapitulatif des heures */}
-                    {selectedMacon.ficheJours && (
-                      <Card className="shadow-md border-border/50">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <Clock className="h-5 w-5 text-primary" />
-                            Récapitulatif de vos heures - Semaine {semaine}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Vérifiez vos heures avant de signer
-                          </p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-border/50">
-                                  <th className="text-left py-2 px-3 font-semibold text-foreground">Date</th>
-                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Heures</th>
-                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Panier</th>
-                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Trajets</th>
-                                  <th className="text-center py-2 px-3 font-semibold text-foreground">Intempérie</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {selectedMacon.ficheJours.map((jour) => (
-                                  <tr key={jour.id} className="border-b border-border/30">
-                                    <td className="py-2 px-3 text-foreground">
-                                      {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
+                    {(() => {
+                      const filteredMacon = getFilteredMaconData(selectedMacon);
+                      return filteredMacon.ficheJours && filteredMacon.ficheJours.length > 0 && (
+                        <Card className="shadow-md border-border/50">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Clock className="h-5 w-5 text-primary" />
+                              Récapitulatif de vos heures - Semaine {semaine}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Vérifiez vos heures avant de signer
+                            </p>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-border/50">
+                                    <th className="text-left py-2 px-3 font-semibold text-foreground">Date</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-foreground">Heures</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-foreground">Panier</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-foreground">Trajets</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-foreground">Intempérie</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filteredMacon.ficheJours.map((jour) => (
+                                    <tr key={jour.id} className="border-b border-border/30">
+                                      <td className="py-2 px-3 text-foreground">
+                                        {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
+                                      </td>
+                                      <td className="text-center py-2 px-3">
+                                        {jour.HNORM === 0 && jour.HI === 0 ? (
+                                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                                            Absent
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-foreground font-medium">{jour.heures}h</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-2 px-3">
+                                        {(jour as any).repas_type === "RESTO" ? (
+                                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+                                            Resto
+                                          </Badge>
+                                        ) : jour.PA ? (
+                                          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                                            ✓
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-2 px-3">
+                                        {jour.trajet_perso ? (
+                                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                            Perso
+                                          </Badge>
+                                        ) : jour.code_trajet && jour.code_trajet !== '' ? (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            {jour.code_trajet}
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center py-2 px-3 text-foreground">
+                                        {jour.HI > 0 ? `${jour.HI}h` : "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="border-t-2 border-border/70 bg-muted/30">
+                                    <td className="py-3 px-3 font-bold text-foreground">Total</td>
+                                    <td className="text-center py-3 px-3 font-bold text-primary">
+                                      {filteredMacon.totalHeures || 0}h
                                     </td>
-                                    <td className="text-center py-2 px-3">
-                                      {jour.HNORM === 0 && jour.HI === 0 ? (
-                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
-                                          Absent
-                                        </Badge>
-                                      ) : (
-                                        <span className="text-foreground font-medium">{jour.heures}h</span>
-                                      )}
+                                    <td className="text-center py-3 px-3 font-bold text-foreground">
+                                      {filteredMacon.paniers || 0}
                                     </td>
-                                    <td className="text-center py-2 px-3">
-                                      {(jour as any).repas_type === "RESTO" ? (
-                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
-                                          Resto
-                                        </Badge>
-                                      ) : jour.PA ? (
-                                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
-                                          ✓
-                                        </Badge>
-                                      ) : (
-                                        <span className="text-muted-foreground">-</span>
-                                      )}
+                                    <td className="text-center py-3 px-3 font-bold text-foreground">
+                                      {filteredMacon.trajets || 0}
                                     </td>
-                                    <td className="text-center py-2 px-3">
-                                      {jour.trajet_perso ? (
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                                          Perso
-                                        </Badge>
-                                      ) : jour.code_trajet && jour.code_trajet !== '' ? (
-                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                                          {jour.code_trajet}
-                                        </Badge>
-                                      ) : (
-                                        <span className="text-muted-foreground">-</span>
-                                      )}
-                                    </td>
-                                    <td className="text-center py-2 px-3 text-foreground">
-                                      {jour.HI > 0 ? `${jour.HI}h` : "-"}
+                                    <td className="text-center py-3 px-3 font-bold text-foreground">
+                                      {filteredMacon.intemperie || 0}h
                                     </td>
                                   </tr>
-                                ))}
-                              </tbody>
-                              <tfoot>
-                                <tr className="border-t-2 border-border/70 bg-muted/30">
-                                  <td className="py-3 px-3 font-bold text-foreground">Total</td>
-                                  <td className="text-center py-3 px-3 font-bold text-primary">
-                                    {selectedMacon.totalHeures || 0}h
-                                  </td>
-                                  <td className="text-center py-3 px-3 font-bold text-foreground">
-                                    {selectedMacon.paniers || 0}
-                                  </td>
-                                  <td className="text-center py-3 px-3 font-bold text-foreground">
-                                    {selectedMacon.trajets || 0}
-                                  </td>
-                                  <td className="text-center py-3 px-3 font-bold text-foreground">
-                                    {selectedMacon.intemperie || 0}h
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                                </tfoot>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
 
                     {/* SignaturePad */}
                     <SignaturePad
