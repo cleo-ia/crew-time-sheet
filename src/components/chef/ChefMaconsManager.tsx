@@ -46,7 +46,7 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
   const [memberToEditDays, setMemberToEditDays] = useState<{id: string, nom: string, prenom: string, role: string, affectationId: string | null} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: entrepriseId } = useCurrentEntrepriseId();
+  const { data: entrepriseId, isLoading: isLoadingEntrepriseId } = useCurrentEntrepriseId();
 
   // Récupérer tous les maçons, grutiers, intérimaires et finisseurs du système
   const { data: allMacons, isLoading: loadingMacons } = useUtilisateursByRole("macon");
@@ -216,6 +216,17 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
       return;
     }
 
+    // Vérifier que l'entreprise est chargée avant de continuer
+    if (!entrepriseId) {
+      console.error("[ChefMaconsManager] entrepriseId non disponible, impossible de créer les jours");
+      toast({
+        title: "Erreur",
+        description: "L'entreprise n'est pas encore chargée. Veuillez réessayer.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Ajouter à la liste des IDs en cours d'ajout
     setAddingIds(prev => new Set(prev).add(maconId));
 
@@ -251,30 +262,30 @@ export const ChefMaconsManager = ({ chefId, chantierId, semaine, disabled }: Che
         affectationId = newAffectation?.id || null;
       }
 
-      // Créer les affectations jours
-      if (entrepriseId) {
-        if (status.type === "partial" && status.availableDays) {
-          // Cas partiel : créer uniquement les jours disponibles
-          await updateJoursForMember.mutateAsync({
-            maconId,
-            chefId,
-            chantierId,
-            semaine,
-            affectationId,
-            entrepriseId,
-            selectedDays: status.availableDays,
-          });
-        } else {
-          // Cas complet : créer tous les jours par défaut
-          await createDefaultAffectationsJours.mutateAsync({
-            maconId,
-            chefId,
-            chantierId,
-            semaine,
-            affectationId,
-            entrepriseId,
-          });
-        }
+      // Créer les affectations jours (entrepriseId garanti présent par la vérification au début)
+      if (status.type === "partial" && status.availableDays) {
+        // Cas partiel : créer uniquement les jours disponibles
+        console.log("[ChefMaconsManager] Création jours partiels pour", { maconId, availableDays: status.availableDays });
+        await updateJoursForMember.mutateAsync({
+          maconId,
+          chefId,
+          chantierId,
+          semaine,
+          affectationId,
+          entrepriseId,
+          selectedDays: status.availableDays,
+        });
+      } else {
+        // Cas complet : créer tous les jours par défaut (Lun-Ven)
+        console.log("[ChefMaconsManager] Création jours complets (Lun-Ven) pour", { maconId, chefId, semaine, entrepriseId });
+        await createDefaultAffectationsJours.mutateAsync({
+          maconId,
+          chefId,
+          chantierId,
+          semaine,
+          affectationId,
+          entrepriseId,
+        });
       }
 
       // Rafraîchir les données pour mettre à jour l'UI immédiatement
