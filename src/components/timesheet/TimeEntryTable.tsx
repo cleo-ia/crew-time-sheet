@@ -251,6 +251,10 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
   // Helper pour vérifier si un employé est autorisé à travailler un jour donné
   const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
+    // Le chef lui-même est TOUJOURS autorisé sur tous les jours
+    // Il n'est pas stocké dans affectations_jours_chef car il est propriétaire de la fiche
+    if (chefId && employeeId === chefId) return true;
+    
     // En mode conducteur, on utilise les props affectationsJours
     if (isConducteurMode) return true; // Géré par getVisibleDaysForFinisseur
     
@@ -278,7 +282,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     return affectationsJoursChef.some(
       aff => aff.macon_id === employeeId && aff.jour === targetDate
     );
-  }, [isConducteurMode, mode, affectationsJoursChef, weekId]);
+  }, [chefId, isConducteurMode, mode, affectationsJoursChef, weekId]);
 
   // Charger tous les maçons, grutiers, intérimaires et finisseurs pour le combobox d'ajout (mode edit seulement)
   const { data: allMacons = [] } = useUtilisateursByRole(mode === "edit" ? "macon" : undefined);
