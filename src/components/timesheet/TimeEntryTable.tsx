@@ -917,9 +917,16 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);
     
     // Filtrer les jours à comptabiliser
-    const daysToCount = isConducteurMode 
-      ? weekDays.filter(d => visibleDays.includes(d))
-      : weekDays;
+    let daysToCount: string[];
+    
+    if (isConducteurMode) {
+      // Mode conducteur : utiliser les jours visibles des finisseurs
+      daysToCount = weekDays.filter(d => visibleDays.includes(d));
+    } else {
+      // Mode chef : filtrer selon les jours affectés à ce chef
+      // isDayAuthorizedForEmployee gère déjà: chef toujours autorisé, mode edit, rétrocompatibilité
+      daysToCount = weekDays.filter(d => isDayAuthorizedForEmployee(entry.employeeId, d));
+    }
     
     return daysToCount.reduce((total, day) => {
       const dayData = entry.days[day];
