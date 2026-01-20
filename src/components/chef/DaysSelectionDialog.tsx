@@ -39,6 +39,7 @@ export const DaysSelectionDialog = ({
   onSuccess,
 }: DaysSelectionDialogProps) => {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Charger toutes les affectations de la semaine pour voir les conflits
   const { data: allAffectations, isLoading } = useAffectationsJoursChef(semaine);
@@ -60,19 +61,28 @@ export const DaysSelectionDialog = ({
       return acc;
     }, {} as Record<string, AffectationJourChef>);
   
-  // Initialiser les jours sélectionnés à l'ouverture
+  // Initialiser les jours sélectionnés UNE SEULE FOIS à l'ouverture
   useEffect(() => {
-    if (open && member && memberAffectations.length > 0) {
-      const myDays = memberAffectations
-        .filter(a => a.chef_id === chefId)
-        .map(a => getDayNamesFromDates([a.jour], semaine)[0])
-        .filter(Boolean);
-      setSelectedDays(myDays);
-    } else if (open && member && memberAffectations.length === 0) {
-      // Par défaut, tous les jours sont sélectionnés si aucune affectation n'existe
-      setSelectedDays(WEEK_DAYS);
+    // Ne s'exécute qu'une fois à l'ouverture du dialog, après chargement des données
+    if (open && member && !hasInitialized && !isLoading) {
+      if (memberAffectations.length > 0) {
+        const myDays = memberAffectations
+          .filter(a => a.chef_id === chefId)
+          .map(a => getDayNamesFromDates([a.jour], semaine)[0])
+          .filter(Boolean);
+        setSelectedDays(myDays);
+      } else {
+        // Par défaut, tous les jours sont sélectionnés si aucune affectation n'existe
+        setSelectedDays(WEEK_DAYS);
+      }
+      setHasInitialized(true);
     }
-  }, [open, member, memberAffectations, chefId, semaine]);
+    
+    // Reset le flag quand le dialog se ferme
+    if (!open) {
+      setHasInitialized(false);
+    }
+  }, [open, member, memberAffectations, chefId, semaine, hasInitialized, isLoading]);
   
   const handleDayToggle = (day: string) => {
     // Ne pas permettre de sélectionner un jour pris par un autre chef
