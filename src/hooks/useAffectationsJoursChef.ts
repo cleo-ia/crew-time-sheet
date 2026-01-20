@@ -280,12 +280,24 @@ export const useCreateDefaultAffectationsJours = () => {
 };
 
 // Helper pour obtenir les noms de jours à partir des dates ISO
+// Utilise le calcul relatif au lundi de la semaine pour éviter les problèmes de timezone
 export const getDayNamesFromDates = (dates: string[], semaine: string): string[] => {
   const monday = parseISOWeek(semaine);
-  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+  const mondayTime = monday.getTime();
+  const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
   
   return dates.map(dateStr => {
-    const date = new Date(dateStr + "T00:00:00");
-    return dayNames[date.getDay()];
-  }).filter(name => ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].includes(name));
+    // Parser la date sans problème de timezone (construction locale)
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    // Calculer le décalage en jours par rapport au lundi
+    const diffDays = Math.round((date.getTime() - mondayTime) / (1000 * 60 * 60 * 24));
+    
+    // Retourner le nom du jour si c'est un jour ouvré (0-4)
+    if (diffDays >= 0 && diffDays <= 4) {
+      return dayNames[diffDays];
+    }
+    return "";
+  }).filter(Boolean);
 };
