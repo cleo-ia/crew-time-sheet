@@ -407,6 +407,15 @@ export const exportVentilationCompletePdf = async (
   
   let currentY = margin + headerHeight;
   let currentTitle = "";
+  
+  // Pré-calculer les totaux pour le RECAP final
+  let totalInterim = 0, totalMO = 0, totalMOAPP = 0, grandTotal = 0;
+  recap.forEach((row) => {
+    totalInterim += row.heuresInterim;
+    totalMO += row.heuresMO;
+    totalMOAPP += row.heuresMOAPP;
+    grandTotal += row.total;
+  });
 
   const drawText = (text: string, x: number, y: number, options?: { 
     bold?: boolean; 
@@ -469,54 +478,12 @@ export const exportVentilationCompletePdf = async (
     currentY += rowHeight;
   };
 
-  // ===== SECTION 1: Récap Chantier =====
-  drawPageHeader("RECAP HEURES par Chantier par type main d'oeuvre");
-  
-  const colWidths1 = [30, 75, 22, 22, 22, 22]; // Total ~193mm pour portrait
+  // Colonnes pour le RECAP (utilisées à la fin)
+  const colWidths1 = [30, 75, 22, 22, 22, 22];
   const headers1 = ["Code", "Libelle", "INTERIM", "MO", "MOAPP", "TOTAL"];
   const tableStartX1 = margin + (contentWidth - colWidths1.reduce((a, b) => a + b, 0)) / 2;
-  
-  let currentHeaders1 = headers1;
-  let currentColWidths1 = colWidths1;
-  let currentStartX1 = tableStartX1;
-  
-  const checkPageBreak1 = () => {
-    if (currentY + rowHeight > maxY) {
-      pdf.addPage();
-      currentY = margin + headerHeight;
-      drawPageHeader(currentTitle);
-      drawTableHeaderRow(currentHeaders1, currentColWidths1, currentStartX1);
-    }
-  };
-  
-  drawTableHeaderRow(headers1, colWidths1, tableStartX1);
-  
-  let totalInterim = 0, totalMO = 0, totalMOAPP = 0, grandTotal = 0;
-  
-  recap.forEach((row) => {
-    checkPageBreak1();
-    const values = [
-      row.codeAnalytique,
-      row.libelle,
-      formatNumberFR(row.heuresInterim),
-      formatNumberFR(row.heuresMO),
-      formatNumberFR(row.heuresMOAPP),
-      formatNumberFR(row.total)
-    ];
-    drawTableDataRow(values, colWidths1, tableStartX1, false);
-    
-    totalInterim += row.heuresInterim;
-    totalMO += row.heuresMO;
-    totalMOAPP += row.heuresMOAPP;
-    grandTotal += row.total;
-  });
-  
-  checkPageBreak1();
-  const totalValues1 = ["TOTAL", "", formatNumberFR(totalInterim), formatNumberFR(totalMO), formatNumberFR(totalMOAPP), formatNumberFR(grandTotal)];
-  drawTableDataRow(totalValues1, colWidths1, tableStartX1, true);
 
-  // ===== SECTION 2: Ventilation Ouvriers =====
-  pdf.addPage();
+  // ===== SECTION 1: Ventilation Ouvriers (commence sur la première page) =====
   currentY = margin + headerHeight;
   
   drawPageHeader("VENTILATION ANALYTIQUE % par Ouvrier");
@@ -743,7 +710,7 @@ export const exportVentilationCompletePdf = async (
     currentY += rowHeight;
   });
   
-  // ===== SECTION 4: Récap Chantier (copie en fin de PDF) =====
+  // ===== SECTION 3: Récap Chantier (à la fin du PDF) =====
   pdf.addPage();
   currentY = margin + headerHeight;
   
