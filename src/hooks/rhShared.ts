@@ -521,17 +521,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
     // Ne créer l'entrée que si le salarié a des données
     if (totalHeures > 0 || absences > 0 || paniers > 0) {
-      // Collecter les codes chantier uniques depuis les jours
-      const chantierCodesFromJours = detailJours
-        .map(j => j.chantierCode)
-        .filter(Boolean);
-      
-      // Ajouter aussi les codes depuis les fiches (fallback si jours n'ont pas de code)
-      const chantierCodesFromFiches = fiches
-        .map(f => (f as any).chantiers?.code_chantier)
-        .filter(Boolean);
-      
-      const chantierCodes = [...new Set([...chantierCodesFromJours, ...chantierCodesFromFiches])];
+      // Collecter les codes chantier uniques depuis les jours UNIQUEMENT (format complet ex: CI893OLYMPIA)
+      const chantierCodes = [...new Set(
+        detailJours
+          .map(j => j.chantierCode)
+          .filter(Boolean)
+      )];
 
       // Déterminer le role sans accent pour la UI
       const role = isChef ? "chef" : isFinisseur ? "finisseur" : isGrutier ? "grutier" : isInterimaire ? "interimaire" : "macon";
