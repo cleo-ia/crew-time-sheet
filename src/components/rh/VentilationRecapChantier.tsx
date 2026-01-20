@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecapChantier, RecapChantierRow } from "@/hooks/useVentilationAnalytique";
-import { exportRecapChantierExcel } from "@/lib/ventilationExport";
+import { exportRecapChantierPdf } from "@/lib/ventilationExport";
 import { toast } from "sonner";
 
 interface VentilationRecapChantierProps {
@@ -40,7 +40,7 @@ export const VentilationRecapChantier = ({ filters }: VentilationRecapChantierPr
       return;
     }
     try {
-      const fileName = await exportRecapChantierExcel(data, filters.periode);
+      const fileName = await exportRecapChantierPdf(data, filters.periode);
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
       console.error("Erreur export:", error);
@@ -89,7 +89,7 @@ export const VentilationRecapChantier = ({ filters }: VentilationRecapChantierPr
         </div>
         <Button variant="outline" onClick={handleExport} disabled={!data || data.length === 0}>
           <Download className="h-4 w-4 mr-2" />
-          Exporter Excel
+          Exporter PDF
         </Button>
       </div>
 

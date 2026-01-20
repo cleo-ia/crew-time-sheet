@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useVentilationOuvrier, VentilationEmployeeRow } from "@/hooks/useVentilationAnalytique";
-import { exportVentilationOuvrierExcel } from "@/lib/ventilationExport";
+import { exportVentilationOuvrierPdf } from "@/lib/ventilationExport";
 import { toast } from "sonner";
 
 interface VentilationOuvrierProps {
@@ -58,7 +58,7 @@ export const VentilationOuvrier = ({ filters }: VentilationOuvrierProps) => {
       return;
     }
     try {
-      const fileName = await exportVentilationOuvrierExcel(data, filters.periode);
+      const fileName = await exportVentilationOuvrierPdf(data, filters.periode);
       toast.success(`Export généré : ${fileName}`);
     } catch (error) {
       console.error("Erreur export:", error);
@@ -107,7 +107,7 @@ export const VentilationOuvrier = ({ filters }: VentilationOuvrierProps) => {
         </div>
         <Button variant="outline" onClick={handleExport} disabled={!data || data.length === 0}>
           <Download className="h-4 w-4 mr-2" />
-          Exporter Excel
+          Exporter PDF
         </Button>
       </div>
 
