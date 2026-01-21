@@ -74,6 +74,7 @@ export const AppNav = () => {
   const canSeeValidation = userRole && ["super_admin", "rh", "conducteur"].includes(userRole);
   const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
   const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire", "rh"].includes(userRole);
+  const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
 
   if (isLoading) return null;
 
@@ -120,8 +121,8 @@ export const AppNav = () => {
               </Button>
             )}
 
-            {/* Planning Main d'Oeuvre - visible par conducteurs et admins */}
-            {(canSeeConducteur || canSeeAdmin) && (
+            {/* Planning Main d'Oeuvre - visible par conducteurs, admins et super_admin */}
+            {canSeePlanning && (
               <Button
                 asChild
                 variant="ghost"
