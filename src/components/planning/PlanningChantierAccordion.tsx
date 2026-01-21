@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   Accordion,
   AccordionContent,
@@ -9,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,12 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { UserPlus, CalendarIcon } from "lucide-react";
 import { Chantier } from "@/hooks/useChantiers";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { Employe, JOURS_SEMAINE_FR } from "@/hooks/useAllEmployes";
 import { PlanningEmployeRow } from "./PlanningEmployeRow";
 import { AddEmployeeToPlanningDialog } from "./AddEmployeeToPlanningDialog";
+import { cn } from "@/lib/utils";
+
+interface InsertionData {
+  statut_insertion: string;
+  insertion_date_debut: string | null;
+  insertion_heures_requises: number | null;
+}
 
 interface PlanningChantierAccordionProps {
   chantier: Chantier;
@@ -34,6 +49,7 @@ interface PlanningChantierAccordionProps {
   onRemoveEmploye: (employeId: string, chantierId: string) => void;
   onAddEmploye: (employeId: string, chantierId: string, days: string[]) => void;
   onHeuresChange?: (chantierId: string, heures: string) => void;
+  onInsertionChange?: (chantierId: string, data: InsertionData) => void;
   isLoading?: boolean;
 }
 
@@ -48,11 +64,13 @@ export const PlanningChantierAccordion = ({
   onRemoveEmploye,
   onAddEmploye,
   onHeuresChange,
+  onInsertionChange,
   isLoading,
 }: PlanningChantierAccordionProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customHoursInput, setCustomHoursInput] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [insertionPopoverOpen, setInsertionPopoverOpen] = useState(false);
 
   // Grouper les affectations par employé
   const employeAffectations = useMemo(() => {
@@ -169,23 +187,158 @@ export const PlanningChantierAccordion = ({
   const heuresHebdo = (chantier as any).heures_hebdo_prevues || "39H";
   const statutInsertion = (chantier as any).statut_insertion;
 
+  // Champs étendus pour insertion
+  const insertionDateDebut = (chantier as any).insertion_date_debut;
+  const insertionHeuresRequises = (chantier as any).insertion_heures_requises;
+
+  // State local pour l'édition
+  const [editStatut, setEditStatut] = useState(statutInsertion || "pas_insertion");
+  const [editDate, setEditDate] = useState<Date | undefined>(
+    insertionDateDebut ? parseISO(insertionDateDebut) : undefined
+  );
+  const [editHeures, setEditHeures] = useState(
+    insertionHeuresRequises?.toString() || ""
+  );
+
+  const handleInsertionSave = () => {
+    onInsertionChange?.(chantier.id, {
+      statut_insertion: editStatut,
+      insertion_date_debut: editDate ? format(editDate, "yyyy-MM-dd") : null,
+      insertion_heures_requises: editHeures ? parseInt(editHeures, 10) : null,
+    });
+    setInsertionPopoverOpen(false);
+  };
+
   const getInsertionBadge = () => {
-    if (!statutInsertion || statutInsertion === "pas_insertion") return null;
-    
     const config: Record<string, { label: string; className: string }> = {
+      pas_insertion: { label: "Pas d'insertion", className: "bg-muted text-muted-foreground border-muted" },
       ok: { label: "OK", className: "bg-success/20 text-success border-success/30" },
-      en_cours: { label: "En cours", className: "bg-primary/20 text-primary border-primary/30" },
+      en_cours: { label: "En cours", className: "bg-destructive/20 text-destructive border-destructive/30" },
       terminee: { label: "Terminée", className: "bg-success/20 text-success border-success/30" },
-      annulee: { label: "Annulée", className: "bg-destructive/20 text-destructive border-destructive/30" },
+      annulee: { label: "Annulée", className: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300" },
     };
     
-    const cfg = config[statutInsertion];
-    if (!cfg) return null;
+    const currentStatut = statutInsertion || "pas_insertion";
+    const cfg = config[currentStatut] || config.pas_insertion;
+    
+    // Construire le label enrichi
+    let label = cfg.label;
+    if (currentStatut !== "pas_insertion" && currentStatut !== "terminee" && currentStatut !== "ok") {
+      const parts: string[] = [];
+      if (insertionDateDebut) {
+        parts.push(format(parseISO(insertionDateDebut), "dd/MM/yyyy"));
+      }
+      if (insertionHeuresRequises) {
+        parts.push(`${insertionHeuresRequises}h`);
+      }
+      if (parts.length > 0) {
+        label = `Ins: ${parts.join(" - ")}`;
+      }
+    } else if (currentStatut === "terminee") {
+      label = "Clause terminée";
+    }
     
     return (
-      <Badge variant="outline" className={`text-xs px-1.5 ${cfg.className}`}>
-        Ins: {cfg.label}
-      </Badge>
+      <Popover open={insertionPopoverOpen} onOpenChange={setInsertionPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Badge 
+            variant="outline" 
+            className={cn(
+              "text-xs px-1.5 cursor-pointer hover:opacity-80 transition-opacity",
+              cfg.className
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Reset edit state when opening
+              setEditStatut(statutInsertion || "pas_insertion");
+              setEditDate(insertionDateDebut ? parseISO(insertionDateDebut) : undefined);
+              setEditHeures(insertionHeuresRequises?.toString() || "");
+            }}
+          >
+            {label}
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-80 p-4" 
+          onClick={(e) => e.stopPropagation()}
+          align="start"
+        >
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm">Statut d'insertion</h4>
+            
+            {/* Select Statut */}
+            <div className="space-y-2">
+              <Label className="text-xs">Statut</Label>
+              <Select value={editStatut} onValueChange={setEditStatut}>
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pas_insertion">Pas d'insertion</SelectItem>
+                  <SelectItem value="en_cours">En cours</SelectItem>
+                  <SelectItem value="ok">OK</SelectItem>
+                  <SelectItem value="terminee">Terminée</SelectItem>
+                  <SelectItem value="annulee">Annulée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Champs conditionnels */}
+            {editStatut !== "pas_insertion" && (
+              <>
+                {/* Date début */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Date début</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-8",
+                          !editDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {editDate ? format(editDate, "dd/MM/yyyy", { locale: fr }) : "Sélectionner"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={editDate}
+                        onSelect={setEditDate}
+                        locale={fr}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Heures requises */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Heures requises</Label>
+                  <Input
+                    type="number"
+                    placeholder="800"
+                    value={editHeures}
+                    onChange={(e) => setEditHeures(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Bouton Enregistrer */}
+            <Button 
+              onClick={handleInsertionSave} 
+              className="w-full h-8"
+              size="sm"
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   };
 

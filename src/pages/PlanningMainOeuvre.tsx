@@ -175,6 +175,26 @@ const PlanningMainOeuvre = () => {
     });
   };
 
+  const handleInsertionChange = async (
+    chantierId: string, 
+    data: {
+      statut_insertion: string;
+      insertion_date_debut: string | null;
+      insertion_heures_requises: number | null;
+    }
+  ) => {
+    await updateChantier.mutateAsync({
+      id: chantierId,
+      statut_insertion: data.statut_insertion,
+      insertion_date_debut: data.insertion_date_debut,
+      insertion_heures_requises: data.insertion_heures_requises,
+    });
+    toast({
+      title: "Insertion mise à jour",
+      description: "Le statut d'insertion a été modifié.",
+    });
+  };
+
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
@@ -292,6 +312,7 @@ const PlanningMainOeuvre = () => {
                   onRemoveEmploye={handleRemoveEmploye}
                   onAddEmploye={handleAddEmploye}
                   onHeuresChange={handleHeuresChange}
+                  onInsertionChange={handleInsertionChange}
                   isLoading={isMutating}
                 />
               ))}
