@@ -1,10 +1,14 @@
-import { useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
-import { getEmployeType, EMPLOYE_TYPE_COLORS, Employe } from "@/hooks/useAllEmployes";
+import { 
+  getEmployeType, 
+  EMPLOYE_TYPE_COLORS, 
+  Employe,
+  getEmployeeTextColor,
+  formatAdresseCourte 
+} from "@/hooks/useAllEmployes";
 import { PlanningVehiculeCombobox } from "./PlanningVehiculeCombobox";
 
 interface PlanningEmployeRowProps {
@@ -17,6 +21,32 @@ interface PlanningEmployeRowProps {
   isLoading?: boolean;
 }
 
+// Composant pour afficher "1" au lieu d'une checkbox
+const DayIndicator = ({ 
+  checked, 
+  onClick, 
+  disabled 
+}: { 
+  checked: boolean; 
+  onClick: () => void; 
+  disabled?: boolean;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      "w-6 h-6 text-center text-sm font-bold rounded cursor-pointer transition-colors",
+      "border border-transparent",
+      checked 
+        ? "text-foreground bg-primary/10 border-primary/30" 
+        : "text-muted-foreground/30 hover:bg-muted hover:text-muted-foreground",
+      disabled && "cursor-not-allowed opacity-50"
+    )}
+  >
+    {checked ? "1" : ""}
+  </button>
+);
+
 export const PlanningEmployeRow = ({
   employe,
   affectations,
@@ -28,6 +58,7 @@ export const PlanningEmployeRow = ({
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
+  const textColor = getEmployeeTextColor(employe);
   
   // Récupérer le véhicule depuis les affectations (le même pour toute la semaine)
   const currentVehiculeId = affectations[0]?.vehicule_id || null;
@@ -35,36 +66,42 @@ export const PlanningEmployeRow = ({
   // Jours affectés
   const affectedDates = new Set(affectations.map(a => a.jour));
 
+  // Formater le véhicule de manière compacte
+  const vehicule = affectations[0]?.vehicule;
+  const vehiculeDisplay = vehicule 
+    ? `${vehicule.modele || ""} ${vehicule.immatriculation || ""}`.trim()
+    : null;
+
   return (
-    <div className="flex items-center gap-2 py-2 px-3 hover:bg-muted/50 rounded-md group">
+    <div className="flex items-center gap-2 py-1.5 px-3 hover:bg-muted/50 rounded-md group border-b border-border/50 last:border-0">
       {/* Badge type */}
       <span className={cn(
-        "px-2 py-0.5 rounded text-xs font-medium min-w-[60px] text-center",
+        "px-2 py-0.5 rounded text-xs font-medium min-w-[50px] text-center",
         typeColors.bg,
         typeColors.text
       )}>
         {typeColors.label}
       </span>
 
-      {/* Nom */}
-      <div className="flex-1 min-w-[150px]">
-        <span className="font-medium">
+      {/* Nom avec couleur selon type */}
+      <div className={cn("flex-1 min-w-[140px]", textColor)}>
+        <span className="font-semibold">
           {employe.nom?.toUpperCase()} {employe.prenom}
         </span>
       </div>
 
-      {/* Ville */}
-      <div className="w-[100px] text-sm text-muted-foreground truncate">
-        {employe.adresse_domicile || "-"}
+      {/* Adresse courte (ex: "71 macon") */}
+      <div className="w-[80px] text-xs text-muted-foreground truncate">
+        {formatAdresseCourte(employe.adresse_domicile)}
       </div>
 
       {/* Fonction */}
-      <div className="w-[100px] text-sm text-muted-foreground truncate">
+      <div className="w-[80px] text-xs text-muted-foreground truncate">
         {employe.libelle_emploi || employe.role_metier || "-"}
       </div>
 
-      {/* Véhicule */}
-      <div className="w-[140px]">
+      {/* Véhicule - format compact */}
+      <div className="w-[130px]">
         <PlanningVehiculeCombobox
           value={currentVehiculeId}
           onChange={(vehiculeId) => onVehiculeChange(employe.id, vehiculeId)}
@@ -72,23 +109,23 @@ export const PlanningEmployeRow = ({
         />
       </div>
 
-      {/* Agence (intérimaires) */}
-      <div className="w-[80px] text-xs text-muted-foreground truncate">
+      {/* Agence intérim (en vert si présente) */}
+      <div className={cn(
+        "w-[70px] text-xs truncate",
+        employe.agence_interim ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"
+      )}>
         {employe.agence_interim || ""}
       </div>
 
-      {/* Jours L-V */}
-      <div className="flex items-center gap-1">
+      {/* Jours L-V avec indicateur "1" */}
+      <div className="flex items-center gap-0.5">
         {weekDays.map(day => (
-          <div key={day.date} className="flex flex-col items-center">
-            <span className="text-xs text-muted-foreground mb-1">{day.dayName}</span>
-            <Checkbox
-              checked={affectedDates.has(day.date)}
-              onCheckedChange={(checked) => onDayToggle(employe.id, day.date, !!checked)}
-              disabled={isLoading}
-              className="h-5 w-5"
-            />
-          </div>
+          <DayIndicator
+            key={day.date}
+            checked={affectedDates.has(day.date)}
+            onClick={() => onDayToggle(employe.id, day.date, !affectedDates.has(day.date))}
+            disabled={isLoading}
+          />
         ))}
       </div>
 
@@ -97,10 +134,10 @@ export const PlanningEmployeRow = ({
         variant="ghost"
         size="icon"
         onClick={() => onRemove(employe.id)}
-        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
         disabled={isLoading}
       >
-        <X className="h-4 w-4" />
+        <X className="h-3 w-3" />
       </Button>
     </div>
   );
