@@ -227,21 +227,21 @@ export const PlanningChantierAccordion = ({
     return (
       <Popover open={insertionPopoverOpen} onOpenChange={setInsertionPopoverOpen}>
         <PopoverTrigger asChild>
-          <Badge 
-            variant="outline" 
+          <button
+            type="button"
             className={cn(
-              "text-xs px-1.5 cursor-pointer hover:opacity-80 transition-opacity",
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
+              "cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               currentOption.className
             )}
             onClick={(e) => {
               e.stopPropagation();
-              // Reset edit state when opening
               setEditStatut(statutInsertion || "pas_insertion");
               setEditHeures(insertionHeuresRequises?.toString() || "");
             }}
           >
             {badgeLabel}
-          </Badge>
+          </button>
         </PopoverTrigger>
         <PopoverContent 
           className="w-72 p-3" 
