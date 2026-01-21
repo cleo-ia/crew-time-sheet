@@ -76,6 +76,25 @@ export const AddEmployeeToPlanningDialog = ({
     return map;
   }, [allAffectations, chantierId]);
 
+  // Ordre de tri par type d'employé
+  const getEmployeeSortOrder = (emp: Employe): number => {
+    const isInterim = !!emp.agence_interim;
+    const roleMet = emp.role_metier?.toLowerCase() || "";
+    const libelle = emp.libelle_emploi?.toLowerCase() || "";
+    
+    // 1. Chefs
+    if (roleMet === "chef") return 1;
+    // 2. Maçons (pas finisseur, pas grutier, pas intérim)
+    if (!isInterim && roleMet !== "finisseur" && !libelle.includes("grutier")) return 2;
+    // 3. Finisseurs
+    if (roleMet === "finisseur") return 3;
+    // 4. Grutiers
+    if (libelle.includes("grutier")) return 4;
+    // 5. Intérimaires
+    if (isInterim) return 5;
+    return 6;
+  };
+
   // Filtrer les employés
   const filteredEmployes = useMemo(() => {
     let result = filterEmployesByType(allEmployes, typeFilter);
@@ -91,6 +110,15 @@ export const AddEmployeeToPlanningDialog = ({
         `${emp.nom} ${emp.prenom}`.toLowerCase().includes(searchLower)
       );
     }
+
+    // Trier par type puis par nom
+    result.sort((a, b) => {
+      const orderA = getEmployeeSortOrder(a);
+      const orderB = getEmployeeSortOrder(b);
+      if (orderA !== orderB) return orderA - orderB;
+      // Si même type, trier par nom
+      return (a.nom || "").localeCompare(b.nom || "");
+    });
 
     return result;
   }, [allEmployes, typeFilter, search, employeIdsOnChantier]);
