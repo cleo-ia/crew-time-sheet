@@ -77,23 +77,13 @@ export const AddEmployeeToPlanningDialog = ({
     return map;
   }, [allAffectations, chantierId]);
 
-  // Ordre de tri par type d'employé
-  const getEmployeeSortOrder = (emp: Employe): number => {
-    const isInterim = !!emp.agence_interim;
-    const roleMet = emp.role_metier?.toLowerCase() || "";
-    const libelle = emp.libelle_emploi?.toLowerCase() || "";
-    
-    // 1. Chefs
-    if (roleMet === "chef") return 1;
-    // 2. Maçons (pas finisseur, pas grutier, pas intérim)
-    if (!isInterim && roleMet !== "finisseur" && !libelle.includes("grutier")) return 2;
-    // 3. Finisseurs
-    if (roleMet === "finisseur") return 3;
-    // 4. Grutiers
-    if (libelle.includes("grutier")) return 4;
-    // 5. Intérimaires
-    if (isInterim) return 5;
-    return 6;
+  // Priorité de tri par type (cohérent avec getEmployeType et useAllEmployes)
+  const TYPE_PRIORITY: Record<string, number> = {
+    chef: 1,
+    macon: 2,
+    grutier: 3,
+    finisseur: 4,
+    interim: 5,
   };
 
   // Filtrer les employés
@@ -112,13 +102,17 @@ export const AddEmployeeToPlanningDialog = ({
       );
     }
 
-    // Trier par type puis par nom
+    // Trier par type (via getEmployeType) puis par nom/prénom
     result.sort((a, b) => {
-      const orderA = getEmployeeSortOrder(a);
-      const orderB = getEmployeeSortOrder(b);
-      if (orderA !== orderB) return orderA - orderB;
-      // Si même type, trier par nom
-      return (a.nom || "").localeCompare(b.nom || "");
+      const typeA = getEmployeType(a);
+      const typeB = getEmployeType(b);
+      const priorityDiff = TYPE_PRIORITY[typeA] - TYPE_PRIORITY[typeB];
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      const nomCompare = (a.nom || "").localeCompare(b.nom || "");
+      if (nomCompare !== 0) return nomCompare;
+      
+      return (a.prenom || "").localeCompare(b.prenom || "");
     });
 
     return result;
