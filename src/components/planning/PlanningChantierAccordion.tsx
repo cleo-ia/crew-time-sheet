@@ -9,11 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,7 +50,6 @@ export const PlanningChantierAccordion = ({
   isLoading,
 }: PlanningChantierAccordionProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [heuresPopoverOpen, setHeuresPopoverOpen] = useState(false);
 
   // Grouper les affectations par employé
   const employeAffectations = useMemo(() => {
@@ -216,37 +210,23 @@ export const PlanningChantierAccordion = ({
                 <span className="text-sm text-muted-foreground">
                   {conducteurName}
                 </span>
-                <Popover open={heuresPopoverOpen} onOpenChange={setHeuresPopoverOpen}>
-                  <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <span>
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs px-1.5 bg-muted cursor-pointer hover:bg-primary/20 transition-colors"
-                      >
-                        {heuresHebdo}
-                      </Badge>
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-40 p-2" onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={heuresHebdo}
-                      onValueChange={(value) => {
-                        onHeuresChange?.(chantier.id, value);
-                        setHeuresPopoverOpen(false);
-                      }}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="35H">35H</SelectItem>
-                        <SelectItem value="37H">37H</SelectItem>
-                        <SelectItem value="39H">39H</SelectItem>
-                        <SelectItem value="Autre">Autre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </PopoverContent>
-                </Popover>
+                <Select
+                  value={heuresHebdo}
+                  onValueChange={(value) => onHeuresChange?.(chantier.id, value)}
+                >
+                  <SelectTrigger 
+                    className="h-6 w-auto gap-1 px-2 text-xs border-muted bg-muted hover:bg-primary/20 transition-colors rounded-full font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent onClick={(e) => e.stopPropagation()}>
+                    <SelectItem value="35H">35H</SelectItem>
+                    <SelectItem value="37H">37H</SelectItem>
+                    <SelectItem value="39H">39H</SelectItem>
+                    <SelectItem value="Autre">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
                 {getInsertionBadge()}
               </div>
 
