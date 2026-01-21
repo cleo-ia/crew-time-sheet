@@ -47,7 +47,31 @@ export const useAllEmployes = () => {
         !emp.auth_user_id || !adminUserIds.has(emp.auth_user_id)
       );
 
-      return filtered as Employe[];
+      // 4. Trier par type de métier puis par nom/prénom
+      const TYPE_PRIORITY: Record<string, number> = {
+        chef: 1,
+        macon: 2,
+        grutier: 3,
+        finisseur: 4,
+        interim: 5,
+      };
+
+      const sorted = filtered.sort((a, b) => {
+        const typeA = getEmployeType(a as Employe);
+        const typeB = getEmployeType(b as Employe);
+        
+        // D'abord trier par type
+        const priorityDiff = TYPE_PRIORITY[typeA] - TYPE_PRIORITY[typeB];
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        // Puis par nom/prénom
+        const nomCompare = (a.nom || "").localeCompare(b.nom || "");
+        if (nomCompare !== 0) return nomCompare;
+        
+        return (a.prenom || "").localeCompare(b.prenom || "");
+      });
+
+      return sorted as Employe[];
     },
     enabled: !!entrepriseId,
   });
