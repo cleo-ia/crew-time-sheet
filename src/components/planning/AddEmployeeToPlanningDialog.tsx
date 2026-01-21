@@ -165,8 +165,14 @@ export const AddEmployeeToPlanningDialog = ({
           </div>
         </div>
 
+        {/* Compteur d'employés */}
+        <div className="text-sm text-muted-foreground">
+          {filteredEmployes.length} employé{filteredEmployes.length > 1 ? "s" : ""} disponible{filteredEmployes.length > 1 ? "s" : ""}
+          {typeFilter !== "all" && ` (filtre: ${TYPE_FILTERS.find(f => f.value === typeFilter)?.label})`}
+        </div>
+
         {/* Liste des employés */}
-        <ScrollArea className="flex-1 border rounded-md">
+        <ScrollArea className="h-[40vh] border rounded-md">
           <div className="p-2 space-y-1">
             {isLoading ? (
               <p className="text-center text-muted-foreground py-4">Chargement...</p>

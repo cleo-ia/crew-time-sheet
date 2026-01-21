@@ -47,7 +47,7 @@ export const filterEmployesByType = (employes: Employe[], type: EmployeType): Em
 
     switch (type) {
       case "lr":
-        return !isInterim && !isFinisseur;
+        return !isInterim; // LR = tous les internes (chefs, maçons, grutiers, finisseurs)
       case "interim":
         return isInterim;
       case "finisseur":
