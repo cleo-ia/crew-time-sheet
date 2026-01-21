@@ -37,6 +37,12 @@ Ce document décrit la configuration des tâches planifiées (cron jobs) pour le
 - **Edge Function** : `rappel-conducteurs-finisseurs`
 - **Description** : Envoie un rappel aux conducteurs pour valider/exporter les heures de leurs finisseurs (statuts `BROUILLON` ou `EN_SIGNATURE`)
 
+### 6. **sync-planning-to-teams-weekly** - Synchronisation Planning → Équipes
+- **Fréquence** : Lundi à 6h Paris
+- **Cron** : `0 5 * * 1` (5h UTC = 6h Paris heure d'hiver)
+- **Edge Function** : `sync-planning-to-teams`
+- **Description** : Synchronise automatiquement le planning de la semaine vers les équipes (affectations_jours_chef / affectations_finisseurs_jours). Compare avec S-1 : si affectation identique, copie les heures ; sinon crée avec heures par défaut (39h). Protège les fiches avec heures déjà saisies.
+
 ## Changements d'heure saisonniers
 
 ✅ **AUTOMATIQUE** : Les edge functions `rappel-chefs` et `rappel-conducteurs` gèrent automatiquement les changements d'heure été/hiver via le module `_shared/timezone.ts`.

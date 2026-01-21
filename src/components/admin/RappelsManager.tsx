@@ -143,7 +143,7 @@ export const RappelsManager = () => {
           </div>
 
           <Button
-            onClick={() => syncPlanningToTeams()}
+            onClick={() => syncPlanningToTeams(undefined)}
             disabled={isSyncing}
             className="w-full"
           >
