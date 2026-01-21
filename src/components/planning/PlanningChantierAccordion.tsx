@@ -73,7 +73,32 @@ export const PlanningChantierAccordion = ({
       map.get(aff.employe_id)!.affectations.push(aff);
     });
 
-    return Array.from(map.values());
+    // Tri par ordre hiérarchique : Chef > Maçon > Finisseur > Grutier > Intérimaire
+    const roleOrder: Record<string, number> = {
+      chef: 1,
+      macon: 2,
+      finisseur: 3,
+      grutier: 4,
+    };
+
+    return Array.from(map.values()).sort((a, b) => {
+      const aIsInterim = !!a.employe.agence_interim;
+      const bIsInterim = !!b.employe.agence_interim;
+      
+      // Intérimaires toujours en dernier
+      if (aIsInterim && !bIsInterim) return 1;
+      if (!aIsInterim && bIsInterim) return -1;
+      
+      // Tri par rôle métier
+      const aOrder = roleOrder[a.employe.role_metier || ""] || 99;
+      const bOrder = roleOrder[b.employe.role_metier || ""] || 99;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      
+      // Tri alphabétique en cas d'égalité
+      return `${a.employe.nom} ${a.employe.prenom}`.localeCompare(
+        `${b.employe.nom} ${b.employe.prenom}`
+      );
+    });
   }, [affectations]);
 
   // Vérifier si un employé est apprenti
@@ -193,12 +218,14 @@ export const PlanningChantierAccordion = ({
                 </span>
                 <Popover open={heuresPopoverOpen} onOpenChange={setHeuresPopoverOpen}>
                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs px-1.5 bg-muted cursor-pointer hover:bg-primary/20 transition-colors"
-                    >
-                      {heuresHebdo}
-                    </Badge>
+                    <span>
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs px-1.5 bg-muted cursor-pointer hover:bg-primary/20 transition-colors"
+                      >
+                        {heuresHebdo}
+                      </Badge>
+                    </span>
                   </PopoverTrigger>
                   <PopoverContent className="w-40 p-2" onClick={(e) => e.stopPropagation()}>
                     <Select
