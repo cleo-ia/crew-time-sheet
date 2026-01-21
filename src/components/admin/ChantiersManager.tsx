@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, MapPin, CalendarIcon, Building2, User, Users, FileText, Paperclip } from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, CalendarIcon, Building2, User, Users, FileText, Paperclip, Clock, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,6 +38,11 @@ export const ChantiersManager = () => {
     description: "",
     date_debut: null as Date | null,
     date_fin: null as Date | null,
+    // Nouveaux champs
+    heures_hebdo_prevues: "39H",
+    statut_insertion: "" as string,
+    insertion_heures_requises: "" as string,
+    insertion_date_debut: null as Date | null,
   });
 
   const { data: chantiers = [], isLoading } = useChantiers();
@@ -52,6 +57,9 @@ export const ChantiersManager = () => {
       ...formData,
       date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
       date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
+      insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
+      insertion_date_debut: formData.insertion_date_debut ? format(formData.insertion_date_debut, "yyyy-MM-dd") : null,
+      statut_insertion: formData.statut_insertion || null,
     };
 
     if (editingChantier) {
@@ -76,6 +84,10 @@ export const ChantiersManager = () => {
       description: "",
       date_debut: null,
       date_fin: null,
+      heures_hebdo_prevues: "39H",
+      statut_insertion: "",
+      insertion_heures_requises: "",
+      insertion_date_debut: null,
     });
   };
 
@@ -99,6 +111,10 @@ export const ChantiersManager = () => {
       description: chantier.description || "",
       date_debut: chantier.date_debut ? new Date(chantier.date_debut) : null,
       date_fin: chantier.date_fin ? new Date(chantier.date_fin) : null,
+      heures_hebdo_prevues: chantier.heures_hebdo_prevues || "39H",
+      statut_insertion: chantier.statut_insertion || "",
+      insertion_heures_requises: chantier.insertion_heures_requises?.toString() || "",
+      insertion_date_debut: chantier.insertion_date_debut ? new Date(chantier.insertion_date_debut) : null,
     });
     setShowDialog(true);
   };
@@ -417,6 +433,97 @@ export const ChantiersManager = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <Separator className="bg-border/50" />
+
+            {/* Section Heures et Insertion */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>Planning & Insertion</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Heures hebdomadaires prévues</Label>
+                  <Select 
+                    value={formData.heures_hebdo_prevues} 
+                    onValueChange={(value) => setFormData({ ...formData, heures_hebdo_prevues: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="35H">35H</SelectItem>
+                      <SelectItem value="37H">37H</SelectItem>
+                      <SelectItem value="39H">39H</SelectItem>
+                      <SelectItem value="40H">40H</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Statut d'insertion</Label>
+                  <Select 
+                    value={formData.statut_insertion} 
+                    onValueChange={(value) => setFormData({ ...formData, statut_insertion: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pas_insertion">Pas d'insertion</SelectItem>
+                      <SelectItem value="en_cours">En cours</SelectItem>
+                      <SelectItem value="ok">OK / Validée</SelectItem>
+                      <SelectItem value="terminee">Terminée</SelectItem>
+                      <SelectItem value="annulee">Annulée</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {formData.statut_insertion && formData.statut_insertion !== "pas_insertion" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Heures requises</Label>
+                    <Input 
+                      type="number"
+                      placeholder="Ex: 100" 
+                      value={formData.insertion_heures_requises}
+                      onChange={(e) => setFormData({ ...formData, insertion_heures_requises: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date début insertion</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.insertion_date_debut && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.insertion_date_debut ? (
+                            format(formData.insertion_date_debut, "PPP", { locale: fr })
+                          ) : (
+                            <span>Sélectionner une date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.insertion_date_debut || undefined}
+                          onSelect={(date) => setFormData({ ...formData, insertion_date_debut: date || null })}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator className="bg-border/50" />

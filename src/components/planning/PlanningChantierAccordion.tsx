@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { format, parseISO } from "date-fns";
 import {
   Accordion,
   AccordionContent,
@@ -127,6 +128,30 @@ export const PlanningChantierAccordion = ({
     ? `${chantier.conducteur.prenom} ${chantier.conducteur.nom}`
     : "Sans conducteur";
 
+  // Champs étendus du chantier (nouveaux champs SQL)
+  const heuresHebdo = (chantier as any).heures_hebdo_prevues || "39H";
+  const statutInsertion = (chantier as any).statut_insertion;
+
+  const getInsertionBadge = () => {
+    if (!statutInsertion || statutInsertion === "pas_insertion") return null;
+    
+    const config: Record<string, { label: string; className: string }> = {
+      ok: { label: "OK", className: "bg-success/20 text-success border-success/30" },
+      en_cours: { label: "En cours", className: "bg-primary/20 text-primary border-primary/30" },
+      terminee: { label: "Terminée", className: "bg-success/20 text-success border-success/30" },
+      annulee: { label: "Annulée", className: "bg-destructive/20 text-destructive border-destructive/30" },
+    };
+    
+    const cfg = config[statutInsertion];
+    if (!cfg) return null;
+    
+    return (
+      <Badge variant="outline" className={`text-xs px-1.5 ${cfg.className}`}>
+        Ins: {cfg.label}
+      </Badge>
+    );
+  };
+
   const handleAdd = (employeId: string, days: string[]) => {
     onAddEmploye(employeId, chantier.id, days);
   };
@@ -151,6 +176,10 @@ export const PlanningChantierAccordion = ({
                 <span className="text-sm text-muted-foreground">
                   {conducteurName}
                 </span>
+                <Badge variant="outline" className="text-xs px-1.5 bg-muted">
+                  {heuresHebdo}
+                </Badge>
+                {getInsertionBadge()}
               </div>
 
               {/* Compteurs par catégorie + jours */}
@@ -168,19 +197,23 @@ export const PlanningChantierAccordion = ({
                   </Badge>
                 </div>
 
-                {/* Compteurs par jour */}
+                {/* Compteurs par jour avec dates */}
                 <div className="flex gap-1">
                   {weekDays.map((day, index) => {
                     const lr = countsByCategory.lrByDay[day.date] || 0;
                     const interim = countsByCategory.interimByDay[day.date] || 0;
                     const total = lr + interim;
+                    const dateStr = format(parseISO(day.date), "d/MM");
                     return (
                       <div 
                         key={day.date} 
-                        className="flex flex-col items-center min-w-[28px]"
+                        className="flex flex-col items-center min-w-[32px]"
                       >
-                        <span className="text-xs font-medium text-muted-foreground">
+                        <span className="text-xs font-bold text-muted-foreground">
                           {JOURS_SEMAINE_FR[index]}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {dateStr}
                         </span>
                         <span className={`text-sm font-bold ${total > 0 ? 'text-primary' : 'text-muted-foreground/50'}`}>
                           {total}
@@ -198,7 +231,7 @@ export const PlanningChantierAccordion = ({
           </AccordionTrigger>
 
           <AccordionContent className="px-4 pb-4 pt-2">
-            {/* En-tête des colonnes - style Excel */}
+            {/* En-tête des colonnes - style Excel avec dates */}
             <div className="flex items-center gap-2 py-1.5 px-3 text-xs text-muted-foreground font-semibold border-b border-border bg-muted/30 rounded-t-md">
               <span className="min-w-[50px]">Type</span>
               <span className="flex-1 min-w-[140px]">Personnel</span>
@@ -207,9 +240,15 @@ export const PlanningChantierAccordion = ({
               <span className="w-[130px]">Véhicule</span>
               <span className="w-[70px]">Agence</span>
               <div className="flex gap-0.5">
-                {JOURS_SEMAINE_FR.map((jour, i) => (
-                  <span key={i} className="w-6 text-center font-bold">{jour}</span>
-                ))}
+                {weekDays.map((day, i) => {
+                  const dateStr = format(parseISO(day.date), "d/MM");
+                  return (
+                    <div key={i} className="w-6 text-center flex flex-col">
+                      <span className="font-bold">{JOURS_SEMAINE_FR[i]}</span>
+                      <span className="text-[9px] text-muted-foreground/70">{dateStr}</span>
+                    </div>
+                  );
+                })}
               </div>
               <span className="w-6"></span>
             </div>
