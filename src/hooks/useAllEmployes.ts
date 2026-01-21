@@ -12,7 +12,7 @@ export interface Employe {
   entreprise_id: string;
 }
 
-export type EmployeType = "all" | "lr" | "interim" | "finisseur" | "chef";
+export type EmployeType = "all" | "macon" | "grutier" | "interim" | "finisseur" | "chef";
 
 export const useAllEmployes = () => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -58,39 +58,54 @@ export const filterEmployesByType = (employes: Employe[], type: EmployeType): Em
   if (type === "all") return employes;
 
   return employes.filter(emp => {
-    const isInterim = !!emp.agence_interim;
-    const isFinisseur = emp.role_metier === "finisseur";
-    const isChef = emp.role_metier === "chef";
-
-    switch (type) {
-      case "lr":
-        return !isInterim; // LR = tous les internes (chefs, maçons, grutiers, finisseurs)
-      case "interim":
-        return isInterim;
-      case "finisseur":
-        return isFinisseur;
-      case "chef":
-        return isChef;
-      default:
-        return true;
-    }
+    const empType = getEmployeType(emp);
+    return empType === type;
   });
 };
 
 // Déterminer le type d'employé pour les badges
-export const getEmployeType = (employe: Employe): "lr" | "interim" | "finisseur" | "chef" => {
+export const getEmployeType = (employe: Employe): "macon" | "grutier" | "interim" | "finisseur" | "chef" => {
   if (employe.role_metier === "chef") return "chef";
   if (employe.role_metier === "finisseur") return "finisseur";
   if (employe.agence_interim) return "interim";
-  return "lr";
+  if (employe.role_metier === "grutier" || employe.libelle_emploi?.toLowerCase().includes("grutier")) {
+    return "grutier";
+  }
+  return "macon";
 };
 
-// Couleurs des badges par type
+// Couleurs des badges par type (cohérentes avec role-badge.tsx)
 export const EMPLOYE_TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  lr: { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", label: "LR" },
-  interim: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", label: "Intérim" },
-  finisseur: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", label: "Finisseur" },
-  chef: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", label: "Chef" },
+  // Maçon - Jaune/Or hsl(45 90% 60%)
+  macon: { 
+    bg: "bg-amber-400 dark:bg-amber-500", 
+    text: "text-amber-900 dark:text-amber-100", 
+    label: "Maçon" 
+  },
+  // Grutier - Bleu hsl(217 91% 60%)
+  grutier: { 
+    bg: "bg-blue-500 dark:bg-blue-600", 
+    text: "text-white", 
+    label: "Grutier" 
+  },
+  // Intérimaire - Cyan hsl(180 70% 50%)
+  interim: { 
+    bg: "bg-cyan-500 dark:bg-cyan-600", 
+    text: "text-white", 
+    label: "Intérim" 
+  },
+  // Finisseur - Violet hsl(270 70% 65%)
+  finisseur: { 
+    bg: "bg-purple-400 dark:bg-purple-500", 
+    text: "text-white", 
+    label: "Finisseur" 
+  },
+  // Chef - Orange
+  chef: { 
+    bg: "bg-orange-500 dark:bg-orange-600", 
+    text: "text-white", 
+    label: "Chef" 
+  },
 };
 
 // Couleur du texte selon le type d'employé (style Excel)
