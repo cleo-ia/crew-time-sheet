@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
@@ -38,6 +38,7 @@ const PlanningMainOeuvre = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [allExpanded, setAllExpanded] = useState(false);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id") || "";
   const enterpriseConfig = useEnterpriseConfig();
@@ -273,6 +274,18 @@ const PlanningMainOeuvre = () => {
               <Copy className="h-4 w-4 mr-2" />
               Copier S-1
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setAllExpanded(!allExpanded)}
+            >
+              {allExpanded ? (
+                <ChevronsDownUp className="h-4 w-4 mr-2" />
+              ) : (
+                <ChevronsUpDown className="h-4 w-4 mr-2" />
+              )}
+              {allExpanded ? "Tout replier" : "Tout déplier"}
+            </Button>
           </div>
         </CardHeader>
 
@@ -314,6 +327,7 @@ const PlanningMainOeuvre = () => {
                   onHeuresChange={handleHeuresChange}
                   onInsertionChange={handleInsertionChange}
                   isLoading={isMutating}
+                  forceOpen={allExpanded}
                 />
               ))}
             </div>

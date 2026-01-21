@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { 
@@ -10,6 +10,11 @@ import {
   formatAdresseCourte 
 } from "@/hooks/useAllEmployes";
 import { PlanningVehiculeCombobox } from "./PlanningVehiculeCombobox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PlanningEmployeRowProps {
   employe: Employe;
@@ -19,6 +24,7 @@ interface PlanningEmployeRowProps {
   onVehiculeChange: (employeId: string, vehiculeId: string | null) => void;
   onRemove: (employeId: string) => void;
   isLoading?: boolean;
+  conflictDays?: Map<string, string>; // jour -> nom du chantier en conflit
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
@@ -47,6 +53,20 @@ const DayIndicator = ({
   </button>
 );
 
+// Composant pour afficher un conflit (employé affecté ailleurs ce jour)
+const ConflictIndicator = ({ chantierName }: { chantierName: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div className="w-6 h-6 flex items-center justify-center text-orange-500 cursor-help">
+        <AlertTriangle className="h-4 w-4" />
+      </div>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-[200px]">
+      <p className="text-xs">Affecté sur <strong>{chantierName}</strong></p>
+    </TooltipContent>
+  </Tooltip>
+);
+
 export const PlanningEmployeRow = ({
   employe,
   affectations,
@@ -55,6 +75,7 @@ export const PlanningEmployeRow = ({
   onVehiculeChange,
   onRemove,
   isLoading,
+  conflictDays,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
@@ -117,16 +138,26 @@ export const PlanningEmployeRow = ({
         {employe.agence_interim || ""}
       </div>
 
-      {/* Jours L-V avec indicateur "1" */}
+      {/* Jours L-V avec indicateur "1" ou alerte conflit */}
       <div className="flex items-center gap-0.5">
-        {weekDays.map(day => (
-          <DayIndicator
-            key={day.date}
-            checked={affectedDates.has(day.date)}
-            onClick={() => onDayToggle(employe.id, day.date, !affectedDates.has(day.date))}
-            disabled={isLoading}
-          />
-        ))}
+        {weekDays.map(day => {
+          const isAffectedHere = affectedDates.has(day.date);
+          const conflictChantier = conflictDays?.get(day.date);
+          
+          // Si conflit sur ce jour (affecté ailleurs), afficher alerte
+          if (conflictChantier && !isAffectedHere) {
+            return <ConflictIndicator key={day.date} chantierName={conflictChantier} />;
+          }
+          
+          return (
+            <DayIndicator
+              key={day.date}
+              checked={isAffectedHere}
+              onClick={() => onDayToggle(employe.id, day.date, !isAffectedHere)}
+              disabled={isLoading || !!conflictChantier}
+            />
+          );
+        })}
       </div>
 
       {/* Bouton supprimer */}

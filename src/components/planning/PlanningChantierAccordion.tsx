@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -50,6 +50,7 @@ interface PlanningChantierAccordionProps {
   onHeuresChange?: (chantierId: string, heures: string) => void;
   onInsertionChange?: (chantierId: string, data: InsertionData) => void;
   isLoading?: boolean;
+  forceOpen?: boolean;
 }
 
 export const PlanningChantierAccordion = ({
@@ -65,11 +66,20 @@ export const PlanningChantierAccordion = ({
   onHeuresChange,
   onInsertionChange,
   isLoading,
+  forceOpen,
 }: PlanningChantierAccordionProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customHoursInput, setCustomHoursInput] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [insertionPopoverOpen, setInsertionPopoverOpen] = useState(false);
+  const [accordionValue, setAccordionValue] = useState<string>("");
+
+  // Synchroniser l'état avec forceOpen
+  useEffect(() => {
+    if (forceOpen !== undefined) {
+      setAccordionValue(forceOpen ? chantier.id : "");
+    }
+  }, [forceOpen, chantier.id]);
 
   // Grouper les affectations par employé
   const employeAffectations = useMemo(() => {
@@ -114,6 +124,25 @@ export const PlanningChantierAccordion = ({
       );
     });
   }, [affectations]);
+
+  // Calculer les conflits : pour chaque employé, quels jours sont pris sur un AUTRE chantier
+  const conflictsByEmploye = useMemo(() => {
+    const map = new Map<string, Map<string, string>>(); // employe_id -> Map<jour, chantier_nom>
+    
+    allAffectations.forEach(aff => {
+      // Ignorer les affectations sur ce chantier
+      if (aff.chantier_id === chantier.id) return;
+      
+      if (!map.has(aff.employe_id)) {
+        map.set(aff.employe_id, new Map());
+      }
+      // Récupérer le nom du chantier depuis l'affectation
+      const chantierNom = (aff as any).chantier?.nom || "Autre chantier";
+      map.get(aff.employe_id)!.set(aff.jour, chantierNom);
+    });
+    
+    return map;
+  }, [allAffectations, chantier.id]);
 
   // Vérifier si un employé est apprenti
   const isApprenti = (emp: Employe): boolean => {
@@ -306,7 +335,13 @@ export const PlanningChantierAccordion = ({
 
   return (
     <>
-      <Accordion type="single" collapsible className="border rounded-lg overflow-hidden">
+      <Accordion 
+        type="single" 
+        collapsible 
+        className="border rounded-lg overflow-hidden"
+        value={accordionValue}
+        onValueChange={setAccordionValue}
+      >
         <AccordionItem value={chantier.id} className="border-0">
           {/* En-tête style Excel */}
           <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/50 hover:bg-muted/70">
@@ -472,6 +507,7 @@ export const PlanningChantierAccordion = ({
                     }
                     onRemove={(empId) => onRemoveEmploye(empId, chantier.id)}
                     isLoading={isLoading}
+                    conflictDays={conflictsByEmploye.get(employe.id)}
                   />
                 ))}
               </div>
