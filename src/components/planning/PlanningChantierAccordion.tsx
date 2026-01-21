@@ -256,10 +256,12 @@ export const PlanningChantierAccordion = ({
                       }
                     }}
                     onBlur={() => {
-                      if (customHoursInput.trim()) {
-                        onHeuresChange?.(chantier.id, customHoursInput.trim());
-                      }
-                      setShowCustomInput(false);
+                      setTimeout(() => {
+                        if (customHoursInput.trim()) {
+                          onHeuresChange?.(chantier.id, customHoursInput.trim());
+                        }
+                        setShowCustomInput(false);
+                      }, 150);
                     }}
                     autoFocus
                   />
