@@ -26,6 +26,8 @@ export const useAllEmployes = () => {
         .from("utilisateurs")
         .select("id, prenom, nom, role_metier, libelle_emploi, agence_interim, adresse_domicile, entreprise_id")
         .eq("entreprise_id", entrepriseId)
+        // Exclure les rôles administratifs (non affectables à un chantier)
+        .not("role_metier", "in", '("admin","super_admin","rh","conducteur")')
         .order("nom")
         .order("prenom");
 
