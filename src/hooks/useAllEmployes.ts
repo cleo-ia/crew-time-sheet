@@ -36,7 +36,7 @@ export const useAllEmployes = () => {
         .from("utilisateurs")
         .select("id, prenom, nom, role_metier, libelle_emploi, agence_interim, adresse_domicile, entreprise_id, auth_user_id")
         .eq("entreprise_id", entrepriseId)
-        .neq("role_metier", "conducteur")
+        .or('role_metier.neq.conducteur,role_metier.is.null')
         .order("nom")
         .order("prenom");
 
