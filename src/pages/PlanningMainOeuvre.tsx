@@ -3,6 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -13,9 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2 } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet } from "lucide-react";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers } from "@/hooks/useChantiers";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { 
   usePlanningAffectations,
   useUpsertPlanningAffectation,
@@ -27,14 +29,19 @@ import {
 } from "@/hooks/usePlanningAffectations";
 import { PlanningWeekSelector } from "@/components/planning/PlanningWeekSelector";
 import { PlanningChantierAccordion } from "@/components/planning/PlanningChantierAccordion";
+import { generatePlanningExcel, preparePlanningData } from "@/lib/planningExcelExport";
+import { useToast } from "@/hooks/use-toast";
 
 const PlanningMainOeuvre = () => {
   const currentWeek = getCurrentWeek();
   const [semaine, setSemaine] = useState(getNextWeek(currentWeek)); // Par défaut S+1
   const [searchQuery, setSearchQuery] = useState("");
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id") || "";
+  const enterpriseConfig = useEnterpriseConfig();
+  const { toast } = useToast();
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
@@ -159,18 +166,46 @@ const PlanningMainOeuvre = () => {
     setCopyDialogOpen(false);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      const planningData = preparePlanningData(filteredChantiers, affectationsByChantier, weekDays);
+      await generatePlanningExcel(planningData, weekDays, semaine, enterpriseConfig.nom);
+      toast({
+        title: "Export réussi",
+        description: `Le fichier Excel a été téléchargé.`,
+      });
+    } catch (error) {
+      console.error("Erreur export Excel:", error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de générer le fichier Excel.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <PageLayout>
-      {/* Header simple sans PageHeader car celui-ci nécessite des props spécifiques */}
+      {/* Header avec nom entreprise et semaine */}
       <div className="border-b border-border/50 backdrop-blur-sm bg-primary/10 sticky top-[48px] z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
-            <Users className="h-6 w-6" />
-            Planning Main d'Oeuvre
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Planification hebdomadaire des effectifs sur les chantiers
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
+                <Users className="h-6 w-6" />
+                {enterpriseConfig.nom} - Planning Main d'Oeuvre
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Planification hebdomadaire des effectifs sur les chantiers
+              </p>
+            </div>
+            <Badge variant="outline" className="bg-warning/20 text-warning-foreground border-warning text-lg px-3 py-1 font-bold">
+              {semaine}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -187,6 +222,19 @@ const PlanningMainOeuvre = () => {
               onSemaineChange={setSemaine}
               affectationsCount={affectations.length}
             />
+
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={isMutating || isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+              )}
+              Export Excel
+            </Button>
 
             <Button
               variant="outline"

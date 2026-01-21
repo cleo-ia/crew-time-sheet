@@ -332,10 +332,14 @@ export type Database = {
           date_fin: string | null
           description: string | null
           entreprise_id: string
+          heures_hebdo_prevues: string | null
           id: string
+          insertion_date_debut: string | null
+          insertion_heures_requises: number | null
           libelle: string | null
           montant_vendu: number | null
           nom: string
+          statut_insertion: string | null
           updated_at: string
           ville: string | null
         }
@@ -352,10 +356,14 @@ export type Database = {
           date_fin?: string | null
           description?: string | null
           entreprise_id: string
+          heures_hebdo_prevues?: string | null
           id?: string
+          insertion_date_debut?: string | null
+          insertion_heures_requises?: number | null
           libelle?: string | null
           montant_vendu?: number | null
           nom: string
+          statut_insertion?: string | null
           updated_at?: string
           ville?: string | null
         }
@@ -372,10 +380,14 @@ export type Database = {
           date_fin?: string | null
           description?: string | null
           entreprise_id?: string
+          heures_hebdo_prevues?: string | null
           id?: string
+          insertion_date_debut?: string | null
+          insertion_heures_requises?: number | null
           libelle?: string | null
           montant_vendu?: number | null
           nom?: string
+          statut_insertion?: string | null
           updated_at?: string
           ville?: string | null
         }
