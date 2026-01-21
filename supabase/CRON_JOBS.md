@@ -38,10 +38,25 @@ Ce document décrit la configuration des tâches planifiées (cron jobs) pour le
 - **Description** : Envoie un rappel aux conducteurs pour valider/exporter les heures de leurs finisseurs (statuts `BROUILLON` ou `EN_SIGNATURE`)
 
 ### 6. **sync-planning-to-teams-weekly** - Synchronisation Planning → Équipes
-- **Fréquence** : Lundi à 6h Paris
-- **Cron** : `0 5 * * 1` (5h UTC = 6h Paris heure d'hiver)
+- **Fréquence** : Lundi à 5h Paris
+- **Cron** : `0 4 * * 1` (4h UTC = 5h Paris heure d'hiver)
 - **Edge Function** : `sync-planning-to-teams`
 - **Description** : Synchronise automatiquement le planning de la semaine vers les équipes (affectations_jours_chef / affectations_finisseurs_jours). Compare avec S-1 : si affectation identique, copie les heures ; sinon crée avec heures par défaut (39h). Protège les fiches avec heures déjà saisies.
+
+**Configuration SQL à exécuter dans le SQL Editor Supabase :**
+```sql
+SELECT cron.schedule(
+  'sync-planning-to-teams-weekly',
+  '0 4 * * 1',
+  $$
+  SELECT net.http_post(
+    url:='https://rxkhtqezcyaqvjlbzzpu.supabase.co/functions/v1/sync-planning-to-teams',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4a2h0cWV6Y3lhcXZqbGJ6enB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzY0MzYsImV4cCI6MjA3NTkxMjQzNn0.FKTd_iSQHWaiQDIEuX9fD-tt7cdzyhAeWmIjC6v8v-M"}'::jsonb,
+    body:='{"execution_mode": "cron"}'::jsonb
+  ) as request_id;
+  $$
+);
+```
 
 ## Changements d'heure saisonniers
 
