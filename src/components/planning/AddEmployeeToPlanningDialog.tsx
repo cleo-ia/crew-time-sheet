@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Search, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   useAllEmployes, 
@@ -55,8 +57,15 @@ export const AddEmployeeToPlanningDialog = ({
   const { data: allEmployes = [], isLoading } = useAllEmployes();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<EmployeType>("all");
+  
+  // Mode simple (un seul employé)
   const [selectedEmployeId, setSelectedEmployeId] = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  
+  // Mode multi-sélection
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedEmployeIds, setSelectedEmployeIds] = useState<Set<string>>(new Set());
+  const [commonDays, setCommonDays] = useState<string[]>([]);
 
   // Employés déjà sur ce chantier cette semaine
   const employeIdsOnChantier = new Set(
@@ -118,7 +127,10 @@ export const AddEmployeeToPlanningDialog = ({
     return result;
   }, [allEmployes, typeFilter, search, employeIdsOnChantier]);
 
+  // Mode simple : sélection d'un employé
   const handleSelectEmploye = (employe: Employe) => {
+    if (multiSelectMode) return; // Ignorer en mode multi
+    
     if (selectedEmployeId === employe.id) {
       setSelectedEmployeId(null);
       setSelectedDays([]);
@@ -133,6 +145,7 @@ export const AddEmployeeToPlanningDialog = ({
     }
   };
 
+  // Mode simple : toggle d'un jour
   const handleDayToggle = (date: string) => {
     setSelectedDays(prev => 
       prev.includes(date)
@@ -141,26 +154,118 @@ export const AddEmployeeToPlanningDialog = ({
     );
   };
 
+  // Mode multi : toggle d'un employé dans la sélection
+  const handleToggleEmployeMulti = (employeId: string) => {
+    setSelectedEmployeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(employeId)) {
+        next.delete(employeId);
+      } else {
+        next.add(employeId);
+      }
+      return next;
+    });
+  };
+
+  // Mode multi : toggle d'un jour commun
+  const handleToggleCommonDay = (date: string) => {
+    setCommonDays(prev => 
+      prev.includes(date)
+        ? prev.filter(d => d !== date)
+        : [...prev, date]
+    );
+  };
+
+  // Ajout simple (un employé)
   const handleAdd = () => {
     if (selectedEmployeId && selectedDays.length > 0) {
       onAdd(selectedEmployeId, selectedDays);
-      setSelectedEmployeId(null);
-      setSelectedDays([]);
-      onOpenChange(false);
+      resetAndClose();
     }
   };
 
+  // Ajout en masse (plusieurs employés)
+  const handleBatchAdd = () => {
+    if (selectedEmployeIds.size === 0 || commonDays.length === 0) return;
+    
+    selectedEmployeIds.forEach(employeId => {
+      const takenDays = daysTakenByEmploye.get(employeId) || new Set();
+      const availableDays = commonDays.filter(d => !takenDays.has(d));
+      if (availableDays.length > 0) {
+        onAdd(employeId, availableDays);
+      }
+    });
+    
+    resetAndClose();
+  };
+
+  const resetAndClose = () => {
+    setSelectedEmployeId(null);
+    setSelectedDays([]);
+    setSelectedEmployeIds(new Set());
+    setCommonDays([]);
+    onOpenChange(false);
+  };
+
+  // Toggle mode multi-sélection
+  const handleToggleMultiMode = (checked: boolean) => {
+    setMultiSelectMode(checked);
+    // Reset les sélections quand on change de mode
+    setSelectedEmployeId(null);
+    setSelectedDays([]);
+    setSelectedEmployeIds(new Set());
+    setCommonDays([]);
+  };
+
   const selectedEmploye = allEmployes.find(e => e.id === selectedEmployeId);
+
+  // Calculer les jours disponibles pour tous les employés sélectionnés en mode multi
+  const commonAvailableDays = useMemo(() => {
+    if (selectedEmployeIds.size === 0) return weekDays.map(d => d.date);
+    
+    // Intersection des jours disponibles pour tous les employés sélectionnés
+    let available = new Set(weekDays.map(d => d.date));
+    
+    selectedEmployeIds.forEach(empId => {
+      const taken = daysTakenByEmploye.get(empId) || new Set();
+      available = new Set([...available].filter(d => !taken.has(d)));
+    });
+    
+    return [...available];
+  }, [selectedEmployeIds, daysTakenByEmploye, weekDays]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Ajouter un employé au planning
+            {multiSelectMode ? (
+              <Users className="h-5 w-5" />
+            ) : (
+              <UserPlus className="h-5 w-5" />
+            )}
+            {multiSelectMode ? "Ajouter plusieurs employés" : "Ajouter un employé au planning"}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Toggle mode multi-sélection */}
+        <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Switch 
+              id="multi-select-mode"
+              checked={multiSelectMode} 
+              onCheckedChange={handleToggleMultiMode} 
+            />
+            <Label htmlFor="multi-select-mode" className="cursor-pointer">
+              Sélection multiple
+            </Label>
+          </div>
+          {multiSelectMode && selectedEmployeIds.size > 0 && (
+            <Badge variant="secondary">
+              {selectedEmployeIds.size} sélectionné{selectedEmployeIds.size > 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
 
         {/* Filtres */}
         <div className="space-y-3">
@@ -208,21 +313,30 @@ export const AddEmployeeToPlanningDialog = ({
                 const type = getEmployeType(employe);
                 const colors = EMPLOYE_TYPE_COLORS[type];
                 const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
-                const isSelected = selectedEmployeId === employe.id;
+                const isSelectedSingle = selectedEmployeId === employe.id;
+                const isSelectedMulti = selectedEmployeIds.has(employe.id);
 
                 return (
                   <div
                     key={employe.id}
                     className={cn(
-                      "p-3 rounded-md cursor-pointer transition-colors",
-                      isSelected 
-                        ? "bg-primary/10 border border-primary" 
-                        : "hover:bg-muted/50"
+                      "p-3 rounded-md transition-colors",
+                      multiSelectMode 
+                        ? (isSelectedMulti ? "bg-primary/10 border border-primary" : "hover:bg-muted/50")
+                        : (isSelectedSingle ? "bg-primary/10 border border-primary" : "hover:bg-muted/50 cursor-pointer")
                     )}
-                    onClick={() => handleSelectEmploye(employe)}
+                    onClick={() => !multiSelectMode && handleSelectEmploye(employe)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        {/* Checkbox en mode multi */}
+                        {multiSelectMode && (
+                          <Checkbox
+                            checked={isSelectedMulti}
+                            onCheckedChange={() => handleToggleEmployeMulti(employe.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium",
                           colors.bg, colors.text
@@ -257,8 +371,8 @@ export const AddEmployeeToPlanningDialog = ({
                       )}
                     </div>
 
-                    {/* Sélection des jours si employé sélectionné */}
-                    {isSelected && (
+                    {/* Sélection des jours - MODE SIMPLE uniquement */}
+                    {!multiSelectMode && isSelectedSingle && (
                       <div className="mt-3 pt-3 border-t flex items-center gap-4">
                         <span className="text-sm text-muted-foreground">
                           Jours à affecter :
@@ -296,19 +410,71 @@ export const AddEmployeeToPlanningDialog = ({
           </div>
         </ScrollArea>
 
+        {/* Sélection des jours communs - MODE MULTI */}
+        {multiSelectMode && selectedEmployeIds.size > 0 && (
+          <div className="border-t pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                Jours à affecter pour les {selectedEmployeIds.size} employé{selectedEmployeIds.size > 1 ? "s" : ""} :
+              </span>
+              {commonAvailableDays.length < weekDays.length && (
+                <span className="text-xs text-muted-foreground">
+                  (certains jours sont indisponibles pour certains employés)
+                </span>
+              )}
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              {weekDays.map(day => {
+                const isAvailable = commonAvailableDays.includes(day.date);
+                return (
+                  <div key={day.date} className="flex items-center gap-1.5">
+                    <Checkbox
+                      id={`common-day-${day.date}`}
+                      checked={commonDays.includes(day.date)}
+                      onCheckedChange={() => handleToggleCommonDay(day.date)}
+                      disabled={!isAvailable}
+                    />
+                    <label 
+                      htmlFor={`common-day-${day.date}`}
+                      className={cn(
+                        "text-sm cursor-pointer",
+                        !isAvailable && "text-muted-foreground line-through"
+                      )}
+                    >
+                      {day.fullName}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Footer avec bouton d'ajout */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button 
-            onClick={handleAdd}
-            disabled={!selectedEmployeId || selectedDays.length === 0}
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Ajouter {selectedEmploye ? `${selectedEmploye.prenom}` : ""}
-            {selectedDays.length > 0 && ` (${selectedDays.length}j)`}
-          </Button>
+          
+          {multiSelectMode ? (
+            <Button 
+              onClick={handleBatchAdd}
+              disabled={selectedEmployeIds.size === 0 || commonDays.length === 0}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Ajouter {selectedEmployeIds.size} employé{selectedEmployeIds.size > 1 ? "s" : ""}
+              {commonDays.length > 0 && ` (${commonDays.length}j)`}
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleAdd}
+              disabled={!selectedEmployeId || selectedDays.length === 0}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Ajouter {selectedEmploye ? `${selectedEmploye.prenom}` : ""}
+              {selectedDays.length > 0 && ` (${selectedDays.length}j)`}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
