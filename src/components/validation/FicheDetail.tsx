@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,8 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   const saveSignatureMutation = useSaveSignature();
   const deleteSignatures = useDeleteConducteurSignatures();
   
+  const queryClient = useQueryClient();
+  
   // Get current user (conducteur)
   useEffect(() => {
     const getConducteur = async () => {
@@ -62,6 +65,12 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
     };
     getConducteur();
   }, []);
+  
+  // ✅ Forcer le rafraîchissement des données au montage (après nettoyage SQL)
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["fiche-detail-edit"] });
+    queryClient.invalidateQueries({ queryKey: ["fiche-with-jours"] });
+  }, [ficheId, queryClient]);
   
   // Check if conducteur has signed
   const { data: conducteurSignature } = useConducteurSignature(ficheId, conducteurId);
@@ -265,31 +274,31 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
 
 
   // Convert fiches to TimeEntry format
+  // ✅ Ne génère que les jours ayant des fiches_jours (multi-chef: jours non affectés = pas de données)
   const convertFichesToTimeEntries = () => {
     if (!detailData) return [];
-    
-    // Log temporaire pour vérifier les dates calculées
-    console.log("🔍 Week ID utilisé:", ficheData.semaine);
-    const testDates = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].map(day => 
-      `${day}: ${dayNameToDate(ficheData.semaine, day as any)}`
-    );
-    console.log("📅 Dates calculées:", testDates.join(", "));
     
     return detailData.map((fiche: any) => {
       const days: any = {};
       
+      // ✅ Récupérer uniquement les dates existantes dans fiches_jours
+      const existingDates = fiche.fiches_jours?.map((fj: any) => fj.date) || [];
+      
       ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].forEach(dayName => {
         const dateStr = dayNameToDate(ficheData.semaine, dayName as any);
+        
+        // ✅ Ignorer les jours sans fiches_jours (non affectés à ce chantier)
+        if (!existingDates.includes(dateStr)) return;
+        
         const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
         
         // ✅ Si le jour a un code_chantier_du_jour, on ne pré-remplit PAS chantierId avec le chantier global
-        // Il sera résolu par la normalisation dans TimeEntryTable
         const hasCodeChantier = !!jourData?.code_chantier_du_jour;
         
         days[dayName] = {
           hours: jourData?.heures || 0,
           overtime: 0,
-          absent: (jourData?.heures || 0) === 0,
+          absent: false, // ✅ Si on a une fiches_jours, l'employé n'est pas "absent"
           panierRepas: jourData?.PA || false,
           repasType: jourData?.repas_type || null,
           trajet: jourData?.trajet_perso || (jourData?.code_trajet && jourData.code_trajet !== ''),
@@ -306,7 +315,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
       return {
         employeeId: fiche.salarie_id,
         employeeName: fiche.salarie ? `${fiche.salarie.prenom} ${fiche.salarie.nom}` : "Inconnu",
-        ficheId: fiche.id, // ⚠️ IMPORTANT: Inclure le ficheId pour la suppression
+        ficheId: fiche.id,
         days,
       };
     });
