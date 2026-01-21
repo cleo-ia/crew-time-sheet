@@ -100,11 +100,11 @@ const App = () => (
               } 
             />
 
-            {/* Planning Main d'Oeuvre - Accessible par: super_admin, conducteur, admin, gestionnaire */}
+            {/* Planning Main d'Oeuvre - Accessible par: super_admin, conducteur, admin */}
             <Route 
               path="/planning-main-oeuvre" 
               element={
-                <RequireRole allowedRoles={["super_admin", "conducteur", "admin", "gestionnaire"]}>
+                <RequireRole allowedRoles={["super_admin", "conducteur", "admin"]}>
                   <PlanningMainOeuvre />
                 </RequireRole>
               } 
