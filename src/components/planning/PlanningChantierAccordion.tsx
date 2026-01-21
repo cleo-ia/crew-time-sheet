@@ -66,8 +66,9 @@ export const PlanningChantierAccordion = ({
     return libelle.includes("apprenti") || libelle.includes("alternant");
   };
 
-  // Compter par catégorie (LR, App, Intérim) par jour
+  // Compter par catégorie (LR, App, Intérim) - employés uniques + présences par jour
   const countsByCategory = useMemo(() => {
+    // Compteurs par jour (pour les colonnes L M M J V)
     const lrByDay: Record<string, number> = {};
     const appByDay: Record<string, number> = {};
     const interimByDay: Record<string, number> = {};
@@ -93,13 +94,33 @@ export const PlanningChantierAccordion = ({
       }
     });
 
-    // Totaux globaux
-    const totalLR = Object.values(lrByDay).reduce((a, b) => a + b, 0);
-    const totalApp = Object.values(appByDay).reduce((a, b) => a + b, 0);
-    const totalInterim = Object.values(interimByDay).reduce((a, b) => a + b, 0);
+    // Totaux = nombre d'EMPLOYÉS UNIQUES par catégorie
+    const uniqueLR = new Set<string>();
+    const uniqueApp = new Set<string>();
+    const uniqueInterim = new Set<string>();
 
-    return { lrByDay, appByDay, interimByDay, totalLR, totalApp, totalInterim };
-  }, [affectations, weekDays]);
+    employeAffectations.forEach(({ employe }) => {
+      const isInterim = !!employe.agence_interim;
+      const isApp = isApprenti(employe);
+      
+      if (isInterim) {
+        uniqueInterim.add(employe.id);
+      } else if (isApp) {
+        uniqueApp.add(employe.id);
+      } else {
+        uniqueLR.add(employe.id);
+      }
+    });
+
+    return { 
+      lrByDay, 
+      appByDay, 
+      interimByDay, 
+      totalLR: uniqueLR.size, 
+      totalApp: uniqueApp.size, 
+      totalInterim: uniqueInterim.size 
+    };
+  }, [affectations, weekDays, employeAffectations]);
 
   const totalEmployes = employeAffectations.length;
   const conducteurName = chantier.conducteur 
