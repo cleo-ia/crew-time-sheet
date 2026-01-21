@@ -60,21 +60,34 @@ export const PlanningChantierAccordion = ({
     return Array.from(map.values());
   }, [affectations]);
 
-  // Compter par catégorie (LR, Intérim) par jour
+  // Vérifier si un employé est apprenti
+  const isApprenti = (emp: Employe): boolean => {
+    const libelle = emp.libelle_emploi?.toLowerCase() || "";
+    return libelle.includes("apprenti") || libelle.includes("alternant");
+  };
+
+  // Compter par catégorie (LR, App, Intérim) par jour
   const countsByCategory = useMemo(() => {
     const lrByDay: Record<string, number> = {};
+    const appByDay: Record<string, number> = {};
     const interimByDay: Record<string, number> = {};
     
     weekDays.forEach(day => {
       lrByDay[day.date] = 0;
+      appByDay[day.date] = 0;
       interimByDay[day.date] = 0;
     });
 
     affectations.forEach(aff => {
       if (!aff.employe) return;
-      const isInterim = !!(aff.employe as Employe).agence_interim;
+      const emp = aff.employe as Employe;
+      const isInterim = !!emp.agence_interim;
+      const isApp = isApprenti(emp);
+      
       if (isInterim) {
         interimByDay[aff.jour] = (interimByDay[aff.jour] || 0) + 1;
+      } else if (isApp) {
+        appByDay[aff.jour] = (appByDay[aff.jour] || 0) + 1;
       } else {
         lrByDay[aff.jour] = (lrByDay[aff.jour] || 0) + 1;
       }
@@ -82,9 +95,10 @@ export const PlanningChantierAccordion = ({
 
     // Totaux globaux
     const totalLR = Object.values(lrByDay).reduce((a, b) => a + b, 0);
+    const totalApp = Object.values(appByDay).reduce((a, b) => a + b, 0);
     const totalInterim = Object.values(interimByDay).reduce((a, b) => a + b, 0);
 
-    return { lrByDay, interimByDay, totalLR, totalInterim };
+    return { lrByDay, appByDay, interimByDay, totalLR, totalApp, totalInterim };
   }, [affectations, weekDays]);
 
   const totalEmployes = employeAffectations.length;
@@ -120,12 +134,15 @@ export const PlanningChantierAccordion = ({
 
               {/* Compteurs par catégorie + jours */}
               <div className="flex items-center gap-4">
-                {/* Badges LR / Intérim */}
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs">
+                {/* Badges LR / App / Intérim */}
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs px-1.5">
                     LR: {countsByCategory.totalLR}
                   </Badge>
-                  <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
+                  <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-xs px-1.5">
+                    App: {countsByCategory.totalApp}
+                  </Badge>
+                  <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs px-1.5">
                     Int: {countsByCategory.totalInterim}
                   </Badge>
                 </div>
