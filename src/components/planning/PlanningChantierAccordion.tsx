@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,8 @@ export const PlanningChantierAccordion = ({
   isLoading,
 }: PlanningChantierAccordionProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [customHoursInput, setCustomHoursInput] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   // Grouper les affectations par employé
   const employeAffectations = useMemo(() => {
@@ -211,8 +214,16 @@ export const PlanningChantierAccordion = ({
                   {conducteurName}
                 </span>
                 <Select
-                  value={heuresHebdo}
-                  onValueChange={(value) => onHeuresChange?.(chantier.id, value)}
+                  value={showCustomInput ? "Autre" : heuresHebdo}
+                  onValueChange={(value) => {
+                    if (value === "Autre") {
+                      setShowCustomInput(true);
+                      setCustomHoursInput("");
+                    } else {
+                      setShowCustomInput(false);
+                      onHeuresChange?.(chantier.id, value);
+                    }
+                  }}
                 >
                   <SelectTrigger 
                     className="h-6 w-auto gap-1 px-2 text-xs border-muted bg-muted hover:bg-primary/20 transition-colors rounded-full font-medium"
@@ -227,6 +238,32 @@ export const PlanningChantierAccordion = ({
                     <SelectItem value="Autre">Autre</SelectItem>
                   </SelectContent>
                 </Select>
+                {showCustomInput && (
+                  <Input
+                    className="h-6 w-16 text-xs px-2"
+                    placeholder="42H"
+                    value={customHoursInput}
+                    onChange={(e) => setCustomHoursInput(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter" && customHoursInput.trim()) {
+                        onHeuresChange?.(chantier.id, customHoursInput.trim());
+                        setShowCustomInput(false);
+                      }
+                      if (e.key === "Escape") {
+                        setShowCustomInput(false);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (customHoursInput.trim()) {
+                        onHeuresChange?.(chantier.id, customHoursInput.trim());
+                      }
+                      setShowCustomInput(false);
+                    }}
+                    autoFocus
+                  />
+                )}
                 {getInsertionBadge()}
               </div>
 
