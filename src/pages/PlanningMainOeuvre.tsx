@@ -174,7 +174,7 @@ const PlanningMainOeuvre = () => {
         </div>
       </div>
 
-      <Card>
+      <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
