@@ -23,8 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { UserPlus, CalendarIcon } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { Chantier } from "@/hooks/useChantiers";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { Employe, JOURS_SEMAINE_FR } from "@/hooks/useAllEmployes";
@@ -188,54 +187,41 @@ export const PlanningChantierAccordion = ({
   const statutInsertion = (chantier as any).statut_insertion;
 
   // Champs étendus pour insertion
-  const insertionDateDebut = (chantier as any).insertion_date_debut;
   const insertionHeuresRequises = (chantier as any).insertion_heures_requises;
 
   // State local pour l'édition
   const [editStatut, setEditStatut] = useState(statutInsertion || "pas_insertion");
-  const [editDate, setEditDate] = useState<Date | undefined>(
-    insertionDateDebut ? parseISO(insertionDateDebut) : undefined
-  );
   const [editHeures, setEditHeures] = useState(
     insertionHeuresRequises?.toString() || ""
   );
 
+  // Config des 6 choix d'insertion
+  const insertionOptions = [
+    { value: "pas_insertion", label: "Pas d'insertion", badgeLabel: "Pas d'insertion", className: "bg-muted text-muted-foreground border-muted" },
+    { value: "heures_insertion", label: "Heures d'insertion", badgeLabel: "Ins:", className: "bg-destructive/20 text-destructive border-destructive/30" },
+    { value: "clause_terminee", label: "Clause insertion terminée", badgeLabel: "Clause terminée", className: "bg-success/20 text-success border-success/30" },
+    { value: "clause_terminee_attestation", label: "Clause terminée / attestation reçue", badgeLabel: "Terminée + attestation", className: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300" },
+    { value: "insertion_terminee", label: "Insertion terminée", badgeLabel: "Insertion terminée", className: "bg-success/20 text-success border-success/30" },
+    { value: "clause_annulee", label: "Clause insertion annulée", badgeLabel: "Clause annulée", className: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300" },
+  ];
+
   const handleInsertionSave = () => {
     onInsertionChange?.(chantier.id, {
       statut_insertion: editStatut,
-      insertion_date_debut: editDate ? format(editDate, "yyyy-MM-dd") : null,
-      insertion_heures_requises: editHeures ? parseInt(editHeures, 10) : null,
+      insertion_date_debut: null,
+      insertion_heures_requises: editStatut === "heures_insertion" && editHeures ? parseInt(editHeures, 10) : null,
     });
     setInsertionPopoverOpen(false);
   };
 
   const getInsertionBadge = () => {
-    const config: Record<string, { label: string; className: string }> = {
-      pas_insertion: { label: "Pas d'insertion", className: "bg-muted text-muted-foreground border-muted" },
-      ok: { label: "OK", className: "bg-success/20 text-success border-success/30" },
-      en_cours: { label: "En cours", className: "bg-destructive/20 text-destructive border-destructive/30" },
-      terminee: { label: "Terminée", className: "bg-success/20 text-success border-success/30" },
-      annulee: { label: "Annulée", className: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300" },
-    };
-    
     const currentStatut = statutInsertion || "pas_insertion";
-    const cfg = config[currentStatut] || config.pas_insertion;
+    const currentOption = insertionOptions.find(opt => opt.value === currentStatut) || insertionOptions[0];
     
-    // Construire le label enrichi
-    let label = cfg.label;
-    if (currentStatut !== "pas_insertion" && currentStatut !== "terminee" && currentStatut !== "ok") {
-      const parts: string[] = [];
-      if (insertionDateDebut) {
-        parts.push(format(parseISO(insertionDateDebut), "dd/MM/yyyy"));
-      }
-      if (insertionHeuresRequises) {
-        parts.push(`${insertionHeuresRequises}h`);
-      }
-      if (parts.length > 0) {
-        label = `Ins: ${parts.join(" - ")}`;
-      }
-    } else if (currentStatut === "terminee") {
-      label = "Clause terminée";
+    // Construire le label du badge
+    let badgeLabel = currentOption.badgeLabel;
+    if (currentStatut === "heures_insertion" && insertionHeuresRequises) {
+      badgeLabel = `Ins: ${insertionHeuresRequises}h`;
     }
     
     return (
@@ -245,88 +231,60 @@ export const PlanningChantierAccordion = ({
             variant="outline" 
             className={cn(
               "text-xs px-1.5 cursor-pointer hover:opacity-80 transition-opacity",
-              cfg.className
+              currentOption.className
             )}
             onClick={(e) => {
               e.stopPropagation();
               // Reset edit state when opening
               setEditStatut(statutInsertion || "pas_insertion");
-              setEditDate(insertionDateDebut ? parseISO(insertionDateDebut) : undefined);
               setEditHeures(insertionHeuresRequises?.toString() || "");
             }}
           >
-            {label}
+            {badgeLabel}
           </Badge>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-80 p-4" 
+          className="w-72 p-3" 
           onClick={(e) => e.stopPropagation()}
           align="start"
         >
-          <div className="space-y-4">
-            <h4 className="font-semibold text-sm">Statut d'insertion</h4>
+          <div className="space-y-3">
+            <h4 className="font-semibold text-sm border-b pb-2">Statut d'insertion</h4>
             
-            {/* Select Statut */}
-            <div className="space-y-2">
-              <Label className="text-xs">Statut</Label>
-              <Select value={editStatut} onValueChange={setEditStatut}>
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pas_insertion">Pas d'insertion</SelectItem>
-                  <SelectItem value="en_cours">En cours</SelectItem>
-                  <SelectItem value="ok">OK</SelectItem>
-                  <SelectItem value="terminee">Terminée</SelectItem>
-                  <SelectItem value="annulee">Annulée</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Champs conditionnels */}
-            {editStatut !== "pas_insertion" && (
-              <>
-                {/* Date début */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Date début</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal h-8",
-                          !editDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {editDate ? format(editDate, "dd/MM/yyyy", { locale: fr }) : "Sélectionner"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={editDate}
-                        onSelect={setEditDate}
-                        locale={fr}
-                        initialFocus
+            {/* Liste des 6 choix */}
+            <div className="space-y-1">
+              {insertionOptions.map((option) => (
+                <div key={option.value}>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                      editStatut === option.value
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                    onClick={() => setEditStatut(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                  
+                  {/* Champ heures conditionnel */}
+                  {option.value === "heures_insertion" && editStatut === "heures_insertion" && (
+                    <div className="flex items-center gap-2 px-3 py-2 ml-4">
+                      <Input
+                        type="number"
+                        placeholder="800"
+                        value={editHeures}
+                        onChange={(e) => setEditHeures(e.target.value)}
+                        className="h-8 w-24"
+                        onClick={(e) => e.stopPropagation()}
                       />
-                    </PopoverContent>
-                  </Popover>
+                      <span className="text-sm text-muted-foreground">h</span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Heures requises */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Heures requises</Label>
-                  <Input
-                    type="number"
-                    placeholder="800"
-                    value={editHeures}
-                    onChange={(e) => setEditHeures(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-              </>
-            )}
+              ))}
+            </div>
 
             {/* Bouton Enregistrer */}
             <Button 
