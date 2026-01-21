@@ -35,11 +35,11 @@ interface AddEmployeeToPlanningDialogProps {
 
 const TYPE_FILTERS: { value: EmployeType; label: string }[] = [
   { value: "all", label: "Tous" },
+  { value: "chef", label: "Chefs" },
   { value: "macon", label: "Maçons" },
+  { value: "finisseur", label: "Finisseurs" },
   { value: "grutier", label: "Grutiers" },
   { value: "interim", label: "Intérimaires" },
-  { value: "finisseur", label: "Finisseurs" },
-  { value: "chef", label: "Chefs" },
 ];
 
 export const AddEmployeeToPlanningDialog = ({
