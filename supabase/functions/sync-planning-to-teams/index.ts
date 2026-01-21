@@ -1,0 +1,674 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { isTargetParisHour } from '../_shared/timezone.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface SyncResult {
+  employe_id: string
+  employe_nom: string
+  action: 'copied' | 'created' | 'deleted' | 'protected' | 'skipped'
+  details: string
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  const startTime = Date.now()
+
+  try {
+    console.log('[sync-planning-to-teams] Démarrage de la synchronisation...')
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // deno-lint-ignore no-explicit-any
+    const supabase = createClient(supabaseUrl, supabaseServiceKey) as any
+
+    // Lire le body pour récupérer execution_mode, triggered_by, force et semaine_override
+    let execution_mode = 'cron'
+    let triggered_by = null
+    let force = false
+    let semaine_override = null
+    try {
+      const body = await req.json()
+      execution_mode = body.execution_mode || 'cron'
+      triggered_by = body.triggered_by || null
+      force = body.force || false
+      semaine_override = body.semaine || null
+    } catch {
+      // Body vide ou invalide, on garde les valeurs par défaut
+    }
+
+    // Vérifier si on est à 6h Paris (sauf si force = true)
+    if (!force && !isTargetParisHour(6)) {
+      console.log('[sync-planning-to-teams] Pas encore 6h à Paris, skip')
+      return new Response(
+        JSON.stringify({ message: 'Not target hour', skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    if (force) {
+      console.log('[sync-planning-to-teams] Mode force activé - bypass de la vérification horaire')
+    }
+
+    // Calculer la semaine courante (S) et la semaine précédente (S-1)
+    const currentWeek = semaine_override || getCurrentWeek()
+    const previousWeek = getPreviousWeek(currentWeek)
+
+    console.log(`[sync-planning-to-teams] Semaine courante: ${currentWeek}, Semaine précédente: ${previousWeek}`)
+
+    // Récupérer toutes les entreprises avec planning
+    const { data: entreprises, error: entError } = await supabase
+      .from('planning_affectations')
+      .select('entreprise_id')
+      .eq('semaine', currentWeek)
+    
+    if (entError) throw entError
+
+    const uniqueEntreprises = [...new Set((entreprises || []).map((e: { entreprise_id: string }) => e.entreprise_id))]
+    console.log(`[sync-planning-to-teams] ${uniqueEntreprises.length} entreprise(s) avec planning pour ${currentWeek}`)
+
+    const allResults: SyncResult[] = []
+    let totalCopied = 0
+    let totalCreated = 0
+    let totalDeleted = 0
+    let totalProtected = 0
+
+    for (const entrepriseId of uniqueEntreprises) {
+      console.log(`[sync-planning-to-teams] Traitement entreprise ${entrepriseId}...`)
+      
+      const { results, stats } = await syncEntreprise(
+        supabase, 
+        entrepriseId as string, 
+        currentWeek, 
+        previousWeek
+      )
+      
+      allResults.push(...results)
+      totalCopied += stats.copied
+      totalCreated += stats.created
+      totalDeleted += stats.deleted
+      totalProtected += stats.protected
+    }
+
+    const endTime = Date.now()
+    const duration_ms = endTime - startTime
+
+    // Enregistrer dans l'historique
+    await supabase.from('rappels_historique').insert({
+      type: 'sync_planning_teams',
+      execution_mode,
+      triggered_by,
+      nb_destinataires: allResults.length,
+      nb_succes: totalCopied + totalCreated,
+      nb_echecs: 0,
+      duration_ms,
+      details: {
+        semaine: currentWeek,
+        semaine_precedente: previousWeek,
+        entreprises: uniqueEntreprises.length,
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
+        results: allResults.slice(0, 50) // Limiter pour éviter payload trop gros
+      }
+    })
+
+    console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés, ${totalProtected} protégés`)
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        semaine: currentWeek,
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
+        duration_ms
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    )
+
+  } catch (error) {
+    console.error('[sync-planning-to-teams] Erreur globale:', error)
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // deno-lint-ignore no-explicit-any
+    const supabase = createClient(supabaseUrl, supabaseServiceKey) as any
+    
+    await supabase.from('rappels_historique').insert({
+      type: 'sync_planning_teams',
+      execution_mode: 'cron',
+      nb_destinataires: 0,
+      nb_succes: 0,
+      nb_echecs: 1,
+      error_message: error instanceof Error ? error.message : String(error)
+    })
+    
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
+})
+
+// deno-lint-ignore no-explicit-any
+async function syncEntreprise(
+  supabase: any,
+  entrepriseId: string,
+  currentWeek: string,
+  previousWeek: string
+) {
+  const results: SyncResult[] = []
+  const stats = { copied: 0, created: 0, deleted: 0, protected: 0 }
+
+  // 1. Récupérer le planning S pour cette entreprise
+  const { data: planningData, error: planningError } = await supabase
+    .from('planning_affectations')
+    .select(`
+      *,
+      employe:utilisateurs!planning_affectations_employe_id_fkey(id, prenom, nom)
+    `)
+    .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  if (planningError) throw planningError
+
+  // Grouper par employé
+  // deno-lint-ignore no-explicit-any
+  const planningByEmploye = new Map<string, any[]>()
+  // deno-lint-ignore no-explicit-any
+  for (const aff of (planningData || []) as any[]) {
+    if (!planningByEmploye.has(aff.employe_id)) {
+      planningByEmploye.set(aff.employe_id, [])
+    }
+    planningByEmploye.get(aff.employe_id)!.push(aff)
+  }
+
+  console.log(`[sync-planning-to-teams] ${planningByEmploye.size} employé(s) dans le planning`)
+
+  // 2. Récupérer les affectations existantes S-1 (pour comparaison)
+  const { data: affectationsS1Chef } = await supabase
+    .from('affectations_jours_chef')
+    .select('*')
+    .eq('semaine', previousWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  const { data: affectationsS1Finisseurs } = await supabase
+    .from('affectations_finisseurs_jours')
+    .select('*')
+    .eq('semaine', previousWeek)
+
+  // Grouper S-1 par employé (macon_id ou finisseur_id)
+  const s1ByEmploye = new Map<string, { chantier_id: string; jours: string[] }>()
+  
+  // deno-lint-ignore no-explicit-any
+  for (const aff of (affectationsS1Chef || []) as any[]) {
+    if (!s1ByEmploye.has(aff.macon_id)) {
+      s1ByEmploye.set(aff.macon_id, { chantier_id: aff.chantier_id, jours: [] })
+    }
+    s1ByEmploye.get(aff.macon_id)!.jours.push(aff.jour)
+  }
+  
+  // deno-lint-ignore no-explicit-any
+  for (const aff of (affectationsS1Finisseurs || []) as any[]) {
+    if (!s1ByEmploye.has(aff.finisseur_id)) {
+      s1ByEmploye.set(aff.finisseur_id, { chantier_id: aff.chantier_id, jours: [] })
+    }
+    s1ByEmploye.get(aff.finisseur_id)!.jours.push(aff.date)
+  }
+
+  // 3. Récupérer les chantiers pour savoir s'ils ont un chef
+  // deno-lint-ignore no-explicit-any
+  const chantierIds = [...new Set((planningData || []).map((a: any) => a.chantier_id))]
+  const { data: chantiersData } = await supabase
+    .from('chantiers')
+    .select('id, chef_id, conducteur_id, entreprise_id')
+    .in('id', chantierIds.length > 0 ? chantierIds : ['00000000-0000-0000-0000-000000000000'])
+
+  // deno-lint-ignore no-explicit-any
+  const chantiersMap = new Map((chantiersData || []).map((c: any) => [c.id, c]))
+
+  // 4. Traiter chaque employé du planning
+  for (const [employeId, affectations] of planningByEmploye) {
+    const employeNom = (affectations[0]?.employe?.prenom || '') + ' ' + (affectations[0]?.employe?.nom || '') || employeId
+    const chantierId = affectations[0].chantier_id
+    // deno-lint-ignore no-explicit-any
+    const joursPlanning = affectations.map((a: any) => a.jour).sort()
+    const chantier = chantiersMap.get(chantierId)
+
+    // Récupérer les affectations S-1 de cet employé
+    const affS1 = s1ByEmploye.get(employeId)
+    
+    // Comparer: même chantier ET mêmes jours?
+    const isIdentique = affS1 
+      && affS1.chantier_id === chantierId 
+      && arraysEqual(affS1.jours.sort(), joursPlanning)
+
+    if (isIdentique) {
+      // COPIER les heures de S-1 vers S
+      const copyResult = await copyFichesFromPreviousWeek(
+        supabase, 
+        employeId, 
+        chantierId, 
+        previousWeek, 
+        currentWeek,
+        chantier
+      )
+      
+      if (copyResult.copied) {
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'copied', details: `Heures copiées de ${previousWeek}` })
+        stats.copied++
+      } else {
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: copyResult.reason })
+      }
+    } else {
+      // CRÉER nouvelle affectation avec heures par défaut
+      const createResult = await createNewAffectation(
+        supabase,
+        employeId,
+        chantierId,
+        currentWeek,
+        joursPlanning,
+        chantier,
+        entrepriseId
+      )
+      
+      if (createResult.created) {
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'created', details: `Nouvelle affectation créée avec 39h` })
+        stats.created++
+      } else {
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: createResult.reason })
+      }
+    }
+  }
+
+  // 5. PHASE NETTOYAGE: supprimer les affectations hors planning
+  const employesInPlanning = [...planningByEmploye.keys()]
+  
+  // Récupérer les affectations S qui ne sont pas dans le planning
+  const { data: existingChefS } = await supabase
+    .from('affectations_jours_chef')
+    .select('macon_id, chantier_id')
+    .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  const { data: existingFinisseursS } = await supabase
+    .from('affectations_finisseurs_jours')
+    .select('finisseur_id, chantier_id')
+    .eq('semaine', currentWeek)
+
+  // Identifier les employés à supprimer (dans affectations mais pas dans planning)
+  // deno-lint-ignore no-explicit-any
+  const toDeleteChef = [...new Set((existingChefS || [])
+    .filter((a: any) => !employesInPlanning.includes(a.macon_id))
+    .map((a: any) => a.macon_id))]
+
+  // deno-lint-ignore no-explicit-any
+  const toDeleteFinisseur = [...new Set((existingFinisseursS || [])
+    .filter((a: any) => !employesInPlanning.includes(a.finisseur_id))
+    .map((a: any) => a.finisseur_id))]
+
+  // Vérifier les heures avant suppression
+  for (const maconId of toDeleteChef) {
+    const { data: fiche } = await supabase
+      .from('fiches')
+      .select('id, total_heures, salarie_id')
+      .eq('salarie_id', maconId)
+      .eq('semaine', currentWeek)
+      .maybeSingle()
+
+    if (fiche && fiche.total_heures && fiche.total_heures > 0) {
+      results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'protected', details: `Heures existantes (${fiche.total_heures}h), non supprimé` })
+      stats.protected++
+    } else {
+      // Supprimer
+      await supabase
+        .from('affectations_jours_chef')
+        .delete()
+        .eq('macon_id', maconId)
+        .eq('semaine', currentWeek)
+        .eq('entreprise_id', entrepriseId)
+
+      results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'deleted', details: 'Hors planning' })
+      stats.deleted++
+    }
+  }
+
+  for (const finisseurId of toDeleteFinisseur) {
+    const { data: fiche } = await supabase
+      .from('fiches')
+      .select('id, total_heures')
+      .eq('salarie_id', finisseurId)
+      .eq('semaine', currentWeek)
+      .maybeSingle()
+
+    if (fiche && fiche.total_heures && fiche.total_heures > 0) {
+      results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'protected', details: `Heures existantes (${fiche.total_heures}h), non supprimé` })
+      stats.protected++
+    } else {
+      // Supprimer
+      await supabase
+        .from('affectations_finisseurs_jours')
+        .delete()
+        .eq('finisseur_id', finisseurId)
+        .eq('semaine', currentWeek)
+
+      results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'deleted', details: 'Hors planning' })
+      stats.deleted++
+    }
+  }
+
+  return { results, stats }
+}
+
+// deno-lint-ignore no-explicit-any
+async function copyFichesFromPreviousWeek(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  previousWeek: string,
+  currentWeek: string,
+  // deno-lint-ignore no-explicit-any
+  chantier: any
+): Promise<{ copied: boolean; reason: string }> {
+  
+  // Vérifier si une fiche existe déjà pour S
+  const { data: existingFiche } = await supabase
+    .from('fiches')
+    .select('id, total_heures, statut')
+    .eq('salarie_id', employeId)
+    .eq('chantier_id', chantierId)
+    .eq('semaine', currentWeek)
+    .maybeSingle()
+
+  if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
+    return { copied: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
+  }
+
+  // Récupérer la fiche S-1
+  const { data: ficheS1 } = await supabase
+    .from('fiches')
+    .select('id, user_id')
+    .eq('salarie_id', employeId)
+    .eq('chantier_id', chantierId)
+    .eq('semaine', previousWeek)
+    .maybeSingle()
+
+  if (!ficheS1) {
+    return { copied: false, reason: 'Pas de fiche S-1 à copier' }
+  }
+
+  // Récupérer les fiches_jours de S-1
+  const { data: joursS1 } = await supabase
+    .from('fiches_jours')
+    .select('*')
+    .eq('fiche_id', ficheS1.id)
+
+  if (!joursS1 || joursS1.length === 0) {
+    return { copied: false, reason: 'Pas de jours S-1 à copier' }
+  }
+
+  // Créer ou récupérer la fiche S
+  let ficheIdS = existingFiche?.id
+
+  if (!ficheIdS) {
+    const { data: newFiche, error: newFicheError } = await supabase
+      .from('fiches')
+      .insert({
+        salarie_id: employeId,
+        chantier_id: chantierId,
+        semaine: currentWeek,
+        user_id: ficheS1.user_id,
+        statut: 'BROUILLON',
+        total_heures: 0
+      })
+      .select('id')
+      .single()
+
+    if (newFicheError) throw newFicheError
+    ficheIdS = newFiche.id
+  }
+
+  // Calculer le décalage de jours entre S-1 et S
+  const mondayS1 = parseISOWeek(previousWeek)
+  const mondayS = parseISOWeek(currentWeek)
+  const daysDiff = Math.round((mondayS.getTime() - mondayS1.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Copier les fiches_jours avec les nouvelles dates
+  // deno-lint-ignore no-explicit-any
+  for (const jourS1 of joursS1 as any[]) {
+    const oldDate = new Date(jourS1.date)
+    const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
+    const newDateStr = newDate.toISOString().split('T')[0]
+
+    await supabase
+      .from('fiches_jours')
+      .upsert({
+        fiche_id: ficheIdS,
+        date: newDateStr,
+        heures: jourS1.heures,
+        heure_debut: jourS1.heure_debut,
+        heure_fin: jourS1.heure_fin,
+        pause_minutes: jourS1.pause_minutes,
+        code_trajet: jourS1.code_trajet,
+        HNORM: jourS1.HNORM,
+        HI: jourS1.HI,
+        T: jourS1.T,
+        HP: jourS1.HP,
+        total_jour: jourS1.total_jour,
+        // Ne pas copier: signature_data, commentaire
+      }, { onConflict: 'fiche_id,date' })
+  }
+
+  // Mettre à jour le total_heures de la fiche
+  // deno-lint-ignore no-explicit-any
+  const totalHeures = joursS1.reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+  await supabase
+    .from('fiches')
+    .update({ total_heures: totalHeures, statut: 'BROUILLON' })
+    .eq('id', ficheIdS)
+
+  // Créer les affectations_jours_chef ou affectations_finisseurs_jours
+  // deno-lint-ignore no-explicit-any
+  const jours = joursS1.map((j: any) => {
+    const oldDate = new Date(j.date)
+    const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
+    return newDate.toISOString().split('T')[0]
+  })
+
+  if (chantier?.chef_id) {
+    // Router vers affectations_jours_chef
+    for (const jour of jours) {
+      await supabase
+        .from('affectations_jours_chef')
+        .upsert({
+          macon_id: employeId,
+          chef_id: chantier.chef_id,
+          chantier_id: chantierId,
+          jour,
+          semaine: currentWeek,
+          entreprise_id: chantier.entreprise_id
+        }, { onConflict: 'macon_id,jour' })
+    }
+  } else if (chantier?.conducteur_id) {
+    // Router vers affectations_finisseurs_jours
+    for (const jour of jours) {
+      await supabase
+        .from('affectations_finisseurs_jours')
+        .upsert({
+          finisseur_id: employeId,
+          conducteur_id: chantier.conducteur_id,
+          chantier_id: chantierId,
+          date: jour,
+          semaine: currentWeek
+        }, { onConflict: 'finisseur_id,date' })
+    }
+  }
+
+  return { copied: true, reason: '' }
+}
+
+// deno-lint-ignore no-explicit-any
+async function createNewAffectation(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  currentWeek: string,
+  joursPlanning: string[],
+  // deno-lint-ignore no-explicit-any
+  chantier: any,
+  entrepriseId: string
+): Promise<{ created: boolean; reason: string }> {
+
+  // Vérifier si une fiche existe déjà avec des heures
+  const { data: existingFiche } = await supabase
+    .from('fiches')
+    .select('id, total_heures')
+    .eq('salarie_id', employeId)
+    .eq('chantier_id', chantierId)
+    .eq('semaine', currentWeek)
+    .maybeSingle()
+
+  if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
+    return { created: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
+  }
+
+  // Calculer les heures par défaut (39h / nb jours)
+  const nbJours = joursPlanning.length
+  if (nbJours === 0) {
+    return { created: false, reason: 'Aucun jour planifié' }
+  }
+
+  const heuresParJour = 39 / nbJours
+
+  // Créer ou mettre à jour la fiche
+  let ficheId = existingFiche?.id
+
+  if (!ficheId) {
+    const chefId = chantier?.chef_id || null
+    const { data: newFiche, error } = await supabase
+      .from('fiches')
+      .insert({
+        salarie_id: employeId,
+        chantier_id: chantierId,
+        semaine: currentWeek,
+        user_id: chefId,
+        statut: 'BROUILLON',
+        total_heures: 39
+      })
+      .select('id')
+      .single()
+
+    if (error) throw error
+    ficheId = newFiche.id
+  }
+
+  // Créer les fiches_jours
+  for (const jour of joursPlanning) {
+    await supabase
+      .from('fiches_jours')
+      .upsert({
+        fiche_id: ficheId,
+        date: jour,
+        heures: heuresParJour,
+        total_jour: heuresParJour
+      }, { onConflict: 'fiche_id,date' })
+  }
+
+  // Mettre à jour le total
+  await supabase
+    .from('fiches')
+    .update({ total_heures: 39 })
+    .eq('id', ficheId)
+
+  // Créer les affectations_jours_chef ou affectations_finisseurs_jours
+  if (chantier?.chef_id) {
+    for (const jour of joursPlanning) {
+      await supabase
+        .from('affectations_jours_chef')
+        .upsert({
+          macon_id: employeId,
+          chef_id: chantier.chef_id,
+          chantier_id: chantierId,
+          jour,
+          semaine: currentWeek,
+          entreprise_id: entrepriseId
+        }, { onConflict: 'macon_id,jour' })
+    }
+  } else if (chantier?.conducteur_id) {
+    for (const jour of joursPlanning) {
+      await supabase
+        .from('affectations_finisseurs_jours')
+        .upsert({
+          finisseur_id: employeId,
+          conducteur_id: chantier.conducteur_id,
+          chantier_id: chantierId,
+          date: jour,
+          semaine: currentWeek
+        }, { onConflict: 'finisseur_id,date' })
+    }
+  }
+
+  return { created: true, reason: '' }
+}
+
+// Helpers
+function getCurrentWeek(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const weekNumber = getWeekNumber(now)
+  return `${year}-S${String(weekNumber).padStart(2, '0')}`
+}
+
+function getPreviousWeek(week: string): string {
+  const match = week.match(/^(\d{4})-S(\d{2})$/)
+  if (!match) return week
+  
+  let year = parseInt(match[1])
+  let weekNum = parseInt(match[2])
+  
+  weekNum--
+  if (weekNum < 1) {
+    year--
+    weekNum = 52 // Simplification, certaines années ont 53 semaines
+  }
+  
+  return `${year}-S${String(weekNum).padStart(2, '0')}`
+}
+
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
+function parseISOWeek(semaine: string): Date {
+  const match = semaine.match(/^(\d{4})-S(\d{2})$/)
+  if (!match) throw new Error(`Invalid week format: ${semaine}`)
+  
+  const year = parseInt(match[1])
+  const week = parseInt(match[2])
+  
+  // 4 janvier est toujours dans la semaine 1
+  const jan4 = new Date(year, 0, 4)
+  const dayOfWeek = jan4.getDay() || 7
+  
+  // Calculer le lundi de la semaine 1
+  const mondayWeek1 = new Date(jan4)
+  mondayWeek1.setDate(jan4.getDate() - dayOfWeek + 1)
+  
+  // Ajouter les semaines
+  const result = new Date(mondayWeek1)
+  result.setDate(mondayWeek1.getDate() + (week - 1) * 7)
+  
+  return result
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((v, i) => v === b[i])
+}

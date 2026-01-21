@@ -2,10 +2,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Bell, PlayCircle, Clock, CheckCircle, AlertCircle, Calendar, Loader2, History, Eye, Trash2, AlertTriangle } from "lucide-react";
+import { Bell, PlayCircle, Clock, CheckCircle, AlertCircle, Calendar, Loader2, History, Eye, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useRappels } from "@/hooks/useRappels";
 import { useRappelsHistorique } from "@/hooks/useRappelsHistorique";
 import { usePurgeTestData } from "@/hooks/usePurgeTestData";
+import { useSyncPlanningToTeams } from "@/hooks/useSyncPlanningToTeams";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,8 @@ export const RappelsManager = () => {
     triggerRappelConducteursFinisseurs,
     isExecutingConducteursFinisseurs,
   } = useRappels();
+
+  const { syncPlanningToTeams, isSyncing } = useSyncPlanningToTeams();
 
   const { data: historique, isLoading: historiqueLoading } = useRappelsHistorique();
   const { getCounts, purge, isLoading: isPurging, counts, currentWeek } = usePurgeTestData();
@@ -79,6 +82,14 @@ export const RappelsManager = () => {
     active: true,
   };
 
+  const syncPlanningConfig = {
+    title: "Sync Planning → Équipes",
+    schedule: "Tous les lundis à 06h00 (heure de Paris)",
+    scheduleDetails: "Génère automatiquement les équipes depuis le planning",
+    description: "Copie les heures de S-1 si équipe stable, sinon crée avec 39h par défaut",
+    active: true,
+  };
+
   return (
     <div className="space-y-6">
       <Alert>
@@ -90,6 +101,66 @@ export const RappelsManager = () => {
           Les boutons "Lancer maintenant" permettent de tester le système manuellement.
         </AlertDescription>
       </Alert>
+
+      {/* Sync Planning Card */}
+      <Card className="border-2 border-primary/20 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-primary" />
+                {syncPlanningConfig.title}
+              </CardTitle>
+              <CardDescription>
+                {syncPlanningConfig.description}
+              </CardDescription>
+            </div>
+            <Badge variant={syncPlanningConfig.active ? "default" : "secondary"}>
+              {syncPlanningConfig.active ? (
+                <>
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Actif
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Inactif
+                </>
+              )}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{syncPlanningConfig.schedule}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span className="text-xs">{syncPlanningConfig.scheduleDetails}</span>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => syncPlanningToTeams()}
+            disabled={isSyncing}
+            className="w-full"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Synchronisation...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Synchroniser maintenant
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Rappel Chefs */}
