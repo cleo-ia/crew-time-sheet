@@ -22,17 +22,32 @@ export const useAllEmployes = () => {
     queryFn: async () => {
       if (!entrepriseId) return [];
 
+      // 1. Récupérer les auth_user_id des admin/rh à exclure
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("entreprise_id", entrepriseId)
+        .in("role", ["admin", "rh"]);
+      
+      const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
+
+      // 2. Récupérer tous les employés sauf conducteurs
       const { data, error } = await supabase
         .from("utilisateurs")
-        .select("id, prenom, nom, role_metier, libelle_emploi, agence_interim, adresse_domicile, entreprise_id")
+        .select("id, prenom, nom, role_metier, libelle_emploi, agence_interim, adresse_domicile, entreprise_id, auth_user_id")
         .eq("entreprise_id", entrepriseId)
-        // Exclure les rôles administratifs (non affectables à un chantier)
-        .not("role_metier", "in", '("admin","super_admin","rh","conducteur")')
+        .neq("role_metier", "conducteur")
         .order("nom")
         .order("prenom");
 
       if (error) throw error;
-      return data as Employe[];
+
+      // 3. Filtrer côté JS les admin/rh
+      const filtered = (data || []).filter(emp => 
+        !emp.auth_user_id || !adminUserIds.has(emp.auth_user_id)
+      );
+
+      return filtered as Employe[];
     },
     enabled: !!entrepriseId,
   });
