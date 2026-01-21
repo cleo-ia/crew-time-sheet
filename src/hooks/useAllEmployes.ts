@@ -75,3 +75,28 @@ export const EMPLOYE_TYPE_COLORS: Record<string, { bg: string; text: string; lab
   finisseur: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", label: "Finisseur" },
   chef: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", label: "Chef" },
 };
+
+// Couleur du texte selon le type d'employé (style Excel)
+export const getEmployeeTextColor = (employe: Employe): string => {
+  if (employe.agence_interim) return "text-green-600 dark:text-green-400"; // Intérimaire = vert
+  if (employe.role_metier === "chef") return "text-red-600 dark:text-red-400"; // Chef = rouge
+  if (employe.role_metier === "finisseur") return "text-violet-600 dark:text-violet-400"; // Finisseur = violet
+  return "text-foreground"; // LR interne = noir/blanc
+};
+
+// Formater l'adresse en format court (ex: "71 macon")
+export const formatAdresseCourte = (adresse: string | null): string => {
+  if (!adresse) return "-";
+  // Chercher un code postal et extraire les 2 premiers chiffres + ville
+  const match = adresse.match(/(\d{2})\d{3}\s*(.+)/);
+  if (match) {
+    const dept = match[1];
+    const ville = match[2].split(/[,\s]/)[0].toLowerCase();
+    return `${dept} ${ville}`;
+  }
+  // Sinon retourner les 15 premiers caractères
+  return adresse.substring(0, 15).toLowerCase();
+};
+
+// Jours de la semaine en français
+export const JOURS_SEMAINE_FR = ["L", "M", "M", "J", "V"];
