@@ -1285,9 +1285,26 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                       );
                     }
                     
-                    return weekDays
-                      .filter(day => !isConducteurMode || visibleDays.includes(day))
-                      .map((day) => {
+                    // ✅ En mode edit, filtrer pour n'afficher que les jours avec données
+                    const daysWithData = weekDays.filter(day => {
+                      if (isConducteurMode) return visibleDays.includes(day);
+                      if (mode === "edit") {
+                        // En mode edit, n'afficher que les jours ayant des données définies
+                        return entry.days[day] !== undefined;
+                      }
+                      return true; // Mode create : tous les jours
+                    });
+                    
+                    // Message si aucun jour avec données en mode edit
+                    if (daysWithData.length === 0 && mode === "edit") {
+                      return (
+                        <div className="col-span-12 p-4 text-center text-muted-foreground bg-muted/30 rounded-md">
+                          Aucun jour affecté pour cet employé cette semaine sur ce chantier.
+                        </div>
+                      );
+                    }
+                    
+                    return daysWithData.map((day) => {
                         const dayData = entry.days[day];
                         
                         // Calculer la date ISO du jour
