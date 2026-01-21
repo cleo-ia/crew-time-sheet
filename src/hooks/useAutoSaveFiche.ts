@@ -202,12 +202,40 @@ export const useAutoSaveFiche = () => {
           }
         }
 
-        // 🔥 CORRECTION FINISSEURS: Ne générer des jours QUE pour ceux effectivement saisis
-        // Pour les finisseurs, chaque conducteur ajoute/met à jour uniquement SES jours affectés
-        // Pas de suppression des jours existants (merge automatique multi-conducteurs)
-        const selectedDays = chantierId === null
-          ? workDays.filter(d => normalizedDays[d] !== undefined) // Finisseurs: jours saisis uniquement
-          : workDays; // Autres: tous les jours
+        // 🔥 CORRECTION MULTI-CHEF: Ne sauvegarder que les jours assignés à ce chef
+        // Pour les finisseurs: jours saisis uniquement (multi-conducteur)
+        // Pour les maçons: jours assignés via affectations_jours_chef (ou fallback 5 jours)
+        let selectedDays: typeof workDays[number][] = [...workDays];
+
+        if (chantierId !== null) {
+          // Maçons: vérifier s'il y a des jours spécifiques assignés à ce chef
+          const { data: affectationsJours } = await supabase
+            .from("affectations_jours_chef")
+            .select("jour")
+            .eq("macon_id", entry.employeeId)
+            .eq("chef_id", chefId)
+            .eq("chantier_id", chantierId)
+            .eq("semaine", weekId);
+
+          if (affectationsJours && affectationsJours.length > 0) {
+            // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
+            const dayNameByDate = Object.fromEntries(
+              Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
+            );
+            const assignedDayNames = affectationsJours
+              .map(a => dayNameByDate[a.jour])
+              .filter((name): name is typeof workDays[number] => !!name);
+            
+            if (assignedDayNames.length > 0) {
+              selectedDays = assignedDayNames;
+            }
+            // Si pas de correspondance, garder workDays (fallback)
+          }
+          // Si aucune affectation jour n'existe, garder workDays (rétro-compatibilité)
+        } else {
+          // Finisseurs: seulement les jours effectivement saisis
+          selectedDays = workDays.filter(d => normalizedDays[d] !== undefined);
+        }
 
         const jourEntries = selectedDays.map((dayName) => {
           const dayData = normalizedDays[dayName];
