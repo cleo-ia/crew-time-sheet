@@ -106,6 +106,9 @@ export const useAutoSaveFiche = () => {
         if (!chantierId) {
           // Finisseurs: filtrer explicitement les fiches sans chantier_id
           query = query.is("chantier_id", null);
+        } else {
+          // Maçons: filtrer par CE chantier spécifique (permet multi-chef)
+          query = query.eq("chantier_id", chantierId);
         }
 
         const { data: existingFiche, error: findFicheError } = await query
