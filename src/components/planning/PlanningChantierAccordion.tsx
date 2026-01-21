@@ -8,7 +8,19 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Building2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { UserPlus } from "lucide-react";
 import { Chantier } from "@/hooks/useChantiers";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { Employe, JOURS_SEMAINE_FR } from "@/hooks/useAllEmployes";
@@ -25,6 +37,7 @@ interface PlanningChantierAccordionProps {
   onVehiculeChange: (employeId: string, chantierId: string, vehiculeId: string | null) => void;
   onRemoveEmploye: (employeId: string, chantierId: string) => void;
   onAddEmploye: (employeId: string, chantierId: string, days: string[]) => void;
+  onHeuresChange?: (chantierId: string, heures: string) => void;
   isLoading?: boolean;
 }
 
@@ -38,9 +51,11 @@ export const PlanningChantierAccordion = ({
   onVehiculeChange,
   onRemoveEmploye,
   onAddEmploye,
+  onHeuresChange,
   isLoading,
 }: PlanningChantierAccordionProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [heuresPopoverOpen, setHeuresPopoverOpen] = useState(false);
 
   // Grouper les affectations par employé
   const employeAffectations = useMemo(() => {
@@ -176,9 +191,35 @@ export const PlanningChantierAccordion = ({
                 <span className="text-sm text-muted-foreground">
                   {conducteurName}
                 </span>
-                <Badge variant="outline" className="text-xs px-1.5 bg-muted">
-                  {heuresHebdo}
-                </Badge>
+                <Popover open={heuresPopoverOpen} onOpenChange={setHeuresPopoverOpen}>
+                  <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs px-1.5 bg-muted cursor-pointer hover:bg-primary/20 transition-colors"
+                    >
+                      {heuresHebdo}
+                    </Badge>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-2" onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={heuresHebdo}
+                      onValueChange={(value) => {
+                        onHeuresChange?.(chantier.id, value);
+                        setHeuresPopoverOpen(false);
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="35H">35H</SelectItem>
+                        <SelectItem value="37H">37H</SelectItem>
+                        <SelectItem value="39H">39H</SelectItem>
+                        <SelectItem value="Autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </PopoverContent>
+                </Popover>
                 {getInsertionBadge()}
               </div>
 

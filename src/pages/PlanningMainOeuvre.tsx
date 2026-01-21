@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, Copy, Users, Loader2, FileSpreadsheet } from "lucide-react";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
-import { useChantiers } from "@/hooks/useChantiers";
+import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { 
   usePlanningAffectations,
@@ -53,10 +53,12 @@ const PlanningMainOeuvre = () => {
   const removeEmploye = useRemoveEmployeFromChantier();
   const updateVehicule = useUpdatePlanningVehicule();
   const copyPlanning = useCopyPlanningWeek();
+  const updateChantier = useUpdateChantier();
 
   const isLoading = loadingChantiers || loadingAffectations;
   const isMutating = upsertAffectation.isPending || deleteAffectation.isPending || 
-                     removeEmploye.isPending || updateVehicule.isPending || copyPlanning.isPending;
+                     removeEmploye.isPending || updateVehicule.isPending || copyPlanning.isPending ||
+                     updateChantier.isPending;
 
   // Jours de la semaine
   const weekDays = useMemo(() => getWeekDays(semaine), [semaine]);
@@ -164,6 +166,13 @@ const PlanningMainOeuvre = () => {
       entreprise_id: entrepriseId,
     });
     setCopyDialogOpen(false);
+  };
+
+  const handleHeuresChange = async (chantierId: string, heures: string) => {
+    await updateChantier.mutateAsync({
+      id: chantierId,
+      heures_hebdo_prevues: heures,
+    });
   };
 
   const handleExportExcel = async () => {
@@ -282,6 +291,7 @@ const PlanningMainOeuvre = () => {
                   onVehiculeChange={handleVehiculeChange}
                   onRemoveEmploye={handleRemoveEmploye}
                   onAddEmploye={handleAddEmploye}
+                  onHeuresChange={handleHeuresChange}
                   isLoading={isMutating}
                 />
               ))}

@@ -16,6 +16,10 @@ export interface Chantier {
   conducteur_id: string | null;
   date_debut: string | null;
   date_fin: string | null;
+  heures_hebdo_prevues: string | null;
+  statut_insertion: string | null;
+  insertion_heures_requises: number | null;
+  insertion_date_debut: string | null;
   created_at: string;
   updated_at: string;
   chef?: { id: string; nom: string | null; prenom: string | null } | null;
