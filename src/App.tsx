@@ -14,6 +14,7 @@ import SignatureMacons from "./pages/SignatureMacons";
 import SignatureFinisseurs from "./pages/SignatureFinisseurs";
 import AdminPanel from "./pages/AdminPanel";
 import ChantierDetail from "./pages/ChantierDetail";
+import PlanningMainOeuvre from "./pages/PlanningMainOeuvre";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import Bootstrap from "./pages/Bootstrap";
@@ -95,6 +96,16 @@ const App = () => (
               element={
                 <RequireRole allowedRoles={["super_admin", "conducteur"]}>
                   <SignatureFinisseurs />
+                </RequireRole>
+              } 
+            />
+
+            {/* Planning Main d'Oeuvre - Accessible par: super_admin, conducteur, admin, gestionnaire */}
+            <Route 
+              path="/planning-main-oeuvre" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "conducteur", "admin", "gestionnaire"]}>
+                  <PlanningMainOeuvre />
                 </RequireRole>
               } 
             />

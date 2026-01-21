@@ -1468,6 +1468,88 @@ export type Database = {
           },
         ]
       }
+      planning_affectations: {
+        Row: {
+          chantier_id: string
+          created_at: string | null
+          created_by: string | null
+          employe_id: string
+          entreprise_id: string
+          id: string
+          jour: string
+          semaine: string
+          updated_at: string | null
+          vehicule_id: string | null
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string | null
+          created_by?: string | null
+          employe_id: string
+          entreprise_id: string
+          id?: string
+          jour: string
+          semaine: string
+          updated_at?: string | null
+          vehicule_id?: string | null
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          employe_id?: string
+          entreprise_id?: string
+          id?: string
+          jour?: string
+          semaine?: string
+          updated_at?: string | null
+          vehicule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_affectations_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_affectations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_affectations_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_affectations_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_affectations_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_affectations_vehicule_id_fkey"
+            columns: ["vehicule_id"]
+            isOneToOne: false
+            referencedRelation: "vehicules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1976,6 +2058,7 @@ export type Database = {
       }
       utilisateurs: {
         Row: {
+          adresse_domicile: string | null
           agence_interim: string | null
           auth_user_id: string | null
           created_at: string
@@ -2000,6 +2083,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adresse_domicile?: string | null
           agence_interim?: string | null
           auth_user_id?: string | null
           created_at?: string
@@ -2024,6 +2108,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adresse_domicile?: string | null
           agence_interim?: string | null
           auth_user_id?: string | null
           created_at?: string
