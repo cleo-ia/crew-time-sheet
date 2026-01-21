@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen } from "lucide-react";
+import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-engo-bourgogne.png";
@@ -116,6 +116,22 @@ export const AppNav = () => {
                 <Link to="/validation-conducteur">
                   <FileCheck className="h-4 w-4" />
                   Espace conducteur
+                </Link>
+              </Button>
+            )}
+
+            {/* Planning Main d'Oeuvre - visible par conducteurs et admins */}
+            {(canSeeConducteur || canSeeAdmin) && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/planning-main-oeuvre", "validation-conducteur")}
+                style={getButtonStyle("/planning-main-oeuvre", "validation-conducteur")}
+              >
+                <Link to="/planning-main-oeuvre">
+                  <CalendarDays className="h-4 w-4" />
+                  Planning S+1
                 </Link>
               </Button>
             )}
