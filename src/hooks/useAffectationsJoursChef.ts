@@ -136,6 +136,7 @@ export const useDeleteAffectationJourChef = () => {
 };
 
 // Mettre à jour tous les jours d'un membre en une fois (pour ce chef uniquement)
+// + Synchronise automatiquement les fiches_jours (supprime les jours fantômes)
 export const useUpdateJoursForMember = () => {
   const queryClient = useQueryClient();
   
@@ -168,11 +169,6 @@ export const useUpdateJoursForMember = () => {
       
       if (deleteError) throw deleteError;
       
-      // Si aucun jour sélectionné, on s'arrête là
-      if (selectedDays.length === 0) {
-        return [];
-      }
-      
       // Calculer les dates ISO pour chaque jour sélectionné
       const monday = parseISOWeek(semaine);
       const dayIndexMap: Record<string, number> = {
@@ -182,6 +178,52 @@ export const useUpdateJoursForMember = () => {
         "Jeudi": 3,
         "Vendredi": 4,
       };
+      
+      // Calculer les dates sélectionnées en ISO
+      const selectedDatesISO = selectedDays.map(dayName => 
+        format(addDays(monday, dayIndexMap[dayName] || 0), "yyyy-MM-dd")
+      );
+      
+      // === SYNCHRONISATION FICHES_JOURS ===
+      // Récupérer la fiche de ce maçon pour ce chantier/semaine
+      const { data: fiche } = await supabase
+        .from("fiches")
+        .select("id")
+        .eq("salarie_id", maconId)
+        .eq("chantier_id", chantierId)
+        .eq("semaine", semaine)
+        .maybeSingle();
+
+      if (fiche) {
+        // Supprimer les fiches_jours pour les jours NON sélectionnés
+        if (selectedDatesISO.length > 0) {
+          const { error: deleteJoursError } = await supabase
+            .from("fiches_jours")
+            .delete()
+            .eq("fiche_id", fiche.id)
+            .not("date", "in", `(${selectedDatesISO.join(",")})`);
+          
+          if (deleteJoursError) {
+            console.error("Erreur suppression fiches_jours fantômes:", deleteJoursError);
+          }
+        } else {
+          // Si aucun jour sélectionné, supprimer tous les fiches_jours
+          const { error: deleteAllJoursError } = await supabase
+            .from("fiches_jours")
+            .delete()
+            .eq("fiche_id", fiche.id);
+          
+          if (deleteAllJoursError) {
+            console.error("Erreur suppression tous fiches_jours:", deleteAllJoursError);
+          }
+        }
+        // Note: Le trigger trg_recalc_fiche_on_fj recalcule automatiquement total_heures
+      }
+      
+      // Si aucun jour sélectionné, on s'arrête là
+      if (selectedDays.length === 0) {
+        return [];
+      }
       
       const affectationsToInsert = selectedDays.map(dayName => ({
         macon_id: maconId,
@@ -206,6 +248,7 @@ export const useUpdateJoursForMember = () => {
       queryClient.invalidateQueries({ queryKey: ["affectations-jours-chef"] });
       queryClient.invalidateQueries({ queryKey: ["macons-chantier"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["fiche-with-jours"] });
       toast({
         title: "✅ Jours d'affectation mis à jour",
         duration: 2000,
