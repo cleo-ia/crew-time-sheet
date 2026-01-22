@@ -27,44 +27,28 @@ Deno.serve(async (req) => {
 
     const deleted: Record<string, number> = {};
 
-    // 1. Get all chantier IDs for this enterprise
-    const { data: chantiers } = await supabase
-      .from("chantiers")
-      .select("id")
-      .eq("entreprise_id", entreprise_id);
-    
-    const chantierIds = chantiers?.map(c => c.id) || [];
-    console.log(`Found ${chantierIds.length} chantiers for entreprise ${entreprise_id}`);
-
-    if (chantierIds.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, entreprise_id, deleted: {}, total: 0, message: "No chantiers found for this enterprise" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 2. Get all fiche IDs for these chantiers
+    // 1. Get all fiche IDs for this enterprise (directly via entreprise_id)
     const { data: fiches } = await supabase
       .from("fiches")
       .select("id")
-      .in("chantier_id", chantierIds);
+      .eq("entreprise_id", entreprise_id);
     
     const ficheIds = fiches?.map(f => f.id) || [];
-    console.log(`Found ${ficheIds.length} fiches to delete`);
+    console.log(`Found ${ficheIds.length} fiches to delete for entreprise ${entreprise_id}`);
 
-    // 3. Get all fiches_transport IDs for these chantiers
+    // 2. Get all fiches_transport IDs for these fiches
     const { data: fichesTransport } = await supabase
       .from("fiches_transport")
-      .select("id, fiche_id")
+      .select("id")
       .in("fiche_id", ficheIds.length > 0 ? ficheIds : ['00000000-0000-0000-0000-000000000000']);
     
     const fichesTransportIds = fichesTransport?.map(f => f.id) || [];
     console.log(`Found ${fichesTransportIds.length} fiches_transport to delete`);
 
-    // 4. Get all fiches_transport_finisseurs IDs
+    // 3. Get all fiches_transport_finisseurs IDs
     const { data: fichesTransportFinisseurs } = await supabase
       .from("fiches_transport_finisseurs")
-      .select("id, fiche_id")
+      .select("id")
       .in("fiche_id", ficheIds.length > 0 ? ficheIds : ['00000000-0000-0000-0000-000000000000']);
     
     const fichesTransportFinisseursIds = fichesTransportFinisseurs?.map(f => f.id) || [];
@@ -116,34 +100,34 @@ Deno.serve(async (req) => {
       deleted.fiches_transport = data?.length || 0;
     }
 
-    // signatures
-    if (ficheIds.length > 0) {
+    // signatures (via entreprise_id directly to catch all)
+    {
       const { data, error } = await supabase
         .from("signatures")
         .delete()
-        .in("fiche_id", ficheIds)
+        .eq("entreprise_id", entreprise_id)
         .select();
       if (error) console.error("Error deleting signatures:", error);
       deleted.signatures = data?.length || 0;
     }
 
-    // fiches_jours
-    if (ficheIds.length > 0) {
+    // fiches_jours (via entreprise_id directly to catch all)
+    {
       const { data, error } = await supabase
         .from("fiches_jours")
         .delete()
-        .in("fiche_id", ficheIds)
+        .eq("entreprise_id", entreprise_id)
         .select();
       if (error) console.error("Error deleting fiches_jours:", error);
       deleted.fiches_jours = data?.length || 0;
     }
 
-    // fiches
-    if (ficheIds.length > 0) {
+    // fiches (via entreprise_id directly to catch all including orphans)
+    {
       const { data, error } = await supabase
         .from("fiches")
         .delete()
-        .in("id", ficheIds)
+        .eq("entreprise_id", entreprise_id)
         .select();
       if (error) console.error("Error deleting fiches:", error);
       deleted.fiches = data?.length || 0;
