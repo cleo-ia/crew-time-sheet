@@ -220,7 +220,7 @@ const PlanningMainOeuvre = () => {
   return (
     <PageLayout>
       {/* Header avec nom entreprise et semaine */}
-      <div className="border-b border-border/50 backdrop-blur-sm bg-primary/10 sticky top-[48px] z-10 shadow-sm">
+      <div className="border-b border-border/50 backdrop-blur-sm bg-primary/10 sticky top-[57px] z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
