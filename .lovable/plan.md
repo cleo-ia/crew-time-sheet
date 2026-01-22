@@ -1,81 +1,149 @@
 
 
-# Correction : Affichage des employés sur chantiers sans chef
+# Vue Super Admin - Espace Conducteur
 
-## Contexte
+## Problème identifié
 
-Le chantier **TEST (CI001)** n'a pas de chef (`chef_id = null`). La synchronisation route correctement les employés vers `affectations_finisseurs_jours`, mais l'affichage "Espace Conducteur" ne fonctionne pas.
+En tant que super admin (`tom.genin@groupe-engo.com`), l'Espace Conducteur ne montre aucune donnée car :
 
-## Diagnostic detaille
+1. **Pas de fiche utilisateur liée** : votre compte n'a pas d'entrée dans la table `utilisateurs` avec `auth_user_id` correspondant
+2. **Pas d'affectations** : le hook `useFinisseursByConducteur` filtre strictement par `conducteur_id`, donc même si vous aviez un `utilisateur.id`, vous ne seriez affecté à personne
+3. **Aucun sélecteur conducteur** : la page ne propose pas de choisir un conducteur à visualiser/éditer
 
-### Donnees en base (OK)
+## Solution proposée
 
-| Element | Statut |
-|---------|--------|
-| `planning_affectations` | DARCOURT (L-V) + KASMI (L-M) sur TEST |
-| `affectations_finisseurs_jours` | Crees avec `conducteur_id = Fournier` |
-| `fiches` | DARCOURT 39h, KASMI 16h, **avec chantier_id = TEST** |
+Ajouter un **sélecteur de conducteur** visible uniquement pour les `super_admin`, permettant de :
+- Voir tous les conducteurs de l'entreprise
+- Sélectionner un conducteur spécifique pour voir/modifier son équipe
+- Éditer les affectations comme si vous étiez ce conducteur
 
-### Bug identifie
+## Fichiers à modifier
 
-**Fichier** : `src/hooks/useFinisseursByConducteur.ts`, **ligne 96**
+### 1. ValidationConducteur.tsx
 
-```typescript
-// ACTUEL - Filtre les fiches SANS chantier uniquement
-.is("chantier_id", null);
+**Modifications principales :**
+
+```text
++---------------------------------------------+
+|  Espace Conducteur          [Super Admin]   |
++---------------------------------------------+
+|  Conducteur: [Dropdown: Tous les conducteurs]  
+|   ↓ G. Fournier                             |
+|   ↓ S. Lemaire                              |
++---------------------------------------------+
+|  Semaine sélectionnée                       |
+|  ...reste de l'interface inchangée          |
++---------------------------------------------+
 ```
 
-Ce filtre exclut les fiches liees a un chantier ! Or les chantiers sans chef generent des fiches **avec** `chantier_id`.
+**Changements de code :**
 
-## Solution proposee
+- Importer `useCurrentUserRole` pour détecter le super_admin
+- Importer `useUtilisateursByRole("conducteur")` pour lister les conducteurs
+- Ajouter un état `selectedConducteurId` (distinct de `conducteurId`)
+- Pour super_admin : afficher un sélecteur avec liste des conducteurs
+- Utiliser `selectedConducteurId` au lieu de `conducteurId` dans tous les hooks
 
-### Option 1 : Modifier le hook pour accepter les fiches avec chantier (recommandee)
-
-Supprimer le filtre `.is("chantier_id", null)` et chercher les fiches par `salarie_id` + `semaine` uniquement.
-
-**Fichier** : `src/hooks/useFinisseursByConducteur.ts`
-
-**Modification lignes 91-101** :
+**Lignes 59-65** : Ajouter les états
 
 ```typescript
-// AVANT
-const query = supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("semaine", semaine)
-  .eq("salarie_id", finisseur.id)
-  .is("chantier_id", null);  // ❌ Probleme
+// Pour super_admin : conducteur sélectionné (différent du conducteur connecté)
+const [selectedConducteurIdAdmin, setSelectedConducteurIdAdmin] = useState<string | null>(null);
 
-// APRES
-const query = supabase
-  .from("fiches")
-  .select("id, total_heures, chantier_id")
-  .eq("semaine", semaine)
-  .eq("salarie_id", finisseur.id);
-  // Pas de filtre sur chantier_id - on prend la fiche la plus recente
+// Importer le rôle
+const { data: userRole } = useCurrentUserRole();
+const isSuperAdmin = userRole === "super_admin";
 ```
 
-### Option 2 : Router vers affectations_jours_chef meme sans chef (alternative)
+**Lignes 132-154** : Modifier la logique de récupération
 
-Modifier l'Edge Function pour que les chantiers sans chef utilisent `affectations_jours_chef` avec `chef_id = conducteur_id`. Cela permettrait de gerer ces cas via "Saisie chef" au lieu de "Espace conducteur".
+```typescript
+// Pour super_admin, permettre de choisir un conducteur
+// Pour conducteur normal, utiliser son propre ID
+const effectiveConducteurId = isSuperAdmin 
+  ? selectedConducteurIdAdmin 
+  : conducteurId;
+```
 
-## Impact de l'option 1
+**Nouveau composant dans le header** (entre PageHeader et WeekSelector) :
 
-- **1 fichier modifie** : `useFinisseursByConducteur.ts`
-- **1 ligne supprimee** : `.is("chantier_id", null)`
-- **Resultat** : Les finisseurs avec fiche liee a un chantier (cas sans chef) apparaitront dans l'Espace Conducteur
+```typescript
+{isSuperAdmin && (
+  <Card className="mb-4 p-4 bg-amber-50 border-amber-200">
+    <div className="flex items-center gap-4">
+      <span className="text-sm font-medium text-amber-800">
+        Vue Super Admin - Sélectionner un conducteur :
+      </span>
+      <Select 
+        value={selectedConducteurIdAdmin || ""} 
+        onValueChange={setSelectedConducteurIdAdmin}
+      >
+        <SelectTrigger className="w-[250px]">
+          <SelectValue placeholder="Choisir un conducteur..." />
+        </SelectTrigger>
+        <SelectContent>
+          {conducteurs?.map(c => (
+            <SelectItem key={c.id} value={c.id}>
+              {c.prenom} {c.nom}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  </Card>
+)}
+```
 
-## Tests de validation
+### 2. Imports à ajouter
 
-1. Apres correction, naviguer vers `/validation-conducteur` en tant que Fournier
-2. Selectionner semaine S05
-3. Verifier que DARCOURT (39h) et KASMI (16h) apparaissent dans "Mon equipe"
-4. Verifier que les heures sont correctement affichees
+```typescript
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
+```
 
-## Decision requise
+### 3. Hook pour charger les conducteurs
 
-- **Option 1** : Modifier le hook (solution rapide, compatible avec l'architecture actuelle)
-- **Option 2** : Modifier l'Edge Function (changement plus profond, meilleure coherence long terme)
+```typescript
+// Charger la liste des conducteurs (pour super_admin)
+const { data: conducteurs = [] } = useUtilisateursByRole(
+  isSuperAdmin ? "conducteur" : undefined
+);
+```
 
-Je recommande l'**Option 1** pour une correction immediate, avec potentiellement l'Option 2 dans un second temps pour une architecture plus coherente.
+## Flux utilisateur
+
+```text
+Super Admin se connecte
+         ↓
+Accède à "Espace conducteur"
+         ↓
+Voit le sélecteur "Choisir un conducteur"
+         ↓
+Sélectionne "G. Fournier"
+         ↓
+Voit l'équipe de Fournier (DARCOURT, KASMI...)
+         ↓
+Peut modifier les affectations
+         ↓
+Les modifications sont enregistrées au nom de Fournier
+```
+
+## Vérification des données existantes
+
+Pour la semaine S05 (SDER) :
+- **Conducteur**: G. Fournier (`a321ff73-d880-4598-9b29-b85783d5dd92`)
+- **Affectations**: 7 affectations dans `affectations_finisseurs_jours`
+- **Chantier**: TEST (`da638cc1-9738-4a8c-84ff-99cd8a90f56f`)
+
+Avec cette solution, vous pourrez :
+1. Sélectionner G. Fournier dans le dropdown
+2. Voir ses 7 affectations pour la semaine S05
+3. Voir/modifier l'équipe TEST (DARCOURT, KASMI)
+
+## Impact
+
+- **1 fichier modifié** : `src/pages/ValidationConducteur.tsx`
+- **~30 lignes ajoutées**
+- **Aucun changement de base de données**
+- **Rétrocompatibilité** : les conducteurs normaux voient leur interface inchangée
 
