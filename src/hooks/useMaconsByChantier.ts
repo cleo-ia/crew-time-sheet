@@ -161,112 +161,149 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         }
       }
 
-      // 2. Récupérer les affectations actives pour ce chantier (maçons et intérimaires)
-      const { data: affectations, error: affectError } = await supabase
-        .from("affectations")
-        .select(`
-          macon_id,
-          utilisateurs!affectations_macon_id_fkey (
-            id,
-            nom,
-            prenom,
-            email,
-            agence_interim,
-            role_metier
-          )
-        `)
+      // 2. LOGIQUE HYBRIDE : Priorité à affectations_jours_chef (hebdomadaire), fallback sur affectations (legacy)
+      
+      // ÉTAPE 2a : Récupérer les macon_id depuis affectations_jours_chef (source de vérité hebdo)
+      const { data: joursAffectations, error: joursError } = await supabase
+        .from("affectations_jours_chef")
+        .select("macon_id")
         .eq("chantier_id", chantierId)
-        .is("date_fin", null);
+        .eq("semaine", semaine)
+        .eq("entreprise_id", entrepriseId);
 
-      if (affectError) throw affectError;
+      if (joursError) {
+        console.error("[useMaconsByChantier] Erreur affectations_jours_chef:", joursError);
+      }
 
-      // 3. Pour chaque maçon, vérifier s'il a une fiche et s'il a signé
-      if (affectations) {
-        const maconsWithStatus = await Promise.all(
-          affectations.map(async (affectation) => {
-            const macon = affectation.utilisateurs;
-            if (!macon) return null;
+      // Dédupliquer les macon_id
+      const maconIdsFromJours = [...new Set((joursAffectations || []).map(a => a.macon_id))];
+      console.log(`[useMaconsByChantier] ${maconIdsFromJours.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine}`);
 
-            // Récupérer la fiche pour ce maçon cette semaine (peu importe le chantier)
-            const { data: fiche } = await supabase
-              .from("fiches")
-              .select("id, total_heures")
-              .eq("salarie_id", macon.id)
-              .eq("semaine", semaine)
-              .maybeSingle();
+      // ÉTAPE 2b : Fallback sur affectations si aucun résultat (rétrocompatibilité)
+      let finalMaconIds: string[] = maconIdsFromJours;
 
-            // Récupérer les fiches_jours
-            let ficheJours: FicheJour[] = [];
-            let paniers = 0;
-            let trajets = 0;
-            let intemperie = 0;
-            
-        if (fiche?.id) {
-          const { data: jours } = await supabase
-            .from("fiches_jours")
-            .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire, code_trajet, repas_type")
-            .eq("fiche_id", fiche.id)
-            .order("date");
-              
-          if (jours) {
-            ficheJours = jours.map(j => ({
-              id: j.id,
-              date: j.date,
-              heures: Number(j.heures || 0),
-              HNORM: Number(j.HNORM || 0),
-              pause_minutes: j.pause_minutes || 0,
-              PA: j.PA || false,
-              T: Number(j.T || 0),
-              HI: Number(j.HI || 0),
-              code_chantier_du_jour: j.code_chantier_du_jour || null,
-              ville_du_jour: j.ville_du_jour || null,
-              trajet_perso: !!j.trajet_perso,
-              commentaire: j.commentaire || null,
-              code_trajet: j.code_trajet || null,
-              repas_type: j.repas_type || null,
-            }));
-                
-                paniers = jours.filter(j => j.PA).length;
-                trajets = jours.filter(j => j.trajet_perso || (j.code_trajet && j.code_trajet !== '')).length;
-                intemperie = jours.reduce((sum, j) => sum + Number(j.HI || 0), 0);
-              }
-            }
+      if (maconIdsFromJours.length === 0) {
+        console.log("[useMaconsByChantier] Fallback sur table affectations (legacy)");
+        const { data: legacyAffectations, error: legacyError } = await supabase
+          .from("affectations")
+          .select(`
+            macon_id,
+            chantiers!inner(entreprise_id)
+          `)
+          .eq("chantier_id", chantierId)
+          .is("date_fin", null);
 
-            // Vérifier si une signature existe déjà pour cette fiche
-            let signed = false;
-            if (fiche?.id) {
-              const { data: signature } = await supabase
-                .from("signatures")
-                .select("id")
-                .eq("fiche_id", fiche.id)
-                .eq("signed_by", macon.id)
+        if (legacyError) {
+          console.error("[useMaconsByChantier] Erreur affectations legacy:", legacyError);
+        }
+
+        // Filtrer par entreprise_id via le join pour garantir l'isolation
+        finalMaconIds = (legacyAffectations || [])
+          .filter((a: any) => a.chantiers?.entreprise_id === entrepriseId)
+          .map((a: any) => a.macon_id);
+        
+        console.log(`[useMaconsByChantier] ${finalMaconIds.length} employés trouvés via fallback affectations`);
+      }
+
+      // ÉTAPE 3 : Charger les utilisateurs pour ces macon_id (hors chef déjà ajouté)
+      const maconIdsToLoad = finalMaconIds.filter(id => id !== chefId);
+
+      if (maconIdsToLoad.length > 0) {
+        const { data: macons, error: maconsError } = await supabase
+          .from("utilisateurs")
+          .select("id, nom, prenom, email, agence_interim, role_metier")
+          .in("id", maconIdsToLoad)
+          .eq("entreprise_id", entrepriseId);
+
+        if (maconsError) {
+          console.error("[useMaconsByChantier] Erreur chargement utilisateurs:", maconsError);
+        }
+
+        // Pour chaque maçon, récupérer fiche + signature
+        if (macons) {
+          const maconsWithStatus = await Promise.all(
+            macons.map(async (macon) => {
+              // Récupérer la fiche pour ce maçon cette semaine
+              const { data: fiche } = await supabase
+                .from("fiches")
+                .select("id, total_heures")
+                .eq("salarie_id", macon.id)
+                .eq("semaine", semaine)
                 .maybeSingle();
-              
-              signed = !!signature;
-            }
 
-            // Déterminer le rôle basé sur role_metier et agence_interim
-            const role = macon.agence_interim ? "interimaire" : (macon.role_metier || "macon");
+              // Récupérer les fiches_jours
+              let ficheJours: FicheJour[] = [];
+              let paniers = 0;
+              let trajets = 0;
+              let intemperie = 0;
 
-            return {
-              id: macon.id,
-              nom: macon.nom || "",
-              prenom: macon.prenom || "",
-              email: macon.email || "",
-              ficheId: fiche?.id,
-              signed,
-              isChef: false,
-              role,
-              totalHeures: Number(fiche?.total_heures || 0),
-              paniers,
-              trajets,
-              intemperie,
-              ficheJours,
-            };
-          })
-        );
+              if (fiche?.id) {
+                const { data: jours } = await supabase
+                  .from("fiches_jours")
+                  .select("id, date, heures, HNORM, pause_minutes, PA, T, HI, code_chantier_du_jour, ville_du_jour, trajet_perso, commentaire, code_trajet, repas_type")
+                  .eq("fiche_id", fiche.id)
+                  .order("date");
 
-        allEmployees.push(...maconsWithStatus.filter(Boolean) as MaconWithFiche[]);
+                if (jours) {
+                  ficheJours = jours.map(j => ({
+                    id: j.id,
+                    date: j.date,
+                    heures: Number(j.heures || 0),
+                    HNORM: Number(j.HNORM || 0),
+                    pause_minutes: j.pause_minutes || 0,
+                    PA: j.PA || false,
+                    T: Number(j.T || 0),
+                    HI: Number(j.HI || 0),
+                    code_chantier_du_jour: j.code_chantier_du_jour || null,
+                    ville_du_jour: j.ville_du_jour || null,
+                    trajet_perso: !!j.trajet_perso,
+                    commentaire: j.commentaire || null,
+                    code_trajet: j.code_trajet || null,
+                    repas_type: j.repas_type || null,
+                  }));
+
+                  paniers = jours.filter(j => j.PA).length;
+                  trajets = jours.filter(j => j.trajet_perso || (j.code_trajet && j.code_trajet !== '')).length;
+                  intemperie = jours.reduce((sum, j) => sum + Number(j.HI || 0), 0);
+                }
+              }
+
+              // Vérifier si une signature existe déjà pour cette fiche
+              let signed = false;
+              if (fiche?.id) {
+                const { data: signature } = await supabase
+                  .from("signatures")
+                  .select("id")
+                  .eq("fiche_id", fiche.id)
+                  .eq("signed_by", macon.id)
+                  .maybeSingle();
+
+                signed = !!signature;
+              }
+
+              // Déterminer le rôle basé sur role_metier et agence_interim
+              const role = macon.agence_interim ? "interimaire" : (macon.role_metier || "macon");
+
+              return {
+                id: macon.id,
+                nom: macon.nom || "",
+                prenom: macon.prenom || "",
+                email: macon.email || "",
+                ficheId: fiche?.id,
+                signed,
+                isChef: false,
+                role,
+                totalHeures: Number(fiche?.total_heures || 0),
+                paniers,
+                trajets,
+                intemperie,
+                ficheJours,
+              };
+            })
+          );
+
+          allEmployees.push(...maconsWithStatus.filter(Boolean) as MaconWithFiche[]);
+        }
       }
 
         return allEmployees;
