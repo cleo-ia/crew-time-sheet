@@ -122,7 +122,7 @@ export const useAutoSaveFiche = () => {
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
-          // Créer nouvelle fiche
+          // Créer nouvelle fiche (entreprise_id auto-filled by trigger set_fiche_entreprise_id)
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -132,7 +132,7 @@ export const useAutoSaveFiche = () => {
               user_id: chantierId ? chefId : null, // NULL pour finisseurs (fiche partagée), chefId pour maçons
               statut: "BROUILLON",
               total_heures: 0,
-            })
+            } as any)
             .select()
             .single();
 
@@ -155,9 +155,10 @@ export const useAutoSaveFiche = () => {
               pause_minutes: 0,
             }));
 
+            // entreprise_id auto-filled by trigger set_entreprise_from_fiche
             const { error: initJoursError } = await supabase
               .from("fiches_jours")
-              .insert(initialJours);
+              .insert(initialJours as any);
 
             if (initJoursError) throw initJoursError;
           }
@@ -272,9 +273,10 @@ export const useAutoSaveFiche = () => {
           return baseEntry;
         });
         if (jourEntries.length > 0) {
+          // entreprise_id auto-filled by trigger set_entreprise_from_fiche
           const { error: joursError } = await supabase
             .from("fiches_jours")
-            .upsert(jourEntries, {
+            .upsert(jourEntries as any, {
               onConflict: 'fiche_id,date',
               ignoreDuplicates: false
             });

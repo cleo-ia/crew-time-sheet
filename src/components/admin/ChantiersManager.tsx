@@ -340,6 +340,7 @@ export const ChantiersManager = () => {
                       <SelectValue placeholder="Sélectionner..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">Aucun</SelectItem>
                       {chefs.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.prenom} {c.nom}

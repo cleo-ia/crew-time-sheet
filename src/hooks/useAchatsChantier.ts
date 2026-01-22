@@ -21,6 +21,7 @@ export interface Achat {
   updated_at: string;
 }
 
+// Note: entreprise_id is auto-filled by DB trigger (set_entreprise_from_chantier)
 export type AchatInsert = Omit<Achat, "id" | "created_at" | "updated_at">;
 export type AchatUpdate = Partial<AchatInsert>;
 
@@ -46,9 +47,10 @@ export const useCreateAchat = () => {
 
   return useMutation({
     mutationFn: async (achat: AchatInsert) => {
+      // entreprise_id is auto-filled by trigger set_entreprise_from_chantier
       const { data, error } = await supabase
         .from("achats_chantier")
-        .insert(achat)
+        .insert(achat as any)
         .select()
         .single();
 

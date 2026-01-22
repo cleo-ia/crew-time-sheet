@@ -66,7 +66,7 @@ export const useInitializeNextWeekFromPrevious = () => {
       const daysDiff = Math.round((nextWeekStart.getTime() - currentWeekStart.getTime()) / (1000 * 60 * 60 * 24));
 
       for (const fiche of fichesActuelles) {
-        // Créer la nouvelle fiche pour S+1
+        // entreprise_id auto-filled by trigger set_fiche_entreprise_id
         const { data: newFiche, error: ficheError } = await supabase
           .from("fiches")
           .insert({
@@ -76,7 +76,7 @@ export const useInitializeNextWeekFromPrevious = () => {
             chantier_id: fiche.chantier_id,
             statut: "BROUILLON",
             total_heures: fiche.total_heures,
-          })
+          } as any)
           .select("id")
           .single();
 
@@ -107,9 +107,10 @@ export const useInitializeNextWeekFromPrevious = () => {
             };
           });
 
+          // entreprise_id auto-filled by trigger set_entreprise_from_fiche
           const { error: joursError } = await supabase
             .from("fiches_jours")
-            .insert(joursToInsert);
+            .insert(joursToInsert as any);
 
           if (joursError) {
             console.error(`Erreur copie fiches_jours pour ${fiche.salarie_id}:`, joursError);
@@ -193,7 +194,7 @@ export const useInitializeNextWeekFromPrevious = () => {
             chantier_id: chantierId,
             statut: "BROUILLON",
             total_heures: 0,
-          })
+          } as any)
           .select("id")
           .single();
 
@@ -238,7 +239,7 @@ export const useInitializeNextWeekFromPrevious = () => {
             fiche_id: ficheDestId,
             semaine: nextWeek,
             chantier_id: chantierId,
-          })
+          } as any)
           .select("id")
           .single();
 
@@ -268,7 +269,7 @@ export const useInitializeNextWeekFromPrevious = () => {
 
       const { error: insertError } = await supabase
         .from("fiches_transport_jours")
-        .insert(joursToInsert);
+        .insert(joursToInsert as any);
 
       if (insertError) {
         console.error("[Copy Transport] Erreur insertion jours:", insertError);

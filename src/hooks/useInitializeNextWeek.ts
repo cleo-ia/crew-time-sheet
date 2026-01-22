@@ -48,6 +48,7 @@ export const useInitializeNextWeek = () => {
 
       // Pour chaque finisseur, créer UNIQUEMENT une fiche vide (sans jours)
       for (const finisseurId of finisseurIds) {
+        // entreprise_id auto-filled by trigger set_fiche_entreprise_id
         const { error: ficheError } = await supabase
           .from("fiches")
           .insert({
@@ -56,7 +57,7 @@ export const useInitializeNextWeek = () => {
             salarie_id: finisseurId,
             chantier_id: null,
             statut: "BROUILLON",
-          });
+          } as any);
 
         if (ficheError) {
           console.error("❌ Error creating fiche:", ficheError);

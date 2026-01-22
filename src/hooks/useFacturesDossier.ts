@@ -18,14 +18,14 @@ export async function getOrCreateFacturesDossier(chantierId: string): Promise<st
     return existingFolder.id;
   }
 
-  // Create the folder
+  // Create the folder (entreprise_id auto-filled by trigger set_entreprise_from_chantier)
   const { data: newFolder, error } = await supabase
     .from("chantiers_dossiers")
     .insert({
       chantier_id: chantierId,
       nom: "Factures",
       parent_id: null,
-    })
+    } as any)
     .select("id")
     .single();
 

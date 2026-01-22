@@ -37,7 +37,7 @@ export const useAddEmployeeToFiche = () => {
 
       if (chantierError) throw chantierError;
 
-      // 3. Créer la fiche
+      // 3. Créer la fiche (entreprise_id auto-filled by trigger set_fiche_entreprise_id)
       const { data: newFiche, error: ficheError } = await supabase
         .from("fiches")
         .insert([{
@@ -47,13 +47,14 @@ export const useAddEmployeeToFiche = () => {
           statut: "BROUILLON" as const,
           user_id: conducteurId,
           total_heures: 39, // 8+8+8+8+7
-        }])
+        }] as any)
         .select()
         .single();
 
       if (ficheError) throw ficheError;
 
       // 4. Créer les 5 fiches_jours (Lundi-Vendredi) avec valeurs par défaut
+      // entreprise_id auto-filled by trigger set_entreprise_from_fiche
       const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"] as const;
       const heuresParJour = { Lundi: 8, Mardi: 8, Mercredi: 8, Jeudi: 8, Vendredi: 7 };
 
@@ -77,7 +78,7 @@ export const useAddEmployeeToFiche = () => {
 
       const { error: joursError } = await supabase
         .from("fiches_jours")
-        .insert(fichesJours);
+        .insert(fichesJours as any);
 
       if (joursError) throw joursError;
 

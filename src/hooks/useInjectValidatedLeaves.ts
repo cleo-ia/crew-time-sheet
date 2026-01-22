@@ -133,7 +133,7 @@ export async function injectValidatedLeaves(fiches: FicheToProcess[]): Promise<v
               T: 0,
               type_absence: typeAbsence,
               pause_minutes: 0
-            }]);
+            }] as any);
 
           if (insertError) {
             console.error("Erreur création fiches_jours:", insertError);

@@ -18,6 +18,7 @@ export const useCreateTache = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // entreprise_id auto-filled by trigger set_entreprise_from_chantier
     mutationFn: async (input: CreateTacheInput) => {
       const { data, error } = await supabase
         .from("taches_chantier")
@@ -31,7 +32,7 @@ export const useCreateTache = () => {
           montant_vendu: input.montant_vendu || 0,
           statut: input.statut || "A_FAIRE",
           couleur: input.couleur || null,
-        })
+        } as any)
         .select()
         .single();
 

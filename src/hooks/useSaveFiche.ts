@@ -122,7 +122,7 @@ export const useSaveFiche = () => {
               user_id: userId,
               statut,
               total_heures: employee.dailyHours.reduce((sum, day) => sum + day.heures, 0),
-            })
+            } as any)
             .select()
             .single();
 
@@ -171,7 +171,7 @@ export const useSaveFiche = () => {
         // Utiliser UPSERT pour éviter les conflits en cas de données résiduelles
         const { error: joursError } = await supabase
           .from("fiches_jours")
-          .upsert(jourEntries, {
+          .upsert(jourEntries as any, {
             onConflict: 'fiche_id,date',
             ignoreDuplicates: false
           });

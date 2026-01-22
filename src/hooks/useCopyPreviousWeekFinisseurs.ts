@@ -56,10 +56,10 @@ export const useCopyPreviousWeekFinisseurs = () => {
         };
       });
 
-      // Upsert (écrase si existe déjà)
+      // entreprise_id auto-filled by trigger set_entreprise_from_chantier
       const { error: upsertError } = await supabase
         .from("affectations_finisseurs_jours")
-        .upsert(newAffectations, { 
+        .upsert(newAffectations as any, { 
           onConflict: "finisseur_id,date",
           ignoreDuplicates: false 
         });
@@ -93,6 +93,7 @@ export const useCopyPreviousWeekFinisseurs = () => {
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
+          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -101,7 +102,7 @@ export const useCopyPreviousWeekFinisseurs = () => {
               salarie_id: fId,
               chantier_id: null,
               statut: "BROUILLON",
-            })
+            } as any)
             .select("id")
             .single();
 
@@ -143,9 +144,10 @@ export const useCopyPreviousWeekFinisseurs = () => {
             };
           });
 
+          // entreprise_id auto-filled by trigger set_entreprise_from_fiche
           const { error: joursError } = await supabase
             .from("fiches_jours")
-            .insert(joursToInsert);
+            .insert(joursToInsert as any);
 
           if (joursError) {
             console.error("[useCopyPreviousWeekFinisseurs] Error creating jours:", joursError);

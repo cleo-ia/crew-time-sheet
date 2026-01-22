@@ -126,6 +126,7 @@ export const useFinisseursPartiellementAffectes = (semaine: string) => {
 };
 
 // Créer ou mettre à jour une affectation
+// Note: entreprise_id is auto-filled by trigger set_entreprise_from_chantier
 export const useUpsertAffectationJour = () => {
   const queryClient = useQueryClient();
   
@@ -133,7 +134,7 @@ export const useUpsertAffectationJour = () => {
     mutationFn: async (affectation: Omit<AffectationFinisseurJour, "id">) => {
       const { data, error } = await supabase
         .from("affectations_finisseurs_jours")
-        .upsert(affectation, {
+        .upsert(affectation as any, {
           onConflict: "finisseur_id,date",
         })
         .select()
