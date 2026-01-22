@@ -1,62 +1,120 @@
 
-# Plan de correction : Retirer les fiches BROUILLON du RH
 
-## Problème
+# Plan de correction : Affichage des cartes "Détail chantier/semaine" pour les équipes sans chef
 
-J'ai fait une erreur en ajoutant du code pour inclure les fiches `BROUILLON` des chantiers sans chef dans les données RH. C'est **incorrect** car :
+## Contexte
 
-- Le flux est clair : **BROUILLON → VALIDE_CHEF → ENVOYE_RH** (avec chef) ou **BROUILLON → ENVOYE_RH** (sans chef, conducteur signe directement)
-- Les fiches BROUILLON ne doivent **JAMAIS** apparaître côté RH
-- Le conducteur peut et doit signer les fiches des chantiers sans chef pour les transmettre au RH
+Après le test du flux complet pour un chantier sans chef (TEST) :
+- Les données arrivent correctement côté RH avec les bonnes heures (24h pour KASMI, 39h pour DARCOURT)
+- Mais l'onglet "Détail chantier/semaine" affiche "Aucune fiche à afficher"
+- Le chantier TEST devrait avoir une carte dans cet onglet
 
-## Action corrective
+## Cause racine
 
-### Modification de `src/hooks/rhShared.ts`
+Dans `src/pages/SignatureFinisseurs.tsx` (lignes 232-238), lors de la transmission :
 
-Supprimer le bloc de code aux lignes 280-303 qui récupère les fiches BROUILLON :
-
-**À supprimer :**
 ```typescript
-// Récupérer les fiches BROUILLON des chantiers sans chef (non transmissibles mais à inclure)
-let fichesChantiersSansChef: typeof fichesAvecChantier = [];
-if (entrepriseId) {
-  const { data: fichesSansChef } = await supabase
-    .from("fiches")
-    .select(`...`)
-    .is("chantiers.chef_id", null)
-    .eq("statut", "BROUILLON")
-    .eq("chantiers.entreprise_id", entrepriseId);
+const { error: updateError } = await supabase
+  .from("fiches")
+  .update({ statut: "ENVOYE_RH" })
+  .eq("semaine", semaine)
+  .in("salarie_id", finisseurIds)
+  .is("chantier_id", null);  // ← PROBLÈME ICI
+```
 
-  if (fichesSansChef) {
-    fichesChantiersSansChef = fichesSansChef;
-  }
+La condition `.is("chantier_id", null)` filtre uniquement les fiches sans chantier associé. Or, pour les équipes sans chef :
+- Les fiches ONT un `chantier_id` (ex: TEST = `da638cc1-...`)
+- Le chantier n'a pas de chef (`chef_id = NULL`)
+- Le conducteur gère directement cette équipe
+
+Ces fiches restent donc en statut `BROUILLON` et n'apparaissent pas dans la vue RH.
+
+## Données actuelles en base
+
+| Fiche | Salarié | Chantier | chef_id | Statut |
+|-------|---------|----------|---------|--------|
+| `191e4a7a-...` | DARCOURT | TEST | NULL | BROUILLON |
+| `2f0ee8cb-...` | KASMI | TEST | NULL | BROUILLON |
+
+## Solution proposée
+
+### Modification : SignatureFinisseurs.tsx
+
+Remplacer la logique de mise à jour du statut pour gérer les deux cas :
+
+**Cas 1** : Fiches "finisseurs purs" (sans chantier) → `chantier_id IS NULL`
+**Cas 2** : Fiches d'équipes sans chef → `chantier_id` renseigné mais `chef_id IS NULL`
+
+```text
+// Nouvelle logique (lignes 229-250)
+
+1. Récupérer les IDs des chantiers sans chef gérés par ce conducteur
+2. Mettre à jour les fiches finisseurs purs (chantier_id = null) → ENVOYE_RH  
+3. Mettre à jour les fiches des équipes sans chef (chantier.chef_id = null) → ENVOYE_RH
+```
+
+### Implémentation technique
+
+```typescript
+// 2a. Fiches "finisseurs purs" (sans chantier)
+if (finisseurIds.length > 0) {
+  await supabase
+    .from("fiches")
+    .update({ statut: "ENVOYE_RH" })
+    .eq("semaine", semaine)
+    .in("salarie_id", finisseurIds)
+    .is("chantier_id", null);
+}
+
+// 2b. Fiches d'équipes sur chantiers SANS CHEF gérées par ce conducteur
+// Récupérer les chantiers sans chef de ce conducteur
+const { data: chantiersWithoutChef } = await supabase
+  .from("chantiers")
+  .select("id")
+  .eq("conducteur_id", conducteurId)
+  .is("chef_id", null);
+
+if (chantiersWithoutChef && chantiersWithoutChef.length > 0) {
+  const chantierIds = chantiersWithoutChef.map(c => c.id);
+  
+  await supabase
+    .from("fiches")
+    .update({ statut: "ENVOYE_RH" })
+    .eq("semaine", semaine)
+    .in("salarie_id", finisseurIds)
+    .in("chantier_id", chantierIds);
 }
 ```
 
-**Ligne 303 - Retirer la fusion avec `fichesChantiersSansChef` :**
-```typescript
-// AVANT
-const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || []), ...fichesChantiersSansChef];
+## Modification UI (optionnelle mais recommandée)
 
-// APRÈS
-const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || [])];
+Dans `src/components/rh/RHDetailView.tsx`, adapter l'affichage du chef :
+
+```text
+Ligne 47 : <span>Chef: {fiche.chef}</span>
+
+Si le champ chef est vide, afficher plutôt :
+<span>Conducteur direct</span> ou <span>Sans chef</span>
 ```
 
-## Ce qui reste valide
+## Impact
 
-Les autres corrections du plan précédent sont toujours correctes :
-- ✅ Le trigger `tr_fiches_jours_set_entreprise` pour auto-peupler `entreprise_id`
-- ✅ La correction de `sync-planning-to-teams` avec gestion d'erreurs
-- ✅ La restauration des données KASMI (16h pour le chantier TEST)
+| Composant | Avant | Après |
+|-----------|-------|-------|
+| SignatureFinisseurs | Ne met à jour que les fiches sans chantier | Met à jour aussi les fiches des chantiers sans chef |
+| RHDetailView | Carte vide pour les équipes sans chef | Affiche "Conducteur direct" ou le nom du conducteur |
+| Détail chantier/semaine | "Aucune fiche" pour TEST | Carte visible pour TEST |
 
-## Résultat attendu
+## Étapes de validation
 
-| État | Comportement |
-|------|--------------|
-| Fiche BROUILLON (chantier sans chef) | **Non visible** côté RH - le conducteur doit la signer |
-| Fiche ENVOYE_RH | **Visible** côté RH normalement |
-| Données KASMI S05 | **39h au total** (après signature par le conducteur du chantier TEST) |
+1. Implémenter la correction dans SignatureFinisseurs.tsx
+2. Corriger manuellement le statut des fiches existantes (BROUILLON → ENVOYE_RH)
+3. Vérifier que la carte TEST apparaît dans "Détail chantier/semaine"
+4. (Optionnel) Purger et refaire un test complet du flux
 
-## Fichier impacté
+## Risques et mitigations
 
-- `src/hooks/rhShared.ts` : Supprimer les lignes 280-303 et modifier la ligne de fusion
+**Rétro-compatibilité** : La nouvelle logique ajoute un cas supplémentaire sans modifier l'existant pour les fiches `chantier_id = NULL`.
+
+**Performance** : Une requête supplémentaire pour récupérer les chantiers sans chef (négligeable).
+
