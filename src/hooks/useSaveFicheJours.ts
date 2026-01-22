@@ -142,7 +142,7 @@ export const useSaveFicheJours = () => {
                   code_chantier_du_jour: code || null,
                   ville_du_jour: dayData.chantierVille || null,
                   commentaire: dayData.commentaire ?? null,
-                });
+                } as any);
               
               if (insertError) {
                 console.error("Error creating fiche_jour:", insertError);

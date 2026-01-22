@@ -32,7 +32,7 @@ export const useSaveTransportFinisseur = () => {
               salarie_id: finisseurId,
               chantier_id: null,
               statut: "BROUILLON",
-            })
+            } as any)
             .select("id")
             .single();
 

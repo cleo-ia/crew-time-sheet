@@ -37,7 +37,7 @@ export const useSaveTransport = () => {
               user_id: chefId,
               statut: "BROUILLON",
               total_heures: 0,
-            })
+            } as any)
             .select()
             .single();
 
@@ -66,7 +66,7 @@ export const useSaveTransport = () => {
             fiche_id: ficheId,
             semaine,
             chantier_id: chantierId,
-          })
+          } as any)
           .select()
           .single();
 
