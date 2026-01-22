@@ -440,20 +440,35 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     const metier = metierDefault;
     const libelleEmploi = salarie.libelle_emploi;
 
-        let heuresNormales = 0;
-        let intemperies = 0;
-        let absences = 0;
-        let paniers = 0;
-        const trajetsParCode: Record<string, number> = {}; // ✅ NOUVEAU
-        let totalJoursTrajets = 0; // ✅ NOUVEAU
-        let totalHeures = 0;
-        const detailJours: EmployeeDetail[] = [];
+    let heuresNormales = 0;
+    let intemperies = 0;
+    let absences = 0;
+    let paniers = 0;
+    const trajetsParCode: Record<string, number> = {};
+    let totalJoursTrajets = 0;
+    let totalHeures = 0;
+    const detailJours: EmployeeDetail[] = [];
+
+    // 🔥 FIX DOUBLON : Dédupliquer les jours par date
+    // Si un employé a plusieurs fiches pour la même semaine, on garde le jour de la fiche
+    // avec le statut le plus avancé (ENVOYE_RH > AUTO_VALIDE > CLOTURE > autres)
+    const statutPriorite: Record<string, number> = {
+      "ENVOYE_RH": 4,
+      "AUTO_VALIDE": 3,
+      "CLOTURE": 2,
+      "VALIDE_CONDUCTEUR": 1,
+      "BROUILLON": 0,
+    };
+
+    // Collecter tous les jours avec leur statut de fiche pour déduplication
+    const joursParDate = new Map<string, { jour: typeof joursData[0]; ficheStatut: string; ficheId: string }>();
 
     for (const fiche of fiches) {
       const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
+      const ficheStatut = (fiche as any).statut || "BROUILLON";
 
       for (const jour of joursFiche) {
-        // 🔥 NOUVEAU : Filtre par date quand on consolide par mois (sauf si "Toutes" périodes)
+        // Filtre par date quand on consolide par mois (sauf si "Toutes" périodes)
         if (!isAllPeriodes && filters.periode && (!filters.semaine || filters.semaine === "all")) {
           const jourDate = new Date(jour.date);
           if (dateDebut && dateFin && (jourDate < dateDebut || jourDate > dateFin)) {
@@ -462,61 +477,67 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         }
 
         // Pour les finisseurs AUTONOMES (sans chantier_id), vérifier qu'ils sont affectés ce jour-là
-        // Les finisseurs avec chantier_id sont traités comme des maçons (via affectations classiques)
-        if (isFinisseur && !fiche.chantier_id) {
+        if (isFinisseur && !(fiche as any).chantier_id) {
           const datesAffectees = affectationsMap.get(salarieId);
-          // Si le finisseur a des affectations journalières, on filtre
           if (datesAffectees && datesAffectees.size > 0) {
             if (!datesAffectees.has(jour.date)) {
               continue; // Ignorer ce jour si non affecté
             }
           }
-          // Sinon (pas d'affectations journalières), on traite comme un maçon
         }
 
-        // Calcul des heures: priorité à heures, sinon HNORM
-        const heuresDuJour = Number(jour.heures) || Number(jour.HNORM) || 0;
-        const intemperie = Number(jour.HI) || 0;
-        const panier = jour.PA === true;
-        
-        const isTrajetPerso = jour.trajet_perso === true;
+        // Déduplication : garder le jour de la fiche avec le meilleur statut
+        const existing = joursParDate.get(jour.date);
+        const currentPriorite = statutPriorite[ficheStatut] ?? 0;
+        const existingPriorite = existing ? (statutPriorite[existing.ficheStatut] ?? 0) : -1;
 
-        heuresNormales += heuresDuJour;
-        intemperies += intemperie;
-        totalHeures += heuresDuJour;
-        
-        if (heuresDuJour === 0 && intemperie === 0) {
-          absences++;
+        if (!existing || currentPriorite > existingPriorite) {
+          joursParDate.set(jour.date, { jour, ficheStatut, ficheId: fiche.id });
         }
-        
-        if (jour.PA) paniers++;
-        
-        // ✅ NOUVEAU : Compteur par code trajet
-        if ((jour as any).code_trajet) {
-          trajetsParCode[(jour as any).code_trajet] = (trajetsParCode[(jour as any).code_trajet] || 0) + 1;
-          totalJoursTrajets++;
-        }
-
-        // Déterminer si c'est une absence (employé pas présent)
-        const isAbsent = heuresDuJour === 0 && intemperie === 0;
-
-        detailJours.push({
-          date: jour.date || "",
-          chantierCode: jour.code_chantier_du_jour || "",
-          chantierVille: jour.ville_du_jour || "",
-          heures: heuresDuJour,
-          intemperie,
-          panier,
-          repasType: (jour as any).repas_type || null,
-          trajet: (jour as any).code_trajet || null,  // ✅ Code trajet
-          trajetPerso: (jour as any).code_trajet === "T_PERSO",
-          typeAbsence: (jour as any).type_absence || null,
-          isAbsent,
-          regularisationM1: (jour as any).regularisation_m1 || "",
-          autresElements: (jour as any).autres_elements || "",
-          commentaire: (jour as any).commentaire || "",
-        });
       }
+    }
+
+    // Maintenant traiter les jours dédupliqués
+    for (const { jour } of joursParDate.values()) {
+      const heuresDuJour = Number(jour.heures) || Number(jour.HNORM) || 0;
+      const intemperie = Number(jour.HI) || 0;
+      const panier = jour.PA === true;
+
+      heuresNormales += heuresDuJour;
+      intemperies += intemperie;
+      totalHeures += heuresDuJour;
+      
+      if (heuresDuJour === 0 && intemperie === 0) {
+        absences++;
+      }
+      
+      if (jour.PA) paniers++;
+      
+      // Compteur par code trajet
+      if ((jour as any).code_trajet) {
+        trajetsParCode[(jour as any).code_trajet] = (trajetsParCode[(jour as any).code_trajet] || 0) + 1;
+        totalJoursTrajets++;
+      }
+
+      // Déterminer si c'est une absence (employé pas présent)
+      const isAbsent = heuresDuJour === 0 && intemperie === 0;
+
+      detailJours.push({
+        date: jour.date || "",
+        chantierCode: jour.code_chantier_du_jour || "",
+        chantierVille: jour.ville_du_jour || "",
+        heures: heuresDuJour,
+        intemperie,
+        panier,
+        repasType: (jour as any).repas_type || null,
+        trajet: (jour as any).code_trajet || null,
+        trajetPerso: (jour as any).code_trajet === "T_PERSO",
+        typeAbsence: (jour as any).type_absence || null,
+        isAbsent,
+        regularisationM1: (jour as any).regularisation_m1 || "",
+        autresElements: (jour as any).autres_elements || "",
+        commentaire: (jour as any).commentaire || "",
+      });
     }
 
     // Ne créer l'entrée que si le salarié a des données
