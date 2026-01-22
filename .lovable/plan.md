@@ -1,76 +1,94 @@
 
-# Correction du calcul des semaines ISO pour les onglets Ventilation
+# Plan : Purge complète SDER et test chantier sans chef
 
-## Problème identifié
+## État actuel des données SDER
 
-La fonction `getWeeksInMonth` dans `src/hooks/useVentilationAnalytique.ts` calcule incorrectement les numéros de semaine ISO.
+| Table | Lignes |
+|-------|--------|
+| planning_affectations | 37 |
+| affectations_jours_chef | 37 |
+| fiches | 26 |
+| fiches_jours | 122 |
+| signatures | 18 |
+| fiches_transport | 4 |
+| fiches_transport_jours | 40 |
+| planning_validations | 1 |
+| **Total** | **285** |
 
-**Bug actuel pour janvier 2026 :**
-- Code génère : `S00, S01, S02, S03, S04`
-- Attendu (ISO 8601) : `S01, S02, S03, S04, S05`
+Toutes ces données sont sur la semaine **S05**.
 
-**Conséquences :**
-- SDER : Données S05 invisibles (ce que tu constates)
-- Limoge Revillon : S02/S03 visibles actuellement, mais S05 serait manquante si ajoutée
+## Étape 1 : Purger S05 pour SDER
 
-## Vérification Limoge Revillon
+La fonction `purge-week` existe mais purge toutes les entreprises. Je vais créer une nouvelle fonction `purge-entreprise-complete` qui :
 
-Les données Limoge Revillon pour janvier 2026 (S02 et S03) sont partiellement visibles grâce à l'intersection avec le calcul bugué. Mais le problème se manifesterait dès qu'il y aurait des données en S05 (26-31 janvier).
+1. Accepte un `entreprise_id` en paramètre
+2. Supprime TOUTES les données liées à cette entreprise (pas seulement une semaine)
+3. Préserve les utilisateurs, véhicules et chantiers (configuration)
 
-## Solution technique
+### Tables purgées (ordre FK respecté)
 
-Remplacer le calcul manuel par les fonctions `date-fns` déjà installées (`getISOWeek`, `getISOWeekYear`) qui garantissent la conformité ISO 8601.
-
-### Fichier à modifier
-
-`src/hooks/useVentilationAnalytique.ts` (lignes 49-74)
-
-### Nouveau code
-
-```typescript
-import { getISOWeek, getISOWeekYear } from "date-fns";
-
-const getWeeksInMonth = (periode: string): string[] => {
-  if (!periode || periode === "all") return [];
-  
-  const [year, month] = periode.split("-").map(Number);
-  const weeks: string[] = [];
-  
-  const firstDay = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0);
-  
-  for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
-    const isoYear = getISOWeekYear(d);
-    const isoWeek = getISOWeek(d);
-    const weekStr = `${isoYear}-S${String(isoWeek).padStart(2, '0')}`;
-    
-    if (!weeks.includes(weekStr)) {
-      weeks.push(weekStr);
-    }
-  }
-  
-  return weeks;
-};
+```text
+1. fiches_transport_jours
+2. fiches_transport
+3. fiches_transport_finisseurs_jours
+4. fiches_transport_finisseurs
+5. signatures
+6. fiches_jours
+7. fiches
+8. affectations_finisseurs_jours
+9. affectations_jours_chef
+10. affectations
+11. planning_affectations
+12. planning_validations
 ```
 
-## Garantie pour tous les mois
+### Tables préservées (configuration)
 
-| Mois 2026 | Semaines générées (corrigées) |
-|-----------|------------------------------|
-| Janvier | S01, S02, S03, S04, S05 |
-| Février | S05, S06, S07, S08, S09 |
-| Mars | S09, S10, S11, S12, S13, S14 |
-| ... | ... |
-| Décembre | S49, S50, S51, S52, S53 |
+- `utilisateurs` (les employés SDER)
+- `vehicules` (les véhicules SDER)
+- `chantiers` (CI230 et CI235)
 
-La bibliothèque `date-fns` gère automatiquement :
-- Les années avec 52 ou 53 semaines
-- Les transitions d'année (décembre S52/S53 vers janvier S01)
-- Les cas où le 1er janvier appartient à la semaine 52 de l'année précédente
+## Étape 2 : Préparer le test "chantier sans chef"
+
+Après la purge, je modifierai le chantier **CI235 (LES ARCS)** pour retirer son chef :
+
+| Avant | Après |
+|-------|-------|
+| chef_id = Chloé | chef_id = NULL |
+| conducteur_id = Chloé | conducteur_id = Chloé |
+
+Ainsi :
+- **CI230** = chantier classique (chef Liam + conducteur Liam)
+- **CI235** = chantier sans chef (conducteur Chloé uniquement)
+
+## Étape 3 : Nouveau workflow à tester
+
+```text
+1. Planning S+1 (Conducteur)
+   └─ Affecter des employés à CI230 et CI235
+   └─ Valider le planning
+
+2. Synchronisation automatique
+   └─ Pour CI230 : affectations_jours_chef créées (chef Liam)
+   └─ Pour CI235 : affectations_jours_chef créées... par qui ?
+
+3. Saisie hebdo (Chef ou Conducteur ?)
+   └─ CI230 : Liam saisit les heures
+   └─ CI235 : Chloé (conducteur) doit pouvoir saisir
+
+4. Transmission → RH
+   └─ Vérifier que les deux flux fonctionnent
+```
+
+## Fichiers à créer/modifier
+
+| Action | Fichier |
+|--------|---------|
+| Créer | `supabase/functions/purge-entreprise-complete/index.ts` |
+| Modifier | `src/components/admin/DashboardManager.tsx` (bouton purge admin) |
 
 ## Résultat attendu
 
-Après correction :
-- **SDER janvier 2026** : Les onglets Ventilation afficheront les données S05 (équipes Liam et Chloé)
-- **Limoge Revillon** : Continuera à fonctionner pour S02/S03 et supportera S05 quand les données seront ajoutées
-- **Tous les mois de l'année** : Calcul garanti conforme ISO 8601 grâce à date-fns
+- Base SDER vierge (0 fiches, 0 planning, 0 signatures)
+- CI235 configuré sans chef pour tester le flux conducteur
+- Possibilité de reprendre le workflow depuis le Planning S+1
