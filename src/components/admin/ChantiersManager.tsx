@@ -55,6 +55,8 @@ export const ChantiersManager = () => {
   const handleSave = async () => {
     const payload = {
       ...formData,
+      chef_id: formData.chef_id || null,
+      conducteur_id: formData.conducteur_id || null,
       date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
       date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
       insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
