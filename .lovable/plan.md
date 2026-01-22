@@ -1,149 +1,119 @@
 
-
-# Vue Super Admin - Espace Conducteur
+# Correction du bug de création de fiches "sans chantier"
 
 ## Problème identifié
 
-En tant que super admin (`tom.genin@groupe-engo.com`), l'Espace Conducteur ne montre aucune donnée car :
+L'auto-save (`useAutoSaveFiche.ts`) crée des fiches fantômes "sans chantier" quand l'Espace Conducteur s'ouvre avec `chantierId = null`. Ces fiches dupliquent les heures déjà saisies sur les vrais chantiers.
 
-1. **Pas de fiche utilisateur liée** : votre compte n'a pas d'entrée dans la table `utilisateurs` avec `auth_user_id` correspondant
-2. **Pas d'affectations** : le hook `useFinisseursByConducteur` filtre strictement par `conducteur_id`, donc même si vous aviez un `utilisateur.id`, vous ne seriez affecté à personne
-3. **Aucun sélecteur conducteur** : la page ne propose pas de choisir un conducteur à visualiser/éditer
+**Cas KASMI S05 :**
+- Fiche TEST (16h) + Fiche LE ROSEYRAN (23h) = 39h ✅
+- Fiche "sans chantier" (39h) créée par erreur = +39h en doublon ❌
+- Total affiché en RH : 62h + 27h supp (au lieu de 39h)
 
-## Solution proposée
+## Solution en 3 étapes
 
-Ajouter un **sélecteur de conducteur** visible uniquement pour les `super_admin`, permettant de :
-- Voir tous les conducteurs de l'entreprise
-- Sélectionner un conducteur spécifique pour voir/modifier son équipe
-- Éditer les affectations comme si vous étiez ce conducteur
+### Étape 1 : Nettoyer les données KASMI (SQL one-shot)
 
-## Fichiers à modifier
+Supprimer la fiche "sans chantier" qui cause le doublon :
 
-### 1. ValidationConducteur.tsx
+```sql
+-- Supprimer les fiches_jours de la fiche fantôme
+DELETE FROM fiches_jours 
+WHERE fiche_id = '38dde2a7-3d42-4601-af05-7114cf88fd54';
 
-**Modifications principales :**
-
-```text
-+---------------------------------------------+
-|  Espace Conducteur          [Super Admin]   |
-+---------------------------------------------+
-|  Conducteur: [Dropdown: Tous les conducteurs]  
-|   ↓ G. Fournier                             |
-|   ↓ S. Lemaire                              |
-+---------------------------------------------+
-|  Semaine sélectionnée                       |
-|  ...reste de l'interface inchangée          |
-+---------------------------------------------+
+-- Supprimer la fiche fantôme elle-même
+DELETE FROM fiches 
+WHERE id = '38dde2a7-3d42-4601-af05-7114cf88fd54';
 ```
 
-**Changements de code :**
+### Étape 2 : Corriger useAutoSaveFiche.ts
 
-- Importer `useCurrentUserRole` pour détecter le super_admin
-- Importer `useUtilisateursByRole("conducteur")` pour lister les conducteurs
-- Ajouter un état `selectedConducteurId` (distinct de `conducteurId`)
-- Pour super_admin : afficher un sélecteur avec liste des conducteurs
-- Utiliser `selectedConducteurId` au lieu de `conducteurId` dans tous les hooks
+**Fichier** : `src/hooks/useAutoSaveFiche.ts`
 
-**Lignes 59-65** : Ajouter les états
+**Problème actuel** (lignes 100-140) :
+```typescript
+if (!chantierId) {
+  query = query.is("chantier_id", null);  // ← Cherche fiche sans chantier
+}
+// Si pas trouvée → crée une NOUVELLE fiche sans chantier
+```
+
+**Correction proposée** :
+Quand `chantierId = null`, vérifier si l'employé a déjà des fiches avec chantier pour cette semaine. Si oui, NE PAS créer de fiche "sans chantier".
 
 ```typescript
-// Pour super_admin : conducteur sélectionné (différent du conducteur connecté)
-const [selectedConducteurIdAdmin, setSelectedConducteurIdAdmin] = useState<string | null>(null);
-
-// Importer le rôle
-const { data: userRole } = useCurrentUserRole();
-const isSuperAdmin = userRole === "super_admin";
+if (!chantierId) {
+  // Finisseurs: d'abord vérifier si l'employé a déjà des fiches AVEC chantier
+  const { data: fichesAvecChantier } = await supabase
+    .from("fiches")
+    .select("id")
+    .eq("semaine", weekId)
+    .eq("salarie_id", entry.employeeId)
+    .not("chantier_id", "is", null)
+    .limit(1);
+  
+  if (fichesAvecChantier && fichesAvecChantier.length > 0) {
+    // L'employé a des fiches chantier → NE PAS créer de fiche sans chantier
+    console.log(`[AutoSave] Skip: ${entry.employeeName} a déjà des fiches chantier`);
+    continue; // Passer à l'employé suivant
+  }
+  
+  // Sinon, chercher/créer fiche sans chantier (comportement actuel)
+  query = query.is("chantier_id", null);
+}
 ```
 
-**Lignes 132-154** : Modifier la logique de récupération
+### Étape 3 : Ajouter une déduplication dans buildRHConsolidation
+
+**Fichier** : `src/hooks/rhShared.ts`
+
+**Sécurité supplémentaire** : même si des doublons existent en base, le calcul RH doit les dédupliquer.
 
 ```typescript
-// Pour super_admin, permettre de choisir un conducteur
-// Pour conducteur normal, utiliser son propre ID
-const effectiveConducteurId = isSuperAdmin 
-  ? selectedConducteurIdAdmin 
-  : conducteurId;
+// Dans buildRHConsolidation, lors de l'agrégation des jours
+const joursParDate = new Map<string, FicheJour>();
+
+for (const fiche of fichesSalarie) {
+  const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
+  for (const jour of joursFiche) {
+    const existing = joursParDate.get(jour.date);
+    // Prendre le jour de la fiche avec le meilleur statut
+    const priorite = { "ENVOYE_RH": 3, "AUTO_VALIDE": 2, "BROUILLON": 1 };
+    if (!existing || priorite[fiche.statut] > priorite[existing.ficheStatut]) {
+      joursParDate.set(jour.date, { ...jour, ficheStatut: fiche.statut });
+    }
+  }
+}
+
+// Ensuite, calculer les heures uniquement sur joursParDate.values()
 ```
 
-**Nouveau composant dans le header** (entre PageHeader et WeekSelector) :
+## Résultat attendu
 
-```typescript
-{isSuperAdmin && (
-  <Card className="mb-4 p-4 bg-amber-50 border-amber-200">
-    <div className="flex items-center gap-4">
-      <span className="text-sm font-medium text-amber-800">
-        Vue Super Admin - Sélectionner un conducteur :
-      </span>
-      <Select 
-        value={selectedConducteurIdAdmin || ""} 
-        onValueChange={setSelectedConducteurIdAdmin}
-      >
-        <SelectTrigger className="w-[250px]">
-          <SelectValue placeholder="Choisir un conducteur..." />
-        </SelectTrigger>
-        <SelectContent>
-          {conducteurs?.map(c => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.prenom} {c.nom}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  </Card>
-)}
+| Vue | Avant correction | Après correction |
+|-----|------------------|------------------|
+| RH Consolidé | 62h + 27h supp | 39h + 4h supp |
+| Détail KASMI | 3 fiches (dont 1 fantôme) | 2 fiches (TEST + ROSEYRAN) |
+| Espace Conducteur | Crée des fiches fantômes | Ne crée plus de doublons |
+
+## Fichiers impactés
+
+1. `src/hooks/useAutoSaveFiche.ts` - Empêcher création de fiches "sans chantier" si fiches chantier existent
+2. `src/hooks/rhShared.ts` - Dédupliquer les jours par date lors du calcul RH
+
+## Prévention future
+
+Optionnel : Ajouter un outil admin pour détecter et nettoyer les fiches "sans chantier" orphelines :
+
+```sql
+-- Trouver les fiches "sans chantier" pour des salariés qui ont aussi des fiches AVEC chantier
+SELECT f1.id, f1.salarie_id, f1.semaine, f1.total_heures
+FROM fiches f1
+WHERE f1.chantier_id IS NULL
+  AND EXISTS (
+    SELECT 1 FROM fiches f2 
+    WHERE f2.salarie_id = f1.salarie_id 
+      AND f2.semaine = f1.semaine 
+      AND f2.chantier_id IS NOT NULL
+  );
 ```
-
-### 2. Imports à ajouter
-
-```typescript
-import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
-```
-
-### 3. Hook pour charger les conducteurs
-
-```typescript
-// Charger la liste des conducteurs (pour super_admin)
-const { data: conducteurs = [] } = useUtilisateursByRole(
-  isSuperAdmin ? "conducteur" : undefined
-);
-```
-
-## Flux utilisateur
-
-```text
-Super Admin se connecte
-         ↓
-Accède à "Espace conducteur"
-         ↓
-Voit le sélecteur "Choisir un conducteur"
-         ↓
-Sélectionne "G. Fournier"
-         ↓
-Voit l'équipe de Fournier (DARCOURT, KASMI...)
-         ↓
-Peut modifier les affectations
-         ↓
-Les modifications sont enregistrées au nom de Fournier
-```
-
-## Vérification des données existantes
-
-Pour la semaine S05 (SDER) :
-- **Conducteur**: G. Fournier (`a321ff73-d880-4598-9b29-b85783d5dd92`)
-- **Affectations**: 7 affectations dans `affectations_finisseurs_jours`
-- **Chantier**: TEST (`da638cc1-9738-4a8c-84ff-99cd8a90f56f`)
-
-Avec cette solution, vous pourrez :
-1. Sélectionner G. Fournier dans le dropdown
-2. Voir ses 7 affectations pour la semaine S05
-3. Voir/modifier l'équipe TEST (DARCOURT, KASMI)
-
-## Impact
-
-- **1 fichier modifié** : `src/pages/ValidationConducteur.tsx`
-- **~30 lignes ajoutées**
-- **Aucun changement de base de données**
-- **Rétrocompatibilité** : les conducteurs normaux voient leur interface inchangée
-
