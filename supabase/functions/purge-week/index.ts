@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     }
 
     // Security: Only allow purging specific weeks
-    const allowedWeeks = ['2026-S04', '2026-S03', '2025-S03', '2025-S43', '2025-S44', '2025-S45', '2025-S46', '2025-S47'];
+    const allowedWeeks = ['2026-S05', '2026-S04', '2026-S03', '2025-S03', '2025-S43', '2025-S44', '2025-S45', '2025-S46', '2025-S47'];
     if (!allowedWeeks.includes(semaine)) {
       return new Response(
         JSON.stringify({ error: `Cette fonction ne peut purger que les semaines: ${allowedWeeks.join(', ')}` }),
@@ -257,6 +257,49 @@ Deno.serve(async (req) => {
     } else {
       results.fiches = 0;
     }
+
+    // Step 10: Delete affectations_jours_chef
+    console.log('Step 10: Deleting affectations_jours_chef...');
+    let ajcQuery = supabase
+      .from('affectations_jours_chef')
+      .delete({ count: 'exact' })
+      .eq('semaine', semaine);
+
+    if (filterByChantier) {
+      ajcQuery = ajcQuery.eq('chantier_id', chantier_id);
+    }
+
+    const { error: ajcError, count: ajcCount } = await ajcQuery;
+    if (ajcError) throw ajcError;
+    results.affectations_jours_chef = ajcCount || 0;
+    console.log(`✅ Deleted ${ajcCount} affectations_jours_chef`);
+
+    // Step 11: Delete planning_affectations
+    console.log('Step 11: Deleting planning_affectations...');
+    let paQuery = supabase
+      .from('planning_affectations')
+      .delete({ count: 'exact' })
+      .eq('semaine', semaine);
+
+    if (filterByChantier) {
+      paQuery = paQuery.eq('chantier_id', chantier_id);
+    }
+
+    const { error: paError, count: paCount } = await paQuery;
+    if (paError) throw paError;
+    results.planning_affectations = paCount || 0;
+    console.log(`✅ Deleted ${paCount} planning_affectations`);
+
+    // Step 12: Delete planning_validations
+    console.log('Step 12: Deleting planning_validations...');
+    const { error: pvError, count: pvCount } = await supabase
+      .from('planning_validations')
+      .delete({ count: 'exact' })
+      .eq('semaine', semaine);
+
+    if (pvError) throw pvError;
+    results.planning_validations = pvCount || 0;
+    console.log(`✅ Deleted ${pvCount} planning_validations`);
 
     // Calculate total
     const total = Object.values(results).reduce((sum, count) => sum + count, 0);
