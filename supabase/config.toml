@@ -42,5 +42,8 @@ verify_jwt = false
 [functions.purge-entreprise-weeks]
 verify_jwt = false
 
+[functions.purge-entreprise-complete]
+verify_jwt = false
+
 [functions.sync-planning-to-teams]
 verify_jwt = false
