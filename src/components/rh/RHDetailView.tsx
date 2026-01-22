@@ -44,7 +44,7 @@ export const RHDetailView = ({ filters, onSelectFiche }: RHDetailViewProps) => {
                 )}
               </div>
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>Chef: {fiche.chef}</span>
+                <span>{fiche.chef ? `Chef: ${fiche.chef}` : "Conducteur direct"}</span>
                 <span>{fiche.macons} maçons</span>
                 <span>{fiche.totalHeures}h total</span>
               </div>
