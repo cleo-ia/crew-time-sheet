@@ -479,7 +479,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 chantierId: chantierDuJour?.id || null,
                 chantierNom: chantierDuJour?.nom || null,
                 commentaire: (j as any).commentaire || "",
-                codeTrajet: ((j as any).code_trajet || null) as CodeTrajet | null,
+                codeTrajet: ((j as any).code_trajet || (trajet ? "A_COMPLETER" : null)) as CodeTrajet | null,
               };
             }
           });
@@ -498,8 +498,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
             if (daysFromDb[dayLabel]) {
               const currentDay = daysFromDb[dayLabel];
               
-              // ✅ Ne remplir que si le jour n'a pas déjà de chantier (priorité à ficheJours)
-              if (!currentDay.chantierId && !currentDay.chantierCode) {
+              // ✅ Enrichir le chantier depuis les affectations si le code est manquant
+              if (!currentDay.chantierCode) {
                 const chantierInfo = chantiers.find(c => c.id === affectation.chantier_id);
                 
                 daysFromDb[dayLabel] = {
