@@ -15,7 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
@@ -263,6 +264,77 @@ const PlanningMainOeuvre = () => {
         </div>
       </div>
 
+      {/* Bandeau de statut de validation - très visible */}
+      {!isLoadingValidation && (
+        <div className={cn(
+          "container mx-auto px-4 mt-4",
+        )}>
+          <div className={cn(
+            "px-4 py-3 rounded-lg border-2 flex items-center justify-between",
+            isValidated 
+              ? "bg-green-50 border-green-400 dark:bg-green-950/40 dark:border-green-700"
+              : "bg-amber-50 border-amber-400 dark:bg-amber-950/40 dark:border-amber-700"
+          )}>
+            <div className="flex items-center gap-3">
+              {isValidated ? (
+                <>
+                  <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  <div>
+                    <span className="font-semibold text-green-800 dark:text-green-200 text-lg">
+                      Planning validé ✓
+                    </span>
+                    <span className="text-green-700 dark:text-green-300 ml-2">
+                      — Synchronisation prévue lundi 5h00
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <span className="font-semibold text-amber-800 dark:text-amber-200 text-lg">
+                      Planning non validé
+                    </span>
+                    <span className="text-amber-700 dark:text-amber-300 ml-2">
+                      — Ne sera pas synchronisé lundi
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {isValidated ? (
+              <Button
+                variant="outline"
+                onClick={() => invalidatePlanning()}
+                disabled={isInvalidating}
+                className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+              >
+                {isInvalidating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Edit className="h-4 w-4 mr-2" />
+                )}
+                Modifier
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => setValidateDialogOpen(true)}
+                disabled={isValidating || affectations.length === 0}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isValidating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Valider le planning
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
@@ -310,47 +382,6 @@ const PlanningMainOeuvre = () => {
               )}
               {allExpanded ? "Tout replier" : "Tout déplier"}
             </Button>
-
-            {/* Bouton de validation du planning */}
-            {isLoadingValidation ? (
-              <Button variant="outline" disabled>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Chargement...
-              </Button>
-            ) : isValidated ? (
-              <div className="flex items-center gap-2">
-                <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1.5">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Planning validé
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => invalidatePlanning()}
-                  disabled={isInvalidating}
-                >
-                  {isInvalidating ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Edit className="h-4 w-4 mr-1" />
-                  )}
-                  Modifier
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="default"
-                onClick={() => setValidateDialogOpen(true)}
-                disabled={isValidating || affectations.length === 0}
-              >
-                {isValidating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                )}
-                Valider le planning
-              </Button>
-            )}
           </div>
         </CardHeader>
 
