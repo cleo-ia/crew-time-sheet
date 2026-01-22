@@ -1,94 +1,49 @@
 
-# Plan : Purge complète SDER et test chantier sans chef
 
-## État actuel des données SDER
+# Plan : Rendre le champ "Chef d'équipe" vraiment optionnel
 
-| Table | Lignes |
-|-------|--------|
-| planning_affectations | 37 |
-| affectations_jours_chef | 37 |
-| fiches | 26 |
-| fiches_jours | 122 |
-| signatures | 18 |
-| fiches_transport | 4 |
-| fiches_transport_jours | 40 |
-| planning_validations | 1 |
-| **Total** | **285** |
+## Constat
 
-Toutes ces données sont sur la semaine **S05**.
+Le champ "Chef d'équipe" est déjà marqué comme optionnel dans l'interface et la base de données accepte une valeur NULL pour `chef_id`. Cependant, le composant de sélection ne permet pas de **désélectionner** un chef une fois qu'un choix a été fait.
 
-## Étape 1 : Purger S05 pour SDER
+## Solution
 
-La fonction `purge-week` existe mais purge toutes les entreprises. Je vais créer une nouvelle fonction `purge-entreprise-complete` qui :
+Ajouter une option "Aucun" en première position dans la liste déroulante du chef d'équipe, permettant de créer un chantier sans chef ou de retirer un chef existant.
 
-1. Accepte un `entreprise_id` en paramètre
-2. Supprime TOUTES les données liées à cette entreprise (pas seulement une semaine)
-3. Préserve les utilisateurs, véhicules et chantiers (configuration)
+## Modification à effectuer
 
-### Tables purgées (ordre FK respecté)
+**Fichier** : `src/components/admin/ChantiersManager.tsx`
+
+**Changement** : Dans le `Select` du chef d'équipe (lignes 338-350), ajouter une option "Aucun" qui remet la valeur à chaîne vide.
 
 ```text
-1. fiches_transport_jours
-2. fiches_transport
-3. fiches_transport_finisseurs_jours
-4. fiches_transport_finisseurs
-5. signatures
-6. fiches_jours
-7. fiches
-8. affectations_finisseurs_jours
-9. affectations_jours_chef
-10. affectations
-11. planning_affectations
-12. planning_validations
+Avant :
+<SelectContent>
+  {chefs.map((c) => (
+    <SelectItem key={c.id} value={c.id}>
+      {c.prenom} {c.nom}
+    </SelectItem>
+  ))}
+</SelectContent>
+
+Après :
+<SelectContent>
+  <SelectItem value="">Aucun</SelectItem>
+  {chefs.map((c) => (
+    <SelectItem key={c.id} value={c.id}>
+      {c.prenom} {c.nom}
+    </SelectItem>
+  ))}
+</SelectContent>
 ```
 
-### Tables préservées (configuration)
+## Vérification de la logique de sauvegarde
 
-- `utilisateurs` (les employés SDER)
-- `vehicules` (les véhicules SDER)
-- `chantiers` (CI230 et CI235)
+La fonction `handleSave` envoie déjà `chef_id: ""` tel quel, et la base de données convertit une chaîne vide en `NULL` (comportement Supabase standard pour les UUID). Aucune modification du hook n'est nécessaire.
 
-## Étape 2 : Préparer le test "chantier sans chef"
+## Impact
 
-Après la purge, je modifierai le chantier **CI235 (LES ARCS)** pour retirer son chef :
+- **Aucune régression** : Le champ reste optionnel et fonctionne comme avant
+- **Amélioration UX** : L'utilisateur peut maintenant désélectionner un chef
+- **1 seul fichier modifié** : `ChantiersManager.tsx`
 
-| Avant | Après |
-|-------|-------|
-| chef_id = Chloé | chef_id = NULL |
-| conducteur_id = Chloé | conducteur_id = Chloé |
-
-Ainsi :
-- **CI230** = chantier classique (chef Liam + conducteur Liam)
-- **CI235** = chantier sans chef (conducteur Chloé uniquement)
-
-## Étape 3 : Nouveau workflow à tester
-
-```text
-1. Planning S+1 (Conducteur)
-   └─ Affecter des employés à CI230 et CI235
-   └─ Valider le planning
-
-2. Synchronisation automatique
-   └─ Pour CI230 : affectations_jours_chef créées (chef Liam)
-   └─ Pour CI235 : affectations_jours_chef créées... par qui ?
-
-3. Saisie hebdo (Chef ou Conducteur ?)
-   └─ CI230 : Liam saisit les heures
-   └─ CI235 : Chloé (conducteur) doit pouvoir saisir
-
-4. Transmission → RH
-   └─ Vérifier que les deux flux fonctionnent
-```
-
-## Fichiers à créer/modifier
-
-| Action | Fichier |
-|--------|---------|
-| Créer | `supabase/functions/purge-entreprise-complete/index.ts` |
-| Modifier | `src/components/admin/DashboardManager.tsx` (bouton purge admin) |
-
-## Résultat attendu
-
-- Base SDER vierge (0 fiches, 0 planning, 0 signatures)
-- CI235 configuré sans chef pour tester le flux conducteur
-- Possibilité de reprendre le workflow depuis le Planning S+1
