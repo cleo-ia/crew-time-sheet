@@ -1,119 +1,126 @@
 
-# Correction du bug de création de fiches "sans chantier"
+# Plan de correction : Données manquantes pour chantiers sans chef
 
 ## Problème identifié
 
-L'auto-save (`useAutoSaveFiche.ts`) crée des fiches fantômes "sans chantier" quand l'Espace Conducteur s'ouvre avec `chantierId = null`. Ces fiches dupliquent les heures déjà saisies sur les vrais chantiers.
+Les `fiches_jours` pour le chantier TEST (sans chef) n'ont jamais été créées car :
+- La colonne `entreprise_id` est obligatoire (NOT NULL)
+- Le trigger `set_entreprise_from_fiche` existe mais **n'est pas attaché** à la table `fiches_jours`
+- La fonction `sync-planning-to-teams` ne fournit pas `entreprise_id` lors de l'upsert
 
-**Cas KASMI S05 :**
-- Fiche TEST (16h) + Fiche LE ROSEYRAN (23h) = 39h ✅
-- Fiche "sans chantier" (39h) créée par erreur = +39h en doublon ❌
-- Total affiché en RH : 62h + 27h supp (au lieu de 39h)
+**Résultat** : L'upsert échoue silencieusement, les jours ne sont pas créés, KASMI n'affiche que 23h au lieu de 39h.
 
-## Solution en 3 étapes
+## Actions correctives
 
-### Étape 1 : Nettoyer les données KASMI (SQL one-shot)
+### Étape 1 : Créer le trigger manquant (migration SQL)
 
-Supprimer la fiche "sans chantier" qui cause le doublon :
+Attacher la fonction `set_entreprise_from_fiche` à la table `fiches_jours` :
 
 ```sql
--- Supprimer les fiches_jours de la fiche fantôme
-DELETE FROM fiches_jours 
-WHERE fiche_id = '38dde2a7-3d42-4601-af05-7114cf88fd54';
-
--- Supprimer la fiche fantôme elle-même
-DELETE FROM fiches 
-WHERE id = '38dde2a7-3d42-4601-af05-7114cf88fd54';
+-- Créer le trigger pour auto-peupler entreprise_id sur fiches_jours
+CREATE TRIGGER tr_fiches_jours_set_entreprise
+  BEFORE INSERT ON public.fiches_jours
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_entreprise_from_fiche();
 ```
 
-### Étape 2 : Corriger useAutoSaveFiche.ts
+### Étape 2 : Corriger sync-planning-to-teams (edge function)
 
-**Fichier** : `src/hooks/useAutoSaveFiche.ts`
+**Fichier** : `supabase/functions/sync-planning-to-teams/index.ts`
 
-**Problème actuel** (lignes 100-140) :
-```typescript
-if (!chantierId) {
-  query = query.is("chantier_id", null);  // ← Cherche fiche sans chantier
-}
-// Si pas trouvée → crée une NOUVELLE fiche sans chantier
-```
-
-**Correction proposée** :
-Quand `chantierId = null`, vérifier si l'employé a déjà des fiches avec chantier pour cette semaine. Si oui, NE PAS créer de fiche "sans chantier".
+Modifier `createNewAffectation` (lignes 651-667) pour :
+1. Ajouter gestion d'erreur sur l'upsert
+2. Récupérer et passer `entreprise_id` explicitement
 
 ```typescript
-if (!chantierId) {
-  // Finisseurs: d'abord vérifier si l'employé a déjà des fiches AVEC chantier
-  const { data: fichesAvecChantier } = await supabase
-    .from("fiches")
-    .select("id")
-    .eq("semaine", weekId)
-    .eq("salarie_id", entry.employeeId)
-    .not("chantier_id", "is", null)
-    .limit(1);
+// Dans createNewAffectation, après création de la fiche
+const entrepriseIdForJours = chantier?.entreprise_id || entrepriseId;
+
+for (const jour of joursPlanning) {
+  const heuresJour = getHeuresForDay(jour)
+  const { error: jourError } = await supabase
+    .from('fiches_jours')
+    .upsert({
+      fiche_id: ficheId,
+      date: jour,
+      heures: heuresJour,
+      HNORM: heuresJour,
+      total_jour: heuresJour,
+      HI: 0,
+      T: 1,
+      PA: true,
+      pause_minutes: 0,
+      entreprise_id: entrepriseIdForJours  // AJOUT
+    }, { onConflict: 'fiche_id,date' })
   
-  if (fichesAvecChantier && fichesAvecChantier.length > 0) {
-    // L'employé a des fiches chantier → NE PAS créer de fiche sans chantier
-    console.log(`[AutoSave] Skip: ${entry.employeeName} a déjà des fiches chantier`);
-    continue; // Passer à l'employé suivant
+  if (jourError) {
+    console.error(`[sync] Erreur création fiches_jours pour ${jour}:`, jourError)
+    throw jourError
   }
-  
-  // Sinon, chercher/créer fiche sans chantier (comportement actuel)
-  query = query.is("chantier_id", null);
 }
 ```
 
-### Étape 3 : Ajouter une déduplication dans buildRHConsolidation
+Même correction pour `copyFichesFromPreviousWeek` (lignes 530-545).
+
+### Étape 3 : Restaurer les données KASMI S05 (SQL one-shot)
+
+```sql
+-- Récupérer l'entreprise_id de la fiche TEST
+-- Puis insérer les fiches_jours manquantes
+
+INSERT INTO fiches_jours (fiche_id, date, heures, HNORM, total_jour, HI, T, PA, pause_minutes, entreprise_id)
+VALUES 
+  ('cb2f170b-b04c-4730-80b6-ff24abe3a6b5', '2026-01-26', 8, 8, 8, 0, 1, true, 0, 
+   (SELECT entreprise_id FROM fiches WHERE id = 'cb2f170b-b04c-4730-80b6-ff24abe3a6b5')),
+  ('cb2f170b-b04c-4730-80b6-ff24abe3a6b5', '2026-01-27', 8, 8, 8, 0, 1, true, 0,
+   (SELECT entreprise_id FROM fiches WHERE id = 'cb2f170b-b04c-4730-80b6-ff24abe3a6b5'))
+ON CONFLICT (fiche_id, date) DO NOTHING;
+```
+
+### Étape 4 : Inclure les fiches BROUILLON dans RH pour chantiers sans chef
 
 **Fichier** : `src/hooks/rhShared.ts`
 
-**Sécurité supplémentaire** : même si des doublons existent en base, le calcul RH doit les dédupliquer.
+Ajouter une requête secondaire pour récupérer les fiches des chantiers sans chef (qui restent en BROUILLON car non transmissibles) :
 
 ```typescript
-// Dans buildRHConsolidation, lors de l'agrégation des jours
-const joursParDate = new Map<string, FicheJour>();
+// Après la requête fichesAvecChantier (ligne 248)
+// Ajouter une requête pour les fiches des chantiers sans chef
+let fichesChantiersSansChef: typeof fichesAvecChantier = [];
 
-for (const fiche of fichesSalarie) {
-  const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
-  for (const jour of joursFiche) {
-    const existing = joursParDate.get(jour.date);
-    // Prendre le jour de la fiche avec le meilleur statut
-    const priorite = { "ENVOYE_RH": 3, "AUTO_VALIDE": 2, "BROUILLON": 1 };
-    if (!existing || priorite[fiche.statut] > priorite[existing.ficheStatut]) {
-      joursParDate.set(jour.date, { ...jour, ficheStatut: fiche.statut });
-    }
-  }
+const { data: fichesSansChef } = await supabase
+  .from("fiches")
+  .select(`
+    id, semaine, statut, salarie_id, chantier_id,
+    absences_export_override, trajets_export_override,
+    acomptes, prets, commentaire_rh, notes_paie,
+    total_saisie, saisie_du_mois, commentaire_saisie,
+    regularisation_m1_export, autres_elements_export,
+    chantiers!inner(code_chantier, ville, conducteur_id, chef_id, entreprise_id)
+  `)
+  .is("chantiers.chef_id", null)  // Chantiers sans chef
+  .in("statut", ["BROUILLON"])     // Ces fiches ne peuvent pas être transmises
+  .eq("chantiers.entreprise_id", entrepriseId);
+
+if (fichesSansChef) {
+  fichesChantiersSansChef = fichesSansChef;
 }
 
-// Ensuite, calculer les heures uniquement sur joursParDate.values()
+// Fusionner avec fichesAvecChantier
+const toutesLesFiches = [...(fichesAvecChantier || []), ...fichesChantiersSansChef];
 ```
 
 ## Résultat attendu
 
-| Vue | Avant correction | Après correction |
-|-----|------------------|------------------|
-| RH Consolidé | 62h + 27h supp | 39h + 4h supp |
-| Détail KASMI | 3 fiches (dont 1 fantôme) | 2 fiches (TEST + ROSEYRAN) |
-| Espace Conducteur | Crée des fiches fantômes | Ne crée plus de doublons |
+| Métrique | Avant | Après |
+|----------|-------|-------|
+| Total KASMI S05 | 23h (3 jours) | 39h (5 jours) |
+| Chantiers affichés | LE ROSEYRAN seul | TEST + LE ROSEYRAN |
+| Sync planning | Échoue silencieusement | Crée les jours correctement |
 
 ## Fichiers impactés
 
-1. `src/hooks/useAutoSaveFiche.ts` - Empêcher création de fiches "sans chantier" si fiches chantier existent
-2. `src/hooks/rhShared.ts` - Dédupliquer les jours par date lors du calcul RH
-
-## Prévention future
-
-Optionnel : Ajouter un outil admin pour détecter et nettoyer les fiches "sans chantier" orphelines :
-
-```sql
--- Trouver les fiches "sans chantier" pour des salariés qui ont aussi des fiches AVEC chantier
-SELECT f1.id, f1.salarie_id, f1.semaine, f1.total_heures
-FROM fiches f1
-WHERE f1.chantier_id IS NULL
-  AND EXISTS (
-    SELECT 1 FROM fiches f2 
-    WHERE f2.salarie_id = f1.salarie_id 
-      AND f2.semaine = f1.semaine 
-      AND f2.chantier_id IS NOT NULL
-  );
-```
+1. **Migration SQL** : Créer trigger `tr_fiches_jours_set_entreprise`
+2. `supabase/functions/sync-planning-to-teams/index.ts` : Passer `entreprise_id` + gestion erreurs
+3. **Migration SQL** : Insérer les fiches_jours manquantes pour KASMI
+4. `src/hooks/rhShared.ts` : Inclure les fiches BROUILLON des chantiers sans chef
