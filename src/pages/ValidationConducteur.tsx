@@ -288,88 +288,52 @@ const ValidationConducteur = () => {
 
     const monday = parseISOWeek(selectedWeek);
     const days = [0,1,2,3,4].map((d) => format(addDays(monday, d), "yyyy-MM-dd"));
+    const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"] as const;
 
-    const employeesData: EmployeeData[] = timeEntries.map((entry) => ({
-      employeeId: entry.employeeId,
-      employeeName: entry.employeeName,
-      dailyHours: [
-        { 
-          date: days[0], 
-          heures: entry.days.Lundi.absent ? 0 : (entry.days.Lundi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Lundi.absent ? 0 : (entry.days.Lundi.hours ?? 0),
-          HI: entry.days.Lundi.heuresIntemperie ?? 0,
-          T: entry.days.Lundi.trajet ? 1 : 0,
-          PA: entry.days.Lundi.panierRepas ?? false,
-          trajet_perso: entry.days.Lundi.trajetPerso ?? false,
-          code_trajet: entry.days.Lundi.codeTrajet || null,
-          code_chantier_du_jour: entry.days.Lundi.chantierCode || null,
-          ville_du_jour: entry.days.Lundi.chantierVille || null,
-          commentaire: entry.days.Lundi.commentaire || null,
-          repas_type: entry.days.Lundi.repasType ?? (entry.days.Lundi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[1], 
-          heures: entry.days.Mardi.absent ? 0 : (entry.days.Mardi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Mardi.absent ? 0 : (entry.days.Mardi.hours ?? 0),
-          HI: entry.days.Mardi.heuresIntemperie ?? 0,
-          T: entry.days.Mardi.trajet ? 1 : 0,
-          PA: entry.days.Mardi.panierRepas ?? false,
-          trajet_perso: entry.days.Mardi.trajetPerso ?? false,
-          code_trajet: entry.days.Mardi.codeTrajet || null,
-          code_chantier_du_jour: entry.days.Mardi.chantierCode || null,
-          ville_du_jour: entry.days.Mardi.chantierVille || null,
-          commentaire: entry.days.Mardi.commentaire || null,
-          repas_type: entry.days.Mardi.repasType ?? (entry.days.Mardi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[2], 
-          heures: entry.days.Mercredi.absent ? 0 : (entry.days.Mercredi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Mercredi.absent ? 0 : (entry.days.Mercredi.hours ?? 0),
-          HI: entry.days.Mercredi.heuresIntemperie ?? 0,
-          T: entry.days.Mercredi.trajet ? 1 : 0,
-          PA: entry.days.Mercredi.panierRepas ?? false,
-          trajet_perso: entry.days.Mercredi.trajetPerso ?? false,
-          code_trajet: entry.days.Mercredi.codeTrajet || null,
-          code_chantier_du_jour: entry.days.Mercredi.chantierCode || null,
-          ville_du_jour: entry.days.Mercredi.chantierVille || null,
-          commentaire: entry.days.Mercredi.commentaire || null,
-          repas_type: entry.days.Mercredi.repasType ?? (entry.days.Mercredi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[3], 
-          heures: entry.days.Jeudi.absent ? 0 : (entry.days.Jeudi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Jeudi.absent ? 0 : (entry.days.Jeudi.hours ?? 0),
-          HI: entry.days.Jeudi.heuresIntemperie ?? 0,
-          T: entry.days.Jeudi.trajet ? 1 : 0,
-          PA: entry.days.Jeudi.panierRepas ?? false,
-          trajet_perso: entry.days.Jeudi.trajetPerso ?? false,
-          code_trajet: entry.days.Jeudi.codeTrajet || null,
-          code_chantier_du_jour: entry.days.Jeudi.chantierCode || null,
-          ville_du_jour: entry.days.Jeudi.chantierVille || null,
-          commentaire: entry.days.Jeudi.commentaire || null,
-          repas_type: entry.days.Jeudi.repasType ?? (entry.days.Jeudi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[4], 
-          heures: entry.days.Vendredi.absent ? 0 : (entry.days.Vendredi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Vendredi.absent ? 0 : (entry.days.Vendredi.hours ?? 0),
-          HI: entry.days.Vendredi.heuresIntemperie ?? 0,
-          T: entry.days.Vendredi.trajet ? 1 : 0,
-          PA: entry.days.Vendredi.panierRepas ?? false,
-          trajet_perso: entry.days.Vendredi.trajetPerso ?? false,
-          code_trajet: entry.days.Vendredi.codeTrajet || null,
-          code_chantier_du_jour: entry.days.Vendredi.chantierCode || null,
-          ville_du_jour: entry.days.Vendredi.chantierVille || null,
-          commentaire: entry.days.Vendredi.commentaire || null,
-          repas_type: entry.days.Vendredi.repasType ?? (entry.days.Vendredi.panierRepas ? "PANIER" : null),
-        },
-      ],
-    }));
+    // Filtrer les jours selon les affectations réelles pour éviter les "heures fantômes"
+    const employeesData: EmployeeData[] = timeEntries.map((entry) => {
+      // Récupérer les dates affectées pour cet employé
+      const employeeAffectedDates = new Set(
+        affectationsJours
+          ?.filter(aff => aff.finisseur_id === entry.employeeId)
+          ?.map(aff => aff.date) || []
+      );
+      
+      // Construire dailyHours uniquement pour les jours affectés
+      const dailyHours = days
+        .map((date, index) => {
+          // Si pas d'affectation pour ce jour, ne pas l'inclure
+          if (employeeAffectedDates.size > 0 && !employeeAffectedDates.has(date)) {
+            return null;
+          }
+          
+          const dayName = dayNames[index];
+          const dayData = entry.days[dayName];
+          
+          return {
+            date,
+            heures: dayData.absent ? 0 : (dayData.hours ?? 0),
+            pause_minutes: 0,
+            HNORM: dayData.absent ? 0 : (dayData.hours ?? 0),
+            HI: dayData.heuresIntemperie ?? 0,
+            T: dayData.trajet ? 1 : 0,
+            PA: dayData.panierRepas ?? false,
+            trajet_perso: dayData.trajetPerso ?? false,
+            code_trajet: dayData.codeTrajet || null,
+            code_chantier_du_jour: dayData.chantierCode || null,
+            ville_du_jour: dayData.chantierVille || null,
+            commentaire: dayData.commentaire || null,
+            repas_type: dayData.repasType ?? (dayData.panierRepas ? "PANIER" : null),
+          };
+        })
+        .filter((day): day is NonNullable<typeof day> => day !== null);
+      
+      return {
+        employeeId: entry.employeeId,
+        employeeName: entry.employeeName,
+        dailyHours,
+      };
+    });
 
     if (employeesData.length === 0) return;
 
