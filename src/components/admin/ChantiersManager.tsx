@@ -335,12 +335,12 @@ export const ChantiersManager = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Chef d'équipe (optionnel)</Label>
-                  <Select value={formData.chef_id} onValueChange={(value) => setFormData({ ...formData, chef_id: value })}>
+                  <Select value={formData.chef_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
+                      <SelectItem value="__none__">Aucun</SelectItem>
                       {chefs.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.prenom} {c.nom}
