@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft } from "lucide-react";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
@@ -43,6 +44,7 @@ const PlanningMainOeuvre = () => {
   const entrepriseId = localStorage.getItem("current_entreprise_id") || "";
   const enterpriseConfig = useEnterpriseConfig();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
@@ -223,14 +225,24 @@ const PlanningMainOeuvre = () => {
       <div className="border-b border-border/50 backdrop-blur-sm bg-primary/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
-                <Users className="h-6 w-6" />
-                {enterpriseConfig.nom} - Planning Main d'Oeuvre
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Planification hebdomadaire des effectifs sur les chantiers
-              </p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/validation-conducteur')}
+                className="h-9 w-9"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
+                  <Users className="h-6 w-6" />
+                  {enterpriseConfig.nom} - Planning Main d'Oeuvre
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Planification hebdomadaire des effectifs sur les chantiers
+                </p>
+              </div>
             </div>
             <Badge variant="outline" className="bg-warning/20 text-warning-foreground border-warning text-lg px-3 py-1 font-bold">
               {semaine}
