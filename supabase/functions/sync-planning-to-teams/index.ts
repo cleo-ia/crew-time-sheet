@@ -110,8 +110,26 @@ Deno.serve(async (req) => {
     let totalCreated = 0
     let totalDeleted = 0
 
+    let skippedEntreprises = 0
+
     for (const entrepriseId of uniqueEntreprises) {
       console.log(`[sync-planning-to-teams] Traitement entreprise ${entrepriseId}...`)
+      
+      // Vérifier si le planning est validé pour cette entreprise/semaine
+      const { data: validation } = await supabase
+        .from('planning_validations')
+        .select('id')
+        .eq('entreprise_id', entrepriseId)
+        .eq('semaine', currentWeek)
+        .maybeSingle()
+
+      if (!validation) {
+        console.log(`[sync-planning-to-teams] Entreprise ${entrepriseId}: planning non validé, skip`)
+        skippedEntreprises++
+        continue
+      }
+
+      console.log(`[sync-planning-to-teams] Entreprise ${entrepriseId}: planning validé, synchronisation...`)
       
       const { results, stats } = await syncEntreprise(
         supabase, 
@@ -125,6 +143,8 @@ Deno.serve(async (req) => {
       totalCreated += stats.created
       totalDeleted += stats.deleted
     }
+
+    console.log(`[sync-planning-to-teams] ${skippedEntreprises} entreprise(s) ignorée(s) (planning non validé)`)
 
     const endTime = Date.now()
     const duration_ms = endTime - startTime

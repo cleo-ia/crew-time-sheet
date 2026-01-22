@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit } from "lucide-react";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
@@ -32,12 +32,14 @@ import { PlanningWeekSelector } from "@/components/planning/PlanningWeekSelector
 import { PlanningChantierAccordion } from "@/components/planning/PlanningChantierAccordion";
 import { generatePlanningExcel, preparePlanningData } from "@/lib/planningExcelExport";
 import { useToast } from "@/hooks/use-toast";
+import { usePlanningValidation } from "@/hooks/usePlanningValidation";
 
 const PlanningMainOeuvre = () => {
   const currentWeek = getCurrentWeek();
   const [semaine, setSemaine] = useState(getNextWeek(currentWeek)); // Par défaut S+1
   const [searchQuery, setSearchQuery] = useState("");
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [validateDialogOpen, setValidateDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
 
@@ -45,6 +47,16 @@ const PlanningMainOeuvre = () => {
   const enterpriseConfig = useEnterpriseConfig();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Hook de validation du planning
+  const { 
+    isValidated, 
+    isLoading: isLoadingValidation,
+    validatePlanning, 
+    invalidatePlanning,
+    isValidating,
+    isInvalidating
+  } = usePlanningValidation(semaine);
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
@@ -298,6 +310,47 @@ const PlanningMainOeuvre = () => {
               )}
               {allExpanded ? "Tout replier" : "Tout déplier"}
             </Button>
+
+            {/* Bouton de validation du planning */}
+            {isLoadingValidation ? (
+              <Button variant="outline" disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Chargement...
+              </Button>
+            ) : isValidated ? (
+              <div className="flex items-center gap-2">
+                <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1.5">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Planning validé
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => invalidatePlanning()}
+                  disabled={isInvalidating}
+                >
+                  {isInvalidating ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Edit className="h-4 w-4 mr-1" />
+                  )}
+                  Modifier
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="default"
+                onClick={() => setValidateDialogOpen(true)}
+                disabled={isValidating || affectations.length === 0}
+              >
+                {isValidating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Valider le planning
+              </Button>
+            )}
           </div>
         </CardHeader>
 
@@ -369,6 +422,39 @@ const PlanningMainOeuvre = () => {
                 <Copy className="h-4 w-4 mr-2" />
               )}
               Copier
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog confirmation validation */}
+      <AlertDialog open={validateDialogOpen} onOpenChange={setValidateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Valider le planning {semaine} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              En validant ce planning, il sera pris en compte par la synchronisation automatique du lundi à 5h.
+              <br /><br />
+              <strong>{affectations.length}</strong> affectation(s) seront synchronisées vers les équipes.
+              <br /><br />
+              Vous pourrez modifier le planning après validation en cliquant sur "Modifier".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                validatePlanning();
+                setValidateDialogOpen(false);
+              }}
+              disabled={isValidating}
+            >
+              {isValidating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Valider
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
