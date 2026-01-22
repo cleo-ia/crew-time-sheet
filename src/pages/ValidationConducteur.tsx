@@ -319,7 +319,7 @@ const ValidationConducteur = () => {
             T: dayData.trajet ? 1 : 0,
             PA: dayData.panierRepas ?? false,
             trajet_perso: dayData.trajetPerso ?? false,
-            code_trajet: dayData.codeTrajet || null,
+            code_trajet: dayData.codeTrajet || (dayData.trajet ? "A_COMPLETER" : null),
             code_chantier_du_jour: dayData.chantierCode || null,
             ville_du_jour: dayData.chantierVille || null,
             commentaire: dayData.commentaire || null,
