@@ -277,8 +277,30 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const { data: fichesFinisseurs, error: finisseursError } = await finisseursQuery;
   if (finisseursError) throw finisseursError;
 
+  // Récupérer les fiches BROUILLON des chantiers sans chef (non transmissibles mais à inclure)
+  let fichesChantiersSansChef: typeof fichesAvecChantier = [];
+  if (entrepriseId) {
+    const { data: fichesSansChef } = await supabase
+      .from("fiches")
+      .select(`
+        id, semaine, statut, salarie_id, chantier_id,
+        absences_export_override, trajets_export_override,
+        acomptes, prets, commentaire_rh, notes_paie,
+        total_saisie, saisie_du_mois, commentaire_saisie,
+        regularisation_m1_export, autres_elements_export,
+        chantiers!inner(code_chantier, ville, conducteur_id, chef_id, entreprise_id)
+      `)
+      .is("chantiers.chef_id", null)
+      .eq("statut", "BROUILLON")
+      .eq("chantiers.entreprise_id", entrepriseId);
+
+    if (fichesSansChef) {
+      fichesChantiersSansChef = fichesSansChef;
+    }
+  }
+
   // Combiner toutes les fiches et filtrer par mois (ou toutes si période = "all")
-  const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || [])];
+  const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || []), ...fichesChantiersSansChef];
   const fichesDuMois = toutesLesFiches.filter(fiche => {
     if (!fiche.semaine) return false;
     try {

@@ -525,7 +525,7 @@ async function copyFichesFromPreviousWeek(
     const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
     const newDateStr = newDate.toISOString().split('T')[0]
 
-    await supabase
+    const { error: jourError } = await supabase
       .from('fiches_jours')
       .upsert({
         fiche_id: ficheIdS,
@@ -539,9 +539,15 @@ async function copyFichesFromPreviousWeek(
         HI: jourS1.HI,
         T: jourS1.T,
         HP: jourS1.HP,
-        total_jour: jourS1.total_jour,
+        PA: jourS1.PA,
+        // total_jour est une colonne générée, ne pas l'inclure
         // Ne pas copier: signature_data, commentaire
       }, { onConflict: 'fiche_id,date' })
+    
+    if (jourError) {
+      console.error(`[sync] Erreur copie fiches_jours pour ${newDateStr}:`, jourError)
+      throw jourError
+    }
   }
 
   // Mettre à jour le total_heures de la fiche
@@ -651,19 +657,24 @@ async function createNewAffectation(
   // Créer les fiches_jours avec les heures spécifiques à chaque jour
   for (const jour of joursPlanning) {
     const heuresJour = getHeuresForDay(jour)
-    await supabase
+    const { error: jourError } = await supabase
       .from('fiches_jours')
       .upsert({
         fiche_id: ficheId,
         date: jour,
         heures: heuresJour,
         HNORM: heuresJour,
-        total_jour: heuresJour,
+        // total_jour est une colonne générée, ne pas l'inclure
         HI: 0,
         T: 1,
         PA: true,
         pause_minutes: 0
       }, { onConflict: 'fiche_id,date' })
+    
+    if (jourError) {
+      console.error(`[sync] Erreur création fiches_jours pour ${jour}:`, jourError)
+      throw jourError
+    }
   }
 
   // Mettre à jour le total
