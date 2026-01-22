@@ -1,120 +1,81 @@
 
 
-# Plan de correction : Affichage des cartes "Détail chantier/semaine" pour les équipes sans chef
+# Plan de correction : Aligner le flux Conducteur/Finisseurs sur le flux Chef/Maçons
 
-## Contexte
+## Constat
 
-Après le test du flux complet pour un chantier sans chef (TEST) :
-- Les données arrivent correctement côté RH avec les bonnes heures (24h pour KASMI, 39h pour DARCOURT)
-- Mais l'onglet "Détail chantier/semaine" affiche "Aucune fiche à afficher"
-- Le chantier TEST devrait avoir une carte dans cet onglet
+Les logiques d'initialisation des trajets (`code_trajet = "A_COMPLETER"`) et des codes chantier (`code_chantier_du_jour`) sont correctement implémentées pour le flux **Chef/Maçons** mais ne sont **pas appliquées** au flux **Conducteur/Finisseurs**.
 
-## Cause racine
+| Comportement | Chef/Maçons | Conducteur/Finisseurs |
+|--------------|-------------|----------------------|
+| `code_trajet` default | `"A_COMPLETER"` | `null` |
+| `code_chantier_du_jour` | Enrichi depuis chantier | Dépend de `ficheJours` existant |
 
-Dans `src/pages/SignatureFinisseurs.tsx` (lignes 232-238), lors de la transmission :
+---
 
-```typescript
-const { error: updateError } = await supabase
-  .from("fiches")
-  .update({ statut: "ENVOYE_RH" })
-  .eq("semaine", semaine)
-  .in("salarie_id", finisseurIds)
-  .is("chantier_id", null);  // ← PROBLÈME ICI
+## Fichiers à modifier
+
+### 1. `src/components/timesheet/TimeEntryTable.tsx`
+
+**Ligne 482** - Fallback `A_COMPLETER` au chargement :
+```
+// AVANT
+codeTrajet: ((j as any).code_trajet || null) as CodeTrajet | null,
+
+// APRÈS  
+codeTrajet: ((j as any).code_trajet || (trajet ? "A_COMPLETER" : null)) as CodeTrajet | null,
 ```
 
-La condition `.is("chantier_id", null)` filtre uniquement les fiches sans chantier associé. Or, pour les équipes sans chef :
-- Les fiches ONT un `chantier_id` (ex: TEST = `da638cc1-...`)
-- Le chantier n'a pas de chef (`chef_id = NULL`)
-- Le conducteur gère directement cette équipe
+**Ligne 502** - Enrichir chantier même si `chantierId` existe mais pas le code :
+```
+// AVANT
+if (!currentDay.chantierId && !currentDay.chantierCode) {
 
-Ces fiches restent donc en statut `BROUILLON` et n'apparaissent pas dans la vue RH.
-
-## Données actuelles en base
-
-| Fiche | Salarié | Chantier | chef_id | Statut |
-|-------|---------|----------|---------|--------|
-| `191e4a7a-...` | DARCOURT | TEST | NULL | BROUILLON |
-| `2f0ee8cb-...` | KASMI | TEST | NULL | BROUILLON |
-
-## Solution proposée
-
-### Modification : SignatureFinisseurs.tsx
-
-Remplacer la logique de mise à jour du statut pour gérer les deux cas :
-
-**Cas 1** : Fiches "finisseurs purs" (sans chantier) → `chantier_id IS NULL`
-**Cas 2** : Fiches d'équipes sans chef → `chantier_id` renseigné mais `chef_id IS NULL`
-
-```text
-// Nouvelle logique (lignes 229-250)
-
-1. Récupérer les IDs des chantiers sans chef gérés par ce conducteur
-2. Mettre à jour les fiches finisseurs purs (chantier_id = null) → ENVOYE_RH  
-3. Mettre à jour les fiches des équipes sans chef (chantier.chef_id = null) → ENVOYE_RH
+// APRÈS
+if (!currentDay.chantierCode) {
 ```
 
-### Implémentation technique
+---
 
-```typescript
-// 2a. Fiches "finisseurs purs" (sans chantier)
-if (finisseurIds.length > 0) {
-  await supabase
-    .from("fiches")
-    .update({ statut: "ENVOYE_RH" })
-    .eq("semaine", semaine)
-    .in("salarie_id", finisseurIds)
-    .is("chantier_id", null);
-}
+### 2. `src/pages/ValidationConducteur.tsx`
 
-// 2b. Fiches d'équipes sur chantiers SANS CHEF gérées par ce conducteur
-// Récupérer les chantiers sans chef de ce conducteur
-const { data: chantiersWithoutChef } = await supabase
-  .from("chantiers")
-  .select("id")
-  .eq("conducteur_id", conducteurId)
-  .is("chef_id", null);
+**Ligne 322** - Fallback `A_COMPLETER` à la transmission :
+```
+// AVANT
+code_trajet: dayData.codeTrajet || null,
 
-if (chantiersWithoutChef && chantiersWithoutChef.length > 0) {
-  const chantierIds = chantiersWithoutChef.map(c => c.id);
-  
-  await supabase
-    .from("fiches")
-    .update({ statut: "ENVOYE_RH" })
-    .eq("semaine", semaine)
-    .in("salarie_id", finisseurIds)
-    .in("chantier_id", chantierIds);
-}
+// APRÈS
+code_trajet: dayData.codeTrajet || (dayData.trajet ? "A_COMPLETER" : null),
 ```
 
-## Modification UI (optionnelle mais recommandée)
+---
 
-Dans `src/components/rh/RHDetailView.tsx`, adapter l'affichage du chef :
+## Résumé des modifications
 
-```text
-Ligne 47 : <span>Chef: {fiche.chef}</span>
+| Fichier | Ligne | Modification |
+|---------|-------|--------------|
+| `TimeEntryTable.tsx` | 482 | `codeTrajet` fallback `A_COMPLETER` si `trajet=true` |
+| `TimeEntryTable.tsx` | 502 | Condition simplifiée pour enrichir le code chantier |
+| `ValidationConducteur.tsx` | 322 | `code_trajet` fallback `A_COMPLETER` si `trajet=true` |
 
-Si le champ chef est vide, afficher plutôt :
-<span>Conducteur direct</span> ou <span>Sans chef</span>
-```
+---
 
-## Impact
+## Comportement attendu après correction
 
-| Composant | Avant | Après |
-|-----------|-------|-------|
-| SignatureFinisseurs | Ne met à jour que les fiches sans chantier | Met à jour aussi les fiches des chantiers sans chef |
-| RHDetailView | Carte vide pour les équipes sans chef | Affiche "Conducteur direct" ou le nom du conducteur |
-| Détail chantier/semaine | "Aucune fiche" pour TEST | Carte visible pour TEST |
+1. **Trajet coché** → `code_trajet = "A_COMPLETER"` → RH peut compléter (T1, T2, GD...)
+2. **Chantier depuis planning** → `code_chantier_du_jour` et `ville_du_jour` toujours remplis
+3. **Vue RH "Consolidé par salarié"** → Colonnes "Trajets" et "Chantier" affichent les bonnes valeurs
 
-## Étapes de validation
+---
 
-1. Implémenter la correction dans SignatureFinisseurs.tsx
-2. Corriger manuellement le statut des fiches existantes (BROUILLON → ENVOYE_RH)
-3. Vérifier que la carte TEST apparaît dans "Détail chantier/semaine"
-4. (Optionnel) Purger et refaire un test complet du flux
+## Test de validation
 
-## Risques et mitigations
-
-**Rétro-compatibilité** : La nouvelle logique ajoute un cas supplémentaire sans modifier l'existant pour les fiches `chantier_id = NULL`.
-
-**Performance** : Une requête supplémentaire pour récupérer les chantiers sans chef (négligeable).
+1. Purger les données SDER (si nécessaire)
+2. **Planning** : Affecter DARCOURT et KASMI au chantier TEST, semaine S05
+3. **Valider le planning** + Sync S+1
+4. **Espace Conducteur → Mes heures** : Vérifier les cases Trajet et Panier cochées
+5. **Collecter les signatures** → Signer
+6. **Consultation RH → Consolidé par salarié** :
+   - Colonne "Trajets" = nombre de jours affectés (ex: 5)
+   - Colonne "Chantier" = code du chantier (ex: "TEST" ou "CI...")
 
