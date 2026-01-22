@@ -5,7 +5,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
@@ -36,6 +36,9 @@ import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesListSheet } from "@/components/conges/CongesListSheet";
 import { useDemandesEnAttente } from "@/hooks/useDemandesConges";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -54,6 +57,14 @@ const ValidationConducteur = () => {
   
   const [activeMainTab, setActiveMainTab] = useState(initialTabFromUrl);
   
+  // Détection Super Admin
+  const { data: userRole } = useCurrentUserRole();
+  const isSuperAdmin = userRole === "super_admin";
+  
+  // Liste des conducteurs (pour super admin)
+  const { data: conducteursList = [] } = useUtilisateursByRole(isSuperAdmin ? "conducteur" : undefined);
+  const [selectedConducteurIdAdmin, setSelectedConducteurIdAdmin] = useState<string | null>(null);
+  
   // États pour l'onglet "Mes heures"
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,10 +74,13 @@ const ValidationConducteur = () => {
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
   
+  // ID effectif du conducteur (super admin peut sélectionner un autre conducteur)
+  const effectiveConducteurId = isSuperAdmin ? selectedConducteurIdAdmin : conducteurId;
+  
   // Hook pour compter les fiches en attente de validation pour CE conducteur
-  const { data: nbFichesEnAttente = 0 } = useFichesEnAttentePourConducteur(conducteurId);
-  const { data: unreadData } = useUnreadMessages(conducteurId);
-  const { data: nbCongesEnAttente = 0 } = useDemandesEnAttente(conducteurId);
+  const { data: nbFichesEnAttente = 0 } = useFichesEnAttentePourConducteur(effectiveConducteurId);
+  const { data: unreadData } = useUnreadMessages(effectiveConducteurId);
+  const { data: nbCongesEnAttente = 0 } = useDemandesEnAttente(effectiveConducteurId);
   
   const fromSignature = sessionStorage.getItem('fromSignature') === 'true';
   const urlWeek = searchParams.get("semaine");
@@ -75,7 +89,7 @@ const ValidationConducteur = () => {
   // DÉSACTIVÉ si on vient de signer (l'URL est la source de vérité)
   const { data: initialWeek, isLoading: isLoadingWeek } = useInitialWeek(
     fromSignature ? null : urlWeek, // Ne pas utiliser useInitialWeek si on vient de signer
-    fromSignature ? null : (conducteurId || null),
+    fromSignature ? null : (effectiveConducteurId || null),
     null // null car conducteur n'a pas de chantier fixe
   );
   
@@ -154,10 +168,10 @@ const ValidationConducteur = () => {
   }, []);
   
   // Vérifier si la semaine a déjà été transmise
-  const { data: transmissionStatus } = useWeekTransmissionStatus(selectedWeek, conducteurId);
+  const { data: transmissionStatus } = useWeekTransmissionStatus(selectedWeek, effectiveConducteurId);
   
   // Charger les finisseurs
-  const { data: allFinisseurs = [] } = useFinisseursByConducteur(conducteurId, selectedWeek);
+  const { data: allFinisseurs = [] } = useFinisseursByConducteur(effectiveConducteurId, selectedWeek);
 
   // Filtrer pour ne garder que ceux avec au moins 1 jour affecté cette semaine
   const finisseurs = useMemo(() => {
@@ -167,17 +181,17 @@ const ValidationConducteur = () => {
   // Calculer les IDs gérés par ce conducteur (pour les notifications de congés)
   const allManagedIds = useMemo(() => {
     const ids = finisseurs.map(f => f.id);
-    if (conducteurId && !ids.includes(conducteurId)) {
-      ids.push(conducteurId);
+    if (effectiveConducteurId && !ids.includes(effectiveConducteurId)) {
+      ids.push(effectiveConducteurId);
     }
     return ids;
-  }, [finisseurs, conducteurId]);
+  }, [finisseurs, effectiveConducteurId]);
 
   // Compter les demandes de congés traitées non lues par le demandeur
   const { data: nbDemandesTraitees = 0 } = useDemandesTraiteesNonLues(allManagedIds);
 
   // Source serveur directe pour affectations
-  const { data: affByCond = [] } = useAffectationsByConducteur(conducteurId || "", selectedWeek);
+  const { data: affByCond = [] } = useAffectationsByConducteur(effectiveConducteurId || "", selectedWeek);
   
   // Charger TOUTES les affectations de la semaine (pour protection contre modifications d'autres conducteurs)
   const { data: allAffectations = [] } = useAffectationsFinisseursJours(selectedWeek);
@@ -253,7 +267,7 @@ const ValidationConducteur = () => {
   }, [activeMainTab, selectedWeek, toast]);
 
   const handleSaveAndSign = async () => {
-    if (!selectedWeek || !conducteurId) return;
+    if (!selectedWeek || !effectiveConducteurId) return;
     
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -365,13 +379,13 @@ const ValidationConducteur = () => {
         chantierId: null,
         employeesData,
         statut: "BROUILLON",
-        userId: conducteurId,
+        userId: effectiveConducteurId,
       });
 
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      navigate(`/signature-finisseurs?semaine=${selectedWeek}&conducteurId=${conducteurId}`);
+      navigate(`/signature-finisseurs?semaine=${selectedWeek}&conducteurId=${effectiveConducteurId}`);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
     } finally {
@@ -381,7 +395,7 @@ const ValidationConducteur = () => {
   
   // Vérifier que tous les finisseurs ont une fiche trajet complète
   const checkAllFinisseursTransportComplete = async (): Promise<{ ok: boolean; errors: string[] }> => {
-    if (!conducteurId || !selectedWeek || finisseurs.length === 0) return { ok: false, errors: ["Données manquantes"] };
+    if (!effectiveConducteurId || !selectedWeek || finisseurs.length === 0) return { ok: false, errors: ["Données manquantes"] };
     
     const errors: string[] = [];
     
@@ -535,7 +549,7 @@ const ValidationConducteur = () => {
         <ConversationListSheet
           open={showConversation}
           onOpenChange={setShowConversation}
-          currentUserId={conducteurId || ""}
+          currentUserId={effectiveConducteurId || ""}
         />
 
         <WeeklyForecastDialog
@@ -543,15 +557,53 @@ const ValidationConducteur = () => {
           onOpenChange={setShowWeatherDialog}
         />
 
-        {conducteurId && (
+        {effectiveConducteurId && (
           <CongesListSheet
             open={showConges}
             onOpenChange={setShowConges}
-            conducteurId={conducteurId}
+            conducteurId={effectiveConducteurId}
           />
         )}
 
         <main className="container mx-auto px-4 py-6 max-w-7xl">
+          {/* Sélecteur Super Admin */}
+          {isSuperAdmin && (
+            <Card className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Vue Super Admin
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-amber-700 dark:text-amber-300">
+                    Conducteur :
+                  </span>
+                  <Select 
+                    value={selectedConducteurIdAdmin || ""} 
+                    onValueChange={(value) => setSelectedConducteurIdAdmin(value || null)}
+                  >
+                    <SelectTrigger className="w-[250px] bg-background">
+                      <SelectValue placeholder="Choisir un conducteur..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {conducteursList.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.prenom} {c.nom}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!selectedConducteurIdAdmin && (
+                  <span className="text-sm text-amber-600 dark:text-amber-400 italic">
+                    ↑ Sélectionnez un conducteur pour voir son équipe
+                  </span>
+                )}
+              </div>
+            </Card>
+          )}
           <Tabs 
             value={activeMainTab} 
             onValueChange={(v) => {
@@ -620,10 +672,10 @@ const ValidationConducteur = () => {
                         )}
                       </div>
 
-                      {selectedWeek && conducteurId && (
+                      {selectedWeek && effectiveConducteurId && (
                         <div className="pt-4 border-t border-border/30">
                           <FinisseursDispatchWeekly 
-                            conducteurId={conducteurId}
+                            conducteurId={effectiveConducteurId}
                             semaine={selectedWeek}
                             onAffectationsChange={setAffectationsLocal}
                           />
@@ -648,13 +700,13 @@ const ValidationConducteur = () => {
                     </div>
                   </Card>
 
-                  {selectedWeek && conducteurId ? (
+                  {selectedWeek && effectiveConducteurId ? (
                     finisseurs.length > 0 ? (
                       <>
                         <TimeEntryTable 
                           chantierId={null}
                           weekId={selectedWeek}
-                          chefId={conducteurId}
+                          chefId={effectiveConducteurId}
                           onEntriesChange={setTimeEntries}
                           mode="conducteur"
                           affectationsJours={affectationsJours}
@@ -709,7 +761,7 @@ const ValidationConducteur = () => {
                 </TabsContent>
 
                 <TabsContent value="historique">
-                  <ConducteurHistorique conducteurId={conducteurId} />
+                  <ConducteurHistorique conducteurId={effectiveConducteurId} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
