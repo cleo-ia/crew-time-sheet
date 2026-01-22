@@ -1,123 +1,76 @@
 
+# Correction du calcul des semaines ISO pour les onglets Ventilation
 
-# Plan de Correction Validé : Bug Duplication Heures Multi-Chantier
+## Problème identifié
 
-## Confirmation d'Absence de Régression
+La fonction `getWeeksInMonth` dans `src/hooks/useVentilationAnalytique.ts` calcule incorrectement les numéros de semaine ISO.
 
-Cette analyse confirme qu'aucune régression n'est attendue suite à l'implémentation de ce correctif.
+**Bug actuel pour janvier 2026 :**
+- Code génère : `S00, S01, S02, S03, S04`
+- Attendu (ISO 8601) : `S01, S02, S03, S04, S05`
 
-## Contexte du Bug
+**Conséquences :**
+- SDER : Données S05 invisibles (ce que tu constates)
+- Limoge Revillon : S02/S03 visibles actuellement, mais S05 serait manquante si ajoutée
 
-Paul MANUNTA est affecté sur 2 chantiers en S05 :
-- CI230 (Liam) : Lundi, Mardi, Mercredi
-- CI235 (Chloé) : Jeudi, Vendredi
+## Vérification Limoge Revillon
 
-Actuellement, chaque chef transmet 5 jours complets (39h), créant 78h au total pour Paul au lieu de 39h.
+Les données Limoge Revillon pour janvier 2026 (S02 et S03) sont partiellement visibles grâce à l'intersection avec le calcul bugué. Mais le problème se manifesterait dès qu'il y aurait des données en S05 (26-31 janvier).
 
-## Modifications Prévues
+## Solution technique
 
-### Fichier 1 : `src/pages/Index.tsx`
+Remplacer le calcul manuel par les fonctions `date-fns` déjà installées (`getISOWeek`, `getISOWeekYear`) qui garantissent la conformité ISO 8601.
 
-Ajouter le filtrage des jours dans `handleSaveAndSign` en utilisant `useAffectationsJoursByChef` :
+### Fichier à modifier
+
+`src/hooks/useVentilationAnalytique.ts` (lignes 49-74)
+
+### Nouveau code
 
 ```typescript
-// Import existant à ajouter
-import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+import { getISOWeek, getISOWeekYear } from "date-fns";
 
-// Dans le composant, ajouter le hook
-const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
-  selectedChef || null, 
-  selectedWeek || ""
-);
-
-// Fonction helper pour obtenir les jours autorisés
-const getAuthorizedDays = (employeeId: string): string[] => {
-  if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-    return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+const getWeeksInMonth = (periode: string): string[] => {
+  if (!periode || periode === "all") return [];
+  
+  const [year, month] = periode.split("-").map(Number);
+  const weeks: string[] = [];
+  
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  
+  for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+    const isoYear = getISOWeekYear(d);
+    const isoWeek = getISOWeek(d);
+    const weekStr = `${isoYear}-S${String(isoWeek).padStart(2, '0')}`;
+    
+    if (!weeks.includes(weekStr)) {
+      weeks.push(weekStr);
+    }
   }
   
-  const employeeAffectations = affectationsJoursChef.filter(
-    aff => aff.macon_id === employeeId
-  );
-  
-  if (employeeAffectations.length === 0) {
-    return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
-  }
-  
-  const dayNames: Record<string, string> = {
-    [days[0]]: 'Lundi',
-    [days[1]]: 'Mardi',
-    [days[2]]: 'Mercredi',
-    [days[3]]: 'Jeudi',
-    [days[4]]: 'Vendredi',
-  };
-  
-  return employeeAffectations.map(aff => dayNames[aff.jour]).filter(Boolean);
+  return weeks;
 };
-
-// Dans handleSaveAndSign, remplacer la construction de dailyHours
-// par une version filtrée
 ```
 
-### Fichier 2 : `src/hooks/useSaveFiche.ts`
+## Garantie pour tous les mois
 
-Modifier le DELETE global par un DELETE ciblé + utiliser UPSERT :
+| Mois 2026 | Semaines générées (corrigées) |
+|-----------|------------------------------|
+| Janvier | S01, S02, S03, S04, S05 |
+| Février | S05, S06, S07, S08, S09 |
+| Mars | S09, S10, S11, S12, S13, S14 |
+| ... | ... |
+| Décembre | S49, S50, S51, S52, S53 |
 
-```typescript
-// AVANT (ligne 134)
-await supabase.from("fiches_jours").delete().eq("fiche_id", ficheId);
+La bibliothèque `date-fns` gère automatiquement :
+- Les années avec 52 ou 53 semaines
+- Les transitions d'année (décembre S52/S53 vers janvier S01)
+- Les cas où le 1er janvier appartient à la semaine 52 de l'année précédente
 
-// APRÈS
-const datesToUpdate = employee.dailyHours.map(d => d.date);
-if (datesToUpdate.length > 0) {
-  await supabase
-    .from("fiches_jours")
-    .delete()
-    .eq("fiche_id", ficheId)
-    .in("date", datesToUpdate);
-}
+## Résultat attendu
 
-// Remplacer INSERT par UPSERT (lignes 163-166)
-const { error: joursError } = await supabase
-  .from("fiches_jours")
-  .upsert(jourEntries, {
-    onConflict: 'fiche_id,date',
-    ignoreDuplicates: false
-  });
-```
-
-## Points d'Entrée Vérifiés (Aucune Régression)
-
-| Composant | Statut | Raison |
-|-----------|--------|--------|
-| `useAutoSaveFiche.ts` | ✅ Déjà aligné | Implémente déjà le filtrage multi-chef (lignes 205-238) |
-| `ValidationConducteur.tsx` | ✅ Non impacté | Finisseurs uniquement (chantierId: null) |
-| `useSaveFicheJours.ts` | ✅ Non impacté | Utilise ficheId explicite, édition ciblée |
-| `SignatureMacons.tsx` | ✅ Non impacté | Affichage seul, déjà filtré |
-| `FicheDetail.tsx` | ✅ Non impacté | Édition ciblée par ficheId |
-
-## Rétrocompatibilité Garantie
-
-- Entreprises sans planning : Comportement legacy préservé (5 jours)
-- Employés sans affectation spécifique : 5 jours par défaut
-- Données existantes : Non affectées (correction appliquée aux nouvelles transmissions)
-
-## Résultat Attendu
-
-Après correction, pour Paul MANUNTA S05 :
-
-| Action | Résultat |
-|--------|----------|
-| Liam transmet | 3 fiches_jours (Lun-Mar-Mer) = 24h sur CI230 |
-| Chloé transmet | 2 fiches_jours (Jeu-Ven) = 15h sur CI235 |
-| Vue Conducteur | Affiche correctement 24h/15h par chantier |
-| Vue RH | Fusionne = 39h total pour Paul |
-
-## Risques
-
-| Risque | Mitigation |
-|--------|------------|
-| Mauvaise conversion date → nom de jour | Utilisation du même pattern que useAutoSaveFiche (testé) |
-| Fallback inexistant | Fallback explicite vers 5 jours si aucune affectation |
-| Ordre de transmission | UPSERT garantit l'atomicité, pas de dépendance d'ordre |
-
+Après correction :
+- **SDER janvier 2026** : Les onglets Ventilation afficheront les données S05 (équipes Liam et Chloé)
+- **Limoge Revillon** : Continuera à fonctionner pour S02/S03 et supportera S05 quand les données seront ajoutées
+- **Tous les mois de l'année** : Calcul garanti conforme ISO 8601 grâce à date-fns
