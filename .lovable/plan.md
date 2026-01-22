@@ -1,49 +1,67 @@
 
 
-# Plan : Rendre le champ "Chef d'équipe" vraiment optionnel
+# Correction : Erreur "nouveau chantier" - SelectItem avec valeur vide
 
-## Constat
+## Diagnostic
 
-Le champ "Chef d'équipe" est déjà marqué comme optionnel dans l'interface et la base de données accepte une valeur NULL pour `chef_id`. Cependant, le composant de sélection ne permet pas de **désélectionner** un chef une fois qu'un choix a été fait.
+L'erreur provient directement de la modification récente dans `ChantiersManager.tsx` ligne 343 :
+
+```tsx
+<SelectItem value="">Aucun</SelectItem>  // ❌ INTERDIT par Radix UI
+```
+
+**Radix UI Select n'accepte pas une chaîne vide comme valeur** pour `<SelectItem>`. C'est une contrainte de conception du composant car la valeur vide est réservée pour réinitialiser la sélection et afficher le placeholder.
 
 ## Solution
 
-Ajouter une option "Aucun" en première position dans la liste déroulante du chef d'équipe, permettant de créer un chantier sans chef ou de retirer un chef existant.
+Utiliser une valeur sentinel (ex: `"__none__"`) au lieu d'une chaîne vide, puis convertir cette valeur en `null` avant l'envoi à la base de données.
 
-## Modification à effectuer
+## Modifications à effectuer
 
-**Fichier** : `src/components/admin/ChantiersManager.tsx`
+### Fichier : `src/components/admin/ChantiersManager.tsx`
 
-**Changement** : Dans le `Select` du chef d'équipe (lignes 338-350), ajouter une option "Aucun" qui remet la valeur à chaîne vide.
+**1. Modifier le SelectItem "Aucun" (ligne 343)**
 
-```text
-Avant :
-<SelectContent>
-  {chefs.map((c) => (
-    <SelectItem key={c.id} value={c.id}>
-      {c.prenom} {c.nom}
-    </SelectItem>
-  ))}
-</SelectContent>
+```tsx
+// Avant
+<SelectItem value="">Aucun</SelectItem>
 
-Après :
-<SelectContent>
-  <SelectItem value="">Aucun</SelectItem>
-  {chefs.map((c) => (
-    <SelectItem key={c.id} value={c.id}>
-      {c.prenom} {c.nom}
-    </SelectItem>
-  ))}
-</SelectContent>
+// Après
+<SelectItem value="__none__">Aucun</SelectItem>
 ```
 
-## Vérification de la logique de sauvegarde
+**2. Adapter le handler `onValueChange` (ligne 338)**
 
-La fonction `handleSave` envoie déjà `chef_id: ""` tel quel, et la base de données convertit une chaîne vide en `NULL` (comportement Supabase standard pour les UUID). Aucune modification du hook n'est nécessaire.
+```tsx
+// Avant
+onValueChange={(value) => setFormData({ ...formData, chef_id: value })}
+
+// Après
+onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}
+```
+
+**3. Adapter la valeur affichée dans le Select (ligne 338)**
+
+```tsx
+// Avant
+<Select value={formData.chef_id} ...>
+
+// Après
+<Select value={formData.chef_id || "__none__"} ...>
+```
 
 ## Impact
 
-- **Aucune régression** : Le champ reste optionnel et fonctionne comme avant
-- **Amélioration UX** : L'utilisateur peut maintenant désélectionner un chef
 - **1 seul fichier modifié** : `ChantiersManager.tsx`
+- **Aucune modification base de données** : la valeur `""` continue d'être envoyée et convertie en `NULL`
+- **UX identique** : l'utilisateur voit toujours "Aucun" comme première option
+- **Correction immédiate** du crash
+
+## Résumé technique
+
+| Élément | Avant | Après |
+|---------|-------|-------|
+| Valeur SelectItem | `""` (interdit) | `"__none__"` (valide) |
+| Valeur dans formData | `""` | `""` (inchangé) |
+| Valeur envoyée à Supabase | `""` → `NULL` | `""` → `NULL` (inchangé) |
 
