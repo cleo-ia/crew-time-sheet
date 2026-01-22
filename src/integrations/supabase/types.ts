@@ -2360,6 +2360,7 @@ export type Database = {
     }
     Functions: {
       expire_old_invitations: { Args: never; Returns: undefined }
+      get_selected_entreprise_id: { Args: never; Returns: string }
       get_user_entreprise_id: { Args: never; Returns: string }
       get_users_with_last_signin: {
         Args: { p_entreprise_id: string }
