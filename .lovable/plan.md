@@ -1,56 +1,68 @@
 
 
-# Correction : Erreur UUID lors de la création de chantier sans chef
+# Correction CORS - sync-planning-to-teams
 
-## Cause du problème
+## Diagnostic
 
-La fonction `handleSave` envoie `chef_id: ""` (chaîne vide) à Supabase, mais PostgreSQL rejette cette valeur car une chaîne vide n'est pas un UUID valide. Il faut explicitement envoyer `null`.
+L'erreur console est explicite :
+```
+Request header field x-entreprise-id is not allowed by 
+Access-Control-Allow-Headers in preflight response
+```
+
+L'Edge Function `sync-planning-to-teams` n'autorise pas le header `x-entreprise-id` dans sa configuration CORS.
+
+## Cause racine
+
+Dans `supabase/functions/sync-planning-to-teams/index.ts` (ligne 4-7) :
+```typescript
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // ❌ MANQUE: x-entreprise-id
+}
+```
+
+Le client Supabase (voir `src/integrations/supabase/client.ts`) envoie automatiquement le header `x-entreprise-id` avec chaque requête pour l'isolation multi-tenant, mais l'Edge Function ne l'accepte pas.
 
 ## Solution
 
-Modifier la fonction `handleSave` dans `ChantiersManager.tsx` pour convertir les chaînes vides en `null` avant l'envoi.
+Ajouter `x-entreprise-id` à la liste des headers CORS autorisés.
 
 ## Modification à effectuer
 
-**Fichier** : `src/components/admin/ChantiersManager.tsx`
+**Fichier** : `supabase/functions/sync-planning-to-teams/index.ts`
 
-**Lignes 55-63** - Modifier la construction du payload :
+**Lignes 4-7** - Modifier `corsHeaders` :
 
 ```typescript
 // Avant
-const payload = {
-  ...formData,
-  date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
-  date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
-  insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
-  insertion_date_debut: formData.insertion_date_debut ? format(formData.insertion_date_debut, "yyyy-MM-dd") : null,
-  statut_insertion: formData.statut_insertion || null,
-};
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 // Après
-const payload = {
-  ...formData,
-  chef_id: formData.chef_id || null,           // ← AJOUT: convertir "" en null
-  conducteur_id: formData.conducteur_id || null, // ← AJOUT: sécurité supplémentaire
-  date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
-  date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
-  insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
-  insertion_date_debut: formData.insertion_date_debut ? format(formData.insertion_date_debut, "yyyy-MM-dd") : null,
-  statut_insertion: formData.statut_insertion || null,
-};
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-entreprise-id',
+}
 ```
-
-## Explication technique
-
-| Valeur dans formData | Après transformation | Envoyé à Supabase |
-|---------------------|---------------------|-------------------|
-| `chef_id: ""` | `chef_id: null` | `NULL` (valide) |
-| `chef_id: "abc-123..."` | `chef_id: "abc-123..."` | UUID (valide) |
 
 ## Impact
 
-- **1 fichier modifié** : `ChantiersManager.tsx`
-- **2 lignes ajoutées** dans le payload
-- **Correction immédiate** de l'erreur UUID
-- **Aucune régression** : les chantiers avec chef continuent de fonctionner
+- **1 fichier modifié** : `sync-planning-to-teams/index.ts`
+- **1 ligne modifiée** : ajout de `, x-entreprise-id` dans les headers autorisés
+- **Correction immédiate** de l'erreur CORS
+- **Déploiement automatique** de l'Edge Function
+
+## Vérification post-correction
+
+Une fois corrigé, vous pourrez :
+1. Cliquer sur "Synchroniser 2026-S05"
+2. Vérifier que les affectations sont créées correctement pour les 4 employés :
+   - DARCOURT → TEST (L-V)
+   - KASMI → TEST (L-M) + LE ROSEYRAN (Me-V)
+   - DUBOIS → LE ROSEYRAN (L-V)
+   - MARTEL + MANUNTA → LES ARCS (L-V)
 
