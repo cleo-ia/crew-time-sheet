@@ -104,6 +104,22 @@ export const useAutoSaveFiche = () => {
           .eq("salarie_id", entry.employeeId);
 
         if (!chantierId) {
+          // 🔥 FIX: Ne pas créer de fiche "sans chantier" si l'employé a déjà des fiches AVEC chantier
+          // Cela évite les doublons d'heures pour les finisseurs multi-chantier
+          const { data: fichesAvecChantier } = await supabase
+            .from("fiches")
+            .select("id")
+            .eq("semaine", weekId)
+            .eq("salarie_id", entry.employeeId)
+            .not("chantier_id", "is", null)
+            .limit(1);
+          
+          if (fichesAvecChantier && fichesAvecChantier.length > 0) {
+            // L'employé a des fiches chantier → NE PAS créer de fiche sans chantier
+            console.log(`[AutoSave] Skip: ${entry.employeeName} a déjà des fiches chantier pour ${weekId}`);
+            continue; // Passer à l'employé suivant
+          }
+          
           // Finisseurs: filtrer explicitement les fiches sans chantier_id
           query = query.is("chantier_id", null);
         } else {
