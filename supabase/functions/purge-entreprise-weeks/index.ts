@@ -143,6 +143,36 @@ Deno.serve(async (req) => {
     deleted.fiches_finisseur = fichesFinisseurIds.length;
     deleted.fiches_total = allFicheIds.length;
 
+    // 10. Supprimer affectations_jours_chef
+    const { data: ajcData, error: ajcError } = await supabase
+      .from("affectations_jours_chef")
+      .delete()
+      .eq("entreprise_id", entreprise_id)
+      .in("semaine", semaines)
+      .select("id");
+    if (ajcError) console.error("Erreur affectations_jours_chef:", ajcError);
+    deleted.affectations_jours_chef = ajcData?.length || 0;
+
+    // 11. Supprimer planning_validations
+    const { data: pvData, error: pvError } = await supabase
+      .from("planning_validations")
+      .delete()
+      .eq("entreprise_id", entreprise_id)
+      .in("semaine", semaines)
+      .select("id");
+    if (pvError) console.error("Erreur planning_validations:", pvError);
+    deleted.planning_validations = pvData?.length || 0;
+
+    // 12. Supprimer planning_affectations
+    const { data: paData, error: paError } = await supabase
+      .from("planning_affectations")
+      .delete()
+      .eq("entreprise_id", entreprise_id)
+      .in("semaine", semaines)
+      .select("id");
+    if (paError) console.error("Erreur planning_affectations:", paError);
+    deleted.planning_affectations = paData?.length || 0;
+
     console.log("Purge terminée:", deleted);
 
     return new Response(
