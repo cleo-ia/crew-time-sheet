@@ -1562,6 +1562,48 @@ export type Database = {
           },
         ]
       }
+      planning_validations: {
+        Row: {
+          created_at: string
+          entreprise_id: string
+          id: string
+          semaine: string
+          validated_at: string
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          entreprise_id: string
+          id?: string
+          semaine: string
+          validated_at?: string
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          entreprise_id?: string
+          id?: string
+          semaine?: string
+          validated_at?: string
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_validations_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_validations_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
