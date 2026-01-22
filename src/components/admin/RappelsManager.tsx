@@ -86,7 +86,7 @@ export const RappelsManager = () => {
     title: "Sync Planning → Équipes",
     schedule: "Tous les lundis à 05h00 (heure de Paris)",
     scheduleDetails: "Génère automatiquement les équipes depuis le planning",
-    description: "Copie les heures de S-1 si équipe stable, sinon crée avec 39h par défaut",
+    description: "Copie les heures de S-1 si équipe stable, sinon crée avec heures par jour (L-J:8h, V:7h). Supprime les employés hors planning.",
     active: true,
   };
 

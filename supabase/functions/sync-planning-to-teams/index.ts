@@ -9,8 +9,40 @@ const corsHeaders = {
 interface SyncResult {
   employe_id: string
   employe_nom: string
-  action: 'copied' | 'created' | 'deleted' | 'protected' | 'skipped'
+  action: 'copied' | 'created' | 'deleted' | 'skipped'
   details: string
+}
+
+// Heures par jour de la semaine (conformes à la logique métier)
+// Lundi=1, Mardi=2, Mercredi=3, Jeudi=4, Vendredi=5
+const HEURES_PAR_JOUR: Record<number, number> = {
+  1: 8,  // Lundi
+  2: 8,  // Mardi
+  3: 8,  // Mercredi
+  4: 8,  // Jeudi
+  5: 7,  // Vendredi
+}
+
+// Obtenir le jour de la semaine (1=Lundi, 5=Vendredi) à partir d'une date
+function getDayOfWeekNumber(dateStr: string): number {
+  const date = new Date(dateStr)
+  const day = date.getUTCDay()
+  // getUTCDay: 0=Dimanche, 1=Lundi... → on veut 1=Lundi, 7=Dimanche
+  return day === 0 ? 7 : day
+}
+
+// Calculer le total d'heures pour une liste de dates
+function calculateTotalHeures(jours: string[]): number {
+  return jours.reduce((sum, jour) => {
+    const dayNum = getDayOfWeekNumber(jour)
+    return sum + (HEURES_PAR_JOUR[dayNum] || 0)
+  }, 0)
+}
+
+// Obtenir les heures pour un jour spécifique
+function getHeuresForDay(dateStr: string): number {
+  const dayNum = getDayOfWeekNumber(dateStr)
+  return HEURES_PAR_JOUR[dayNum] || 8
 }
 
 Deno.serve(async (req) => {
@@ -43,9 +75,9 @@ Deno.serve(async (req) => {
       // Body vide ou invalide, on garde les valeurs par défaut
     }
 
-    // Vérifier si on est à 6h Paris (sauf si force = true)
-    if (!force && !isTargetParisHour(6)) {
-      console.log('[sync-planning-to-teams] Pas encore 6h à Paris, skip')
+    // Vérifier si on est à 5h Paris (sauf si force = true)
+    if (!force && !isTargetParisHour(5)) {
+      console.log('[sync-planning-to-teams] Pas encore 5h à Paris, skip')
       return new Response(
         JSON.stringify({ message: 'Not target hour', skipped: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -77,7 +109,6 @@ Deno.serve(async (req) => {
     let totalCopied = 0
     let totalCreated = 0
     let totalDeleted = 0
-    let totalProtected = 0
 
     for (const entrepriseId of uniqueEntreprises) {
       console.log(`[sync-planning-to-teams] Traitement entreprise ${entrepriseId}...`)
@@ -93,7 +124,6 @@ Deno.serve(async (req) => {
       totalCopied += stats.copied
       totalCreated += stats.created
       totalDeleted += stats.deleted
-      totalProtected += stats.protected
     }
 
     const endTime = Date.now()
@@ -112,18 +142,18 @@ Deno.serve(async (req) => {
         semaine: currentWeek,
         semaine_precedente: previousWeek,
         entreprises: uniqueEntreprises.length,
-        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted },
         results: allResults.slice(0, 50) // Limiter pour éviter payload trop gros
       }
     })
 
-    console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés, ${totalProtected} protégés`)
+    console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés`)
 
     return new Response(
       JSON.stringify({
         success: true,
         semaine: currentWeek,
-        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted },
         duration_ms
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -161,7 +191,7 @@ async function syncEntreprise(
   previousWeek: string
 ) {
   const results: SyncResult[] = []
-  const stats = { copied: 0, created: 0, deleted: 0, protected: 0 }
+  const stats = { copied: 0, created: 0, deleted: 0 }
 
   // 1. Récupérer le planning S pour cette entreprise
   const { data: planningData, error: planningError } = await supabase
@@ -264,7 +294,7 @@ async function syncEntreprise(
         results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: copyResult.reason })
       }
     } else {
-      // CRÉER nouvelle affectation avec heures par défaut
+      // CRÉER nouvelle affectation avec heures par jour spécifiques
       const createResult = await createNewAffectation(
         supabase,
         employeId,
@@ -276,7 +306,8 @@ async function syncEntreprise(
       )
       
       if (createResult.created) {
-        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'created', details: `Nouvelle affectation créée avec 39h` })
+        const totalHeures = calculateTotalHeures(joursPlanning)
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'created', details: `Nouvelle affectation créée avec ${totalHeures}h` })
         stats.created++
       } else {
         results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: createResult.reason })
@@ -284,7 +315,7 @@ async function syncEntreprise(
     }
   }
 
-  // 5. PHASE NETTOYAGE: supprimer les affectations hors planning
+  // 5. PHASE NETTOYAGE: supprimer les affectations hors planning (SANS PROTECTION)
   const employesInPlanning = [...planningByEmploye.keys()]
   
   // Récupérer les affectations S qui ne sont pas dans le planning
@@ -310,33 +341,45 @@ async function syncEntreprise(
     .filter((a: any) => !employesInPlanning.includes(a.finisseur_id))
     .map((a: any) => a.finisseur_id))]
 
-  // Vérifier les heures avant suppression
+  // Supprimer les employés hors planning (PLUS DE PROTECTION PAR HEURES)
   for (const maconId of toDeleteChef) {
+    // Récupérer la fiche pour pouvoir la supprimer
     const { data: fiche } = await supabase
       .from('fiches')
-      .select('id, total_heures, salarie_id')
+      .select('id, total_heures')
       .eq('salarie_id', maconId)
       .eq('semaine', currentWeek)
       .maybeSingle()
 
-    if (fiche && fiche.total_heures && fiche.total_heures > 0) {
-      results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'protected', details: `Heures existantes (${fiche.total_heures}h), non supprimé` })
-      stats.protected++
-    } else {
-      // Supprimer
-      await supabase
-        .from('affectations_jours_chef')
-        .delete()
-        .eq('macon_id', maconId)
-        .eq('semaine', currentWeek)
-        .eq('entreprise_id', entrepriseId)
+    // Supprimer les affectations_jours_chef
+    await supabase
+      .from('affectations_jours_chef')
+      .delete()
+      .eq('macon_id', maconId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
 
-      results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'deleted', details: 'Hors planning' })
-      stats.deleted++
+    // Supprimer les fiches_jours et la fiche associées
+    if (fiche) {
+      await supabase
+        .from('fiches_jours')
+        .delete()
+        .eq('fiche_id', fiche.id)
+      
+      await supabase
+        .from('fiches')
+        .delete()
+        .eq('id', fiche.id)
+      
+      console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
+
+    results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'deleted', details: 'Hors planning - supprimé avec fiches' })
+    stats.deleted++
   }
 
   for (const finisseurId of toDeleteFinisseur) {
+    // Récupérer la fiche pour pouvoir la supprimer
     const { data: fiche } = await supabase
       .from('fiches')
       .select('id, total_heures')
@@ -344,20 +387,30 @@ async function syncEntreprise(
       .eq('semaine', currentWeek)
       .maybeSingle()
 
-    if (fiche && fiche.total_heures && fiche.total_heures > 0) {
-      results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'protected', details: `Heures existantes (${fiche.total_heures}h), non supprimé` })
-      stats.protected++
-    } else {
-      // Supprimer
-      await supabase
-        .from('affectations_finisseurs_jours')
-        .delete()
-        .eq('finisseur_id', finisseurId)
-        .eq('semaine', currentWeek)
+    // Supprimer les affectations_finisseurs_jours
+    await supabase
+      .from('affectations_finisseurs_jours')
+      .delete()
+      .eq('finisseur_id', finisseurId)
+      .eq('semaine', currentWeek)
 
-      results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'deleted', details: 'Hors planning' })
-      stats.deleted++
+    // Supprimer les fiches_jours et la fiche associées
+    if (fiche) {
+      await supabase
+        .from('fiches_jours')
+        .delete()
+        .eq('fiche_id', fiche.id)
+      
+      await supabase
+        .from('fiches')
+        .delete()
+        .eq('id', fiche.id)
+      
+      console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
+
+    results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'deleted', details: 'Hors planning - supprimé avec fiches' })
+    stats.deleted++
   }
 
   return { results, stats }
@@ -535,13 +588,14 @@ async function createNewAffectation(
     return { created: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
   }
 
-  // Calculer les heures par défaut (39h / nb jours)
+  // Calculer les heures par jour spécifiques (L-J: 8h, V: 7h)
   const nbJours = joursPlanning.length
   if (nbJours === 0) {
     return { created: false, reason: 'Aucun jour planifié' }
   }
 
-  const heuresParJour = 39 / nbJours
+  // Calculer le total basé sur les jours réels
+  const totalHeures = calculateTotalHeures(joursPlanning)
 
   // Créer ou mettre à jour la fiche
   let ficheId = existingFiche?.id
@@ -556,7 +610,7 @@ async function createNewAffectation(
         semaine: currentWeek,
         user_id: chefId,
         statut: 'BROUILLON',
-        total_heures: 39
+        total_heures: totalHeures
       })
       .select('id')
       .single()
@@ -565,22 +619,28 @@ async function createNewAffectation(
     ficheId = newFiche.id
   }
 
-  // Créer les fiches_jours
+  // Créer les fiches_jours avec les heures spécifiques à chaque jour
   for (const jour of joursPlanning) {
+    const heuresJour = getHeuresForDay(jour)
     await supabase
       .from('fiches_jours')
       .upsert({
         fiche_id: ficheId,
         date: jour,
-        heures: heuresParJour,
-        total_jour: heuresParJour
+        heures: heuresJour,
+        HNORM: heuresJour,
+        total_jour: heuresJour,
+        HI: 0,
+        T: 1,
+        PA: true,
+        pause_minutes: 0
       }, { onConflict: 'fiche_id,date' })
   }
 
   // Mettre à jour le total
   await supabase
     .from('fiches')
-    .update({ total_heures: 39 })
+    .update({ total_heures: totalHeures })
     .eq('id', ficheId)
 
   // Créer les affectations_jours_chef ou affectations_finisseurs_jours
