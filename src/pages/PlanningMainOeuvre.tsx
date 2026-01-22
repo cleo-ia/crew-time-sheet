@@ -227,12 +227,12 @@ const PlanningMainOeuvre = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={() => navigate('/validation-conducteur')}
-                className="h-9 w-9"
+                className="h-9 w-9 bg-background hover:bg-muted border-primary/30"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-primary" />
               </Button>
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
