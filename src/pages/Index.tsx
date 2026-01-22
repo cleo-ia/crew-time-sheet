@@ -16,6 +16,7 @@ import { UserSelector } from "@/components/timesheet/UserSelector";
 import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChefMaconsManager } from "@/components/chef/ChefMaconsManager";
@@ -285,6 +286,13 @@ const Index = () => {
   // Validation de la fiche transport (en tenant compte des jours d'absence totale)
   const { isTransportComplete } = useTransportValidation(ficheId, undefined, allAbsentDays);
   const { toast } = useToast();
+  
+  // CORRECTION BUG MULTI-CHANTIER: Charger les affectations jour pour ce chef/semaine
+  // afin de ne transmettre QUE les jours où l'employé est affecté à ce chantier
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+    selectedChef || null,
+    selectedWeek || ""
+  );
 
   // Validation des codes trajets
   
@@ -358,89 +366,67 @@ const Index = () => {
 
     const monday = parseISOWeek(selectedWeek);
     const days = [0,1,2,3,4].map((d) => format(addDays(monday, d), "yyyy-MM-dd"));
+    
+    // CORRECTION BUG MULTI-CHANTIER: Fonction pour obtenir les jours autorisés pour un employé
+    // selon ses affectations. Si pas d'affectations définies, fallback sur tous les jours (legacy).
+    const getAuthorizedDaysForEmployee = (employeeId: string): string[] => {
+      // Si aucune donnée d'affectation, comportement legacy (tous les jours)
+      if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
+        return days; // Retourne toutes les dates ISO
+      }
+      
+      // Filtrer les affectations de cet employé spécifiquement
+      const employeeAffectations = affectationsJoursChef.filter(
+        aff => aff.macon_id === employeeId
+      );
+      
+      // Si cet employé n'a pas d'affectation spécifique, fallback legacy
+      if (employeeAffectations.length === 0) {
+        return days;
+      }
+      
+      // Retourner uniquement les dates ISO où l'employé est affecté à ce chef/chantier
+      return employeeAffectations.map(aff => aff.jour);
+    };
 
-    // Construire employeesData à partir des entrées saisies
-    const employeesData: EmployeeData[] = timeEntries.map((entry) => ({
-      employeeId: entry.employeeId,
-      employeeName: entry.employeeName,
-      dailyHours: [
-        { 
-          date: days[0], 
-          heures: entry.days.Lundi.absent ? 0 : (entry.days.Lundi.hours ?? 0), 
+    // Construire employeesData avec FILTRAGE par jours autorisés
+    const employeesData: EmployeeData[] = timeEntries.map((entry) => {
+      const authorizedDays = getAuthorizedDaysForEmployee(entry.employeeId);
+      
+      // Mapping des dates ISO vers les noms de jours
+      const dayMapping = [
+        { date: days[0], name: "Lundi", data: entry.days.Lundi },
+        { date: days[1], name: "Mardi", data: entry.days.Mardi },
+        { date: days[2], name: "Mercredi", data: entry.days.Mercredi },
+        { date: days[3], name: "Jeudi", data: entry.days.Jeudi },
+        { date: days[4], name: "Vendredi", data: entry.days.Vendredi },
+      ];
+      
+      // FILTRE: ne garder que les jours autorisés pour cet employé
+      const filteredDailyHours = dayMapping
+        .filter(d => authorizedDays.includes(d.date))
+        .map(d => ({
+          date: d.date,
+          heures: d.data.absent ? 0 : (d.data.hours ?? 0),
           pause_minutes: 0,
-          HNORM: entry.days.Lundi.absent ? 0 : (entry.days.Lundi.hours ?? 0),
-          HI: entry.days.Lundi.heuresIntemperie ?? 0,
-          T: entry.days.Lundi.trajet ? 1 : 0,
-          PA: entry.days.Lundi.panierRepas ?? false,
-          trajet_perso: entry.days.Lundi.trajetPerso ?? false,
-          code_chantier_du_jour: entry.days.Lundi.chantierCode,
-          ville_du_jour: entry.days.Lundi.chantierVille,
-          code_trajet: entry.days.Lundi.codeTrajet || null,
-          commentaire: entry.days.Lundi.commentaire || null,
-          repas_type: entry.days.Lundi.repasType ?? (entry.days.Lundi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[1], 
-          heures: entry.days.Mardi.absent ? 0 : (entry.days.Mardi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Mardi.absent ? 0 : (entry.days.Mardi.hours ?? 0),
-          HI: entry.days.Mardi.heuresIntemperie ?? 0,
-          T: entry.days.Mardi.trajet ? 1 : 0,
-          PA: entry.days.Mardi.panierRepas ?? false,
-          trajet_perso: entry.days.Mardi.trajetPerso ?? false,
-          code_chantier_du_jour: entry.days.Mardi.chantierCode,
-          ville_du_jour: entry.days.Mardi.chantierVille,
-          code_trajet: entry.days.Mardi.codeTrajet || null,
-          commentaire: entry.days.Mardi.commentaire || null,
-          repas_type: entry.days.Mardi.repasType ?? (entry.days.Mardi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[2], 
-          heures: entry.days.Mercredi.absent ? 0 : (entry.days.Mercredi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Mercredi.absent ? 0 : (entry.days.Mercredi.hours ?? 0),
-          HI: entry.days.Mercredi.heuresIntemperie ?? 0,
-          T: entry.days.Mercredi.trajet ? 1 : 0,
-          PA: entry.days.Mercredi.panierRepas ?? false,
-          trajet_perso: entry.days.Mercredi.trajetPerso ?? false,
-          code_chantier_du_jour: entry.days.Mercredi.chantierCode,
-          ville_du_jour: entry.days.Mercredi.chantierVille,
-          code_trajet: entry.days.Mercredi.codeTrajet || null,
-          commentaire: entry.days.Mercredi.commentaire || null,
-          repas_type: entry.days.Mercredi.repasType ?? (entry.days.Mercredi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[3], 
-          heures: entry.days.Jeudi.absent ? 0 : (entry.days.Jeudi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Jeudi.absent ? 0 : (entry.days.Jeudi.hours ?? 0),
-          HI: entry.days.Jeudi.heuresIntemperie ?? 0,
-          T: entry.days.Jeudi.trajet ? 1 : 0,
-          PA: entry.days.Jeudi.panierRepas ?? false,
-          trajet_perso: entry.days.Jeudi.trajetPerso ?? false,
-          code_chantier_du_jour: entry.days.Jeudi.chantierCode,
-          ville_du_jour: entry.days.Jeudi.chantierVille,
-          code_trajet: entry.days.Jeudi.codeTrajet || null,
-          commentaire: entry.days.Jeudi.commentaire || null,
-          repas_type: entry.days.Jeudi.repasType ?? (entry.days.Jeudi.panierRepas ? "PANIER" : null),
-        },
-        { 
-          date: days[4], 
-          heures: entry.days.Vendredi.absent ? 0 : (entry.days.Vendredi.hours ?? 0), 
-          pause_minutes: 0,
-          HNORM: entry.days.Vendredi.absent ? 0 : (entry.days.Vendredi.hours ?? 0),
-          HI: entry.days.Vendredi.heuresIntemperie ?? 0,
-          T: entry.days.Vendredi.trajet ? 1 : 0,
-          PA: entry.days.Vendredi.panierRepas ?? false,
-          trajet_perso: entry.days.Vendredi.trajetPerso ?? false,
-          code_chantier_du_jour: entry.days.Vendredi.chantierCode,
-          ville_du_jour: entry.days.Vendredi.chantierVille,
-          code_trajet: entry.days.Vendredi.codeTrajet || null,
-          commentaire: entry.days.Vendredi.commentaire || null,
-          repas_type: entry.days.Vendredi.repasType ?? (entry.days.Vendredi.panierRepas ? "PANIER" : null),
-        },
-      ],
-    }));
+          HNORM: d.data.absent ? 0 : (d.data.hours ?? 0),
+          HI: d.data.heuresIntemperie ?? 0,
+          T: d.data.trajet ? 1 : 0,
+          PA: d.data.panierRepas ?? false,
+          trajet_perso: d.data.trajetPerso ?? false,
+          code_chantier_du_jour: d.data.chantierCode,
+          ville_du_jour: d.data.chantierVille,
+          code_trajet: d.data.codeTrajet || null,
+          commentaire: d.data.commentaire || null,
+          repas_type: d.data.repasType ?? (d.data.panierRepas ? "PANIER" : null),
+        }));
+      
+      return {
+        employeeId: entry.employeeId,
+        employeeName: entry.employeeName,
+        dailyHours: filteredDailyHours,
+      };
+    });
 
     if (employeesData.length === 0) return;
 

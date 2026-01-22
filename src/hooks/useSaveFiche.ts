@@ -130,10 +130,18 @@ export const useSaveFiche = () => {
           ficheId = newFiche.id;
         }
 
-        // 2. Supprimer les anciennes entrées journalières
-        await supabase.from("fiches_jours").delete().eq("fiche_id", ficheId);
+        // 2. Supprimer UNIQUEMENT les entrées journalières pour les dates qu'on va mettre à jour
+        // CORRECTION BUG MULTI-CHANTIER: Ne plus faire de DELETE global qui efface les données des autres chefs
+        const datesToUpdate = employee.dailyHours.map(d => d.date);
+        if (datesToUpdate.length > 0) {
+          await supabase
+            .from("fiches_jours")
+            .delete()
+            .eq("fiche_id", ficheId)
+            .in("date", datesToUpdate);
+        }
 
-        // 3. Insérer les nouvelles entrées journalières
+        // 3. Insérer les nouvelles entrées journalières avec UPSERT pour robustesse
         const jourEntries = employee.dailyHours.map((day) => {
           // Normaliser repas_type et PA pour cohérence
           const repas_type = day.repas_type ?? (day.PA ? "PANIER" : null);
@@ -160,9 +168,13 @@ export const useSaveFiche = () => {
           };
         });
 
+        // Utiliser UPSERT pour éviter les conflits en cas de données résiduelles
         const { error: joursError } = await supabase
           .from("fiches_jours")
-          .insert(jourEntries);
+          .upsert(jourEntries, {
+            onConflict: 'fiche_id,date',
+            ignoreDuplicates: false
+          });
 
         if (joursError) throw joursError;
 
