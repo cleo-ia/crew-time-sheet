@@ -225,18 +225,19 @@ async function syncEntreprise(
 
   if (planningError) throw planningError
 
-  // Grouper par employé
+  // Grouper par couple (employé, chantier) pour gérer les multi-chantiers
   // deno-lint-ignore no-explicit-any
-  const planningByEmploye = new Map<string, any[]>()
+  const planningByEmployeChantier = new Map<string, any[]>()
   // deno-lint-ignore no-explicit-any
   for (const aff of (planningData || []) as any[]) {
-    if (!planningByEmploye.has(aff.employe_id)) {
-      planningByEmploye.set(aff.employe_id, [])
+    const key = `${aff.employe_id}|${aff.chantier_id}`
+    if (!planningByEmployeChantier.has(key)) {
+      planningByEmployeChantier.set(key, [])
     }
-    planningByEmploye.get(aff.employe_id)!.push(aff)
+    planningByEmployeChantier.get(key)!.push(aff)
   }
 
-  console.log(`[sync-planning-to-teams] ${planningByEmploye.size} employé(s) dans le planning`)
+  console.log(`[sync-planning-to-teams] ${planningByEmployeChantier.size} couple(s) employé-chantier dans le planning`)
 
   // 2. Récupérer les affectations existantes S-1 (pour comparaison)
   const { data: affectationsS1Chef } = await supabase
@@ -250,23 +251,25 @@ async function syncEntreprise(
     .select('*')
     .eq('semaine', previousWeek)
 
-  // Grouper S-1 par employé (macon_id ou finisseur_id)
-  const s1ByEmploye = new Map<string, { chantier_id: string; jours: string[] }>()
+  // Grouper S-1 par couple (employé, chantier)
+  const s1ByEmployeChantier = new Map<string, { jours: string[] }>()
   
   // deno-lint-ignore no-explicit-any
   for (const aff of (affectationsS1Chef || []) as any[]) {
-    if (!s1ByEmploye.has(aff.macon_id)) {
-      s1ByEmploye.set(aff.macon_id, { chantier_id: aff.chantier_id, jours: [] })
+    const key = `${aff.macon_id}|${aff.chantier_id}`
+    if (!s1ByEmployeChantier.has(key)) {
+      s1ByEmployeChantier.set(key, { jours: [] })
     }
-    s1ByEmploye.get(aff.macon_id)!.jours.push(aff.jour)
+    s1ByEmployeChantier.get(key)!.jours.push(aff.jour)
   }
   
   // deno-lint-ignore no-explicit-any
   for (const aff of (affectationsS1Finisseurs || []) as any[]) {
-    if (!s1ByEmploye.has(aff.finisseur_id)) {
-      s1ByEmploye.set(aff.finisseur_id, { chantier_id: aff.chantier_id, jours: [] })
+    const key = `${aff.finisseur_id}|${aff.chantier_id}`
+    if (!s1ByEmployeChantier.has(key)) {
+      s1ByEmployeChantier.set(key, { jours: [] })
     }
-    s1ByEmploye.get(aff.finisseur_id)!.jours.push(aff.date)
+    s1ByEmployeChantier.get(key)!.jours.push(aff.date)
   }
 
   // 3. Récupérer les chantiers pour savoir s'ils ont un chef
@@ -281,20 +284,18 @@ async function syncEntreprise(
   const chantiersMap = new Map((chantiersData || []).map((c: any) => [c.id, c]))
 
   // 4. Traiter chaque employé du planning
-  for (const [employeId, affectations] of planningByEmploye) {
+  for (const [key, affectations] of planningByEmployeChantier) {
+    const [employeId, chantierId] = key.split('|')
     const employeNom = (affectations[0]?.employe?.prenom || '') + ' ' + (affectations[0]?.employe?.nom || '') || employeId
-    const chantierId = affectations[0].chantier_id
     // deno-lint-ignore no-explicit-any
     const joursPlanning = affectations.map((a: any) => a.jour).sort()
     const chantier = chantiersMap.get(chantierId)
 
-    // Récupérer les affectations S-1 de cet employé
-    const affS1 = s1ByEmploye.get(employeId)
+    // Récupérer les affectations S-1 de ce couple employé-chantier
+    const affS1 = s1ByEmployeChantier.get(key)
     
-    // Comparer: même chantier ET mêmes jours?
-    const isIdentique = affS1 
-      && affS1.chantier_id === chantierId 
-      && arraysEqual(affS1.jours.sort(), joursPlanning)
+    // Comparer: mêmes jours pour ce couple employé-chantier?
+    const isIdentique = affS1 && arraysEqual(affS1.jours.sort(), joursPlanning)
 
     if (isIdentique) {
       // COPIER les heures de S-1 vers S
@@ -336,7 +337,7 @@ async function syncEntreprise(
   }
 
   // 5. PHASE NETTOYAGE: supprimer les affectations hors planning (SANS PROTECTION)
-  const employesInPlanning = [...planningByEmploye.keys()]
+  const employeChantierInPlanning = new Set([...planningByEmployeChantier.keys()])
   
   // Récupérer les affectations S qui ne sont pas dans le planning
   const { data: existingChefS } = await supabase
@@ -350,32 +351,36 @@ async function syncEntreprise(
     .select('finisseur_id, chantier_id')
     .eq('semaine', currentWeek)
 
-  // Identifier les employés à supprimer (dans affectations mais pas dans planning)
+  // Identifier les couples employé-chantier à supprimer (dans affectations mais pas dans planning)
   // deno-lint-ignore no-explicit-any
-  const toDeleteChef = [...new Set((existingChefS || [])
-    .filter((a: any) => !employesInPlanning.includes(a.macon_id))
-    .map((a: any) => a.macon_id))]
+  const toDeleteChef: string[] = [...new Set((existingChefS || [])
+    .filter((a: any) => !employeChantierInPlanning.has(`${a.macon_id}|${a.chantier_id}`))
+    .map((a: any) => `${a.macon_id}|${a.chantier_id}` as string))] as string[]
 
   // deno-lint-ignore no-explicit-any
-  const toDeleteFinisseur = [...new Set((existingFinisseursS || [])
-    .filter((a: any) => !employesInPlanning.includes(a.finisseur_id))
-    .map((a: any) => a.finisseur_id))]
+  const toDeleteFinisseur: string[] = [...new Set((existingFinisseursS || [])
+    .filter((a: any) => !employeChantierInPlanning.has(`${a.finisseur_id}|${a.chantier_id}`))
+    .map((a: any) => `${a.finisseur_id}|${a.chantier_id}` as string))] as string[]
 
-  // Supprimer les employés hors planning (PLUS DE PROTECTION PAR HEURES)
-  for (const maconId of toDeleteChef) {
-    // Récupérer la fiche pour pouvoir la supprimer
+  // Supprimer les couples employé-chantier hors planning
+  for (const key of toDeleteChef) {
+    const [maconId, chantierId] = key.split('|')
+    
+    // Récupérer la fiche pour pouvoir la supprimer (liée au chantier spécifique)
     const { data: fiche } = await supabase
       .from('fiches')
       .select('id, total_heures')
       .eq('salarie_id', maconId)
+      .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
       .maybeSingle()
 
-    // Supprimer les affectations_jours_chef
+    // Supprimer les affectations_jours_chef pour ce couple
     await supabase
       .from('affectations_jours_chef')
       .delete()
       .eq('macon_id', maconId)
+      .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
       .eq('entreprise_id', entrepriseId)
 
@@ -391,27 +396,31 @@ async function syncEntreprise(
         .delete()
         .eq('id', fiche.id)
       
-      console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
 
-    results.push({ employe_id: maconId as string, employe_nom: maconId as string, action: 'deleted', details: 'Hors planning - supprimé avec fiches' })
+    results.push({ employe_id: maconId, employe_nom: maconId, action: 'deleted', details: `Hors planning chantier ${chantierId}` })
     stats.deleted++
   }
 
-  for (const finisseurId of toDeleteFinisseur) {
+  for (const key of toDeleteFinisseur) {
+    const [finisseurId, chantierId] = key.split('|')
+    
     // Récupérer la fiche pour pouvoir la supprimer
     const { data: fiche } = await supabase
       .from('fiches')
       .select('id, total_heures')
       .eq('salarie_id', finisseurId)
+      .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
       .maybeSingle()
 
-    // Supprimer les affectations_finisseurs_jours
+    // Supprimer les affectations_finisseurs_jours pour ce couple
     await supabase
       .from('affectations_finisseurs_jours')
       .delete()
       .eq('finisseur_id', finisseurId)
+      .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
 
     // Supprimer les fiches_jours et la fiche associées
@@ -426,10 +435,10 @@ async function syncEntreprise(
         .delete()
         .eq('id', fiche.id)
       
-      console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
 
-    results.push({ employe_id: finisseurId as string, employe_nom: finisseurId as string, action: 'deleted', details: 'Hors planning - supprimé avec fiches' })
+    results.push({ employe_id: finisseurId, employe_nom: finisseurId, action: 'deleted', details: `Hors planning chantier ${chantierId}` })
     stats.deleted++
   }
 
