@@ -5,15 +5,15 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://rxkhtqezcyaqvjlbzzpu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4a2h0cWV6Y3lhcXZqbGJ6enB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzY0MzYsImV4cCI6MjA3NTkxMjQzNn0.FKTd_iSQHWaiQDIEuX9fD-tt7cdzyhAeWmIjC6v8v-M";
 
-// Helper to get current entreprise ID for RLS context
-const getEntrepriseHeader = (): Record<string, string> => {
+// Helper to get current entreprise ID for RLS context (called per-request)
+const getEntrepriseHeader = () => {
   if (typeof window !== 'undefined') {
     const entrepriseId = localStorage.getItem('current_entreprise_id');
     if (entrepriseId) {
       return { 'x-entreprise-id': entrepriseId };
     }
   }
-  return {};
+  return {} as Record<string, string>;
 };
 
 // Import the supabase client like this:
@@ -26,6 +26,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   },
   global: {
-    headers: getEntrepriseHeader(),
+    headers: getEntrepriseHeader,
   }
 });
