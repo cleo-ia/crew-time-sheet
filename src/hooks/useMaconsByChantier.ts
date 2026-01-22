@@ -90,6 +90,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
             .from("fiches")
             .select("id, total_heures")
             .eq("salarie_id", chef.id)
+            .eq("chantier_id", chantierId)
             .eq("semaine", semaine)
             .maybeSingle();
 
@@ -228,6 +229,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
                 .from("fiches")
                 .select("id, total_heures")
                 .eq("salarie_id", macon.id)
+                .eq("chantier_id", chantierId)
                 .eq("semaine", semaine)
                 .maybeSingle();
 
