@@ -1,67 +1,56 @@
 
 
-# Correction : Erreur "nouveau chantier" - SelectItem avec valeur vide
+# Correction : Erreur UUID lors de la création de chantier sans chef
 
-## Diagnostic
+## Cause du problème
 
-L'erreur provient directement de la modification récente dans `ChantiersManager.tsx` ligne 343 :
-
-```tsx
-<SelectItem value="">Aucun</SelectItem>  // ❌ INTERDIT par Radix UI
-```
-
-**Radix UI Select n'accepte pas une chaîne vide comme valeur** pour `<SelectItem>`. C'est une contrainte de conception du composant car la valeur vide est réservée pour réinitialiser la sélection et afficher le placeholder.
+La fonction `handleSave` envoie `chef_id: ""` (chaîne vide) à Supabase, mais PostgreSQL rejette cette valeur car une chaîne vide n'est pas un UUID valide. Il faut explicitement envoyer `null`.
 
 ## Solution
 
-Utiliser une valeur sentinel (ex: `"__none__"`) au lieu d'une chaîne vide, puis convertir cette valeur en `null` avant l'envoi à la base de données.
+Modifier la fonction `handleSave` dans `ChantiersManager.tsx` pour convertir les chaînes vides en `null` avant l'envoi.
 
-## Modifications à effectuer
+## Modification à effectuer
 
-### Fichier : `src/components/admin/ChantiersManager.tsx`
+**Fichier** : `src/components/admin/ChantiersManager.tsx`
 
-**1. Modifier le SelectItem "Aucun" (ligne 343)**
+**Lignes 55-63** - Modifier la construction du payload :
 
-```tsx
+```typescript
 // Avant
-<SelectItem value="">Aucun</SelectItem>
+const payload = {
+  ...formData,
+  date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
+  date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
+  insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
+  insertion_date_debut: formData.insertion_date_debut ? format(formData.insertion_date_debut, "yyyy-MM-dd") : null,
+  statut_insertion: formData.statut_insertion || null,
+};
 
 // Après
-<SelectItem value="__none__">Aucun</SelectItem>
+const payload = {
+  ...formData,
+  chef_id: formData.chef_id || null,           // ← AJOUT: convertir "" en null
+  conducteur_id: formData.conducteur_id || null, // ← AJOUT: sécurité supplémentaire
+  date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
+  date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
+  insertion_heures_requises: formData.insertion_heures_requises ? parseInt(formData.insertion_heures_requises) : null,
+  insertion_date_debut: formData.insertion_date_debut ? format(formData.insertion_date_debut, "yyyy-MM-dd") : null,
+  statut_insertion: formData.statut_insertion || null,
+};
 ```
 
-**2. Adapter le handler `onValueChange` (ligne 338)**
+## Explication technique
 
-```tsx
-// Avant
-onValueChange={(value) => setFormData({ ...formData, chef_id: value })}
-
-// Après
-onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}
-```
-
-**3. Adapter la valeur affichée dans le Select (ligne 338)**
-
-```tsx
-// Avant
-<Select value={formData.chef_id} ...>
-
-// Après
-<Select value={formData.chef_id || "__none__"} ...>
-```
+| Valeur dans formData | Après transformation | Envoyé à Supabase |
+|---------------------|---------------------|-------------------|
+| `chef_id: ""` | `chef_id: null` | `NULL` (valide) |
+| `chef_id: "abc-123..."` | `chef_id: "abc-123..."` | UUID (valide) |
 
 ## Impact
 
-- **1 seul fichier modifié** : `ChantiersManager.tsx`
-- **Aucune modification base de données** : la valeur `""` continue d'être envoyée et convertie en `NULL`
-- **UX identique** : l'utilisateur voit toujours "Aucun" comme première option
-- **Correction immédiate** du crash
-
-## Résumé technique
-
-| Élément | Avant | Après |
-|---------|-------|-------|
-| Valeur SelectItem | `""` (interdit) | `"__none__"` (valide) |
-| Valeur dans formData | `""` | `""` (inchangé) |
-| Valeur envoyée à Supabase | `""` → `NULL` | `""` → `NULL` (inchangé) |
+- **1 fichier modifié** : `ChantiersManager.tsx`
+- **2 lignes ajoutées** dans le payload
+- **Correction immédiate** de l'erreur UUID
+- **Aucune régression** : les chantiers avec chef continuent de fonctionner
 
