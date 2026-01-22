@@ -115,7 +115,7 @@ export const useTransfererEquipe = () => {
             chantier_id: destinationChantierId,
             date_debut: today,
             date_fin: null,
-          });
+          } as any);
 
         if (createError) throw createError;
 
