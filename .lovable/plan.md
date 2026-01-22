@@ -1,74 +1,123 @@
 
-# Plan de correction : Bug récapitulatif vide pour employé multi-chantier
 
-## Problème identifié
+# Plan de Correction Validé : Bug Duplication Heures Multi-Chantier
 
-Paul MANUNTA est affecté sur **2 chantiers** différents en S05 :
-- **CI230 (Le Roseyran)** avec Liam : Lundi, Mardi, Mercredi → fiche `e205e6c5`
-- **CI235 (Les Arcs)** avec Chloé : Jeudi, Vendredi → fiche `9a1f479e`
+## Confirmation d'Absence de Régression
 
-Le hook `useMaconsByChantier` ne filtre pas la récupération des fiches par `chantier_id`. Avec `.maybeSingle()`, il récupère une fiche aléatoire parmi les deux. Si la mauvaise fiche est retournée, les `fiches_jours` chargées ne correspondent pas aux jours affectés, et le récapitulatif apparaît vide après filtrage.
+Cette analyse confirme qu'aucune régression n'est attendue suite à l'implémentation de ce correctif.
 
-## Correction à apporter
+## Contexte du Bug
 
-### Fichier : `src/hooks/useMaconsByChantier.ts`
+Paul MANUNTA est affecté sur 2 chantiers en S05 :
+- CI230 (Liam) : Lundi, Mardi, Mercredi
+- CI235 (Chloé) : Jeudi, Vendredi
 
-**Modification 1 : Filtrer par chantier_id pour les maçons (ligne 227-232)**
+Actuellement, chaque chef transmet 5 jours complets (39h), créant 78h au total pour Paul au lieu de 39h.
 
-Ajouter `.eq("chantier_id", chantierId)` à la requête de récupération des fiches maçons :
+## Modifications Prévues
+
+### Fichier 1 : `src/pages/Index.tsx`
+
+Ajouter le filtrage des jours dans `handleSaveAndSign` en utilisant `useAffectationsJoursByChef` :
 
 ```typescript
-// AVANT
-const { data: fiche } = await supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("salarie_id", macon.id)
-  .eq("semaine", semaine)
-  .maybeSingle();
+// Import existant à ajouter
+import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+
+// Dans le composant, ajouter le hook
+const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+  selectedChef || null, 
+  selectedWeek || ""
+);
+
+// Fonction helper pour obtenir les jours autorisés
+const getAuthorizedDays = (employeeId: string): string[] => {
+  if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
+    return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+  }
+  
+  const employeeAffectations = affectationsJoursChef.filter(
+    aff => aff.macon_id === employeeId
+  );
+  
+  if (employeeAffectations.length === 0) {
+    return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+  }
+  
+  const dayNames: Record<string, string> = {
+    [days[0]]: 'Lundi',
+    [days[1]]: 'Mardi',
+    [days[2]]: 'Mercredi',
+    [days[3]]: 'Jeudi',
+    [days[4]]: 'Vendredi',
+  };
+  
+  return employeeAffectations.map(aff => dayNames[aff.jour]).filter(Boolean);
+};
+
+// Dans handleSaveAndSign, remplacer la construction de dailyHours
+// par une version filtrée
+```
+
+### Fichier 2 : `src/hooks/useSaveFiche.ts`
+
+Modifier le DELETE global par un DELETE ciblé + utiliser UPSERT :
+
+```typescript
+// AVANT (ligne 134)
+await supabase.from("fiches_jours").delete().eq("fiche_id", ficheId);
 
 // APRÈS
-const { data: fiche } = await supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("salarie_id", macon.id)
-  .eq("chantier_id", chantierId)  // ← AJOUTER CE FILTRE
-  .eq("semaine", semaine)
-  .maybeSingle();
+const datesToUpdate = employee.dailyHours.map(d => d.date);
+if (datesToUpdate.length > 0) {
+  await supabase
+    .from("fiches_jours")
+    .delete()
+    .eq("fiche_id", ficheId)
+    .in("date", datesToUpdate);
+}
+
+// Remplacer INSERT par UPSERT (lignes 163-166)
+const { error: joursError } = await supabase
+  .from("fiches_jours")
+  .upsert(jourEntries, {
+    onConflict: 'fiche_id,date',
+    ignoreDuplicates: false
+  });
 ```
 
-**Modification 2 : Filtrer par chantier_id pour le chef (ligne 89-94)**
+## Points d'Entrée Vérifiés (Aucune Régression)
 
-Le même problème peut survenir pour le chef s'il travaille sur plusieurs chantiers :
+| Composant | Statut | Raison |
+|-----------|--------|--------|
+| `useAutoSaveFiche.ts` | ✅ Déjà aligné | Implémente déjà le filtrage multi-chef (lignes 205-238) |
+| `ValidationConducteur.tsx` | ✅ Non impacté | Finisseurs uniquement (chantierId: null) |
+| `useSaveFicheJours.ts` | ✅ Non impacté | Utilise ficheId explicite, édition ciblée |
+| `SignatureMacons.tsx` | ✅ Non impacté | Affichage seul, déjà filtré |
+| `FicheDetail.tsx` | ✅ Non impacté | Édition ciblée par ficheId |
 
-```typescript
-// AVANT
-const { data: fichChef } = await supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("salarie_id", chef.id)
-  .eq("semaine", semaine)
-  .maybeSingle();
+## Rétrocompatibilité Garantie
 
-// APRÈS  
-const { data: fichChef } = await supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("salarie_id", chef.id)
-  .eq("chantier_id", chantierId)  // ← AJOUTER CE FILTRE
-  .eq("semaine", semaine)
-  .maybeSingle();
-```
+- Entreprises sans planning : Comportement legacy préservé (5 jours)
+- Employés sans affectation spécifique : 5 jours par défaut
+- Données existantes : Non affectées (correction appliquée aux nouvelles transmissions)
 
-## Résultat attendu
+## Résultat Attendu
 
-Après cette correction :
-- Sur `/signature-macons` pour **CI230**, Paul MANUNTA affichera ses données de Lundi, Mardi, Mercredi (24h)
-- Sur `/signature-macons` pour **CI235**, Paul MANUNTA affichera ses données de Jeudi, Vendredi (15h)
-- Chaque chef voit uniquement les données du chantier dont il est responsable
+Après correction, pour Paul MANUNTA S05 :
 
-## Impact
+| Action | Résultat |
+|--------|----------|
+| Liam transmet | 3 fiches_jours (Lun-Mar-Mer) = 24h sur CI230 |
+| Chloé transmet | 2 fiches_jours (Jeu-Ven) = 15h sur CI235 |
+| Vue Conducteur | Affiche correctement 24h/15h par chantier |
+| Vue RH | Fusionne = 39h total pour Paul |
 
-- **Fichiers modifiés** : 1 (`useMaconsByChantier.ts`)
-- **Lignes modifiées** : 2 requêtes Supabase (ajout d'un `.eq()` chacune)
-- **Risque** : Faible (ajout d'un filtre qui renforce l'isolation des données)
-- **Rétrocompatibilité** : Totale (les fiches ont toujours eu un `chantier_id`)
+## Risques
+
+| Risque | Mitigation |
+|--------|------------|
+| Mauvaise conversion date → nom de jour | Utilisation du même pattern que useAutoSaveFiche (testé) |
+| Fallback inexistant | Fallback explicite vers 5 jours si aucune affectation |
+| Ordre de transmission | UPSERT garantit l'atomicité, pas de dépendance d'ordre |
+
