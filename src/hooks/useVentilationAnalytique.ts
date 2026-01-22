@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getISOWeek, getISOWeekYear } from "date-fns";
 
 // Types
 export type TypeMO = 'MO' | 'MOAPP' | 'INTERIM';
@@ -46,24 +47,20 @@ export const getTypeMO = (utilisateur: { agence_interim: string | null; statut: 
   return 'MO';
 };
 
-// Helper to get weeks in a month
+// Helper to get weeks in a month - uses date-fns for ISO 8601 compliance
 const getWeeksInMonth = (periode: string): string[] => {
   if (!periode || periode === "all") return [];
   
   const [year, month] = periode.split("-").map(Number);
   const weeks: string[] = [];
   
-  // Get all days in the month
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = new Date(year, month, 0);
   
   for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
-    // ISO week: get Thursday of the week to determine the week number
-    const thursday = new Date(d);
-    thursday.setDate(thursday.getDate() - ((thursday.getDay() + 6) % 7) + 3);
-    const weekYear = thursday.getFullYear();
-    const weekNum = Math.ceil((((thursday.getTime() - new Date(weekYear, 0, 4).getTime()) / 86400000) + new Date(weekYear, 0, 4).getDay() + 1) / 7);
-    const weekStr = `${weekYear}-S${String(weekNum).padStart(2, '0')}`;
+    const isoYear = getISOWeekYear(d);
+    const isoWeek = getISOWeek(d);
+    const weekStr = `${isoYear}-S${String(isoWeek).padStart(2, '0')}`;
     
     if (!weeks.includes(weekStr)) {
       weeks.push(weekStr);
