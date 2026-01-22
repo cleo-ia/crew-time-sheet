@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { formatTimestampParis } from "@/lib/date";
+import { getCurrentWeek, getNextWeek } from "@/lib/weekUtils";
 
 export const RappelsManager = () => {
   const {
@@ -35,6 +36,9 @@ export const RappelsManager = () => {
   
   const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+
+  // Calculer la semaine S+1 (celle du planning)
+  const targetWeek = useMemo(() => getNextWeek(getCurrentWeek()), []);
 
   useEffect(() => {
     getCounts();
@@ -140,22 +144,27 @@ export const RappelsManager = () => {
               <Calendar className="h-4 w-4" />
               <span className="text-xs">{syncPlanningConfig.scheduleDetails}</span>
             </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                Cible : {targetWeek}
+              </Badge>
+            </div>
           </div>
 
           <Button
-            onClick={() => syncPlanningToTeams(undefined)}
+            onClick={() => syncPlanningToTeams(targetWeek)}
             disabled={isSyncing}
             className="w-full"
           >
             {isSyncing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Synchronisation...
+                Synchronisation {targetWeek}...
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Synchroniser maintenant
+                Synchroniser {targetWeek}
               </>
             )}
           </Button>
