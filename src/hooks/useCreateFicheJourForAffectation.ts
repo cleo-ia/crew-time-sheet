@@ -29,6 +29,7 @@ export const useCreateFicheJourForAffectation = () => {
       if (existingFiche) {
         ficheId = existingFiche.id;
       } else {
+        // entreprise_id auto-filled by trigger set_fiche_entreprise_id
         const { data: newFiche, error: ficheError } = await supabase
           .from("fiches")
           .insert({
@@ -37,7 +38,7 @@ export const useCreateFicheJourForAffectation = () => {
             salarie_id: finisseurId,
             chantier_id: null,
             statut: "BROUILLON",
-          })
+          } as any)
           .select("id")
           .single();
 
@@ -66,6 +67,7 @@ export const useCreateFicheJourForAffectation = () => {
       console.log(`[CreateFicheJour] Création pour date=${date}, jour=${dayOfWeek}, heures=${defaultHours}`);
 
       // 4. Créer le fiche_jour avec les valeurs par défaut harmonisées
+      // entreprise_id auto-filled by trigger set_entreprise_from_fiche
       const { error: jourError } = await supabase
         .from("fiches_jours")
         .insert({
@@ -84,7 +86,7 @@ export const useCreateFicheJourForAffectation = () => {
           pause_minutes: 0,
           code_chantier_du_jour: null,
           ville_du_jour: null,
-        });
+        } as any);
 
       if (jourError) throw jourError;
 

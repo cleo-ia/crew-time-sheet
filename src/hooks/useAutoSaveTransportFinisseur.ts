@@ -24,6 +24,7 @@ export const useAutoSaveTransportFinisseur = () => {
         if (existingFiche) {
           finalFicheId = existingFiche.id;
         } else {
+          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -32,7 +33,7 @@ export const useAutoSaveTransportFinisseur = () => {
               salarie_id: finisseurId,
               chantier_id: null,
               statut: "BROUILLON",
-            })
+            } as any)
             .select("id")
             .single();
 

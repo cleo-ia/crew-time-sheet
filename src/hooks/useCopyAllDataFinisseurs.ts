@@ -57,9 +57,10 @@ export const useCopyAllDataFinisseurs = () => {
           };
         });
 
+        // entreprise_id auto-filled by trigger set_entreprise_from_chantier
         const { error: affError } = await supabase
           .from("affectations_finisseurs_jours")
-          .upsert(newAffectations, { onConflict: "finisseur_id,date", ignoreDuplicates: false });
+          .upsert(newAffectations as any, { onConflict: "finisseur_id,date", ignoreDuplicates: false });
 
         if (affError) {
           console.error("❌ Erreur copie affectations:", affError);
@@ -98,6 +99,7 @@ export const useCopyAllDataFinisseurs = () => {
           ficheS1Id = ficheS1Existing.id;
           console.log("📄 Fiche S+1 existante:", ficheS1Id);
         } else {
+          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -106,7 +108,7 @@ export const useCopyAllDataFinisseurs = () => {
               salarie_id: finisseurId,
               chantier_id: null,
               statut: "BROUILLON",
-            })
+            } as any)
             .select("id")
             .single();
 
@@ -156,9 +158,10 @@ export const useCopyAllDataFinisseurs = () => {
             .delete()
             .eq("fiche_id", ficheS1Id);
 
+          // entreprise_id auto-filled by trigger set_entreprise_from_fiche
           const { error: joursError } = await supabase
             .from("fiches_jours")
-            .insert(joursS1);
+            .insert(joursS1 as any);
 
           if (joursError) {
             console.error("❌ Erreur copie fiches_jours:", joursError);

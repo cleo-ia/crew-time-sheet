@@ -61,7 +61,7 @@ export const useInitializeNextWeekMacons = () => {
           ficheId = existingFiche.id;
           console.log(`ℹ️ Fiche already exists for macon ${maconId}`);
         } else {
-          // Créer la fiche
+          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -70,7 +70,7 @@ export const useInitializeNextWeekMacons = () => {
               salarie_id: maconId,
               chantier_id: chantierId,
               statut: "BROUILLON",
-            })
+            } as any)
             .select("id")
             .single();
 
@@ -113,9 +113,10 @@ export const useInitializeNextWeekMacons = () => {
             };
           });
 
+          // entreprise_id auto-filled by trigger set_entreprise_from_fiche
           const { error: joursError } = await supabase
             .from("fiches_jours")
-            .insert(joursToInsert);
+            .insert(joursToInsert as any);
 
           if (joursError) {
             console.error("Error creating jours:", joursError);

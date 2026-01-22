@@ -64,10 +64,11 @@ export const useCreateAffectation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // entreprise_id is auto-filled by trigger set_entreprise_from_chantier
     mutationFn: async (affectation: Omit<Affectation, "id" | "created_at" | "updated_at">) => {
       const { data, error } = await supabase
         .from("affectations")
-        .insert(affectation)
+        .insert(affectation as any)
         .select()
         .single();
       

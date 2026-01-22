@@ -245,10 +245,11 @@ export function useCreateChantierDossier() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // entreprise_id auto-filled by trigger set_entreprise_from_chantier
     mutationFn: async ({ chantierId, nom, parentId = null }: { chantierId: string; nom: string; parentId?: string | null }) => {
       const { data, error } = await supabase
         .from("chantiers_dossiers")
-        .insert({ chantier_id: chantierId, nom, parent_id: parentId })
+        .insert({ chantier_id: chantierId, nom, parent_id: parentId } as any)
         .select()
         .single();
 

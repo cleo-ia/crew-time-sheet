@@ -27,6 +27,7 @@ export const useAutoSaveTransport = () => {
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
+          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
@@ -35,7 +36,7 @@ export const useAutoSaveTransport = () => {
               user_id: chefId,
               statut: "BROUILLON",
               total_heures: 0,
-            })
+            } as any)
             .select()
             .single();
 
@@ -58,13 +59,14 @@ export const useAutoSaveTransport = () => {
       if (existingTransport) {
         transportId = existingTransport.id;
       } else {
+        // entreprise_id auto-filled by trigger set_entreprise_from_fiche
         const { data: newTransport, error: insertError } = await supabase
           .from("fiches_transport")
           .insert({
             fiche_id: ficheId,
             semaine,
             chantier_id: chantierId,
-          })
+          } as any)
           .select()
           .single();
 
