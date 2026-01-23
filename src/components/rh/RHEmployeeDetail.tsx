@@ -508,67 +508,71 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     />
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
-                    <CodeTrajetSelector
-                      value={(day as any).codeTrajet || null}
-                      onChange={async (value) => {
-                        const oldValue = (day as any).codeTrajet || null;
-                        await updateFicheJour.mutateAsync({
-                          ficheJourId: day.ficheJourId,
-                          field: "code_trajet",
-                          value: value || null,
-                        });
-                        // Log modification (non-blocking)
-                        if (userInfo) {
-                          try {
-                            await logModification.mutateAsync({
-                              ficheId: (day as any).ficheId || null,
-                              entrepriseId: userInfo.entrepriseId,
-                              userId: userInfo.userId,
-                              userName: userInfo.userName,
-                              action: "modification_code_trajet",
-                              champModifie: "code_trajet",
-                              ancienneValeur: oldValue,
-                              nouvelleValeur: value,
-                              details: {
-                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
-                                date: day.date,
-                                chantier: day.chantier,
-                              },
-                            });
-                          } catch (e) { console.error("Log error:", e); }
-                        }
-                      }}
-                      onBatchChange={async (value) => {
-                        await batchUpdateTrajet.mutateAsync({
-                          ficheJourIds: batchFicheJourIds,
-                          codeTrajet: value,
-                        });
-                        // Log batch modification (non-blocking)
-                        if (userInfo) {
-                          try {
-                            await logModification.mutateAsync({
-                              ficheId: null,
-                              entrepriseId: userInfo.entrepriseId,
-                              userId: userInfo.userId,
-                              userName: userInfo.userName,
-                              action: "modification_code_trajet_lot",
-                              champModifie: "code_trajet",
-                              ancienneValeur: null,
-                              nouvelleValeur: value,
-                              details: {
-                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
-                                chantier: day.chantier,
-                                nbJours: batchDaysCount,
-                              },
-                            });
-                          } catch (e) { console.error("Log error:", e); }
-                        }
-                      }}
-                      batchDaysCount={batchDaysCount}
-                      chantierName={day.chantier}
-                      disabled={false}
-                      hasHours={day.heuresNormales > 0}
-                    />
+                    {isAbsent ? (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    ) : (
+                      <CodeTrajetSelector
+                        value={(day as any).codeTrajet || null}
+                        onChange={async (value) => {
+                          const oldValue = (day as any).codeTrajet || null;
+                          await updateFicheJour.mutateAsync({
+                            ficheJourId: day.ficheJourId,
+                            field: "code_trajet",
+                            value: value || null,
+                          });
+                          // Log modification (non-blocking)
+                          if (userInfo) {
+                            try {
+                              await logModification.mutateAsync({
+                                ficheId: (day as any).ficheId || null,
+                                entrepriseId: userInfo.entrepriseId,
+                                userId: userInfo.userId,
+                                userName: userInfo.userName,
+                                action: "modification_code_trajet",
+                                champModifie: "code_trajet",
+                                ancienneValeur: oldValue,
+                                nouvelleValeur: value,
+                                details: {
+                                  salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                  date: day.date,
+                                  chantier: day.chantier,
+                                },
+                              });
+                            } catch (e) { console.error("Log error:", e); }
+                          }
+                        }}
+                        onBatchChange={async (value) => {
+                          await batchUpdateTrajet.mutateAsync({
+                            ficheJourIds: batchFicheJourIds,
+                            codeTrajet: value,
+                          });
+                          // Log batch modification (non-blocking)
+                          if (userInfo) {
+                            try {
+                              await logModification.mutateAsync({
+                                ficheId: null,
+                                entrepriseId: userInfo.entrepriseId,
+                                userId: userInfo.userId,
+                                userName: userInfo.userName,
+                                action: "modification_code_trajet_lot",
+                                champModifie: "code_trajet",
+                                ancienneValeur: null,
+                                nouvelleValeur: value,
+                                details: {
+                                  salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                  chantier: day.chantier,
+                                  nbJours: batchDaysCount,
+                                },
+                              });
+                            } catch (e) { console.error("Log error:", e); }
+                          }
+                        }}
+                        batchDaysCount={batchDaysCount}
+                        chantierName={day.chantier}
+                        disabled={false}
+                        hasHours={day.heuresNormales > 0}
+                      />
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
                     <EditableCell
