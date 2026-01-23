@@ -781,7 +781,7 @@ const ValidationConducteur = () => {
                       <TabsContent value="a-valider" className="p-6">
                         <FichesList
                           status="VALIDE_CHEF"
-                          filters={filters}
+                          filters={{ ...filters, conducteur: effectiveConducteurId || undefined }}
                           onSelectFiche={setSelectedFiche}
                         />
                       </TabsContent>
@@ -789,7 +789,7 @@ const ValidationConducteur = () => {
                       <TabsContent value="historique" className="p-6">
                         <FichesList
                           status="ENVOYE_RH"
-                          filters={filters}
+                          filters={{ ...filters, conducteur: effectiveConducteurId || undefined }}
                           onSelectFiche={setSelectedFiche}
                         />
                       </TabsContent>

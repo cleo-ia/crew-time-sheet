@@ -121,7 +121,7 @@ export interface FicheJour {
   PA?: boolean;
 }
 
-export const useFichesByStatus = (status: string, filters?: { semaine?: string; chantier?: string; chef?: string }) => {
+export const useFichesByStatus = (status: string, filters?: { semaine?: string; chantier?: string; chef?: string; conducteur?: string }) => {
   return useQuery({
     queryKey: ["fiches", status, filters, localStorage.getItem("current_entreprise_id")],
     queryFn: async () => {
@@ -133,10 +133,17 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
       }
 
       // Récupérer les chantiers autorisés pour cette entreprise
-      const { data: entrepriseChantiers, error: entrepriseChantiersError } = await supabase
+      let chantiersQuery = supabase
         .from("chantiers")
         .select("id")
         .eq("entreprise_id", entrepriseId);
+      
+      // 🔐 FILTRAGE PAR CONDUCTEUR - critique pour l'onglet Validation
+      if (filters?.conducteur && filters.conducteur !== "all") {
+        chantiersQuery = chantiersQuery.eq("conducteur_id", filters.conducteur);
+      }
+      
+      const { data: entrepriseChantiers, error: entrepriseChantiersError } = await chantiersQuery;
       
       if (entrepriseChantiersError) {
         console.error("Error fetching entreprise chantiers:", entrepriseChantiersError);
@@ -145,7 +152,7 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
 
       const allowedChantierIds = entrepriseChantiers?.map(c => c.id) || [];
       
-      // Si l'entreprise n'a pas de chantiers, retourner vide
+      // Si l'entreprise n'a pas de chantiers (ou le conducteur n'a pas de chantiers), retourner vide
       if (allowedChantierIds.length === 0) {
         return [];
       }
