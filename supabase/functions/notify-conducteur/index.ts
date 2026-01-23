@@ -30,15 +30,41 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
-    console.log("[notify-conducteur] 🚀 Démarrage de la vérification des lots...");
+    // Lire les paramètres optionnels du body pour mode ciblé
+    let targetChantierId: string | null = null;
+    let targetSemaine: string | null = null;
+    
+    try {
+      const body = await req.json();
+      targetChantierId = body?.chantierId || null;
+      targetSemaine = body?.semaine || null;
+    } catch {
+      // Pas de body ou body invalide - mode scan global (CRON)
+    }
+
+    const isTargetedMode = !!(targetChantierId && targetSemaine);
+    console.log(`[notify-conducteur] 🚀 Mode: ${isTargetedMode ? 'CIBLÉ' : 'SCAN GLOBAL'}`);
+    
+    if (isTargetedMode) {
+      console.log(`[notify-conducteur] 🎯 Cible: chantier=${targetChantierId}, semaine=${targetSemaine}`);
+    }
 
     // 1) Récupérer les lots prêts depuis la vue v_lots_pret_conducteur
-    const { data: lotsView, error: viewError } = await supabase
+    let query = supabase
       .from("v_lots_pret_conducteur")
       .select("chantier_id, semaine, nb_prets, chef_id, conducteur_id")
       .eq("nb_non_prets", 0)
       .gt("nb_prets", 0)
       .is("notif_exists", null);
+    
+    // Si mode ciblé, filtrer sur le lot spécifique
+    if (isTargetedMode) {
+      query = query
+        .eq("chantier_id", targetChantierId)
+        .eq("semaine", targetSemaine);
+    }
+    
+    const { data: lotsView, error: viewError } = await query;
 
     if (viewError) {
       console.error("[notify-conducteur] ❌ Erreur query vue:", viewError);

@@ -183,14 +183,26 @@ const SignatureMacons = () => {
         // Ne pas bloquer la suite même en cas d'erreur
       }
 
-      // 4. Notification au conducteur (APRÈS la copie S→S+1)
+      // 4. Notification au conducteur (APRÈS la copie S→S+1) - Mode ciblé
       try {
-        const { error: notifError } = await supabase.functions.invoke("notify-conducteur");
+        const { error: notifError } = await supabase.functions.invoke("notify-conducteur", {
+          body: { chantierId, semaine }
+        });
         if (notifError) {
           console.error("Erreur notification conducteur:", notifError);
+          toast({
+            variant: "default",
+            title: "⚠️ Avertissement",
+            description: "La fiche est transmise mais le conducteur n'a pas été notifié par email.",
+          });
         }
       } catch (e) {
         console.error("Exception notification conducteur:", e);
+        toast({
+          variant: "default",
+          title: "⚠️ Avertissement",
+          description: "La fiche est transmise mais le conducteur n'a pas été notifié par email.",
+        });
       }
 
       // 5. Mettre à jour sessionStorage pour la prochaine page
