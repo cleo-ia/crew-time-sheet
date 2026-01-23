@@ -146,9 +146,9 @@ export const calculateHeuresSuppBTP = (
     
     // Logique BTP : seuil dynamique basé sur les heures supp mensualisées
     // Si heuresSuppMensualisees > 0, on relève le seuil hebdo
-    // Exemple : 17.33h mensualisées → seuil = 35 + (17.33/4.33) ≈ 39h/semaine
-    const NB_SEMAINES_PAR_MOIS = 4.33;
-    const seuilHebdo = 35 + (heuresSuppMensualisees / NB_SEMAINES_PAR_MOIS);
+    // Formule exacte : mensuel * 12 / 52 = hebdomadaire
+    // Exemple : 17.33h mensualisées → seuil = 35 + (17.33 * 12 / 52) = 35 + 4 = 39h/semaine exactement
+    const seuilHebdo = 35 + (heuresSuppMensualisees * 12 / 52);
     
     if (heuresSemaine > seuilHebdo) {
       const heuresAuDelaDuSeuil = heuresSemaine - seuilHebdo;
