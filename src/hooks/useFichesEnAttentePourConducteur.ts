@@ -9,27 +9,33 @@ export const useFichesEnAttentePourConducteur = (conducteurId: string | null) =>
     queryFn: async () => {
       if (!conducteurId || !entrepriseId) return 0;
 
-      // Compter les fiches VALIDE_CHEF sur les chantiers de CE conducteur
-      const { count, error } = await supabase
+      // Récupérer les combinaisons chantier_id+semaine distinctes
+      const { data, error } = await supabase
         .from("fiches")
         .select(`
-          id,
+          chantier_id,
+          semaine,
           chantiers!inner (
             id,
             conducteur_id,
             entreprise_id
           )
-        `, { count: 'exact', head: true })
+        `)
         .eq("statut", "VALIDE_CHEF")
         .eq("chantiers.conducteur_id", conducteurId)
         .eq("chantiers.entreprise_id", entrepriseId);
 
-      if (error) {
+      if (error || !data) {
         console.error("Erreur fiches en attente conducteur:", error);
         return 0;
       }
 
-      return count || 0;
+      // Compter les combinaisons UNIQUES chantier+semaine (= nombre de cartes)
+      const uniquePairs = new Set(
+        data.map(f => `${f.chantier_id}|${f.semaine}`)
+      );
+
+      return uniquePairs.size;
     },
     enabled: !!conducteurId && !!entrepriseId,
   });
