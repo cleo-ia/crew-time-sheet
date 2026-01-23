@@ -1,78 +1,86 @@
 
+# Plan : Corriger l'affichage GD et Absent dans "Modifier les données"
 
-# Plan : Afficher le nombre de cartes chantier au lieu du nombre de fiches
+## Diagnostic
 
-## Contexte
+Les données sont **correctement sauvegardées** en base de données :
+- Paul MANUNTA : `code_trajet = "GD"` pour les 5 jours
+- Steven PIN : `heures = 0` pour lundi et mardi
 
-Actuellement, le badge sur l'onglet "Validation des fiches" affiche **3** car il compte les 3 fiches individuelles (3 employés). L'utilisateur veut qu'il affiche **1** car il n'y a qu'une seule carte chantier "LES ARCS" qui regroupe ces 3 fiches.
+Le problème se situe dans la fonction `convertFichesToTimeEntries()` du fichier `src/components/validation/FicheDetail.tsx` qui transforme les données brutes en format attendu par `TimeEntryTable`. Cette fonction ne calcule pas correctement :
 
-## Logique actuelle vs souhaitée
-
-| Situation | Logique actuelle | Logique souhaitée |
-|-----------|------------------|-------------------|
-| 1 chantier, 3 employés | Badge = 3 | Badge = 1 |
-| 2 chantiers, 5 employés | Badge = 5 | Badge = 2 |
+1. La propriété `grandDeplacement` (manquante)
+2. La propriété `absent` (toujours false)
+3. La propriété `trajet` (ne respecte pas l'exclusivité)
 
 ## Solution
 
-Modifier le hook `useFichesEnAttentePourConducteur` pour compter le nombre de **combinaisons uniques chantier+semaine** au lieu du nombre de fiches individuelles.
+Corriger la fonction `convertFichesToTimeEntries()` pour aligner sa logique sur celle de `TimeEntryTable.tsx` (lignes 569-589).
 
-## Fichier modifié
+## Modification
 
-**src/hooks/useFichesEnAttentePourConducteur.ts**
+**Fichier : `src/components/validation/FicheDetail.tsx`**
 
-### Avant (lignes 13-25)
+**Lignes 293-312** - Ajouter les calculs manquants :
 
+Avant :
 ```typescript
-const { count, error } = await supabase
-  .from("fiches")
-  .select(`...`, { count: 'exact', head: true })
-  .eq("statut", "VALIDE_CHEF")
-  ...
-return count || 0;
+const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
+
+const hasCodeChantier = !!jourData?.code_chantier_du_jour;
+
+days[dayName] = {
+  hours: jourData?.heures || 0,
+  overtime: 0,
+  absent: false,
+  panierRepas: jourData?.PA || false,
+  repasType: jourData?.repas_type || null,
+  trajet: jourData?.trajet_perso || (jourData?.code_trajet && jourData.code_trajet !== ''),
+  trajetPerso: jourData?.trajet_perso === true,
+  codeTrajet: jourData?.code_trajet || null,
+  heuresIntemperie: jourData?.HI || 0,
+  // ...
+};
 ```
 
-### Après
-
+Après :
 ```typescript
-// Récupérer les combinaisons chantier_id+semaine distinctes
-const { data, error } = await supabase
-  .from("fiches")
-  .select(`
-    chantier_id,
-    semaine,
-    chantiers!inner (
-      id,
-      conducteur_id,
-      entreprise_id
-    )
-  `)
-  .eq("statut", "VALIDE_CHEF")
-  .eq("chantiers.conducteur_id", conducteurId)
-  .eq("chantiers.entreprise_id", entrepriseId);
+const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
 
-if (error || !data) return 0;
+const hasCodeChantier = !!jourData?.code_chantier_du_jour;
 
-// Compter les combinaisons UNIQUES chantier+semaine
-const uniquePairs = new Set(
-  data.map(f => `${f.chantier_id}|${f.semaine}`)
-);
+// Calculs pour l'exclusivité Trajet / Trajet Perso / GD
+const hours = jourData?.heures || 0;
+const HI = jourData?.HI || 0;
+const PA = !!jourData?.PA;
+const isTrajetPerso = !!jourData?.trajet_perso || jourData?.code_trajet === "T_PERSO";
+const isGD = jourData?.code_trajet === "GD";
 
-return uniquePairs.size;
+days[dayName] = {
+  hours,
+  overtime: 0,
+  absent: hours === 0 && !PA && HI === 0,
+  panierRepas: PA,
+  repasType: jourData?.repas_type || null,
+  trajet: (isTrajetPerso || isGD) ? false : true,
+  trajetPerso: isTrajetPerso,
+  grandDeplacement: isGD,
+  codeTrajet: jourData?.code_trajet || null,
+  heuresIntemperie: HI,
+  // ...
+};
 ```
 
-## Comportement après correction
+## Résultat attendu
 
-| Données | Résultat badge |
-|---------|----------------|
-| LES ARCS S05 (3 employés) | **1** |
-| LES ARCS S05 + AUTRE S05 | **2** |
-| LES ARCS S04 + LES ARCS S05 | **2** |
+| Employé | Avant | Après |
+|---------|-------|-------|
+| Paul MANUNTA | Trajet coché (incorrect) | GD coché (correct) |
+| Steven PIN | Absent non visible | Lundi/Mardi marqués absents |
 
 ## Impact
 
-- Aucune modification de l'interface utilisateur
-- Aucune modification de la base de données
-- La liste des cartes reste inchangée
-- Seul le comptage du badge est corrigé
-
+- Correction uniquement dans `FicheDetail.tsx`
+- Affecte l'affichage "Modifier les données" côté conducteur
+- Affecte l'historique chef (car `ChefFicheDetailDialog` utilise aussi `FicheDetail`)
+- Aucun impact sur la sauvegarde (déjà correcte)
