@@ -474,7 +474,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
                 grandDeplacement: (j as any).code_trajet === "GD",
                 heuresIntemperie: HI,
-                absent: hours === 0 && !PA && HI === 0,
+                absent: hours === 0 && HI === 0,
                 // ✅ Mapper le chantier du jour depuis ficheJours (priorité sur affectations)
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
