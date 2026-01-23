@@ -10,6 +10,7 @@ interface DayData {
   absent: boolean;
   panierRepas: boolean;
   repasType?: RepasType;
+  trajetPerso?: boolean;  // True si trajet personnel (pas véhicule entreprise)
   codeTrajet?: string | null;  // Code trajet (T_PERSO, T1-T17, T31, T35, GD)
   heuresIntemperie: number;
   chantierId?: string | null;
@@ -265,7 +266,9 @@ export const useAutoSaveFiche = () => {
             heures: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HNORM: dayData?.absent ? 0 : (dayData?.hours ?? defaultHour),
             HI: dayData?.heuresIntemperie || 0,
-            T: 1,  // Trajet coché par défaut
+            // 🔧 FIX: Sauvegarder trajet_perso pour persistance après refresh
+            trajet_perso: dayData?.trajetPerso || dayData?.codeTrajet === "T_PERSO",
+            T: dayData?.codeTrajet === null || dayData?.codeTrajet === undefined ? 1 : (dayData.codeTrajet ? 1 : 0),
             code_trajet: dayData?.codeTrajet || 'A_COMPLETER',  // A_COMPLETER par défaut si pas déjà défini
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             repas_type: dayData?.repasType ?? (dayData?.panierRepas === false ? null : "PANIER"), // PANIER par défaut
