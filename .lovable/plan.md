@@ -1,86 +1,62 @@
 
-# Plan : Corriger l'affichage GD et Absent dans "Modifier les données"
+# Plan : Corriger la détection visuelle des absences (Steven PIN)
 
 ## Diagnostic
 
-Les données sont **correctement sauvegardées** en base de données :
-- Paul MANUNTA : `code_trajet = "GD"` pour les 5 jours
-- Steven PIN : `heures = 0` pour lundi et mardi
+Les données de Steven PIN en base de données montrent :
 
-Le problème se situe dans la fonction `convertFichesToTimeEntries()` du fichier `src/components/validation/FicheDetail.tsx` qui transforme les données brutes en format attendu par `TimeEntryTable`. Cette fonction ne calcule pas correctement :
+| Jour | Heures | PA | HI |
+|------|--------|-----|-----|
+| Lundi | 0 | **true** | 0 |
+| Mardi | 0 | **true** | 0 |
+| Mercredi | 8 | true | 0 |
 
-1. La propriété `grandDeplacement` (manquante)
-2. La propriété `absent` (toujours false)
-3. La propriété `trajet` (ne respecte pas l'exclusivité)
+Le calcul actuel est :
+```typescript
+absent: hours === 0 && !PA && HI === 0
+```
+
+Comme `PA = true`, la condition `!PA` est `false`, donc `absent = false` même si l'employé a 0 heures.
 
 ## Solution
 
-Corriger la fonction `convertFichesToTimeEntries()` pour aligner sa logique sur celle de `TimeEntryTable.tsx` (lignes 569-589).
+Modifier le calcul pour considérer qu'un employé est **absent** si :
+- `heures === 0` **ET** `HI === 0` (pas d'heures travaillées ni intempéries)
+- **Indépendamment** de PA (panier repas)
 
-## Modification
+Logique métier : un employé ne peut pas consommer de panier repas s'il n'est pas présent. Les 0h indiquent clairement une absence.
 
-**Fichier : `src/components/validation/FicheDetail.tsx`**
+## Fichier modifié
 
-**Lignes 293-312** - Ajouter les calculs manquants :
+**src/components/validation/FicheDetail.tsx**
 
-Avant :
+### Avant (ligne 308)
+
 ```typescript
-const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
-
-const hasCodeChantier = !!jourData?.code_chantier_du_jour;
-
-days[dayName] = {
-  hours: jourData?.heures || 0,
-  overtime: 0,
-  absent: false,
-  panierRepas: jourData?.PA || false,
-  repasType: jourData?.repas_type || null,
-  trajet: jourData?.trajet_perso || (jourData?.code_trajet && jourData.code_trajet !== ''),
-  trajetPerso: jourData?.trajet_perso === true,
-  codeTrajet: jourData?.code_trajet || null,
-  heuresIntemperie: jourData?.HI || 0,
-  // ...
-};
+absent: hours === 0 && !PA && HI === 0,
 ```
 
-Après :
+### Après
+
 ```typescript
-const jourData = fiche.fiches_jours?.find((fj: any) => fj.date === dateStr);
-
-const hasCodeChantier = !!jourData?.code_chantier_du_jour;
-
-// Calculs pour l'exclusivité Trajet / Trajet Perso / GD
-const hours = jourData?.heures || 0;
-const HI = jourData?.HI || 0;
-const PA = !!jourData?.PA;
-const isTrajetPerso = !!jourData?.trajet_perso || jourData?.code_trajet === "T_PERSO";
-const isGD = jourData?.code_trajet === "GD";
-
-days[dayName] = {
-  hours,
-  overtime: 0,
-  absent: hours === 0 && !PA && HI === 0,
-  panierRepas: PA,
-  repasType: jourData?.repas_type || null,
-  trajet: (isTrajetPerso || isGD) ? false : true,
-  trajetPerso: isTrajetPerso,
-  grandDeplacement: isGD,
-  codeTrajet: jourData?.code_trajet || null,
-  heuresIntemperie: HI,
-  // ...
-};
+absent: hours === 0 && HI === 0,
 ```
 
 ## Résultat attendu
 
 | Employé | Avant | Après |
 |---------|-------|-------|
-| Paul MANUNTA | Trajet coché (incorrect) | GD coché (correct) |
-| Steven PIN | Absent non visible | Lundi/Mardi marqués absents |
+| Steven PIN - Lundi | Champs actifs, "0h" affiché | **Fond rouge/grisé, checkbox Absent cochée** |
+| Steven PIN - Mardi | Champs actifs, "0h" affiché | **Fond rouge/grisé, checkbox Absent cochée** |
+| Paul MANUNTA | GD affiché (correct) | Inchangé |
 
-## Impact
+## Impact visuel (TimeEntryTable.tsx existant)
 
-- Correction uniquement dans `FicheDetail.tsx`
-- Affecte l'affichage "Modifier les données" côté conducteur
-- Affecte l'historique chef (car `ChefFicheDetailDialog` utilise aussi `FicheDetail`)
-- Aucun impact sur la sauvegarde (déjà correcte)
+Quand `absent = true`, le composant applique automatiquement :
+- Fond rougeâtre : `bg-destructive/5 border-destructive/20`
+- Checkbox "Absent" cochée
+- Champs de saisie masqués (`{!dayData.absent && ...}`)
+
+## Note
+
+Cette modification n'affecte que l'affichage côté conducteur. Si nécessaire, la même correction peut être appliquée dans `TimeEntryTable.tsx` (chargement des données) pour cohérence dans tous les modes.
