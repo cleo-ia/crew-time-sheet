@@ -12,7 +12,10 @@ const typeCongeToAbsence: Record<string, TypeAbsence> = {
   "CP": "CP",
   "RTT": "RTT",
   "MALADIE": "AM",
-  "AUTRE": "CPSS"
+  "AUTRE": "CPSS",
+  "DECES": "EF",
+  "NAISSANCE": "EF",
+  "MARIAGE": "EF",
 };
 
 /**
