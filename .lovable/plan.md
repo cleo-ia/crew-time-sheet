@@ -1,197 +1,147 @@
 
+# Plan de correction : Suppression de tous les filtres `chantier_id IS NULL`
 
-# Plan de correction : Alignement du flux Conducteur sur le flux Chef
+## Contexte du problème
 
-## Diagnostic du problème
+Le code actuel distingue les "finisseurs" des "maçons" en filtrant par `chantier_id = null`, ce qui est **incorrect**. 
 
-Le flux **Conducteur/Finisseurs** crée des fiches **en doublon** car :
-
-1. **`sync-planning-to-teams`** crée une fiche AVEC `chantier_id` (correct)
-2. **`ValidationConducteur.handleSaveAndSign()`** appelle `useSaveFiche` avec `chantierId: null`
-3. **`useSaveFiche`** cherche `WHERE chantier_id IS NULL`, ne trouve rien, et **crée une nouvelle fiche**
-
-**Résultat en base** : 2 fiches pour DARCOURT S05
-- Fiche 1 : `chantier_id = da638cc1...`, `code_chantier_du_jour = NULL`, `code_trajet = NULL`  
-- Fiche 2 : `chantier_id = NULL`, `code_chantier_du_jour = CI001`, `code_trajet = A_COMPLETER`
-
-Les deux sont ensuite additionnées par le RH consolidé → 78h au lieu de 39h.
+**Règles métier confirmées :**
+1. Une fiche est **toujours** liée à un chantier via `chantier_id`
+2. La distinction entre employés se fait via le **rôle** (`finisseur`, `macon`, `grutier`, `chef`, `interimaire`)
+3. Côté conducteur, une équipe peut contenir des finisseurs, maçons, grutiers et intérimaires sans forcément de chef
+4. Toutes les données saisies par le conducteur doivent remonter en consultation RH avec le bon `chantier_id`
 
 ---
 
-## Solution
+## Fichiers à corriger
 
-Le conducteur doit **utiliser la fiche existante** (créée par le sync) plutôt que d'en créer une nouvelle.
+### Groupe 1 : Consultation RH (priorité haute)
 
-### Stratégie
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/hooks/rhShared.ts` | 277 | Supprimer `.is("chantier_id", null)` - toutes les fiches ont un chantier |
+| `src/hooks/useRHData.ts` | 930 | Supprimer le cas "finisseurs autonomes" - plus pertinent |
+| `src/hooks/useConducteurHistorique.ts` | 132 | Supprimer le filtre null - historique doit montrer toutes les fiches |
 
-Quand le conducteur sauvegarde/signe, on doit :
-1. **Récupérer la fiche existante** pour chaque employé (créée par sync, AVEC chantier)
-2. **La mettre à jour** avec les données saisies (code_trajet, code_chantier_du_jour, etc.)
-3. **Ne pas créer de nouvelles fiches**
+### Groupe 2 : Validation Conducteur (priorité haute)
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/pages/ValidationConducteur.tsx` | 393 | Chercher par `chantier_id` depuis les affectations au lieu de null |
+| `src/pages/SignatureFinisseurs.tsx` | 213, 243 | Idem - utiliser le `chantier_id` des affectations |
+
+### Groupe 3 : Auto-sauvegarde et création de fiches
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/hooks/useSaveFiche.ts` | 70 | Ne plus accepter `chantierId = null`, lever une erreur si absent |
+| `src/hooks/useAutoSaveFiche.ts` | 124 | Idem - toujours exiger un `chantier_id` |
+| `src/hooks/useCreateFicheJourForAffectation.ts` | 24 | Récupérer `chantier_id` depuis l'affectation |
+| `src/hooks/useInitializeNextWeek.ts` | 25 | Ne plus créer de fiches avec `chantier_id = null` |
+
+### Groupe 4 : Hooks utilitaires
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/hooks/useFicheId.ts` | 19 | Exiger toujours un `chantierId` |
+| `src/hooks/useFicheModifiable.ts` | 42 | Idem |
+| `src/hooks/useInitialWeek.ts` | 71 | Filtrer par les chantiers du conducteur plutôt que null |
+| `src/hooks/useWeekTransmissionStatus.ts` | 43 | Récupérer les fiches via les affectations/chantiers |
+
+### Groupe 5 : Transport
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/hooks/useSaveTransportV2.ts` | 28 | Exiger un `chantier_id` |
+| `src/hooks/useAutoSaveTransportV2.ts` | 47 | Idem |
+
+### Groupe 6 : Copie de données
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `src/hooks/useCopyAllDataFinisseurs.ts` | 77 | Récupérer fiches via les affectations avec chantier |
+
+### Groupe 7 : Edge Functions
+
+| Fichier | Ligne | Correction |
+|---------|-------|------------|
+| `supabase/functions/purge-orphan-fiches/index.ts` | 77 | Fonction à revoir - concept "orphan" n'existe plus |
+| `supabase/functions/purge-entreprise-weeks/index.ts` | 50 | Filtrer par `entreprise_id` directement |
 
 ---
 
-## Fichiers à modifier
+## Stratégie d'implémentation
 
-### 1. `src/pages/ValidationConducteur.tsx` (lignes 341-347)
+### Étape 1 : Correction `rhShared.ts` (consultation RH)
+- Supprimer la requête `finisseursQuery` séparée
+- Utiliser uniquement `fichesQuery` avec le filtre `entreprise_id`
+- Toutes les fiches avec statut `ENVOYE_RH` ou `AUTO_VALIDE` doivent remonter
 
-**Problème** : `chantierId: null` force la création d'une fiche sans chantier
+### Étape 2 : Correction flux Conducteur
+- `ValidationConducteur.tsx` : Récupérer le `chantier_id` depuis `affectationsJours` pour chaque employé
+- `SignatureFinisseurs.tsx` : Même approche - chercher fiches par `chantier_id` et `salarie_id`
 
-**Solution** : Pour chaque finisseur, récupérer le `chantier_id` depuis ses affectations
+### Étape 3 : Hooks de sauvegarde
+- Ajouter une validation : si `chantierId` est null/undefined, lever une erreur
+- Garantir que le sync-planning crée toujours les fiches avec un `chantier_id` valide
 
+### Étape 4 : Nettoyage Edge Functions
+- Supprimer ou adapter `purge-orphan-fiches` (les fiches orphelines ne devraient plus exister)
+- Simplifier `purge-entreprise-weeks` en filtrant directement par `entreprise_id`
+
+---
+
+## Section technique : Modification de rhShared.ts
+
+Le code actuel fait 2 requêtes séparées :
+1. `fichesQuery` - fiches AVEC chantier (jointure sur `chantiers`)
+2. `finisseursQuery` - fiches SANS chantier (`chantier_id IS NULL`)
+
+**Nouveau code :**
 ```typescript
-// AVANT (ligne 341-345)
-await saveFiche.mutateAsync({
-  semaine: selectedWeek,
-  chantierId: null,  // ❌ Toujours null
-  employeesData,
-  statut: "BROUILLON",
-  userId: effectiveConducteurId,
-});
-
-// APRÈS
-// Grouper les employés par chantier
-const employeesByChantier = new Map<string | null, EmployeeData[]>();
-
-for (const entry of employeesData) {
-  // Récupérer le chantier_id depuis les affectations de cet employé
-  const employeeAffectations = affectationsJours?.filter(
-    aff => aff.finisseur_id === entry.employeeId
-  );
-  const chantierId = employeeAffectations?.[0]?.chantier_id || null;
-  
-  if (!employeesByChantier.has(chantierId)) {
-    employeesByChantier.set(chantierId, []);
-  }
-  employeesByChantier.get(chantierId)!.push(entry);
-}
-
-// Sauvegarder par groupe de chantier
-for (const [chantierId, employees] of employeesByChantier) {
-  await saveFiche.mutateAsync({
-    semaine: selectedWeek,
-    chantierId,  // ✅ Chantier correct depuis affectations
-    employeesData: employees,
-    statut: "BROUILLON",
-    userId: effectiveConducteurId,
-  });
-}
-```
-
----
-
-### 2. `src/hooks/useFinisseursByConducteur.ts` (lignes 92-102)
-
-**Problème** : Le hook récupère la première fiche trouvée sans garantir que c'est la bonne
-
-**Solution** : Prioriser les fiches AVEC chantier (celles créées par le sync)
-
-```typescript
-// AVANT (ligne 92-102)
-const query = supabase
+// Une seule requête - toutes les fiches de l'entreprise avec le bon statut
+let fichesQuery = supabase
   .from("fiches")
-  .select("id, total_heures, chantier_id")
-  .eq("semaine", semaine)
-  .eq("salarie_id", finisseur.id);
+  .select(`
+    id, semaine, statut, salarie_id, chantier_id, entreprise_id,
+    absences_export_override, trajets_export_override, acomptes, prets,
+    commentaire_rh, notes_paie, total_saisie, saisie_du_mois,
+    commentaire_saisie, regularisation_m1_export, autres_elements_export,
+    chantiers(id, code, ville, conducteur_id, chef_id)
+  `)
+  .eq("entreprise_id", entrepriseId)
+  .in("statut", filters.includeCloture 
+    ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+    : ["ENVOYE_RH", "AUTO_VALIDE"]);
 
-const { data: fiche } = await query
-  .order("created_at", { ascending: false })
-  .limit(1)
-  .maybeSingle();
-
-// APRÈS  
-// Prioriser les fiches AVEC chantier (créées par sync)
-const { data: fichesEmploye } = await supabase
-  .from("fiches")
-  .select("id, total_heures, chantier_id")
-  .eq("semaine", semaine)
-  .eq("salarie_id", finisseur.id)
-  .order("chantier_id", { ascending: false, nullsFirst: false }) // Chantier non-null en premier
-  .order("created_at", { ascending: false });
-
-// Utiliser la première fiche (avec chantier si elle existe)
-const fiche = fichesEmploye?.[0] || null;
-```
-
----
-
-### 3. `supabase/functions/sync-planning-to-teams/index.ts` (lignes 640-650)
-
-**Amélioration** : Initialiser `code_trajet` et `code_chantier_du_jour` dès la création
-
-```typescript
-// Ajouter les données dans fiches_jours lors de la création
-{
-  fiche_id: ficheId,
-  date: jourDate,
-  heures: heuresForDay,
-  HNORM: heuresForDay,
-  T: 1,  // ✅ Trajet par défaut
-  code_trajet: "A_COMPLETER",  // ✅ Pour que le RH puisse compléter
-  PA: true,  // ✅ Panier par défaut
-  code_chantier_du_jour: chantierCode,  // ✅ Code depuis le chantier
-  ville_du_jour: chantierVille,  // ✅ Ville depuis le chantier
+// Appliquer les filtres conducteur/chef si demandés
+if (filters.conducteur && filters.conducteur !== "all") {
+  fichesQuery = fichesQuery.eq("chantiers.conducteur_id", filters.conducteur);
+}
+if (filters.chef && filters.chef !== "all") {
+  fichesQuery = fichesQuery.eq("chantiers.chef_id", filters.chef);
 }
 ```
 
----
-
-## Nettoyage des données existantes
-
-Avant de tester, supprimer les fiches en doublon :
-
-```sql
--- Supprimer les fiches SANS chantier pour les employés qui ont AUSSI une fiche AVEC chantier
-DELETE FROM fiches_jours 
-WHERE fiche_id IN (
-  SELECT f1.id 
-  FROM fiches f1
-  WHERE f1.chantier_id IS NULL
-    AND EXISTS (
-      SELECT 1 FROM fiches f2 
-      WHERE f2.salarie_id = f1.salarie_id 
-        AND f2.semaine = f1.semaine 
-        AND f2.chantier_id IS NOT NULL
-    )
-);
-
-DELETE FROM fiches 
-WHERE chantier_id IS NULL
-  AND id IN (
-    SELECT f1.id 
-    FROM fiches f1
-    WHERE f1.chantier_id IS NULL
-      AND EXISTS (
-        SELECT 1 FROM fiches f2 
-        WHERE f2.salarie_id = f1.salarie_id 
-          AND f2.semaine = f1.semaine 
-          AND f2.chantier_id IS NOT NULL
-      )
-  );
-```
+Ensuite supprimer la variable `fichesFinisseurs` et utiliser uniquement `fichesAvecChantier`.
 
 ---
 
-## Test de validation
+## Risques et précautions
 
-1. Purger les données SDER
-2. **Planning** : Affecter DARCOURT et KASMI au chantier TEST, S05
-3. **Valider le planning** + Sync S+1
-4. **Vérifier en base** : 1 seule fiche par employé/semaine AVEC `chantier_id`
-5. **Espace Conducteur → Mes heures** : Vérifier que les données sont chargées depuis la fiche existante
-6. **Collecter les signatures** → Signer
-7. **Consultation RH → Consolidé** :
-   - 39h (pas 78h)
-   - Trajets = 5
-   - Chantier = CI001
+1. **Données historiques** : Il peut exister des fiches anciennes avec `chantier_id = null`. Elles ne remonteront plus en RH.
+   - Solution : Script SQL pour identifier et corriger ces fiches si nécessaire
+
+2. **Tests de non-régression** : Vérifier que le flux Chef/Maçons continue de fonctionner normalement
+
+3. **Volume de modifications** : 20+ fichiers à modifier - procéder par groupe fonctionnel
 
 ---
 
-## Résumé technique
+## Ordre d'implémentation
 
-| Fichier | Modification |
-|---------|--------------|
-| `ValidationConducteur.tsx` | Grouper par chantier et passer le bon `chantierId` |
-| `useFinisseursByConducteur.ts` | Prioriser les fiches AVEC chantier |
-| `sync-planning-to-teams/index.ts` | Initialiser `code_trajet`, `code_chantier_du_jour` dès la création |
-
+1. `rhShared.ts` - Pour que la consultation RH fonctionne immédiatement
+2. `SignatureFinisseurs.tsx` et `ValidationConducteur.tsx` - Pour corriger le flux conducteur
+3. `useSaveFiche.ts` et `useAutoSaveFiche.ts` - Pour empêcher la création de nouvelles fiches sans chantier
+4. Autres hooks utilitaires
+5. Edge functions en dernier
