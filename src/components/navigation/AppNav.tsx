@@ -90,7 +90,7 @@ export const AppNav = () => {
             />
           </Link>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap overflow-x-auto">
             {canSeeSaisieChef && (
               <Button
                 asChild
