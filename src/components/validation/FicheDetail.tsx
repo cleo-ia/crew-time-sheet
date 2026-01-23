@@ -295,16 +295,24 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         // ✅ Si le jour a un code_chantier_du_jour, on ne pré-remplit PAS chantierId avec le chantier global
         const hasCodeChantier = !!jourData?.code_chantier_du_jour;
         
+        // ✅ Calculs pour l'exclusivité Trajet / Trajet Perso / GD
+        const hours = jourData?.heures || 0;
+        const HI = jourData?.HI || 0;
+        const PA = !!jourData?.PA;
+        const isTrajetPerso = !!jourData?.trajet_perso || jourData?.code_trajet === "T_PERSO";
+        const isGD = jourData?.code_trajet === "GD";
+        
         days[dayName] = {
-          hours: jourData?.heures || 0,
+          hours,
           overtime: 0,
-          absent: false, // ✅ Si on a une fiches_jours, l'employé n'est pas "absent"
-          panierRepas: jourData?.PA || false,
+          absent: hours === 0 && !PA && HI === 0,
+          panierRepas: PA,
           repasType: jourData?.repas_type || null,
-          trajet: jourData?.trajet_perso || (jourData?.code_trajet && jourData.code_trajet !== ''),
-          trajetPerso: jourData?.trajet_perso === true,
+          trajet: (isTrajetPerso || isGD) ? false : true,
+          trajetPerso: isTrajetPerso,
+          grandDeplacement: isGD,
           codeTrajet: jourData?.code_trajet || null,
-          heuresIntemperie: jourData?.HI || 0,
+          heuresIntemperie: HI,
           chantierCode: hasCodeChantier ? jourData.code_chantier_du_jour : "",
           chantierVille: hasCodeChantier ? (jourData.ville_du_jour || "") : "",
           chantierId: hasCodeChantier ? null : (fiche.chantier_id || ""),
