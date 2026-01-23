@@ -1,62 +1,62 @@
 
-# Plan : Corriger la détection visuelle des absences (Steven PIN)
 
-## Diagnostic
+# Plan : Harmoniser la détection des absences sur tous les composants
 
-Les données de Steven PIN en base de données montrent :
+## Problème identifié
 
-| Jour | Heures | PA | HI |
-|------|--------|-----|-----|
-| Lundi | 0 | **true** | 0 |
-| Mardi | 0 | **true** | 0 |
-| Mercredi | 8 | true | 0 |
+La correction de détection d'absence n'a été appliquée que partiellement :
 
-Le calcul actuel est :
-```typescript
-absent: hours === 0 && !PA && HI === 0
-```
+| Composant | Usage | Logique actuelle | Corrigé ? |
+|-----------|-------|------------------|-----------|
+| `FicheDetail.tsx` | Vue conducteur "Modifier les données" | `hours === 0 && HI === 0` | ✅ Oui |
+| `RHEmployeeDetail.tsx` | Vue RH détail employé | `heuresNormales === 0` | ✅ Oui |
+| `TimeEntryTable.tsx` | Vue chef saisie heures | `hours === 0 && !PA && HI === 0` | ❌ Non |
 
-Comme `PA = true`, la condition `!PA` est `false`, donc `absent = false` même si l'employé a 0 heures.
+## Impact
+
+Un employé absent avec `PA = true` en base de données :
+- ✅ Apparaît comme absent côté conducteur (corrigé)
+- ✅ Pas de demande de trajet côté RH (corrigé)
+- ❌ N'apparaît PAS comme absent côté chef (TimeEntryTable)
+
+Cette incohérence affecte **toutes les entreprises** (SDER, Limoge Revillon, Engo Bourgogne) car le code est partagé.
 
 ## Solution
 
-Modifier le calcul pour considérer qu'un employé est **absent** si :
-- `heures === 0` **ET** `HI === 0` (pas d'heures travaillées ni intempéries)
-- **Indépendamment** de PA (panier repas)
+Appliquer la même correction dans `TimeEntryTable.tsx` :
 
-Logique métier : un employé ne peut pas consommer de panier repas s'il n'est pas présent. Les 0h indiquent clairement une absence.
+**Fichier** : `src/components/timesheet/TimeEntryTable.tsx`
 
-## Fichier modifié
+**Ligne 477** (mode chargement des données depuis la base) :
 
-**src/components/validation/FicheDetail.tsx**
-
-### Avant (ligne 308)
-
-```typescript
+```text
+Avant :
 absent: hours === 0 && !PA && HI === 0,
-```
 
-### Après
-
-```typescript
+Après :
 absent: hours === 0 && HI === 0,
 ```
 
-## Résultat attendu
+## Logique métier confirmée
 
-| Employé | Avant | Après |
-|---------|-------|-------|
-| Steven PIN - Lundi | Champs actifs, "0h" affiché | **Fond rouge/grisé, checkbox Absent cochée** |
-| Steven PIN - Mardi | Champs actifs, "0h" affiché | **Fond rouge/grisé, checkbox Absent cochée** |
-| Paul MANUNTA | GD affiché (correct) | Inchangé |
+Un employé est considéré **absent** si :
+- `heures === 0` (aucune heure travaillée)
+- ET `HI === 0` (aucune heure intempérie)
 
-## Impact visuel (TimeEntryTable.tsx existant)
+Le champ `PA` (panier repas) ne doit PAS être un critère car :
+1. Un employé absent ne peut pas consommer de panier
+2. La présence de `PA = true` avec 0h est une donnée incohérente héritée ou erronée
 
-Quand `absent = true`, le composant applique automatiquement :
-- Fond rougeâtre : `bg-destructive/5 border-destructive/20`
-- Checkbox "Absent" cochée
-- Champs de saisie masqués (`{!dayData.absent && ...}`)
+## Vérification complète
 
-## Note
+Après cette correction, la détection d'absence sera cohérente sur :
+- Vue Chef (TimeEntryTable) - saisie initiale
+- Vue Conducteur (FicheDetail) - validation/modification
+- Vue RH (RHEmployeeDetail) - consultation détaillée
 
-Cette modification n'affecte que l'affichage côté conducteur. Si nécessaire, la même correction peut être appliquée dans `TimeEntryTable.tsx` (chargement des données) pour cohérence dans tous les modes.
+## Tests recommandés
+
+1. Connecter en tant que Chef Limoge Revillon
+2. Ouvrir une fiche avec un employé ayant 0h + PA = true
+3. Vérifier que l'employé apparaît bien comme absent (fond grisé/rouge)
+
