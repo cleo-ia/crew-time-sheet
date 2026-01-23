@@ -15,6 +15,7 @@ interface MaconData {
     date: string;
     heures?: number;
     trajet_perso?: boolean;
+    code_trajet?: string | null;
   }>;
 }
 
@@ -70,7 +71,7 @@ export const ConducteurCombobox = ({
     const isDejaAffecte = otherConducteursIds.includes(macon.id);
     const isAbsent = Number(jourData.heures || 0) === 0;
     
-    return { isTrajetPerso: jourData.trajet_perso || false, isDejaAffecte, isAbsent, isNotAffectedToday };
+    return { isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", isDejaAffecte, isAbsent, isNotAffectedToday };
   };
 
   const selectedMacon = macons.find(macon => macon.id === value);
