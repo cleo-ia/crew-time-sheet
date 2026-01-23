@@ -112,7 +112,23 @@ const SignatureMacons = () => {
   }, [macons, selectedMacon]);
 
   const handleSaveSignature = async (signatureData: string) => {
-    if (!selectedMacon || !selectedMacon.ficheId) return;
+    if (!selectedMacon) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Aucun employé sélectionné",
+      });
+      return;
+    }
+    
+    if (!selectedMacon.ficheId) {
+      toast({
+        variant: "destructive",
+        title: "Fiche introuvable",
+        description: "La fiche de pointage n'existe pas pour cet employé. Essayez de rafraîchir la page.",
+      });
+      return;
+    }
 
     try {
       await saveSignature.mutateAsync({
