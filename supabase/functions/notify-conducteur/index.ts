@@ -108,42 +108,43 @@ serve(async (req) => {
         continue;
       }
 
-      // Récupérer TOUS les conducteurs de l'entreprise
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "conducteur")
-        .eq("entreprise_id", chantier.entreprise_id);
-
-      if (rolesError || !rolesData || rolesData.length === 0) {
-        console.error(`[notify-conducteur] ⚠️ Aucun conducteur trouvé pour l'entreprise ${chantier.entreprise_id}:`, rolesError);
+      // Récupérer le conducteur ASSIGNÉ au chantier (via conducteur_id de la vue)
+      if (!lot.conducteur_id) {
+        console.warn(`[notify-conducteur] ⚠️ Aucun conducteur assigné au chantier ${chantier.nom} (ID: ${lot.chantier_id})`);
         results.push({ 
           lot: { chantier_id: lot.chantier_id, semaine: lot.semaine }, 
-          status: "no_conducteurs_found" 
+          status: "no_conducteur_assigned" 
         });
         continue;
       }
 
-      const conducteurIds = rolesData.map(r => r.user_id);
-
-      // Récupérer les infos des conducteurs via utilisateurs
-      const { data: conducteurs, error: conducteursError } = await supabase
+      // Récupérer les infos du conducteur assigné
+      const { data: conducteur, error: conducteurError } = await supabase
         .from("utilisateurs")
         .select("id, email, prenom, nom")
-        .in("auth_user_id", conducteurIds);
+        .eq("id", lot.conducteur_id)
+        .maybeSingle();
 
-      if (conducteursError || !conducteurs || conducteurs.length === 0) {
-        console.error(`[notify-conducteur] ⚠️ Impossible de récupérer les conducteurs:`, conducteursError);
+      if (conducteurError || !conducteur) {
+        console.error(`[notify-conducteur] ⚠️ Conducteur non trouvé pour ID ${lot.conducteur_id}:`, conducteurError);
         results.push({ 
           lot: { chantier_id: lot.chantier_id, semaine: lot.semaine }, 
-          status: "conducteurs_fetch_error" 
+          status: "conducteur_not_found" 
         });
         continue;
       }
 
-      // Filtrer les conducteurs avec email
-      const conducteursWithEmail = conducteurs.filter(c => c.email);
-      console.log(`[notify-conducteur] 👥 ${conducteursWithEmail.length} conducteur(s) avec email trouvé(s) pour l'entreprise`);
+      if (!conducteur.email) {
+        console.warn(`[notify-conducteur] ⚠️ Le conducteur ${conducteur.prenom} ${conducteur.nom} n'a pas d'email`);
+        results.push({ 
+          lot: { chantier_id: lot.chantier_id, semaine: lot.semaine }, 
+          status: "conducteur_no_email",
+          conducteur: `${conducteur.prenom} ${conducteur.nom}`
+        });
+        continue;
+      }
+
+      console.log(`[notify-conducteur] 👤 Conducteur assigné: ${conducteur.prenom} ${conducteur.nom} (${conducteur.email})`);
 
       // Récupérer les infos du chef
       const { data: chef } = await supabase
@@ -154,56 +155,44 @@ serve(async (req) => {
 
       const chefNomComplet = chef ? `${chef.prenom || ''} ${chef.nom || ''}`.trim() : 'Le chef d\'équipe';
 
-      // Envoyer l'email à CHAQUE conducteur
-      const lotEmailResults: any[] = [];
+      // Construire le contenu HTML avec les templates partagés
+      const emailContent = `
+        ${createAlertBox(
+          `<strong>${chefNomComplet}</strong> vient de transmettre <strong>${lot.nb_prets} fiche(s)</strong> pour validation.`,
+          'info'
+        )}
+        ${createChantierCard(chantier.nom, lot.nb_prets)}
+        ${createClosingMessage('Merci de valider ces fiches dès que possible.')}
+      `;
 
-      for (const conducteur of conducteursWithEmail) {
-        // Construire le contenu HTML avec les templates partagés
-        const emailContent = `
-          ${createAlertBox(
-            `<strong>${chefNomComplet}</strong> vient de transmettre <strong>${lot.nb_prets} fiche(s)</strong> pour validation.`,
-            'info'
-          )}
-          ${createChantierCard(chantier.nom, lot.nb_prets)}
-          ${createClosingMessage('Merci de valider ces fiches dès que possible.')}
-        `;
+      const emailHtml = generateEmailHtml(
+        conducteur.prenom || 'Conducteur',
+        emailContent,
+        'https://crew-time-sheet.lovable.app/validation-conducteur',
+        'Valider les fiches',
+        'validation'
+      );
 
-        const emailHtml = generateEmailHtml(
-          conducteur.prenom || 'Conducteur',
-          emailContent,
-          'https://crew-time-sheet.lovable.app/validation-conducteur',
-          'Valider les fiches',
-          'validation'
-        );
+      console.log(`[notify-conducteur] 📧 Envoi email à ${conducteur.email} pour: ${chantier.nom} - ${lot.semaine}`);
 
-        console.log(`[notify-conducteur] 📧 Envoi email à ${conducteur.email} pour: ${chantier.nom} - ${lot.semaine}`);
+      let emailStatus = "sent";
+      try {
+        const emailResponse = await resend.emails.send({
+          from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
+          to: [conducteur.email],
+          subject: `${lot.nb_prets} fiche(s) transmise(s) - ${chantier.nom} (${lot.semaine})`,
+          html: emailHtml,
+        });
 
-        try {
-          const emailResponse = await resend.emails.send({
-            from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
-            to: [conducteur.email],
-            subject: `${lot.nb_prets} fiche(s) transmise(s) - ${chantier.nom} (${lot.semaine})`,
-            html: emailHtml,
-          });
-
-          console.log(`[notify-conducteur] ✅ Email envoyé à ${conducteur.email}:`, emailResponse);
-          totalEmailsSent++;
-          lotEmailResults.push({ 
-            conducteur_email: conducteur.email, 
-            status: "sent" 
-          });
-        } catch (e) {
-          console.error(`[notify-conducteur] ❌ Erreur envoi email à ${conducteur.email}:`, e);
-          totalEmailsFailed++;
-          lotEmailResults.push({ 
-            conducteur_email: conducteur.email, 
-            status: "error", 
-            detail: String(e) 
-          });
-        }
+        console.log(`[notify-conducteur] ✅ Email envoyé à ${conducteur.email}:`, emailResponse);
+        totalEmailsSent++;
+      } catch (e) {
+        console.error(`[notify-conducteur] ❌ Erreur envoi email à ${conducteur.email}:`, e);
+        totalEmailsFailed++;
+        emailStatus = "error";
       }
 
-      // Marquer le lot comme notifié (anti-doublon) - une seule fois pour le lot
+      // Marquer le lot comme notifié (anti-doublon)
       const { error: updErr } = await supabase
         .from("fiches")
         .update({ notification_conducteur_envoyee_at: new Date().toISOString() })
@@ -222,10 +211,10 @@ serve(async (req) => {
           chantier_id: lot.chantier_id, 
           semaine: lot.semaine, 
           chantier_nom: chantier.nom,
-          nb_conducteurs: conducteursWithEmail.length
+          conducteur: `${conducteur.prenom} ${conducteur.nom}`,
+          conducteur_email: conducteur.email
         }, 
-        status: "processed",
-        emails: lotEmailResults
+        status: emailStatus
       });
     }
 
