@@ -14,6 +14,7 @@ const ABSENCE_TYPE_LABELS: Record<string, string> = {
   CPSS: "CPSS",
   ABS_INJ: "ABS INJ",
   ECOLE: "ECO",
+  EF: "EF",
 };
 
 // Schéma de couleurs pastel par groupe de colonnes
@@ -64,6 +65,7 @@ const calculateAbsencesByType = (emp: RHExportEmployee) => {
     CPSS: 0,
     ABS_INJ: 0,
     ECOLE: 0,
+    EF: 0,
   };
 
   const dateRanges: Record<string, string[]> = {};

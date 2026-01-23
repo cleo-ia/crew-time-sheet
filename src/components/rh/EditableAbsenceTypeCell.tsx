@@ -30,6 +30,7 @@ const ABSENCE_TYPES = [
   { value: "CPSS", label: "CPSS" },
   { value: "ABS_INJ", label: "Absence injustifiée (ABS INJ)" },
   { value: "ECOLE", label: "École (ECO)" },
+  { value: "EF", label: "Événement familial (EF)" },
   { value: "CONTRAT_ARRETE", label: "Contrat arrêté" },
   { value: "CONTRAT_NON_DEBUTE", label: "Contrat non débuté" },
 ];
