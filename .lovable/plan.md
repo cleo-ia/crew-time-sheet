@@ -1,90 +1,78 @@
 
-# Plan de correction : Bloquer la sélection conducteur pour "Trajet Perso"
 
-## Contexte
+# Plan de correction : Exclusivité Trajet / Trajet Perso / GD au chargement
 
-Lorsqu'un employé a coché "Trajet Perso" dans le formulaire de saisie des heures, cela signifie qu'il utilise sa propre voiture pour se rendre au chantier. Il est donc illogique de le sélectionner comme conducteur d'un véhicule d'entreprise.
+## Problème identifié
 
-Actuellement, le système enregistre deux informations :
-- `trajet_perso = false` (boolean)
-- `code_trajet = "T_PERSO"` (string)
+La logique d'interaction (quand l'utilisateur coche/décoche) fonctionne correctement. Le problème vient uniquement du **chargement des données** qui ne respecte pas l'exclusivité.
 
-Le composant `ConducteurCombobox` ne vérifie que le boolean `trajet_perso`, ce qui permet de sélectionner des employés qui ont pourtant "T Perso" coché.
+### Code actuel (problématique)
+
+```typescript
+// Lignes 456-458, 567-569, 645-647
+const rawT = j.T;
+const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+// ... puis plus loin :
+trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
+grandDeplacement: (j as any).code_trajet === "GD",
+```
+
+Ce code peut produire `trajet=true` ET `trajetPerso=true` simultanément.
 
 ## Solution
 
-Modifier le composant `ConducteurCombobox` pour vérifier les deux sources d'information :
+Calculer d'abord `trajetPerso` et `grandDeplacement`, puis déduire `trajet` par exclusion.
 
-### Fichier modifie : `src/components/transport/ConducteurCombobox.tsx`
+### Fichier modifié : src/components/timesheet/TimeEntryTable.tsx
 
-**Modification 1** : Ajouter `code_trajet` a l'interface `MaconData.ficheJours`
+**Correction à 3 endroits** (lignes 456-458, 567-569, 645-647)
 
-```text
-Ligne 14-18 : Ajouter code_trajet au type
-ficheJours?: Array<{
-  date: string;
-  heures?: number;
-  trajet_perso?: boolean;
-  code_trajet?: string | null;  // NOUVEAU
-}>;
+```
+AVANT (lignes 456-458):
+// Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
+const rawT = j.T;
+const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+
+APRÈS:
+// Calculer d'abord les options exclusives
+const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
+const isGD = j.code_trajet === "GD";
+// Trajet = true par défaut SAUF si Trajet Perso ou GD est actif (exclusivité)
+const trajet = (isTrajetPerso || isGD) ? false : true;
 ```
 
-**Modification 2** : Mettre a jour la logique de detection dans `getMaconStatus`
+**Même correction aux lignes 567-569 et 645-647.**
 
-```text
-Ligne 73 : Changer la verification
-AVANT:
-return { isTrajetPerso: jourData.trajet_perso || false, ... }
+## Règle d'exclusivité appliquée
 
-APRES:
-return { 
-  isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", 
-  ... 
-}
-```
+| Données en BDD | trajet | trajetPerso | GD |
+|----------------|--------|-------------|-----|
+| code_trajet = "T_PERSO" | false | true | false |
+| code_trajet = "GD" | false | false | true |
+| code_trajet = "A_COMPLETER" ou autre | true | false | false |
 
-## Comportement attendu
+## Comportement attendu après correction
 
-Apres cette modification :
-- Si un employe a `trajet_perso = true` OU `code_trajet = "T_PERSO"` pour un jour donne
-- Il apparait **desactive** dans la liste des conducteurs avec le badge "(Trajet perso)"
-- La selection est **bloquee**
-- Un avertissement visuel s'affiche s'il etait deja selectionne
+1. Saisir "Trajet Perso" pour Philippe ROUX toute la semaine
+2. L'auto-save envoie `trajet_perso=true` et `code_trajet="T_PERSO"`
+3. Actualiser la page
+4. Au chargement : `isTrajetPerso=true` donc `trajet=false`
+5. Résultat : seule la case "Trajet Perso" est cochée
 
-## Flux de verification
+## Détails techniques
 
-```text
-+-------------------------------------------------------------+
-|                    FLUX DE VERIFICATION                     |
-+-------------------------------------------------------------+
-|                                                             |
-|  Donnees fiches_jours                                       |
-|  +-----------------------------------------------------+   |
-|  | trajet_perso: boolean  |  code_trajet: string       |   |
-|  | (ex: false)            |  (ex: "T_PERSO")           |   |
-|  +-----------------------------------------------------+   |
-|                         |                                   |
-|                         v                                   |
-|  +-----------------------------------------------------+   |
-|  |      isTrajetPerso = trajet_perso === true          |   |
-|  |                      OU                              |   |
-|  |                  code_trajet === "T_PERSO"          |   |
-|  +-----------------------------------------------------+   |
-|                         |                                   |
-|                         v                                   |
-|  +-----------------------------------------------------+   |
-|  | Si isTrajetPerso = true :                           |   |
-|  |   -> Employe DESACTIVE dans la liste conducteurs    |   |
-|  |   -> Badge "(Trajet perso)" affiche                 |   |
-|  |   -> Selection bloquee                              |   |
-|  +-----------------------------------------------------+   |
-|                                                             |
-+-------------------------------------------------------------+
-```
+### Emplacements des modifications
 
-## Impact
+| Lignes | Contexte |
+|--------|----------|
+| 456-458 | Chargement finisseursData (mode conducteur) |
+| 567-569 | Chargement macons (mode chef) |
+| 645-647 | Ajout dynamique finisseur |
 
-- Aucun nouveau champ en front-end
-- Aucune modification de la base de donnees
-- Modification mineure d'un seul fichier
-- Compatible avec les donnees existantes
+### Impact
+
+- Aucun nouveau champ
+- Aucune modification de la base de données
+- La logique d'interaction existante reste inchangée
+- Compatible avec les données existantes
+
