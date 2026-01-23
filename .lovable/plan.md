@@ -1,62 +1,94 @@
 
+# Correction : Chef bloqué sur la signature (MAILLARD S04)
 
-# Plan : Harmoniser la détection des absences sur tous les composants
+## Diagnostic
 
-## Problème identifié
+Le chef Sébastien BOUILLET voit 0h au lieu de 39h sur sa fiche MAILLARD S04 et ne peut pas signer car :
 
-La correction de détection d'absence n'a été appliquée que partiellement :
+1. **Code non publié** : Les corrections du 22 janvier 2026 sur `useMaconsByChantier.ts` (ajout du filtre `chantier_id`) ne sont pas en PROD
+2. **L'ancienne version** du code en PROD ne récupère pas correctement la fiche quand un employé travaille sur plusieurs chantiers
+3. **Echec silencieux** : `handleSaveSignature` fait un `return` sans message quand `ficheId` est undefined
 
-| Composant | Usage | Logique actuelle | Corrigé ? |
-|-----------|-------|------------------|-----------|
-| `FicheDetail.tsx` | Vue conducteur "Modifier les données" | `hours === 0 && HI === 0` | ✅ Oui |
-| `RHEmployeeDetail.tsx` | Vue RH détail employé | `heuresNormales === 0` | ✅ Oui |
-| `TimeEntryTable.tsx` | Vue chef saisie heures | `hours === 0 && !PA && HI === 0` | ❌ Non |
+## Données en base (correctes)
+
+| Chantier | Fiche ID | Heures | Jours |
+|----------|----------|--------|-------|
+| MAILLARD | d8e60721-3786-4ebf-af4c-b9a5fafeeb47 | 39h | 5 |
+| DAVOULT | d78983ad-bbb1-4c0e-8dec-ac729b81b2e7 | 39h | 5 |
+
+Les données existent et sont correctes. Le problème est purement côté code frontend en production.
+
+## Solution en 2 parties
+
+### Partie 1 : Publication immediate (resout le probleme)
+
+Publier le code pour que le chef ait acces aux corrections du hook `useMaconsByChantier`.
+
+Le code actuel contient deja les bons filtres (ligne 93):
+```typescript
+const { data: fichChef } = await supabase
+  .from("fiches")
+  .select("id, total_heures")
+  .eq("salarie_id", chef.id)
+  .eq("chantier_id", chantierId)  // Ce filtre manquait en PROD
+  .eq("semaine", semaine)
+  .maybeSingle();
+```
+
+### Partie 2 : Feedback utilisateur (robustesse)
+
+Modifier `src/pages/SignatureMacons.tsx` pour afficher des messages d'erreur explicites au lieu d'echouer silencieusement.
+
+**Modification dans `handleSaveSignature` (lignes 114-137):**
+
+```typescript
+const handleSaveSignature = async (signatureData: string) => {
+  // Ajouter un feedback si aucun employe selectionne
+  if (!selectedMacon) {
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: "Aucun employe selectionne",
+    });
+    return;
+  }
+  
+  // Ajouter un feedback si pas de fiche
+  if (!selectedMacon.ficheId) {
+    toast({
+      variant: "destructive", 
+      title: "Fiche introuvable",
+      description: "La fiche de pointage n'existe pas pour cet employe. Essayez de rafraichir la page.",
+    });
+    return;
+  }
+
+  try {
+    await saveSignature.mutateAsync({
+      ficheId: selectedMacon.ficheId,
+      userId: selectedMacon.id,
+      role: selectedMacon.isChef ? "chef" : undefined,
+      signatureData,
+    });
+    // ... reste du code inchange
+```
+
+## Fichiers a modifier
+
+| Fichier | Modification |
+|---------|--------------|
+| `src/pages/SignatureMacons.tsx` | Ajouter toasts d'erreur explicites dans `handleSaveSignature` |
 
 ## Impact
 
-Un employé absent avec `PA = true` en base de données :
-- ✅ Apparaît comme absent côté conducteur (corrigé)
-- ✅ Pas de demande de trajet côté RH (corrigé)
-- ❌ N'apparaît PAS comme absent côté chef (TimeEntryTable)
+- **Resolution immediate** : La publication deploie les corrections existantes
+- **Meilleur feedback** : Les erreurs futures seront visibles au lieu d'etre silencieuses
+- **Aucune regression** : Les utilisateurs avec une seule fiche ne sont pas impactes
 
-Cette incohérence affecte **toutes les entreprises** (SDER, Limoge Revillon, Engo Bourgogne) car le code est partagé.
+## Instructions pour le chef
 
-## Solution
-
-Appliquer la même correction dans `TimeEntryTable.tsx` :
-
-**Fichier** : `src/components/timesheet/TimeEntryTable.tsx`
-
-**Ligne 477** (mode chargement des données depuis la base) :
-
-```text
-Avant :
-absent: hours === 0 && !PA && HI === 0,
-
-Après :
-absent: hours === 0 && HI === 0,
-```
-
-## Logique métier confirmée
-
-Un employé est considéré **absent** si :
-- `heures === 0` (aucune heure travaillée)
-- ET `HI === 0` (aucune heure intempérie)
-
-Le champ `PA` (panier repas) ne doit PAS être un critère car :
-1. Un employé absent ne peut pas consommer de panier
-2. La présence de `PA = true` avec 0h est une donnée incohérente héritée ou erronée
-
-## Vérification complète
-
-Après cette correction, la détection d'absence sera cohérente sur :
-- Vue Chef (TimeEntryTable) - saisie initiale
-- Vue Conducteur (FicheDetail) - validation/modification
-- Vue RH (RHEmployeeDetail) - consultation détaillée
-
-## Tests recommandés
-
-1. Connecter en tant que Chef Limoge Revillon
-2. Ouvrir une fiche avec un employé ayant 0h + PA = true
-3. Vérifier que l'employé apparaît bien comme absent (fond grisé/rouge)
-
+Apres la publication, demander au chef Sebastien BOUILLET de :
+1. Rafraichir completement la page (Ctrl+Shift+R ou vider le cache)
+2. Retourner sur la page de signature pour MAILLARD S04
+3. Ses heures (39h, 5 paniers, 5 trajets) devraient maintenant s'afficher
+4. La signature et validation fonctionneront normalement
