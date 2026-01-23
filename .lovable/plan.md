@@ -1,78 +1,78 @@
 
 
-# Plan de correction : Exclusivité Trajet / Trajet Perso / GD au chargement
+# Plan : Afficher le nombre de cartes chantier au lieu du nombre de fiches
 
-## Problème identifié
+## Contexte
 
-La logique d'interaction (quand l'utilisateur coche/décoche) fonctionne correctement. Le problème vient uniquement du **chargement des données** qui ne respecte pas l'exclusivité.
+Actuellement, le badge sur l'onglet "Validation des fiches" affiche **3** car il compte les 3 fiches individuelles (3 employés). L'utilisateur veut qu'il affiche **1** car il n'y a qu'une seule carte chantier "LES ARCS" qui regroupe ces 3 fiches.
 
-### Code actuel (problématique)
+## Logique actuelle vs souhaitée
 
-```typescript
-// Lignes 456-458, 567-569, 645-647
-const rawT = j.T;
-const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
-// ... puis plus loin :
-trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
-grandDeplacement: (j as any).code_trajet === "GD",
-```
-
-Ce code peut produire `trajet=true` ET `trajetPerso=true` simultanément.
+| Situation | Logique actuelle | Logique souhaitée |
+|-----------|------------------|-------------------|
+| 1 chantier, 3 employés | Badge = 3 | Badge = 1 |
+| 2 chantiers, 5 employés | Badge = 5 | Badge = 2 |
 
 ## Solution
 
-Calculer d'abord `trajetPerso` et `grandDeplacement`, puis déduire `trajet` par exclusion.
+Modifier le hook `useFichesEnAttentePourConducteur` pour compter le nombre de **combinaisons uniques chantier+semaine** au lieu du nombre de fiches individuelles.
 
-### Fichier modifié : src/components/timesheet/TimeEntryTable.tsx
+## Fichier modifié
 
-**Correction à 3 endroits** (lignes 456-458, 567-569, 645-647)
+**src/hooks/useFichesEnAttentePourConducteur.ts**
 
-```
-AVANT (lignes 456-458):
-// Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
-const rawT = j.T;
-const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+### Avant (lignes 13-25)
 
-APRÈS:
-// Calculer d'abord les options exclusives
-const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
-const isGD = j.code_trajet === "GD";
-// Trajet = true par défaut SAUF si Trajet Perso ou GD est actif (exclusivité)
-const trajet = (isTrajetPerso || isGD) ? false : true;
+```typescript
+const { count, error } = await supabase
+  .from("fiches")
+  .select(`...`, { count: 'exact', head: true })
+  .eq("statut", "VALIDE_CHEF")
+  ...
+return count || 0;
 ```
 
-**Même correction aux lignes 567-569 et 645-647.**
+### Après
 
-## Règle d'exclusivité appliquée
+```typescript
+// Récupérer les combinaisons chantier_id+semaine distinctes
+const { data, error } = await supabase
+  .from("fiches")
+  .select(`
+    chantier_id,
+    semaine,
+    chantiers!inner (
+      id,
+      conducteur_id,
+      entreprise_id
+    )
+  `)
+  .eq("statut", "VALIDE_CHEF")
+  .eq("chantiers.conducteur_id", conducteurId)
+  .eq("chantiers.entreprise_id", entrepriseId);
 
-| Données en BDD | trajet | trajetPerso | GD |
-|----------------|--------|-------------|-----|
-| code_trajet = "T_PERSO" | false | true | false |
-| code_trajet = "GD" | false | false | true |
-| code_trajet = "A_COMPLETER" ou autre | true | false | false |
+if (error || !data) return 0;
 
-## Comportement attendu après correction
+// Compter les combinaisons UNIQUES chantier+semaine
+const uniquePairs = new Set(
+  data.map(f => `${f.chantier_id}|${f.semaine}`)
+);
 
-1. Saisir "Trajet Perso" pour Philippe ROUX toute la semaine
-2. L'auto-save envoie `trajet_perso=true` et `code_trajet="T_PERSO"`
-3. Actualiser la page
-4. Au chargement : `isTrajetPerso=true` donc `trajet=false`
-5. Résultat : seule la case "Trajet Perso" est cochée
+return uniquePairs.size;
+```
 
-## Détails techniques
+## Comportement après correction
 
-### Emplacements des modifications
+| Données | Résultat badge |
+|---------|----------------|
+| LES ARCS S05 (3 employés) | **1** |
+| LES ARCS S05 + AUTRE S05 | **2** |
+| LES ARCS S04 + LES ARCS S05 | **2** |
 
-| Lignes | Contexte |
-|--------|----------|
-| 456-458 | Chargement finisseursData (mode conducteur) |
-| 567-569 | Chargement macons (mode chef) |
-| 645-647 | Ajout dynamique finisseur |
+## Impact
 
-### Impact
-
-- Aucun nouveau champ
+- Aucune modification de l'interface utilisateur
 - Aucune modification de la base de données
-- La logique d'interaction existante reste inchangée
-- Compatible avec les données existantes
+- La liste des cartes reste inchangée
+- Seul le comptage du badge est corrigé
 
