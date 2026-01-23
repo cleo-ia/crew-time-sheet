@@ -29,38 +29,20 @@ Deno.serve(async (req) => {
 
     const deleted: Record<string, number> = {};
 
-    // 1. Récupérer les fiches avec chantier_id (maçons, grutiers, etc.)
+    // ✅ CORRECTION: Récupérer toutes les fiches de l'entreprise pour ces semaines
+    // Toutes les fiches ont maintenant un chantier_id obligatoire
     const { data: fichesChantier, error: fichesChantierError } = await supabase
       .from("fiches")
-      .select("id, chantier_id, chantiers!inner(entreprise_id)")
-      .eq("chantiers.entreprise_id", entreprise_id)
+      .select("id, chantier_id")
+      .eq("entreprise_id", entreprise_id)
       .in("semaine", semaines);
 
     if (fichesChantierError) {
-      console.error("Erreur récupération fiches chantier:", fichesChantierError);
+      console.error("Erreur récupération fiches:", fichesChantierError);
     }
 
-    const fichesChantierIds = fichesChantier?.map((f) => f.id) || [];
-    console.log(`${fichesChantierIds.length} fiches chantier à supprimer`);
-
-    // 2. Récupérer les fiches finisseurs (sans chantier_id, liées via salarie_id)
-    const { data: fichesFinisseur, error: fichesFinisseurError } = await supabase
-      .from("fiches")
-      .select("id, salarie_id, utilisateurs!fiches_salarie_id_fkey(entreprise_id)")
-      .is("chantier_id", null)
-      .not("salarie_id", "is", null)
-      .eq("utilisateurs.entreprise_id", entreprise_id)
-      .in("semaine", semaines);
-
-    if (fichesFinisseurError) {
-      console.error("Erreur récupération fiches finisseur:", fichesFinisseurError);
-    }
-
-    const fichesFinisseurIds = fichesFinisseur?.map((f) => f.id) || [];
-    console.log(`${fichesFinisseurIds.length} fiches finisseur à supprimer`);
-
-    // Combiner tous les IDs de fiches
-    const allFicheIds = [...fichesChantierIds, ...fichesFinisseurIds];
+    // Plus besoin de récupérer les "fiches finisseur" séparément car toutes ont un chantier_id
+    const allFicheIds = fichesChantier?.map((f) => f.id) || [];
     console.log(`Total: ${allFicheIds.length} fiches à supprimer`);
 
     if (allFicheIds.length === 0) {
@@ -139,8 +121,7 @@ Deno.serve(async (req) => {
       .in("id", allFicheIds);
     if (fError) console.error("Erreur fiches:", fError);
 
-    deleted.fiches_chantier = fichesChantierIds.length;
-    deleted.fiches_finisseur = fichesFinisseurIds.length;
+    // ✅ Plus de distinction chantier/finisseur - toutes les fiches ont un chantier_id
     deleted.fiches_total = allFicheIds.length;
 
     // 10. Supprimer affectations_jours_chef

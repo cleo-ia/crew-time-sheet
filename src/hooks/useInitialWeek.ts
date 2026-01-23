@@ -62,13 +62,27 @@ export const useInitialWeek = (
         return hasAnyBrouillon ? weekToCheck : getNextWeek(weekToCheck);
       }
 
-      // Cas conducteur: prendre les fiches finisseurs qu'il a créées (chantier_id IS NULL)
+      // Cas conducteur: récupérer les fiches via les affectations (plus de chantier_id IS NULL)
+      // ✅ CORRECTION: Récupérer les affectations pour identifier les chantiers du conducteur
+      const { data: affectations } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id, chantier_id")
+        .eq("conducteur_id", userId)
+        .eq("semaine", weekToCheck);
+
+      if (!affectations || affectations.length === 0) {
+        return weekToCheck;
+      }
+
+      const finisseurIds = [...new Set(affectations.map(a => a.finisseur_id))];
+      const chantierIds = [...new Set(affectations.map(a => a.chantier_id).filter(Boolean))];
+
       const { data: fichesByUser, error: errUser } = await supabase
         .from("fiches")
         .select("statut, salarie_id")
         .eq("semaine", weekToCheck)
-        .eq("user_id", userId)
-        .is("chantier_id", null);
+        .in("salarie_id", finisseurIds)
+        .in("chantier_id", chantierIds);
 
       if (errUser) {
         console.error("Erreur lors de la vérification des fiches (conducteur):", errUser);

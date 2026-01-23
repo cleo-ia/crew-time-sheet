@@ -116,7 +116,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
 
       const finisseurIds = Array.from(finisseursSemaines.keys());
 
-      // Récupérer toutes les fiches ENVOYE_RH ou AUTO_VALIDE pour ces finisseurs
+      // ✅ CORRECTION : Récupérer toutes les fiches ENVOYE_RH ou AUTO_VALIDE pour ces finisseurs
+      // Règle métier : chaque fiche a obligatoirement un chantier_id
       const { data: fiches, error: fichesError } = await supabase
         .from("fiches")
         .select(`
@@ -125,11 +126,11 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
           statut,
           updated_at,
           salarie_id,
+          chantier_id,
           utilisateurs!fiches_salarie_id_fkey(id, nom, prenom)
         `)
         .in("salarie_id", finisseurIds)
         .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
-        .is("chantier_id", null)
         .order("semaine", { ascending: false });
 
       if (fichesError) throw fichesError;

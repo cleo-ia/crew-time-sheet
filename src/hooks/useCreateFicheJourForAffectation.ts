@@ -6,22 +6,28 @@ interface CreateFicheJourParams {
   conducteurId: string;
   date: string;
   semaine: string;
+  chantierId: string; // ✅ Maintenant obligatoire
 }
 
 export const useCreateFicheJourForAffectation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ finisseurId, conducteurId, date, semaine }: CreateFicheJourParams) => {
-      console.log(`[useCreateFicheJourForAffectation] Creating fiche_jour for ${finisseurId} on ${date}`);
+    mutationFn: async ({ finisseurId, conducteurId, date, semaine, chantierId }: CreateFicheJourParams) => {
+      console.log(`[useCreateFicheJourForAffectation] Creating fiche_jour for ${finisseurId} on ${date} (chantier: ${chantierId})`);
 
-      // 1. Vérifier/créer la fiche
+      // ✅ CORRECTION: chantier_id est maintenant obligatoire
+      if (!chantierId) {
+        throw new Error("chantierId est obligatoire pour créer une fiche");
+      }
+
+      // 1. Vérifier/créer la fiche avec chantier_id
       const { data: existingFiche } = await supabase
         .from("fiches")
         .select("id")
         .eq("semaine", semaine)
         .eq("salarie_id", finisseurId)
-        .is("chantier_id", null)
+        .eq("chantier_id", chantierId)
         .maybeSingle();
 
       let ficheId: string;
@@ -36,7 +42,7 @@ export const useCreateFicheJourForAffectation = () => {
             semaine,
             user_id: conducteurId,
             salarie_id: finisseurId,
-            chantier_id: null,
+            chantier_id: chantierId, // ✅ chantier_id obligatoire
             statut: "BROUILLON",
           } as any)
           .select("id")

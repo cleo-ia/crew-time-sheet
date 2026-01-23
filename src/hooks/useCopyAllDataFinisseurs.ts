@@ -68,13 +68,25 @@ export const useCopyAllDataFinisseurs = () => {
         }
         console.log(`✅ ${newAffectations.length} affectations copiées`);
 
-        // B) Récupérer la fiche S
+        // B) Récupérer le premier chantier_id depuis les affectations pour ce finisseur
+        const finisseurChantierIds = [...new Set(
+          finisseurAffectations.map(a => a.chantier_id).filter(Boolean)
+        )];
+        
+        if (finisseurChantierIds.length === 0) {
+          console.log("⚠️ Pas de chantier trouvé dans les affectations, skip");
+          continue;
+        }
+        
+        const primaryChantierId = finisseurChantierIds[0];
+
+        // Récupérer la fiche S avec chantier_id (plus de IS NULL)
         const { data: ficheS } = await supabase
           .from("fiches")
           .select("id")
           .eq("salarie_id", finisseurId)
           .eq("semaine", currentWeek)
-          .is("chantier_id", null)
+          .in("chantier_id", finisseurChantierIds)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -84,13 +96,13 @@ export const useCopyAllDataFinisseurs = () => {
           continue;
         }
 
-        // C) Créer ou récupérer la fiche S+1
+        // C) Créer ou récupérer la fiche S+1 (avec chantier_id maintenant)
         const { data: ficheS1Existing } = await supabase
           .from("fiches")
           .select("id")
           .eq("salarie_id", finisseurId)
           .eq("semaine", nextWeek)
-          .is("chantier_id", null)
+          .eq("chantier_id", primaryChantierId)
           .maybeSingle();
 
         let ficheS1Id: string;
@@ -106,7 +118,7 @@ export const useCopyAllDataFinisseurs = () => {
               semaine: nextWeek,
               user_id: conducteurId,
               salarie_id: finisseurId,
-              chantier_id: null,
+              chantier_id: primaryChantierId, // ✅ chantier_id obligatoire maintenant
               statut: "BROUILLON",
             } as any)
             .select("id")
@@ -119,6 +131,7 @@ export const useCopyAllDataFinisseurs = () => {
           ficheS1Id = newFiche.id;
           console.log("✨ Fiche S+1 créée:", ficheS1Id);
         }
+
 
         // D) Copier les fiches_jours (avec TOUS les champs)
         const { data: joursS } = await supabase

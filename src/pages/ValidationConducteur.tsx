@@ -383,14 +383,26 @@ const ValidationConducteur = () => {
     const errors: string[] = [];
     
     for (const finisseur of finisseurs) {
-      // ✅ CORRECTION: Charger les fiches_jours FRAÎCHES directement depuis la base
-      // pour garantir que les données sont à jour (trajet_perso, absences)
+      // ✅ CORRECTION: Récupérer les chantier_ids depuis les affectations de ce finisseur
+      const finisseurAffectations = affectationsJours?.filter(
+        aff => aff.finisseur_id === finisseur.id
+      ) || [];
+      
+      // Regrouper par chantier pour chercher les fiches
+      const chantierIds = [...new Set(finisseurAffectations.map(a => a.chantier_id).filter(Boolean))];
+      
+      if (chantierIds.length === 0) {
+        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune affectation trouvée pour ${selectedWeek}`);
+        continue;
+      }
+
+      // Charger la fiche pour le premier chantier affecté (la fiche est par chantier maintenant)
       const { data: ficheWeek } = await supabase
         .from("fiches")
         .select("id")
         .eq("salarie_id", finisseur.id)
         .eq("semaine", selectedWeek)
-        .is("chantier_id", null)
+        .in("chantier_id", chantierIds)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();

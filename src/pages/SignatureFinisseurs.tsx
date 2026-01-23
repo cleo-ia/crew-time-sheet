@@ -205,12 +205,19 @@ const SignatureFinisseurs = () => {
       // 1. Sauvegarder la signature du conducteur pour TOUTES les fiches des finisseurs
       if (conducteurSignature) {
         for (const finisseur of finisseurs) {
+          // ✅ CORRECTION: Récupérer les chantier_ids depuis les affectations
+          const finisseurAffectations = finisseur.affectedDays || [];
+          const chantierIds = [...new Set(finisseurAffectations.map(a => a.chantier_id).filter(Boolean))];
+          
+          if (chantierIds.length === 0) continue;
+          
+          // Chercher la fiche par chantier (toutes les fiches ont un chantier_id maintenant)
           const { data: ficheFinisseur } = await supabase
             .from("fiches")
             .select("id")
             .eq("semaine", semaine)
             .eq("salarie_id", finisseur.id)
-            .is("chantier_id", null)
+            .in("chantier_id", chantierIds)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -230,17 +237,26 @@ const SignatureFinisseurs = () => {
       const finisseurIds = finisseurs.map(f => f.id);
 
       if (finisseurIds.length > 0) {
-        // 2a. Fiches "finisseurs purs" (sans chantier)
-        const { error: updateError } = await supabase
-          .from("fiches")
-          .update({ statut: "ENVOYE_RH" })
-          .eq("semaine", semaine)
-          .in("salarie_id", finisseurIds)
-          .is("chantier_id", null);
+        // Récupérer tous les chantier_ids uniques des affectations de cette semaine
+        const allChantierIds = [...new Set(
+          finisseurs.flatMap(f => 
+            (f.affectedDays || []).map(a => a.chantier_id).filter(Boolean)
+          )
+        )];
+        
+        if (allChantierIds.length > 0) {
+          // 2a. Mettre à jour les fiches avec chantier (règle métier: toutes les fiches ont un chantier)
+          const { error: updateError } = await supabase
+            .from("fiches")
+            .update({ statut: "ENVOYE_RH" })
+            .eq("semaine", semaine)
+            .in("salarie_id", finisseurIds)
+            .in("chantier_id", allChantierIds);
 
-        if (updateError) {
-          console.error("Erreur mise à jour statut finisseurs purs:", updateError);
-          throw updateError;
+          if (updateError) {
+            console.error("Erreur mise à jour statut fiches:", updateError);
+            throw updateError;
+          }
         }
 
         // 2b. Fiches d'équipes sur chantiers SANS CHEF gérées par ce conducteur
@@ -251,14 +267,14 @@ const SignatureFinisseurs = () => {
           .is("chef_id", null);
 
         if (chantiersWithoutChef && chantiersWithoutChef.length > 0) {
-          const chantierIds = chantiersWithoutChef.map(c => c.id);
+          const chantierIdsSansChef = chantiersWithoutChef.map(c => c.id);
           
           const { error: updateCheflessError } = await supabase
             .from("fiches")
             .update({ statut: "ENVOYE_RH" })
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
-            .in("chantier_id", chantierIds);
+            .in("chantier_id", chantierIdsSansChef);
 
           if (updateCheflessError) {
             console.error("Erreur mise à jour statut équipes sans chef:", updateCheflessError);
@@ -267,31 +283,39 @@ const SignatureFinisseurs = () => {
         }
 
         // 3. Injecter automatiquement les congés validés pour ces fiches
-        // Récupérer toutes les fiches transmises (sans chantier OU chantiers sans chef)
+        // Récupérer toutes les fiches transmises (fiches avec chantier des affectations)
         let fichesTransmises: { id: string; salarie_id: string; semaine: string }[] = [];
         
-        const { data: fichesSansChantier } = await supabase
-          .from("fiches")
-          .select("id, salarie_id, semaine")
-          .eq("semaine", semaine)
-          .in("salarie_id", finisseurIds)
-          .is("chantier_id", null);
+        if (allChantierIds.length > 0) {
+          const { data: fichesAvecChantier } = await supabase
+            .from("fiches")
+            .select("id, salarie_id, semaine")
+            .eq("semaine", semaine)
+            .in("salarie_id", finisseurIds)
+            .in("chantier_id", allChantierIds);
 
-        if (fichesSansChantier) {
-          fichesTransmises = [...fichesTransmises, ...fichesSansChantier];
+          if (fichesAvecChantier) {
+            fichesTransmises = [...fichesTransmises, ...fichesAvecChantier];
+          }
         }
 
         if (chantiersWithoutChef && chantiersWithoutChef.length > 0) {
-          const chantierIds = chantiersWithoutChef.map(c => c.id);
+          const chantierIdsSansChef = chantiersWithoutChef.map(c => c.id);
           const { data: fichesChantiersSansChef } = await supabase
             .from("fiches")
             .select("id, salarie_id, semaine")
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
-            .in("chantier_id", chantierIds);
+            .in("chantier_id", chantierIdsSansChef);
 
           if (fichesChantiersSansChef) {
-            fichesTransmises = [...fichesTransmises, ...fichesChantiersSansChef];
+            // Dédupliquer les fiches (éviter doublons si une fiche est déjà dans fichesTransmises)
+            const existingIds = new Set(fichesTransmises.map(f => f.id));
+            fichesChantiersSansChef.forEach(f => {
+              if (!existingIds.has(f.id)) {
+                fichesTransmises.push(f);
+              }
+            });
           }
         }
 

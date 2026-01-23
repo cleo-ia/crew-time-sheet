@@ -402,12 +402,13 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       semaine,
     });
 
-    // Créer le fiche_jour correspondant
+    // Créer le fiche_jour correspondant avec le chantier_id
     await createFicheJourMutation.mutateAsync({
       finisseurId,
       conducteurId,
       date,
       semaine,
+      chantierId, // ✅ Maintenant obligatoire
     });
 
     // Retirer des pending si c'était la première affectation
