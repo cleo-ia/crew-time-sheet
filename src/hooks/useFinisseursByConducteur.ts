@@ -88,18 +88,19 @@ export const useFinisseursByConducteur = (
 
       // 5. Pour chaque finisseur, récupérer sa fiche SI elle existe
       for (const finisseur of finisseurs) {
-        // Chercher la fiche par salarie_id + semaine (sans filtre chantier_id)
-        // Permet d'afficher les finisseurs sur chantiers avec ou sans chef
-        const query = supabase
+        // Chercher la fiche par salarie_id + semaine
+        // PRIORITÉ : Prioriser les fiches AVEC chantier_id (créées par sync-planning)
+        // pour éviter d'utiliser les fiches orphelines sans chantier
+        const { data: fichesEmploye } = await supabase
           .from("fiches")
           .select("id, total_heures, chantier_id")
           .eq("semaine", semaine)
-          .eq("salarie_id", finisseur.id);
+          .eq("salarie_id", finisseur.id)
+          .order("chantier_id", { ascending: false, nullsFirst: false }) // Chantier non-null en premier
+          .order("created_at", { ascending: false });
 
-        const { data: fiche } = await query
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // Utiliser la première fiche (avec chantier si elle existe)
+        const fiche = fichesEmploye?.[0] || null;
 
         if (fiche) {
           // Fiche existante : charger les données

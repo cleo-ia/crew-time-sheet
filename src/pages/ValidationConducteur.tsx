@@ -338,13 +338,32 @@ const ValidationConducteur = () => {
     if (employeesData.length === 0) return;
 
     try {
-      await saveFiche.mutateAsync({
-        semaine: selectedWeek,
-        chantierId: null,
-        employeesData,
-        statut: "BROUILLON",
-        userId: effectiveConducteurId,
-      });
+      // Grouper les employés par chantier pour utiliser les fiches existantes (créées par sync)
+      const employeesByChantier = new Map<string | null, EmployeeData[]>();
+
+      for (const entry of employeesData) {
+        // Récupérer le chantier_id depuis les affectations de cet employé
+        const employeeAffectations = affectationsJours?.filter(
+          aff => aff.finisseur_id === entry.employeeId
+        );
+        const chantierId = employeeAffectations?.[0]?.chantier_id || null;
+        
+        if (!employeesByChantier.has(chantierId)) {
+          employeesByChantier.set(chantierId, []);
+        }
+        employeesByChantier.get(chantierId)!.push(entry);
+      }
+
+      // Sauvegarder par groupe de chantier pour éviter les doublons
+      for (const [chantierId, employees] of employeesByChantier) {
+        await saveFiche.mutateAsync({
+          semaine: selectedWeek,
+          chantierId,  // ✅ Chantier correct depuis affectations
+          employeesData: employees,
+          statut: "BROUILLON",
+          userId: effectiveConducteurId,
+        });
+      }
 
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       await new Promise(resolve => setTimeout(resolve, 200));

@@ -655,6 +655,10 @@ async function createNewAffectation(
   }
 
   // Créer les fiches_jours avec les heures spécifiques à chaque jour
+  // + Initialiser code_trajet et code_chantier_du_jour dès la création
+  const chantierCode = chantier?.code_chantier || null
+  const chantierVille = chantier?.ville || null
+  
   for (const jour of joursPlanning) {
     const heuresJour = getHeuresForDay(jour)
     const { error: jourError } = await supabase
@@ -668,7 +672,12 @@ async function createNewAffectation(
         HI: 0,
         T: 1,
         PA: true,
-        pause_minutes: 0
+        pause_minutes: 0,
+        // ✅ Initialiser les champs pour le RH consolidé
+        code_trajet: "A_COMPLETER",
+        code_chantier_du_jour: chantierCode,
+        ville_du_jour: chantierVille,
+        repas_type: "PANIER"
       }, { onConflict: 'fiche_id,date' })
     
     if (jourError) {
