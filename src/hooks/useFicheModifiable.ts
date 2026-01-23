@@ -30,6 +30,7 @@ export const useFicheModifiable = (
       }
 
       // 2. Vérifier le statut des fiches existantes
+      // ✅ CORRECTION : chantier_id est maintenant obligatoire
       let query = supabase
         .from("fiches")
         .select("statut")
@@ -38,9 +39,8 @@ export const useFicheModifiable = (
 
       if (chantierId) {
         query = query.eq("chantier_id", chantierId);
-      } else {
-        query = query.is("chantier_id", null);
       }
+      // Plus de filtre chantier_id IS NULL - toutes les fiches ont un chantier
 
       const { data: fiches } = await query;
 

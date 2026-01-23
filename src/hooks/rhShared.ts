@@ -193,7 +193,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   console.log(`[RH Consolidation] Période: ${mois}, Entreprise: ${entrepriseId}, Filtres:`, filters);
 
-  // Récupérer toutes les fiches validées (filtrées par entreprise via chantiers)
+  // ✅ CORRECTION : Une seule requête - toutes les fiches de l'entreprise avec le bon statut
+  // Règle métier : chaque fiche a obligatoirement un chantier_id (plus de filtre chantier_id IS NULL)
   let fichesQuery = supabase
     .from("fiches")
     .select(`
@@ -202,6 +203,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       statut,
       salarie_id,
       chantier_id,
+      entreprise_id,
       absences_export_override,
       trajets_export_override,
       acomptes,
@@ -225,9 +227,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
       : ["ENVOYE_RH", "AUTO_VALIDE"]);
   
-  // Filtre par entreprise via chantiers
+  // Filtre par entreprise (obligatoire pour isolation multi-tenant)
   if (entrepriseId) {
-    fichesQuery = fichesQuery.eq("chantiers.entreprise_id", entrepriseId);
+    fichesQuery = fichesQuery.eq("entreprise_id", entrepriseId);
   }
 
   // Filtre par chantier
@@ -248,44 +250,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const { data: fichesAvecChantier, error: ficheError } = await fichesQuery;
   if (ficheError) throw ficheError;
 
-  // Récupérer les fiches des finisseurs (sans chantier)
-  // ✅ CRITIQUE: Filtrer par entreprise_id pour éviter la fuite de données multi-tenant
-  let finisseursQuery = supabase
-    .from("fiches")
-    .select(`
-      id,
-      semaine,
-      statut,
-      salarie_id,
-      chantier_id,
-      entreprise_id,
-      absences_export_override,
-      trajets_export_override,
-      acomptes,
-      prets,
-      commentaire_rh,
-      notes_paie,
-      total_saisie,
-      saisie_du_mois,
-      commentaire_saisie,
-      regularisation_m1_export,
-      autres_elements_export
-    `)
-    .in("statut", filters.includeCloture 
-      ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
-      : ["ENVOYE_RH", "AUTO_VALIDE"])
-    .is("chantier_id", null);
-
-  // ✅ Filtre entreprise_id obligatoire pour les fiches finisseurs
-  if (entrepriseId) {
-    finisseursQuery = finisseursQuery.eq("entreprise_id", entrepriseId);
-  }
-
-  const { data: fichesFinisseurs, error: finisseursError } = await finisseursQuery;
-  if (finisseursError) throw finisseursError;
-
-  // Combiner toutes les fiches et filtrer par mois (ou toutes si période = "all")
-  const toutesLesFiches = [...(fichesAvecChantier || []), ...(fichesFinisseurs || [])];
+  // ✅ Plus de fichesFinisseurs - toutes les fiches ont un chantier_id
+  const toutesLesFiches = fichesAvecChantier || [];
   const fichesDuMois = toutesLesFiches.filter(fiche => {
     if (!fiche.semaine) return false;
     try {
@@ -483,8 +449,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           }
         }
 
-        // Pour les finisseurs AUTONOMES (sans chantier_id), vérifier qu'ils sont affectés ce jour-là
-        if (isFinisseur && !(fiche as any).chantier_id) {
+        // ✅ CORRECTION : Pour les finisseurs, vérifier l'affectation par leurs dates planifiées
+        // (toutes les fiches ont maintenant un chantier_id obligatoire)
+        if (isFinisseur) {
           const datesAffectees = affectationsMap.get(salarieId);
           if (datesAffectees && datesAffectees.size > 0) {
             if (!datesAffectees.has(jour.date)) {

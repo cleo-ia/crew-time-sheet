@@ -7,6 +7,8 @@ export const useFicheId = (semaine: string, chefId: string, chantierId?: string 
     queryFn: async (): Promise<string | null> => {
       if (!semaine || !chefId) return null;
 
+      // ✅ CORRECTION : chantier_id est maintenant obligatoire
+      // Si pas de chantierId fourni, on cherche toutes les fiches de l'utilisateur pour cette semaine
       let query = supabase
         .from("fiches")
         .select("id, created_at")
@@ -15,9 +17,8 @@ export const useFicheId = (semaine: string, chefId: string, chantierId?: string 
 
       if (chantierId) {
         query = query.eq("chantier_id", chantierId);
-      } else {
-        query = query.is("chantier_id", null);
       }
+      // Plus de filtre chantier_id IS NULL - toutes les fiches ont un chantier
 
       const { data, error } = await query
         .order("created_at", { ascending: false })

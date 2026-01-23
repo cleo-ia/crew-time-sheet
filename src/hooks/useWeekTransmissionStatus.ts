@@ -34,13 +34,32 @@ export const useWeekTransmissionStatus = (
       if (finisseurIds.length === 0) return { isTransmitted: false, fichesCount: 0 };
 
       // 2. Récupérer les fiches de ces finisseurs pour cette semaine
-      // Les fiches des finisseurs ont chantier_id = null
+      // ✅ CORRECTION: Récupérer les chantiers des affectations et chercher les fiches avec chantier
+      const { data: affectationsWithChantier, error: affChError } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id, chantier_id")
+        .eq("conducteur_id", conducteurId)
+        .eq("semaine", semaine);
+
+      if (affChError) {
+        console.error("Erreur récupération affectations chantier:", affChError);
+        return { isTransmitted: false, fichesCount: 0 };
+      }
+
+      // Construire les paires (finisseur_id, chantier_id) uniques
+      const chantierIds = [...new Set((affectationsWithChantier || []).map(a => a.chantier_id).filter(Boolean))];
+
+      if (chantierIds.length === 0) {
+        return { isTransmitted: false, fichesCount: 0 };
+      }
+
+      // Récupérer les fiches avec les chantiers identifiés
       const { data: fiches, error } = await supabase
         .from("fiches")
         .select("id, statut, salarie_id")
         .eq("semaine", semaine)
         .in("salarie_id", finisseurIds)
-        .is("chantier_id", null);
+        .in("chantier_id", chantierIds);
 
       if (error) {
         console.error("Erreur vérification transmission:", error);

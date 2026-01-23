@@ -922,19 +922,11 @@ export const useCloturePeriode = () => {
 
       if (fichesChantierError) throw fichesChantierError;
 
-      // Cas 2: Fiches sans chantier_id (finisseurs autonomes) - filtrer via utilisateurs.entreprise_id
-      const { data: fichesSalarie, error: fichesSalarieError } = await supabase
-        .from("fiches")
-        .select("id, semaine, salarie_id, utilisateurs!inner(entreprise_id)")
-        .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
-        .is("chantier_id", null)
-        .not("salarie_id", "is", null)
-        .eq("utilisateurs.entreprise_id", entrepriseId);
+      // ✅ CORRECTION : Plus de "Cas 2" - toutes les fiches ont maintenant un chantier_id obligatoire
+      // Les fiches sont déjà filtrées par entreprise_id dans fichesChantier
 
-      if (fichesSalarieError) throw fichesSalarieError;
-
-      // Combiner les deux ensembles de fiches
-      const allFichesToClose = [...(fichesChantier || []), ...(fichesSalarie || [])];
+      // ✅ Toutes les fiches ont un chantier_id maintenant
+      const allFichesToClose = fichesChantier || [];
 
       // Filtrer les fiches dont la semaine chevauche le mois
       const ficheIdsToClose = allFichesToClose

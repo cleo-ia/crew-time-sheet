@@ -10,44 +10,52 @@ interface InitializeNextWeekParams {
 export const useInitializeNextWeek = () => {
   return useMutation({
     mutationFn: async ({ conducteurId, nextWeek }: InitializeNextWeekParams) => {
-      console.log("🔄 Initializing next week (fiches only, no days):", { conducteurId, nextWeek });
+      console.log("🔄 Initializing next week (fiches with chantier):", { conducteurId, nextWeek });
 
       // Calculer la semaine précédente à partir de nextWeek
       const previousWeek = calculatePreviousWeek(nextWeek);
       console.log("📅 Previous week:", previousWeek);
 
-      // Supprimer toutes les anciennes fiches de nextWeek pour ce conducteur
-      const { error: deleteError } = await supabase
-        .from("fiches")
-        .delete()
-        .eq("semaine", nextWeek)
-        .eq("user_id", conducteurId)
-        .is("chantier_id", null);
-
-      if (deleteError) {
-        console.error("❌ Error deleting old fiches:", deleteError);
-      } else {
-        console.log("🗑️ Deleted old fiches for nextWeek");
-      }
-
-      // Récupérer les finisseurs uniques affectés au conducteur la SEMAINE PRÉCÉDENTE
+      // Récupérer les affectations de la semaine précédente avec les chantiers
       const { data: previousAffectations } = await supabase
         .from("affectations_finisseurs_jours")
-        .select("finisseur_id")
+        .select("finisseur_id, chantier_id")
         .eq("conducteur_id", conducteurId)
         .eq("semaine", previousWeek);
 
       if (!previousAffectations || previousAffectations.length === 0) {
-        console.log("✅ No finisseurs in previous week, nextWeek stays empty");
+        console.log("✅ No affectations in previous week, nextWeek stays empty");
         return;
       }
 
-      // IDs uniques des finisseurs
-      const finisseurIds = [...new Set(previousAffectations.map(a => a.finisseur_id))];
-      console.log(`👥 Found ${finisseurIds.length} finisseur(s) in previous week`);
+      // Regrouper par finisseur avec leurs chantiers
+      const finisseurChantiers = new Map<string, string>();
+      previousAffectations.forEach(a => {
+        if (a.chantier_id && !finisseurChantiers.has(a.finisseur_id)) {
+          // Prendre le premier chantier trouvé pour chaque finisseur
+          finisseurChantiers.set(a.finisseur_id, a.chantier_id);
+        }
+      });
 
-      // Pour chaque finisseur, créer UNIQUEMENT une fiche vide (sans jours)
-      for (const finisseurId of finisseurIds) {
+      console.log(`👥 Found ${finisseurChantiers.size} finisseur(s) in previous week`);
+
+      // Pour chaque finisseur, vérifier/créer une fiche avec son chantier_id
+      for (const [finisseurId, chantierId] of finisseurChantiers.entries()) {
+        // Vérifier si une fiche existe déjà pour ce finisseur/semaine/chantier
+        const { data: existingFiche } = await supabase
+          .from("fiches")
+          .select("id")
+          .eq("semaine", nextWeek)
+          .eq("salarie_id", finisseurId)
+          .eq("chantier_id", chantierId)
+          .maybeSingle();
+
+        if (existingFiche) {
+          console.log(`📄 Fiche already exists for finisseur ${finisseurId}`);
+          continue;
+        }
+
+        // Créer une fiche avec le chantier_id obligatoire
         // entreprise_id auto-filled by trigger set_fiche_entreprise_id
         const { error: ficheError } = await supabase
           .from("fiches")
@@ -55,14 +63,14 @@ export const useInitializeNextWeek = () => {
             semaine: nextWeek,
             user_id: conducteurId,
             salarie_id: finisseurId,
-            chantier_id: null,
+            chantier_id: chantierId, // ✅ chantier_id obligatoire
             statut: "BROUILLON",
           } as any);
 
         if (ficheError) {
           console.error("❌ Error creating fiche:", ficheError);
         } else {
-          console.log(`✅ Created empty fiche for finisseur ${finisseurId}`);
+          console.log(`✅ Created fiche for finisseur ${finisseurId} on chantier ${chantierId}`);
         }
       }
 
