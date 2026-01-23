@@ -305,7 +305,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         days[dayName] = {
           hours,
           overtime: 0,
-          absent: hours === 0 && !PA && HI === 0,
+          absent: hours === 0 && HI === 0,
           panierRepas: PA,
           repasType: jourData?.repas_type || null,
           trajet: (isTrajetPerso || isGD) ? false : true,
