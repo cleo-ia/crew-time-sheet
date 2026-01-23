@@ -249,6 +249,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   if (ficheError) throw ficheError;
 
   // Récupérer les fiches des finisseurs (sans chantier)
+  // ✅ CRITIQUE: Filtrer par entreprise_id pour éviter la fuite de données multi-tenant
   let finisseursQuery = supabase
     .from("fiches")
     .select(`
@@ -257,6 +258,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       statut,
       salarie_id,
       chantier_id,
+      entreprise_id,
       absences_export_override,
       trajets_export_override,
       acomptes,
@@ -273,6 +275,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
       : ["ENVOYE_RH", "AUTO_VALIDE"])
     .is("chantier_id", null);
+
+  // ✅ Filtre entreprise_id obligatoire pour les fiches finisseurs
+  if (entrepriseId) {
+    finisseursQuery = finisseursQuery.eq("entreprise_id", entrepriseId);
+  }
 
   const { data: fichesFinisseurs, error: finisseursError } = await finisseursQuery;
   if (finisseursError) throw finisseursError;
