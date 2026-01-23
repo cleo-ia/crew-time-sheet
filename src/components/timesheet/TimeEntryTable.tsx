@@ -453,9 +453,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               const HI = Number(j.HI || 0);
               const PA = !!j.PA;
               
-              // 🔧 Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
-              const rawT = j.T;
-              const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+              // 🔧 Exclusivité Trajet / Trajet Perso / GD : calculer d'abord les options exclusives
+              const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
+              const isGD = j.code_trajet === "GD";
+              // Trajet = true par défaut SAUF si Trajet Perso ou GD est actif
+              const trajet = (isTrajetPerso || isGD) ? false : true;
               
               // Trouver le chantier par code si présent
               const chantierDuJour = j.code_chantier_du_jour 
@@ -564,9 +566,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               const HI = Number(j.HI || 0);
               const PA = !!j.PA;
               
-              // 🔧 Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
-              const rawT = j.T;
-              const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+              // 🔧 Exclusivité Trajet / Trajet Perso / GD : calculer d'abord les options exclusives
+              const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
+              const isGD = j.code_trajet === "GD";
+              // Trajet = true par défaut SAUF si Trajet Perso ou GD est actif
+              const trajet = (isTrajetPerso || isGD) ? false : true;
               
               // Trouver le chantier par code si disponible
               const chantierDuJour = j.code_chantier_du_jour 
@@ -642,9 +646,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                 const HI = Number(j.HI || 0);
                 const PA = !!j.PA;
                 
-                // 🔧 Trajet: true par défaut si valeur absente, sinon utiliser la valeur réelle
-                const rawT = j.T;
-                const trajet = rawT === null || rawT === undefined || rawT === 0 ? true : Boolean(rawT);
+                // 🔧 Exclusivité Trajet / Trajet Perso / GD : calculer d'abord les options exclusives
+                const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
+                const isGD = j.code_trajet === "GD";
+                // Trajet = true par défaut SAUF si Trajet Perso ou GD est actif
+                const trajet = (isTrajetPerso || isGD) ? false : true;
                 
                 daysFromDb[label] = {
                   hours,
