@@ -411,7 +411,7 @@ const Index = () => {
           pause_minutes: 0,
           HNORM: d.data.absent ? 0 : (d.data.hours ?? 0),
           HI: d.data.heuresIntemperie ?? 0,
-          T: d.data.trajet ? 1 : 0,
+          T: (d.data.codeTrajet === 'GD' || d.data.codeTrajet === 'T_PERSO') ? 0 : (d.data.trajet ? 1 : 0),
           PA: d.data.panierRepas ?? false,
           trajet_perso: d.data.trajetPerso ?? false,
           code_chantier_du_jour: d.data.chantierCode,

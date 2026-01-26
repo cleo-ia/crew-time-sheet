@@ -298,7 +298,7 @@ export const useAutoSaveFiche = () => {
             HI: dayData?.heuresIntemperie || 0,
             // 🔧 FIX: Sauvegarder trajet_perso pour persistance après refresh
             trajet_perso: dayData?.trajetPerso || dayData?.codeTrajet === "T_PERSO",
-            T: dayData?.codeTrajet === null || dayData?.codeTrajet === undefined ? 1 : (dayData.codeTrajet ? 1 : 0),
+            T: (dayData?.codeTrajet === 'GD' || dayData?.codeTrajet === 'T_PERSO') ? 0 : 1,
             code_trajet: dayData?.codeTrajet || 'A_COMPLETER',  // A_COMPLETER par défaut si pas déjà défini
             PA: dayData?.panierRepas ?? true, // true par défaut (panier coché)
             repas_type: dayData?.repasType ?? (dayData?.panierRepas === false ? null : "PANIER"), // PANIER par défaut
