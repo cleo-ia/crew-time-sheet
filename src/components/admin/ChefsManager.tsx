@@ -31,6 +31,7 @@ export const ChefsManager = () => {
     statut: "",
     libelle_emploi: "",
     type_contrat: "",
+    base_horaire: "",
     horaire: "",
     taux_horaire: undefined as number | undefined,
     heures_supp_mensualisees: 0,
@@ -110,6 +111,7 @@ export const ChefsManager = () => {
       statut: "",
       libelle_emploi: "",
       type_contrat: "",
+      base_horaire: "",
       horaire: "",
       taux_horaire: undefined,
       heures_supp_mensualisees: 0,
@@ -131,6 +133,7 @@ export const ChefsManager = () => {
       statut: chef.statut || "",
       libelle_emploi: chef.libelle_emploi || "",
       type_contrat: chef.type_contrat || "",
+      base_horaire: chef.base_horaire || "",
       horaire: chef.horaire || "",
       taux_horaire: chef.taux_horaire || undefined,
       heures_supp_mensualisees: chef.heures_supp_mensualisees || 0,
@@ -409,15 +412,28 @@ export const ChefsManager = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Horaire mensuel (heures)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Ex: 151.67"
-                  value={formData.horaire || ''}
-                  onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
-                />
+                <Label>Base horaire</Label>
+                <Select value={formData.base_horaire} onValueChange={(value) => setFormData({ ...formData, base_horaire: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="35h">35h</SelectItem>
+                    <SelectItem value="39h">39h</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Horaire mensuel (heures)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Ex: 151.67"
+                value={formData.horaire || ''}
+                onChange={(e) => setFormData({ ...formData, horaire: e.target.value })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

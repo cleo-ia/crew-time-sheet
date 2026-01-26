@@ -2316,6 +2316,7 @@ export type Database = {
           adresse_domicile: string | null
           agence_interim: string | null
           auth_user_id: string | null
+          base_horaire: string | null
           created_at: string
           degre: string | null
           echelon: string | null
@@ -2341,6 +2342,7 @@ export type Database = {
           adresse_domicile?: string | null
           agence_interim?: string | null
           auth_user_id?: string | null
+          base_horaire?: string | null
           created_at?: string
           degre?: string | null
           echelon?: string | null
@@ -2366,6 +2368,7 @@ export type Database = {
           adresse_domicile?: string | null
           agence_interim?: string | null
           auth_user_id?: string | null
+          base_horaire?: string | null
           created_at?: string
           degre?: string | null
           echelon?: string | null
