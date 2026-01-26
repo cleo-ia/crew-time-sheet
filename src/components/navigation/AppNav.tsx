@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
-import logoSder from "@/assets/logo-sder.png";
-import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
+import logoSder from "@/assets/logo-engo-bourgogne.png";       // Fichier Engo = logo SDER
+import logoEngoBourgogne from "@/assets/logo-sder.png";        // Fichier SDER = logo Engo
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
