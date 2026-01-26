@@ -1,80 +1,100 @@
 
-# Plan : Ajouter février 2026 (et les mois futurs proches) aux filtres RH
+# Plan : Rendre l'export Excel RH dynamique par entreprise
 
-## Problème identifié
+## Contexte
 
-Le sélecteur de période génère uniquement les 12 derniers mois **passés** avec `subMonths(today, i)`. Comme nous sommes le 26 janvier 2026, février 2026 n'apparaît pas car il est dans le futur.
+Actuellement, l'export Excel RH (`src/lib/excelExport.ts`) affiche en dur **"Dossier C093195 / LIMOGE REVILLON"** à la ligne 180. Cela pose problème pour SDER et Engo Bourgogne qui verront le mauvais nom d'entreprise dans leurs exports.
 
-Or, la semaine S06 (2-8 février 2026) appartient au mois de février 2026, donc les heures supplémentaires de cette semaine n'apparaîtront jamais tant que février n'est pas sélectionnable.
+Le logo SDER existe déjà dans `src/assets/logo-sder.png` et est correctement référencé dans la configuration SDER.
 
-## Solution
+---
 
-Modifier la génération des mois pour inclure **le mois suivant** en plus des 12 mois passés, ce qui permettra de voir les données des premières semaines d'un nouveau mois avant qu'il ne commence officiellement.
+## Modifications à effectuer
 
-## Modification prévue
+### 1. Modifier la signature de `generateRHExcel` (excelExport.ts)
 
-### Fichier : `src/components/rh/RHFilters.tsx`
-
-**Lignes 47-58 - Ajout de `addMonths` à l'import et modification de la logique :**
+Ajouter un paramètre optionnel `options` pour passer les informations de l'entreprise :
 
 ```typescript
-// Avant (ligne 9)
-import { format, subMonths, startOfMonth, endOfMonth, parse, addDays } from "date-fns";
+interface ExcelExportOptions {
+  entrepriseNom?: string;
+  dossierRef?: string;  // Ex: "C093195" pour Limoge, autre ref pour SDER
+}
 
-// Après
-import { format, subMonths, addMonths, startOfMonth, endOfMonth, parse, addDays } from "date-fns";
+export const generateRHExcel = async (
+  data: RHExportEmployee[], 
+  mois: string, 
+  filePrefix?: string,
+  options?: ExcelExportOptions
+): Promise<string>
 ```
+
+### 2. Remplacer le texte codé en dur (ligne 180)
+
+Remplacer :
+```typescript
+headerRow1[0] = "Dossier C093195 / LIMOGE REVILLON";
+```
+
+Par :
+```typescript
+const entrepriseNom = options?.entrepriseNom || 'LIMOGE REVILLON';
+const dossierRef = options?.dossierRef || 'C093195';
+headerRow1[0] = `Dossier ${dossierRef} / ${entrepriseNom}`;
+```
+
+### 3. Mettre à jour l'appel depuis RHPreExport.tsx
+
+Dans `RHPreExport.tsx`, importer le hook `useEnterpriseConfig` et passer les informations à `generateRHExcel` :
 
 ```typescript
-// Avant (lignes 47-58)
-const derniersMois = useMemo(() => {
-  const mois = [];
-  const today = new Date();
-  for (let i = 0; i < 12; i++) {
-    const date = subMonths(today, i);
-    mois.push({
-      value: format(date, "yyyy-MM"),
-      label: format(date, "MMMM yyyy", { locale: fr })
-    });
-  }
-  return mois;
-}, []);
+// Import existant de useEnterpriseConfig
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 
-// Après
-const derniersMois = useMemo(() => {
-  const mois = [];
-  const today = new Date();
-  
-  // Ajouter le mois suivant (pour voir les données des semaines à cheval)
-  const moisSuivant = addMonths(today, 1);
-  mois.push({
-    value: format(moisSuivant, "yyyy-MM"),
-    label: format(moisSuivant, "MMMM yyyy", { locale: fr })
-  });
-  
-  // Puis les 12 derniers mois (dont le mois courant)
-  for (let i = 0; i < 12; i++) {
-    const date = subMonths(today, i);
-    mois.push({
-      value: format(date, "yyyy-MM"),
-      label: format(date, "MMMM yyyy", { locale: fr })
-    });
-  }
-  return mois;
-}, []);
+// Dans le composant
+const enterpriseConfig = useEnterpriseConfig();
+
+// Dans handleExport
+const filename = await generateRHExcel(mergedData, filters.periode || "", undefined, {
+  entrepriseNom: enterpriseConfig?.nom,
+});
 ```
+
+### 4. (Optionnel) Ajouter un numéro de dossier par entreprise
+
+Si chaque entreprise a un numéro de dossier différent, on peut l'ajouter à la configuration dans `src/config/enterprises/types.ts` :
+
+```typescript
+export interface EnterpriseConfig {
+  // ... existant
+  dossierRef?: string;  // Numéro de dossier paie
+}
+```
+
+Et le définir dans chaque config d'entreprise.
+
+---
+
+## Fichiers impactés
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/lib/excelExport.ts` | Ajouter interface options + rendre le header dynamique |
+| `src/components/rh/RHPreExport.tsx` | Passer le nom de l'entreprise via useEnterpriseConfig |
+| `src/config/enterprises/types.ts` | (Optionnel) Ajouter champ `dossierRef` |
+| `src/config/enterprises/sder.ts` | (Optionnel) Définir `dossierRef` pour SDER |
+| `src/config/enterprises/limoge-revillon.ts` | (Optionnel) Définir `dossierRef` |
+
+---
 
 ## Résultat attendu
 
-Le dropdown des périodes affichera maintenant :
-- **février 2026** ← Nouveau (mois suivant)
-- janvier 2026 (mois courant)
-- décembre 2025
-- novembre 2025
-- ... (9 mois supplémentaires)
+- **Export SDER** : Affiche **"Dossier XXXXXX / SDER"** (ou juste "SDER" si pas de numéro)
+- **Export Limoge Revillon** : Continue d'afficher **"Dossier C093195 / LIMOGE REVILLON"**
+- **Export Engo Bourgogne** : Affichera le nom correct quand utilisé
 
-En sélectionnant **février 2026**, les données de la semaine S06 (2-8 février) seront incluses et les heures supplémentaires calculées apparaîtront dans le pré-export Excel.
+---
 
-## Note technique
+## Question
 
-Le calcul des heures supp dépend aussi des valeurs `heures_supp_mensualisees` dans la base. Si ces valeurs sont à NULL, le seuil restera 35h et toute heure au-delà sera comptée comme supplémentaire (5h de HS 25% pour 40h travaillées).
+As-tu un numéro de dossier spécifique pour SDER (équivalent au "C093195" de Limoge Revillon) ? Sinon, je peux simplement afficher "SDER" sans numéro de dossier, ou utiliser un format générique.
