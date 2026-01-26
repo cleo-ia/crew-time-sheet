@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useCreateUtilisateur, useUpdateUtilisateur } from "@/hooks/useUtilisateurs";
+import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from "lucide-react";
 import { AgenceInterimCombobox } from "./AgenceInterimCombobox";
 
@@ -28,6 +29,7 @@ export const InterimaireFormDialog = ({
 
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
+  const { toast } = useToast();
 
   // Remplir le formulaire si on édite un intérimaire
   useEffect(() => {
@@ -43,6 +45,15 @@ export const InterimaireFormDialog = ({
   }, [editingInterimaire, open]);
 
   const handleSave = async () => {
+    if (!formData.agence_interim.trim()) {
+      toast({
+        title: "Champ obligatoire",
+        description: "L'agence d'intérim doit être renseignée",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       if (editingInterimaire) {
         await updateUtilisateur.mutateAsync({
@@ -95,7 +106,7 @@ export const InterimaireFormDialog = ({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Agence d'intérim</Label>
+            <Label>Agence d'intérim *</Label>
             <AgenceInterimCombobox
               value={formData.agence_interim}
               onChange={(val) => setFormData({ ...formData, agence_interim: val })}
@@ -113,7 +124,7 @@ export const InterimaireFormDialog = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={!formData.agence_interim.trim()}>
             {editingInterimaire ? "Modifier" : "Créer"}
           </Button>
         </DialogFooter>
