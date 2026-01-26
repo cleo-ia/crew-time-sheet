@@ -79,13 +79,21 @@ export const useCopyPreviousWeekFinisseurs = () => {
 
         if (finisseurAffectations.length === 0) continue;
 
-        // Vérifier/créer la fiche
+        // ✅ Récupérer le chantier_id depuis les affectations de ce finisseur
+        const finisseurChantierId = finisseurAffectations[0]?.chantier_id;
+        
+        if (!finisseurChantierId) {
+          console.warn(`[useCopyPreviousWeekFinisseurs] No chantier_id for finisseur ${fId}, skipping fiche creation`);
+          continue;
+        }
+
+        // Vérifier/créer la fiche avec le bon chantier_id
         const { data: existingFiche } = await supabase
           .from("fiches")
           .select("id")
           .eq("semaine", currentWeek)
           .eq("salarie_id", fId)
-          .is("chantier_id", null)
+          .eq("chantier_id", finisseurChantierId)
           .maybeSingle();
 
         let ficheId: string;
@@ -100,7 +108,7 @@ export const useCopyPreviousWeekFinisseurs = () => {
               semaine: currentWeek,
               user_id: conducteurId,
               salarie_id: fId,
-              chantier_id: null,
+              chantier_id: finisseurChantierId, // ✅ Utiliser le chantier affecté
               statut: "BROUILLON",
             } as any)
             .select("id")

@@ -40,11 +40,12 @@ export const useInitializeNextWeekFromPrevious = () => {
         .eq("semaine", currentWeek)
         .eq("user_id", chefId);
 
+      // ✅ CORRECTION: Toujours filtrer par chantierId si fourni
+      // Pour les finisseurs sans chantierId, on récupère toutes les fiches du conducteur
       if (chantierId) {
         query = query.eq("chantier_id", chantierId);
-      } else {
-        query = query.is("chantier_id", null);
       }
+      // Pas de else avec .is("chantier_id", null) - on récupère tout
 
       const { data: fichesActuelles, error: fetchError } = await query;
 
@@ -129,11 +130,11 @@ export const useInitializeNextWeekFromPrevious = () => {
         .select("id, fiche_id, semaine")
         .eq("semaine", currentWeek);
 
+      // ✅ CORRECTION: Toujours filtrer par chantierId si fourni
       if (chantierId) {
         transportSourceQuery = transportSourceQuery.eq("chantier_id", chantierId);
-      } else {
-        transportSourceQuery = transportSourceQuery.is("chantier_id", null);
       }
+      // Pas de else avec .is("chantier_id", null)
 
       const { data: transportSource } = await transportSourceQuery
         .order("created_at", { ascending: false })
@@ -168,11 +169,11 @@ export const useInitializeNextWeekFromPrevious = () => {
         .eq("semaine", nextWeek)
         .eq("user_id", chefId);
 
+      // ✅ CORRECTION: Toujours filtrer par chantierId si fourni
       if (chantierId) {
         ficheDestQuery = ficheDestQuery.eq("chantier_id", chantierId);
-      } else {
-        ficheDestQuery = ficheDestQuery.is("chantier_id", null);
       }
+      // Pas de else avec .is("chantier_id", null)
 
       const { data: ficheDest } = await ficheDestQuery
         .order("created_at", { ascending: false })

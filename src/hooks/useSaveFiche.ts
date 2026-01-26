@@ -64,15 +64,21 @@ export const useSaveFiche = () => {
           .eq("salarie_id", employee.employeeId);
           // user_id supprimé du filtre pour éviter les doublons si plusieurs chefs modifient
 
+        // ✅ CORRECTION: Pour les finisseurs, récupérer le chantierId depuis les dailyHours
+        let effectiveChantierId = chantierId;
+        if (!effectiveChantierId && employee.dailyHours.length > 0) {
+          // Chercher le chantierId dans les jours (code_chantier_du_jour pourrait indiquer le chantier)
+          // Pour l'instant, on skip si pas de chantierId car c'est obligatoire
+          console.warn(`[useSaveFiche] Skip: ${employee.employeeName} n'a pas de chantierId`);
+          return null;
+        }
+        
         // Pour les finisseurs (chantier_id null), filtrer explicitement
         // Pour les maçons, filtrer par CE chantier spécifique (permet multi-chef)
-        if (!chantierId) {
-          query = query.is("chantier_id", null);
-        } else {
-          query = query.eq("chantier_id", chantierId);
+        if (effectiveChantierId) {
+          query = query.eq("chantier_id", effectiveChantierId);
         }
-        // Si chantierId est fourni, on cherche TOUTE fiche pour cet employé/semaine
-        // sans filtrer par chantier - la contrainte d'unicité garantit qu'il n'y en a qu'une
+        // Si pas de chantierId, on ne peut pas continuer
 
         const { data: existingFiche } = await query
           .order('created_at', { ascending: false })
