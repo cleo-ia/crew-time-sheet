@@ -442,7 +442,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   // Vérifier si une cellule est éditable
   const isEditableColumn = (colKey: string) => {
-    const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", "typeContrat", "horaire", "heuresSuppMensualisees", "forfaitJours", "heuresReelles", "salaire"];
+    const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", "typeContrat", "baseHoraire", "horaire", "heuresSuppMensualisees", "forfaitJours", "heuresReelles", "salaire"];
     return !nonEditable.includes(colKey);
   };
 
