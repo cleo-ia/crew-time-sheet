@@ -6,7 +6,7 @@ import { useChantiers } from "@/hooks/useChantiers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EmployeeCombobox } from "./EmployeeCombobox";
-import { format, subMonths, startOfMonth, endOfMonth, parse, addDays } from "date-fns";
+import { format, subMonths, addMonths, startOfMonth, endOfMonth, parse, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useMemo, useEffect } from "react";
 import { parseISOWeek } from "@/lib/weekUtils";
@@ -47,6 +47,15 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
   const derniersMois = useMemo(() => {
     const mois = [];
     const today = new Date();
+    
+    // Ajouter le mois suivant (pour voir les données des semaines à cheval)
+    const moisSuivant = addMonths(today, 1);
+    mois.push({
+      value: format(moisSuivant, "yyyy-MM"),
+      label: format(moisSuivant, "MMMM yyyy", { locale: fr })
+    });
+    
+    // Puis les 12 derniers mois (dont le mois courant)
     for (let i = 0; i < 12; i++) {
       const date = subMonths(today, i);
       mois.push({
