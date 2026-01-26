@@ -79,6 +79,7 @@ const RIGHT_COLUMNS = [
   { key: "statut", label: "Statut", width: 100, bg: "bg-slate-100" },
   { key: "libelleEmploi", label: "Libellé emploi", width: 150, bg: "bg-slate-100" },
   { key: "typeContrat", label: "Type contrat", width: 100, bg: "bg-slate-100" },
+  { key: "baseHoraire", label: "Base horaire", width: 100, bg: "bg-slate-100" },
   { key: "horaire", label: "Horaire mensuel", width: 100, bg: "bg-slate-100" },
   { key: "heuresSuppMensualisees", label: "Heures supp mensualisées", width: 120, bg: "bg-slate-100" },
   { key: "forfaitJours", label: "Forfait jours", width: 100, bg: "bg-slate-100" },
@@ -377,6 +378,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       case "statut": return data.statut || "-";
       case "libelleEmploi": return data.libelle_emploi || data.metier;
       case "typeContrat": return data.type_contrat || "-";
+      case "baseHoraire": return data.base_horaire || "-";
       case "horaire": return data.horaire || "-";
       case "heuresSuppMensualisees": return data.heures_supp_mensualisees || "-";
       case "forfaitJours": return data.forfait_jours ? "Oui" : "-";
