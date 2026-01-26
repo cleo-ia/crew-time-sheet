@@ -127,9 +127,9 @@ export const generateInterimaireSimplifiedPdf = async (
   
   // Largeurs des colonnes
   const colLabel = 18;
-  const colDay = 16;
+  const colDay = 24;
   const colTotal = 16;
-  const colSignature = 30;
+  const colSignature = 26;
   const rowHeight = 7;
   
   let currentY = margin + headerHeight;
