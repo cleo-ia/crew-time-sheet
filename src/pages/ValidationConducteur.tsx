@@ -316,7 +316,7 @@ const ValidationConducteur = () => {
             pause_minutes: 0,
             HNORM: dayData.absent ? 0 : (dayData.hours ?? 0),
             HI: dayData.heuresIntemperie ?? 0,
-            T: dayData.trajet ? 1 : 0,
+            T: (dayData.codeTrajet === 'GD' || dayData.codeTrajet === 'T_PERSO') ? 0 : (dayData.trajet ? 1 : 0),
             PA: dayData.panierRepas ?? false,
             trajet_perso: dayData.trajetPerso ?? false,
             code_trajet: dayData.codeTrajet || (dayData.trajet ? "A_COMPLETER" : null),

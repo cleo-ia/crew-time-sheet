@@ -1523,7 +1523,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                             <div className="flex flex-col gap-2">
                               <div className="flex items-center gap-2">
                                 <Checkbox
-                                  checked={dayData.trajet !== false}
+                                  checked={dayData.trajet === true}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       updateDayValue(entry.employeeId, day, "trajet", true);
