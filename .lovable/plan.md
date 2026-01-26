@@ -1,94 +1,95 @@
 
-# Correction : Chef bloqué sur la signature (MAILLARD S04)
 
-## Diagnostic
+# Plan : Ajout du sélecteur "Base horaire" (35h / 39h) dans les formulaires employés
 
-Le chef Sébastien BOUILLET voit 0h au lieu de 39h sur sa fiche MAILLARD S04 et ne peut pas signer car :
+## Objectif
 
-1. **Code non publié** : Les corrections du 22 janvier 2026 sur `useMaconsByChantier.ts` (ajout du filtre `chantier_id`) ne sont pas en PROD
-2. **L'ancienne version** du code en PROD ne récupère pas correctement la fiche quand un employé travaille sur plusieurs chantiers
-3. **Echec silencieux** : `handleSaveSignature` fait un `return` sans message quand `ficheId` est undefined
+Permettre de distinguer clairement si un salarié est sous contrat 35h ou 39h lors de la création/modification d'un Maçon, Grutier, Finisseur ou Chef.
 
-## Données en base (correctes)
+---
 
-| Chantier | Fiche ID | Heures | Jours |
-|----------|----------|--------|-------|
-| MAILLARD | d8e60721-3786-4ebf-af4c-b9a5fafeeb47 | 39h | 5 |
-| DAVOULT | d78983ad-bbb1-4c0e-8dec-ac729b81b2e7 | 39h | 5 |
+## 1. Modification de la base de données
 
-Les données existent et sont correctes. Le problème est purement côté code frontend en production.
+### Nouvelle colonne
 
-## Solution en 2 parties
+| Table | Colonne | Type | Valeurs | Default |
+|-------|---------|------|---------|---------|
+| `utilisateurs` | `base_horaire` | `TEXT` | '35h', '39h' | NULL |
 
-### Partie 1 : Publication immediate (resout le probleme)
+Cette colonne sera ajoutée à côté de `type_contrat` (CDI/CDD) et `horaire` (mensuel).
 
-Publier le code pour que le chef ait acces aux corrections du hook `useMaconsByChantier`.
+---
 
-Le code actuel contient deja les bons filtres (ligne 93):
-```typescript
-const { data: fichChef } = await supabase
-  .from("fiches")
-  .select("id, total_heures")
-  .eq("salarie_id", chef.id)
-  .eq("chantier_id", chantierId)  // Ce filtre manquait en PROD
-  .eq("semaine", semaine)
-  .maybeSingle();
+## 2. Modifications des formulaires
+
+### Fichiers concernés
+
+| Fichier | Composant |
+|---------|-----------|
+| `src/components/admin/MaconsManager.tsx` | Formulaire Maçon |
+| `src/components/admin/ChefsManager.tsx` | Formulaire Chef |
+| `src/components/admin/GrutiersManager.tsx` | Formulaire Grutier |
+| `src/components/admin/FinisseursManager.tsx` | Formulaire Finisseur |
+
+### Changements par formulaire
+
+1. **Ajouter au `formData`** : `base_horaire: ""`
+2. **Ajouter un Select** dans la section "Contrat de travail" :
+
+```text
+Section "Contrat de travail" :
+┌──────────────────────┬──────────────────────┐
+│ Type de contrat      │ Base horaire         │  ← NOUVEAU
+│ [CDI ▼]              │ [35h / 39h ▼]        │
+├──────────────────────┴──────────────────────┤
+│ Horaire mensuel (heures)                     │
+│ [151.67]                                     │
+└──────────────────────────────────────────────┘
 ```
 
-### Partie 2 : Feedback utilisateur (robustesse)
+3. **Mettre à jour les fonctions** `handleSave`, `handleEdit` et le `reset` du formData
 
-Modifier `src/pages/SignatureMacons.tsx` pour afficher des messages d'erreur explicites au lieu d'echouer silencieusement.
+---
 
-**Modification dans `handleSaveSignature` (lignes 114-137):**
+## 3. Hook useUtilisateurs
 
-```typescript
-const handleSaveSignature = async (signatureData: string) => {
-  // Ajouter un feedback si aucun employe selectionne
-  if (!selectedMacon) {
-    toast({
-      variant: "destructive",
-      title: "Erreur",
-      description: "Aucun employe selectionne",
-    });
-    return;
-  }
-  
-  // Ajouter un feedback si pas de fiche
-  if (!selectedMacon.ficheId) {
-    toast({
-      variant: "destructive", 
-      title: "Fiche introuvable",
-      description: "La fiche de pointage n'existe pas pour cet employe. Essayez de rafraichir la page.",
-    });
-    return;
-  }
+Le hook `useCreateUtilisateur` et `useUpdateUtilisateur` transmettent déjà tous les champs du `formData` vers Supabase. Aucune modification nécessaire si le champ `base_horaire` est ajouté au formData.
 
-  try {
-    await saveSignature.mutateAsync({
-      ficheId: selectedMacon.ficheId,
-      userId: selectedMacon.id,
-      role: selectedMacon.isChef ? "chef" : undefined,
-      signatureData,
-    });
-    // ... reste du code inchange
+---
+
+## Résumé des fichiers modifiés
+
+| Fichier | Type de modification |
+|---------|---------------------|
+| **Migration SQL** | Ajout colonne `base_horaire` |
+| `MaconsManager.tsx` | Ajout Select "Base horaire" |
+| `ChefsManager.tsx` | Ajout Select "Base horaire" |
+| `GrutiersManager.tsx` | Ajout Select "Base horaire" |
+| `FinisseursManager.tsx` | Ajout Select "Base horaire" |
+
+---
+
+## Section technique
+
+### Migration SQL
+
+```sql
+ALTER TABLE public.utilisateurs
+ADD COLUMN IF NOT EXISTS base_horaire TEXT;
+
+COMMENT ON COLUMN public.utilisateurs.base_horaire IS 'Base horaire du contrat: 35h ou 39h';
 ```
 
-## Fichiers a modifier
+### Structure du Select
 
-| Fichier | Modification |
-|---------|--------------|
-| `src/pages/SignatureMacons.tsx` | Ajouter toasts d'erreur explicites dans `handleSaveSignature` |
+```text
+Options :
+- "" (placeholder: "Sélectionner")
+- "35h" → Contrat 35 heures/semaine
+- "39h" → Contrat 39 heures/semaine (4h supp structurelles)
+```
 
-## Impact
+### Positionnement dans le formulaire
 
-- **Resolution immediate** : La publication deploie les corrections existantes
-- **Meilleur feedback** : Les erreurs futures seront visibles au lieu d'etre silencieuses
-- **Aucune regression** : Les utilisateurs avec une seule fiche ne sont pas impactes
+Le nouveau sélecteur sera placé **à côté de "Type de contrat"** dans une grille 2 colonnes, permettant une saisie rapide et cohérente.
 
-## Instructions pour le chef
-
-Apres la publication, demander au chef Sebastien BOUILLET de :
-1. Rafraichir completement la page (Ctrl+Shift+R ou vider le cache)
-2. Retourner sur la page de signature pour MAILLARD S04
-3. Ses heures (39h, 5 paniers, 5 trajets) devraient maintenant s'afficher
-4. La signature et validation fonctionneront normalement
