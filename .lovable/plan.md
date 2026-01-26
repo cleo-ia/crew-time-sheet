@@ -1,9 +1,22 @@
 
-# Plan : Ajouter la colonne "Base horaire" dans le pré-export RH
+
+# Plan : Rendre la colonne "Base horaire" non éditable dans le pré-export
 
 ## Problème identifié
 
-Le champ `base_horaire` est bien récupéré depuis la base de données et exporté dans le fichier Excel, mais il n'est **pas affiché** dans l'écran de pré-export car la colonne manque dans la définition `RIGHT_COLUMNS`.
+La colonne "Base horaire" est actuellement éditable dans le pré-export Excel, alors qu'il s'agit d'une **donnée contractuelle** qui ne doit pas être modifiable à cet endroit (elle doit être modifiée uniquement dans la fiche employé).
+
+---
+
+## Cause technique
+
+La fonction `isEditableColumn` (ligne 445) définit les colonnes en lecture seule via un tableau `nonEditable`, mais **`baseHoraire`** n'y figure pas :
+
+```typescript
+const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", 
+                     "typeContrat", "horaire", "heuresSuppMensualisees", 
+                     "forfaitJours", "heuresReelles", "salaire"];
+```
 
 ---
 
@@ -12,41 +25,30 @@ Le champ `base_horaire` est bien récupéré depuis la base de données et expor
 ### Fichier concerné
 `src/components/rh/RHPreExport.tsx`
 
-### 1. Ajouter la colonne dans RIGHT_COLUMNS (ligne 81-82)
-
-Insérer la nouvelle colonne entre "Type contrat" et "Horaire mensuel" :
+### Ajouter `baseHoraire` dans le tableau `nonEditable` (ligne 445)
 
 ```text
 Avant :
-  { key: "typeContrat", label: "Type contrat", width: 100, bg: "bg-slate-100" },
-  { key: "horaire", label: "Horaire mensuel", width: 100, bg: "bg-slate-100" },
+const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", 
+                     "typeContrat", "horaire", "heuresSuppMensualisees", 
+                     "forfaitJours", "heuresReelles", "salaire"];
 
 Après :
-  { key: "typeContrat", label: "Type contrat", width: 100, bg: "bg-slate-100" },
-  { key: "baseHoraire", label: "Base horaire", width: 100, bg: "bg-slate-100" },  // NOUVEAU
-  { key: "horaire", label: "Horaire mensuel", width: 100, bg: "bg-slate-100" },
-```
-
-### 2. Ajouter le mapping dans getCellValue (vers ligne 379-380)
-
-Ajouter le case pour récupérer la valeur :
-
-```text
-case "typeContrat": return data.type_contrat || "-";
-case "baseHoraire": return data.base_horaire || "-";  // NOUVEAU
-case "horaire": return data.horaire || "-";
+const nonEditable = ["echelon", "niveau", "degre", "statut", "libelleEmploi", 
+                     "typeContrat", "baseHoraire", "horaire", 
+                     "heuresSuppMensualisees", "forfaitJours", 
+                     "heuresReelles", "salaire"];
 ```
 
 ---
 
 ## Résultat attendu
 
-| Matricule | Nom | Prénom | ... | Type contrat | Base horaire | Horaire mensuel | ... |
-|-----------|-----|--------|-----|--------------|--------------|-----------------|-----|
-| M001 | DUPONT | Jean | ... | CDI | 39h | 151.67 | ... |
-| M002 | MARTIN | Sophie | ... | CDD | 35h | 151.67 | ... |
+| Colonne | Avant | Après |
+|---------|-------|-------|
+| Base horaire | ✏️ Éditable (Input) | 🔒 Lecture seule (Texte) |
 
-La colonne sera visible dans le pré-export **ET** dans le fichier Excel généré.
+La colonne "Base horaire" s'affichera comme les autres colonnes contractuelles : en texte simple, sans champ de saisie.
 
 ---
 
@@ -54,4 +56,5 @@ La colonne sera visible dans le pré-export **ET** dans le fichier Excel génér
 
 | Fichier | Modification |
 |---------|--------------|
-| `src/components/rh/RHPreExport.tsx` | Ajout colonne "Base horaire" dans RIGHT_COLUMNS + getCellValue |
+| `src/components/rh/RHPreExport.tsx` | Ajout de `baseHoraire` dans le tableau `nonEditable` |
+
