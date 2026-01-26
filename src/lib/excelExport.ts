@@ -169,7 +169,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
   });
 
-  const totalCols = 59; // +ECOLE +EF pour les absences
+  const totalCols = 60; // +base_horaire
 
   // En-tête du document (lignes 1-2)
   const [year, month] = mois.split("-").map(Number);
@@ -195,6 +195,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     "Statut",
     "Libéllé emploi",
     "Type\nde contrat",
+    "Base\nhoraire",
     "Horaire\nmensuel",
     "Heures suppl\nmensualisées",
     "Forfait jours",
@@ -247,6 +248,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
 
   // Ligne 4 : Sous-en-têtes détaillés
   const headerRow4 = [
+    "",
     "",
     "",
     "",
@@ -328,6 +330,7 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
       emp.statut,
       emp.libelle_emploi,
       emp.type_contrat,
+      emp.base_horaire || "-",
       emp.horaire,
       emp.heures_supp_mensualisees || "-",
       emp.forfait_jours ? "Oui" : "-",
@@ -404,11 +407,12 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
     10,
     15,
     12,
+    8, // Base horaire
     10,
     12,
     10,
-    12, // A-M (ajout heures réelles)
-    15, // N (salaire)
+    12, // A-N (ajout base_horaire + heures réelles)
+    15, // O (salaire)
     20,
     6,
     6,
