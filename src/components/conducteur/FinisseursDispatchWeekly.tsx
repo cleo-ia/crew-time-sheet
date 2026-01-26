@@ -363,11 +363,15 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       // Supprimer l'affectation
       await deleteMutation.mutateAsync({ finisseurId, date });
       
+      // Récupérer le chantierId pour ce jour
+      const chantierId = localState[finisseurId]?.[date]?.chantierId;
+      
       // Supprimer le fiche_jour correspondant
       await deleteFicheJourMutation.mutateAsync({
         finisseurId,
         date,
         semaine,
+        chantierId, // ✅ Ajout du chantierId
       });
       
       // Si le finisseur n'a plus aucune affectation, le remettre dans pendingFinisseurs
@@ -485,14 +489,23 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
         await Promise.all(deletePromises);
       }
 
-      // 2. Récupérer et supprimer la fiche du finisseur pour cette semaine
-      const { data: fiche } = await supabase
+      // 2. Récupérer les chantiers affectés pour ce finisseur cette semaine
+      const finisseurAffectedChantiers = new Set(
+        affectedDays
+          .map(day => localState[finisseurId]?.[day.date]?.chantierId)
+          .filter(Boolean)
+      );
+
+      // 3. Récupérer et supprimer les fiches du finisseur pour cette semaine
+      // ✅ CORRECTION: Chercher par les chantiers affectés (pas chantier_id = null)
+      const { data: fiches } = await supabase
         .from("fiches")
         .select("id")
         .eq("salarie_id", finisseurId)
         .eq("semaine", semaine)
-        .is("chantier_id", null)
-        .maybeSingle();
+        .eq("user_id", conducteurId);
+      
+      const fiche = fiches?.[0]; // Prendre la première fiche trouvée
 
       if (fiche) {
         // Supprimer les signatures liées

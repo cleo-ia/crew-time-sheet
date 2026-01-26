@@ -891,6 +891,15 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       }
     }));
     
+    // ✅ Récupérer le chantierId depuis les affectations du finisseur
+    const finisseurAffectation = affectationsJours?.find(a => a.finisseur_id === finisseurId);
+    const chantierId = finisseurAffectation?.chantier_id;
+    
+    if (!chantierId) {
+      console.warn(`⚠️ Pas de chantierId pour finisseur ${finisseurId}, skip auto-save transport`);
+      return;
+    }
+    
     // Auto-save systématique (même sans plaque renseignée)
     const finisseurTransportData = transportFinisseurData[finisseurId];
     
@@ -899,6 +908,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       finisseurId,
       conducteurId: chefId || "",
       semaine: weekId,
+      chantierId, // ✅ Ajout du chantierId obligatoire
       days: data.days.map((d) => ({
         date: d.date,
         immatriculation: d.immatriculation,
@@ -917,7 +927,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
         }));
       }
     });
-  }, [transportFinisseurData, weekId, chefId, autoSaveTransportFinisseur]);
+  }, [transportFinisseurData, weekId, chefId, autoSaveTransportFinisseur, affectationsJours]);
 
   const calculateTotalHours = (entry: TimeEntry) => {
     const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);

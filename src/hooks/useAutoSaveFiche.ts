@@ -105,24 +105,39 @@ export const useAutoSaveFiche = () => {
           .eq("salarie_id", entry.employeeId);
 
         if (!chantierId) {
-          // 🔥 FIX: Ne pas créer de fiche "sans chantier" si l'employé a déjà des fiches AVEC chantier
-          // Cela évite les doublons d'heures pour les finisseurs multi-chantier
-          const { data: fichesAvecChantier } = await supabase
-            .from("fiches")
-            .select("id")
-            .eq("semaine", weekId)
-            .eq("salarie_id", entry.employeeId)
-            .not("chantier_id", "is", null)
-            .limit(1);
+          // 🔥 FIX: Pour les finisseurs sans chantierId au niveau parent,
+          // on cherche le chantierId depuis les jours individuels (mode multi-chantier)
+          const dayChantierIds = new Set(
+            Object.values(entry.days)
+              .map(d => d.chantierId)
+              .filter(Boolean)
+          );
           
-          if (fichesAvecChantier && fichesAvecChantier.length > 0) {
-            // L'employé a des fiches chantier → NE PAS créer de fiche sans chantier
-            console.log(`[AutoSave] Skip: ${entry.employeeName} a déjà des fiches chantier pour ${weekId}`);
-            continue; // Passer à l'employé suivant
+          if (dayChantierIds.size > 0) {
+            // L'employé a des chantiers dans ses jours - chercher sa fiche par le premier chantier
+            const firstChantierId = [...dayChantierIds][0];
+            query = query.eq("chantier_id", firstChantierId);
+          } else {
+            // 🔥 FIX: Ne pas créer de fiche "sans chantier" si l'employé a déjà des fiches AVEC chantier
+            // Cela évite les doublons d'heures pour les finisseurs multi-chantier
+            const { data: fichesAvecChantier } = await supabase
+              .from("fiches")
+              .select("id")
+              .eq("semaine", weekId)
+              .eq("salarie_id", entry.employeeId)
+              .not("chantier_id", "is", null)
+              .limit(1);
+            
+            if (fichesAvecChantier && fichesAvecChantier.length > 0) {
+              // L'employé a des fiches chantier → NE PAS créer de fiche sans chantier
+              console.log(`[AutoSave] Skip: ${entry.employeeName} a déjà des fiches chantier pour ${weekId}`);
+              continue; // Passer à l'employé suivant
+            }
+            
+            // Aucun chantier trouvé nulle part - skip
+            console.warn(`[AutoSave] Skip: ${entry.employeeName} n'a aucun chantierId assigné`);
+            continue;
           }
-          
-          // Finisseurs: filtrer explicitement les fiches sans chantier_id
-          query = query.is("chantier_id", null);
         } else {
           // Maçons: filtrer par CE chantier spécifique (permet multi-chef)
           query = query.eq("chantier_id", chantierId);
@@ -139,14 +154,29 @@ export const useAutoSaveFiche = () => {
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
+          // Déterminer le chantierId pour l'insert
+          let insertChantierId = chantierId;
+          if (!insertChantierId) {
+            // Récupérer depuis les jours si pas fourni au niveau parent
+            const dayChantierIds = Object.values(entry.days)
+              .map(d => d.chantierId)
+              .filter(Boolean);
+            insertChantierId = dayChantierIds[0] || null;
+          }
+          
+          if (!insertChantierId) {
+            console.warn(`[AutoSave] Skip create fiche: ${entry.employeeName} n'a aucun chantierId`);
+            continue;
+          }
+
           // Créer nouvelle fiche (entreprise_id auto-filled by trigger set_fiche_entreprise_id)
           const { data: newFiche, error: ficheError } = await supabase
             .from("fiches")
             .insert({
               semaine: weekId,
-              chantier_id: chantierId,
+              chantier_id: insertChantierId,
               salarie_id: entry.employeeId,
-              user_id: chantierId ? chefId : null, // NULL pour finisseurs (fiche partagée), chefId pour maçons
+              user_id: chefId, // Toujours le chefId maintenant
               statut: "BROUILLON",
               total_heures: 0,
             } as any)

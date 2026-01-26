@@ -8,7 +8,12 @@ export const useAutoSaveTransportFinisseur = () => {
 
   return useMutation({
     mutationFn: async (params: SaveTransportFinisseurParams) => {
-      const { ficheId, finisseurId, conducteurId, semaine, days } = params;
+      const { ficheId, finisseurId, conducteurId, semaine, chantierId, days } = params;
+
+      // ✅ VALIDATION : chantierId obligatoire
+      if (!chantierId) {
+        throw new Error("chantierId est obligatoire pour créer une fiche transport finisseur");
+      }
 
       // 1. Créer ou récupérer la fiche si nécessaire
       let finalFicheId = ficheId;
@@ -18,7 +23,7 @@ export const useAutoSaveTransportFinisseur = () => {
           .select("id")
           .eq("semaine", semaine)
           .eq("salarie_id", finisseurId)
-          .is("chantier_id", null)
+          .eq("chantier_id", chantierId)
           .maybeSingle();
 
         if (existingFiche) {
@@ -31,7 +36,7 @@ export const useAutoSaveTransportFinisseur = () => {
               semaine,
               user_id: conducteurId,
               salarie_id: finisseurId,
-              chantier_id: null,
+              chantier_id: chantierId,
               statut: "BROUILLON",
             } as any)
             .select("id")
@@ -45,7 +50,7 @@ export const useAutoSaveTransportFinisseur = () => {
                 .select("id")
                 .eq("semaine", semaine)
                 .eq("salarie_id", finisseurId)
-                .is("chantier_id", null)
+                .eq("chantier_id", chantierId)
                 .maybeSingle();
               
               if (retryFiche) {

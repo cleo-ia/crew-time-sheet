@@ -113,5 +113,6 @@ export interface SaveTransportFinisseurParams {
   finisseurId: string;
   conducteurId: string; // Le conducteur qui manage le finisseur
   semaine: string;
+  chantierId: string; // ✅ Obligatoire - chantier affecté pour cette semaine
   days: TransportFinisseurDay[];
 }

@@ -5,23 +5,28 @@ interface DeleteFicheJourParams {
   finisseurId: string;
   date: string;
   semaine: string;
+  chantierId?: string; // ✅ Ajouté pour chercher par chantier
 }
 
 export const useDeleteFicheJourForAffectation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ finisseurId, date, semaine }: DeleteFicheJourParams) => {
-      console.log(`[useDeleteFicheJourForAffectation] Deleting fiche_jour for ${finisseurId} on ${date}`);
+    mutationFn: async ({ finisseurId, date, semaine, chantierId }: DeleteFicheJourParams) => {
+      console.log(`[useDeleteFicheJourForAffectation] Deleting fiche_jour for ${finisseurId} on ${date} (chantier: ${chantierId || 'unknown'})`);
 
-      // 1. Trouver la fiche
-      const { data: fiche } = await supabase
+      // 1. Trouver la fiche - avec chantierId si fourni
+      let query = supabase
         .from("fiches")
         .select("id")
         .eq("semaine", semaine)
-        .eq("salarie_id", finisseurId)
-        .is("chantier_id", null)
-        .maybeSingle();
+        .eq("salarie_id", finisseurId);
+      
+      if (chantierId) {
+        query = query.eq("chantier_id", chantierId);
+      }
+      
+      const { data: fiche } = await query.maybeSingle();
 
       if (!fiche) {
         console.log(`[useDeleteFicheJourForAffectation] No fiche found`);
