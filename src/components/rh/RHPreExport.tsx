@@ -333,6 +333,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
       const filename = await generateRHExcel(mergedData, filters.periode || "", undefined, {
         entrepriseNom: enterpriseConfig?.nom,
+        dossierRef: enterpriseConfig?.dossierRef,
       });
       toast.success(`Excel généré : ${filename}`);
     } catch (error) {

@@ -5,6 +5,7 @@ export const sderConfig: EnterpriseConfig = {
   id: 'sder-id', // Sera remplacé par l'UUID réel
   slug: 'sder',
   nom: 'SDER',
+  dossierRef: 'SDER', // Référence dossier pour export Excel RH
   
   labels: {
     ...defaultLabels,

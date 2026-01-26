@@ -79,6 +79,7 @@ export interface EnterpriseConfig {
   id: string;
   slug: string;
   nom: string;
+  dossierRef?: string; // Référence dossier pour export Excel RH (ex: "C093195")
   
   // Configuration
   labels: EnterpriseLabels;

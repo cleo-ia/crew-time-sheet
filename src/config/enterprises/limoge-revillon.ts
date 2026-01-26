@@ -5,6 +5,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
   id: 'limoge-revillon-id', // Sera remplacé par l'UUID réel
   slug: 'limoge-revillon',
   nom: 'Limoge Revillon',
+  dossierRef: 'C093195', // Référence dossier pour export Excel RH
   
   labels: {
     ...defaultLabels,
