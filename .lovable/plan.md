@@ -1,97 +1,45 @@
 
-# Plan de correction : Bug d'affichage Trajet + GD
+# Plan : Elargir les colonnes Code Chantier dans l'export PDF Interimaire
 
-## Contexte du probleme
+## Probleme identifie
 
-Les cases "Trajet" et "GD" (Grand Deplacement) peuvent apparaitre cochees simultanement dans l'interface, alors qu'elles devraient etre mutuellement exclusives. Ce probleme a deux causes :
+Dans l'export PDF interimaire (`src/lib/pdfExportInterimaire.ts`), les colonnes des jours ont une largeur fixe de **16mm** (ligne 130). Cette largeur est insuffisante pour afficher les codes chantier complets comme "CI893OLYMPIA" (13+ caracteres), causant un debordement ou une troncature.
 
-1. **Affichage UI** : La condition `checked={dayData.trajet !== false}` en ligne 1526 de `TimeEntryTable.tsx` retourne `true` si `dayData.trajet` est `undefined`, causant l'affichage de "Trajet" coche meme quand "GD" est actif.
+## Solution proposee
 
-2. **Donnees inconsistantes** : 230 enregistrements dans `fiches_jours` ont `T=1` avec `code_trajet` egal a 'GD' ou 'T_PERSO', ce qui viole l'exclusivite mutuelle.
+Augmenter la largeur des colonnes jours de **16mm a 24mm** pour accommoder les codes chantier longs. Cette modification impactera :
+- La largeur totale du tableau
+- La position de la colonne "Signature"
 
-## Modifications a effectuer
+## Modifications
 
-### 1. Correction de l'affichage UI
+### Fichier : `src/lib/pdfExportInterimaire.ts`
 
-**Fichier** : `src/components/timesheet/TimeEntryTable.tsx`
-
-Ligne 1526 - Modifier la condition de la checkbox "Trajet" :
-
+**Ligne 130** - Augmenter la largeur des colonnes jours :
 ```text
-Avant:  checked={dayData.trajet !== false}
-Apres:  checked={dayData.trajet === true}
+Avant:  const colDay = 16;
+Apres:  const colDay = 24;
 ```
 
-Cette modification garantit que la checkbox "Trajet" n'est cochee que si `dayData.trajet` est explicitement `true`, evitant les faux positifs quand la valeur est `undefined`.
+**Impact calcule** :
+- Largeur actuelle : `colLabel(18) + colDay(16)*5 + colTotal(16) + colSignature(30) = 144mm`
+- Nouvelle largeur : `colLabel(18) + colDay(24)*5 + colTotal(16) + colSignature(30) = 184mm`
+- Largeur page A4 : 210mm - 2*marge(10mm) = 190mm de contenu disponible
 
-### 2. Validation cote sauvegarde (6 fichiers)
+Le tableau restera dans les marges de la page A4.
 
-Ajouter une logique pour forcer `T=0` quand `code_trajet` est 'GD' ou 'T_PERSO' dans tous les hooks de sauvegarde.
+### Ajustement complementaire
 
-**Fichier 1** : `src/hooks/useSaveFicheJours.ts`
-
-Lignes 86 et 139 - Modifier le calcul de T pour les updates et inserts :
-
+**Ligne 132** - Reduire legerement la colonne signature si necessaire :
 ```text
-Avant:  T: dayData.trajet ? 1 : 0
-Apres:  T: (dayData.codeTrajet === 'GD' || dayData.codeTrajet === 'T_PERSO') ? 0 : (dayData.trajet ? 1 : 0)
+Avant:  const colSignature = 30;
+Apres:  const colSignature = 26;
 ```
 
-**Fichier 2** : `src/hooks/useAutoSaveFiche.ts`
-
-Ligne 301 - Modifier la logique :
-
-```text
-Avant:  T: dayData?.codeTrajet === null || dayData?.codeTrajet === undefined ? 1 : (dayData.codeTrajet ? 1 : 0)
-Apres:  T: (dayData?.codeTrajet === 'GD' || dayData?.codeTrajet === 'T_PERSO') ? 0 : 1
-```
-
-**Fichier 3** : `src/pages/ValidationConducteur.tsx`
-
-Ligne 319 :
-
-```text
-Avant:  T: dayData.trajet ? 1 : 0
-Apres:  T: (dayData.codeTrajet === 'GD' || dayData.codeTrajet === 'T_PERSO') ? 0 : (dayData.trajet ? 1 : 0)
-```
-
-**Fichier 4** : `src/pages/Index.tsx`
-
-Ligne 414 :
-
-```text
-Avant:  T: d.data.trajet ? 1 : 0
-Apres:  T: (d.data.codeTrajet === 'GD' || d.data.codeTrajet === 'T_PERSO') ? 0 : (d.data.trajet ? 1 : 0)
-```
-
-### 3. Migration SQL pour nettoyer les donnees existantes
-
-Creer une migration pour corriger les 230 enregistrements incohérents :
-
-```sql
--- Correction des enregistrements ou T=1 avec code_trajet GD ou T_PERSO
--- Ces options sont mutuellement exclusives avec le trajet standard
-
-UPDATE fiches_jours 
-SET "T" = 0
-WHERE "T" = 1 
-  AND code_trajet IN ('GD', 'T_PERSO');
-```
-
-## Resume des fichiers modifies
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/components/timesheet/TimeEntryTable.tsx` | Condition affichage checkbox Trajet |
-| `src/hooks/useSaveFicheJours.ts` | Validation T lors update/insert |
-| `src/hooks/useAutoSaveFiche.ts` | Validation T lors auto-save |
-| `src/pages/ValidationConducteur.tsx` | Validation T lors transmission |
-| `src/pages/Index.tsx` | Validation T lors sauvegarde chef |
-| Migration SQL | Nettoyage des 230 enregistrements |
+Nouvelle largeur totale : `18 + 24*5 + 16 + 26 = 180mm` (bien centre sur les 190mm disponibles)
 
 ## Resultat attendu
 
-Apres ces modifications :
-- L'affichage sera correct : seule une option parmi Trajet/Trajet Perso/GD sera cochee
-- Les nouvelles sauvegardes garantiront l'exclusivite mutuelle au niveau base de donnees
-- Les donnees existantes seront corrigees pour eliminer les inconsistances
+- Les codes chantier comme "CI893OLYMPIA" seront affiches en entier dans chaque cellule
+- Le tableau restera bien centre et lisible
+- La colonne signature conserve assez d'espace pour afficher les signatures
