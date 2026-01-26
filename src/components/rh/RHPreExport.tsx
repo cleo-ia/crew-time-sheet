@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePreExportSave } from "@/hooks/usePreExportSave";
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 interface RHPreExportProps {
   filters: RHFilters;
 }
@@ -150,6 +151,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const savePreExportMutation = usePreExportSave();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
+  const enterpriseConfig = useEnterpriseConfig();
   
   // Refs pour scroll synchronisé
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -329,7 +331,9 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         ...row.modified
       }));
 
-      const filename = await generateRHExcel(mergedData, filters.periode || "");
+      const filename = await generateRHExcel(mergedData, filters.periode || "", undefined, {
+        entrepriseNom: enterpriseConfig?.nom,
+      });
       toast.success(`Excel généré : ${filename}`);
     } catch (error) {
       console.error("Erreur export Excel:", error);

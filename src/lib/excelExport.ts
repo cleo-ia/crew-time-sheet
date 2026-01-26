@@ -163,7 +163,18 @@ const setDataFill = (cell: any, rgb: string, align: "left" | "right") => {
   };
 };
 
-export const generateRHExcel = async (data: RHExportEmployee[], mois: string, filePrefix?: string): Promise<string> => {
+// Options pour l'export Excel (entreprise dynamique)
+export interface ExcelExportOptions {
+  entrepriseNom?: string;
+  dossierRef?: string;
+}
+
+export const generateRHExcel = async (
+  data: RHExportEmployee[], 
+  mois: string, 
+  filePrefix?: string,
+  options?: ExcelExportOptions
+): Promise<string> => {
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("Synthèse mensuelle", {
     views: [{ state: "frozen", xSplit: 3, ySplit: 4, topLeftCell: "D5" }],
@@ -175,9 +186,13 @@ export const generateRHExcel = async (data: RHExportEmployee[], mois: string, fi
   const [year, month] = mois.split("-").map(Number);
   const dateObj = new Date(year, month - 1);
 
+  // Nom de l'entreprise dynamique
+  const entrepriseNom = options?.entrepriseNom || 'LIMOGE REVILLON';
+  const dossierRef = options?.dossierRef || 'C093195';
+
   // Ligne 1 : Dossier + DONNEES MDE
   const headerRow1 = Array(totalCols).fill("");
-  headerRow1[0] = "Dossier C093195 / LIMOGE REVILLON";
+  headerRow1[0] = `Dossier ${dossierRef} / ${entrepriseNom}`;
   headerRow1[14] = "DONNEES MDE";
   sheet.addRow(headerRow1);
 
