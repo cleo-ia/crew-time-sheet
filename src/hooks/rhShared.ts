@@ -64,6 +64,7 @@ export interface EmployeeWithDetails {
   degre?: string | null;
   statut_employe?: string | null;
   type_contrat?: string | null;
+  base_horaire?: string | null;
   horaire?: string | null;
   heures_supp_mensualisees?: number | null;
   forfait_jours?: boolean | null;
@@ -288,7 +289,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   
   let salarieQuery = supabase
     .from("utilisateurs")
-    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, horaire, heures_supp_mensualisees, forfait_jours, salaire")
+    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, base_horaire, horaire, heures_supp_mensualisees, forfait_jours, salaire")
     .in("id", salarieIds);
   
   if (entrepriseId) {
@@ -571,6 +572,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         degre: salarie.degre || null,
         statut_employe: salarie.statut || null,
         type_contrat: salarie.type_contrat || null,
+        base_horaire: salarie.base_horaire || null,
         horaire: salarie.horaire || null,
         heures_supp_mensualisees: salarie.heures_supp_mensualisees || null,
         forfait_jours: salarie.forfait_jours || null,

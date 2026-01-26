@@ -15,6 +15,7 @@ export interface RHExportEmployee {
   degre: string;
   statut: string;
   type_contrat: string;
+  base_horaire: string;
   horaire: string;
   heures_supp_mensualisees: number;
   forfait_jours: boolean;
@@ -128,6 +129,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       degre: emp.degre || "",
       statut: emp.statut_employe || "",
       type_contrat: emp.type_contrat || "",
+      base_horaire: emp.base_horaire || "",
       horaire: emp.horaire || "",
       heures_supp_mensualisees: emp.heures_supp_mensualisees || 0,
       forfait_jours: emp.forfait_jours || false,
