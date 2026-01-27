@@ -4,7 +4,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw } from "lucide-react";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw, CalendarDays } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -550,10 +550,23 @@ const Index = () => {
                 <WeekSelectorChef value={selectedWeek} onChange={setSelectedWeek} chefId={selectedChef} />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  Choisir un chantier
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Choisir un chantier
+                  </label>
+                  {selectedChantier && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 text-xs px-2"
+                      onClick={() => navigate(`/chantiers/${selectedChantier}`)}
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      Planning
+                    </Button>
+                  )}
+                </div>
                 <ChantierSelector value={selectedChantier} onChange={setSelectedChantier} chefId={selectedChef} />
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChantierDetail } from "@/hooks/useChantierDetail";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { ChantierDetailHeader } from "@/components/chantier/ChantierDetailHeader";
 import { ChantierEditDialog } from "@/components/chantier/ChantierEditDialog";
 import { ChantierPlanningTab } from "@/components/chantier/tabs/ChantierPlanningTab";
@@ -16,7 +17,11 @@ import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp } from "
 const ChantierDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: chantier, isLoading, error } = useChantierDetail(id);
+  const { data: userRole } = useCurrentUserRole();
   const [showEditDialog, setShowEditDialog] = useState(false);
+  
+  // Mode lecture seule pour les chefs
+  const isReadOnly = userRole === "chef";
 
   if (isLoading) {
     return (
@@ -89,7 +94,7 @@ const ChantierDetail = () => {
 
           <div className="mt-6">
             <TabsContent value="planning">
-              <ChantierPlanningTab chantierId={chantier.id} chantierNom={chantier.nom} />
+              <ChantierPlanningTab chantierId={chantier.id} chantierNom={chantier.nom} readOnly={isReadOnly} />
             </TabsContent>
             <TabsContent value="recap">
               <ChantierKanbanTab chantierId={chantier.id} />

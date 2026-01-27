@@ -121,11 +121,11 @@ const App = () => (
               } 
             />
             
-            {/* Chantier Detail (conducteurs) - Accessible par: super_admin, conducteur */}
+            {/* Chantier Detail - Accessible par: super_admin, conducteur, chef (lecture seule pour chef) */}
             <Route 
               path="/chantiers/:id" 
               element={
-                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                <RequireRole allowedRoles={["super_admin", "conducteur", "chef"]}>
                   <ChantierDetail />
                 </RequireRole>
               } 

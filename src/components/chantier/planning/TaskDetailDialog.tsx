@@ -57,6 +57,7 @@ interface TaskDetailDialogProps {
   tache: TacheChantier | null;
   chantierId: string;
   initialTab?: "recap" | "date" | "rentabilite" | "fichiers";
+  readOnly?: boolean;
 }
 
 const STATUTS = [
@@ -81,7 +82,7 @@ const getComputedStatus = (statut: string, dateDebut: string, dateFin: string) =
   return "A_FAIRE";
 };
 
-export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initialTab = "recap" }: TaskDetailDialogProps) => {
+export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initialTab = "recap", readOnly = false }: TaskDetailDialogProps) => {
   const updateTache = useUpdateTache();
   const deleteTache = useDeleteTache();
   const { documents, uploadDocument, deleteDocument, getPublicUrl } = useTacheDocuments(tache?.id);
@@ -207,47 +208,53 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
         <div className="p-5 pb-4 border-b border-border/50">
           {/* Top row: title + actions */}
           <div className="flex items-start justify-between gap-3">
-            <Input
-              value={formData.nom}
-              onChange={(e) => handleFieldChange("nom", e.target.value)}
-              onBlur={handleFieldBlur}
-              style={{ fontSize: '1.75rem', lineHeight: '2rem' }}
-              className="font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
-              placeholder="Nom de la tâche"
-            />
-            <div className="flex items-center gap-2 shrink-0 mr-8">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-transparent hover:ring-2 hover:ring-orange-500">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer la tâche ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Cette action est irréversible. La tâche "{tache.nom}" sera définitivement supprimée.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {readOnly ? (
+              <h2 className="text-2xl font-bold text-foreground">{formData.nom}</h2>
+            ) : (
+              <Input
+                value={formData.nom}
+                onChange={(e) => handleFieldChange("nom", e.target.value)}
+                onBlur={handleFieldBlur}
+                style={{ fontSize: '1.75rem', lineHeight: '2rem' }}
+                className="font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+                placeholder="Nom de la tâche"
+              />
+            )}
+            {!readOnly && (
+              <div className="flex items-center gap-2 shrink-0 mr-8">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-transparent hover:ring-2 hover:ring-orange-500">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
                           Supprimer
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Supprimer la tâche ?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Cette action est irréversible. La tâche "{tache.nom}" sera définitivement supprimée.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Supprimer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
 
           {/* Late message only (badge removed - shown in Statut below) */}
@@ -300,30 +307,36 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div className="grid grid-cols-2 gap-6">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Statut</span>
-                <Select 
-                  value={formData.statut} 
-                  onValueChange={(v) => {
-                    handleFieldChange("statut", v);
-                    // Auto-save immediately for select
-                    setTimeout(() => handleSave(), 0);
-                  }}
-                >
-                  <SelectTrigger className="w-auto h-8 border-0 bg-transparent shadow-none p-0 gap-1.5">
-                    <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 px-3 py-1`}>
-                      {statusInfo.label}
-                    </Badge>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUTS.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
-                          {s.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {readOnly ? (
+                  <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 px-3 py-1`}>
+                    {statusInfo.label}
+                  </Badge>
+                ) : (
+                  <Select 
+                    value={formData.statut} 
+                    onValueChange={(v) => {
+                      handleFieldChange("statut", v);
+                      // Auto-save immediately for select
+                      setTimeout(() => handleSave(), 0);
+                    }}
+                  >
+                    <SelectTrigger className="w-auto h-8 border-0 bg-transparent shadow-none p-0 gap-1.5">
+                      <Badge className={`${statusInfo.badgeBg} ${statusInfo.textColor} border-0 px-3 py-1`}>
+                        {statusInfo.label}
+                      </Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUTS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
+                            {s.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Lot</span>
@@ -336,79 +349,93 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de début</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-medium h-10",
-                        !formData.date_debut && "text-muted-foreground"
-                      )}
-                    >
-                      {formData.date_debut ? formatDateDisplay(formData.date_debut) : "Sélectionner"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.date_debut ? parseISO(formData.date_debut) : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          handleFieldChange("date_debut", format(date, "yyyy-MM-dd"));
-                          handleSave();
-                        }
-                      }}
-                      locale={fr}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center">{formatDateDisplay(formData.date_debut)}</p>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-medium h-10",
+                          !formData.date_debut && "text-muted-foreground"
+                        )}
+                      >
+                        {formData.date_debut ? formatDateDisplay(formData.date_debut) : "Sélectionner"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.date_debut ? parseISO(formData.date_debut) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            handleFieldChange("date_debut", format(date, "yyyy-MM-dd"));
+                            handleSave();
+                          }
+                        }}
+                        locale={fr}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
               <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Date de fin</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-medium h-10",
-                        !formData.date_fin && "text-muted-foreground"
-                      )}
-                    >
-                      {formData.date_fin ? formatDateDisplay(formData.date_fin) : "Sélectionner"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.date_fin ? parseISO(formData.date_fin) : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          handleFieldChange("date_fin", format(date, "yyyy-MM-dd"));
-                          handleSave();
-                        }
-                      }}
-                      disabled={(date) => formData.date_debut ? date < parseISO(formData.date_debut) : false}
-                      locale={fr}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center">{formatDateDisplay(formData.date_fin)}</p>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-medium h-10",
+                          !formData.date_fin && "text-muted-foreground"
+                        )}
+                      >
+                        {formData.date_fin ? formatDateDisplay(formData.date_fin) : "Sélectionner"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.date_fin ? parseISO(formData.date_fin) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            handleFieldChange("date_fin", format(date, "yyyy-MM-dd"));
+                            handleSave();
+                          }
+                        }}
+                        disabled={(date) => formData.date_debut ? date < parseISO(formData.date_debut) : false}
+                        locale={fr}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             </div>
 
             {/* Description */}
             <div className="space-y-2">
               <span className="text-sm text-muted-foreground">Description</span>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => handleFieldChange("description", e.target.value)}
-                onBlur={handleFieldBlur}
-                placeholder="Insérez une description ici ..."
-                className="min-h-[100px] resize-none bg-muted/30 text-sm"
-              />
+              {readOnly ? (
+                <p className="text-sm text-foreground min-h-[100px] bg-muted/30 rounded-md p-3">
+                  {formData.description || <span className="text-muted-foreground italic">Aucune description</span>}
+                </p>
+              ) : (
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                  onBlur={handleFieldBlur}
+                  placeholder="Insérez une description ici ..."
+                  className="min-h-[100px] resize-none bg-muted/30 text-sm"
+                />
+              )}
             </div>
 
             {/* Fichiers preview - same card style as Fichiers tab */}
@@ -651,29 +678,33 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             />
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-base">Fichiers</h4>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8 rounded-lg"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              {!readOnly && (
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-lg"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             
-            {/* Upload zone */}
-            <div
-              className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer mb-4"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Cliquez pour ajouter des fichiers
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF, JPG, PNG (max 10 MB)
-              </p>
-            </div>
+            {/* Upload zone - hidden in readOnly mode */}
+            {!readOnly && (
+              <div
+                className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer mb-4"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Cliquez pour ajouter des fichiers
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, JPG, PNG (max 10 MB)
+                </p>
+              </div>
+            )}
             
             {documents.length === 0 ? (
               <div className="text-center py-4">
@@ -762,14 +793,18 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
                                 <Download className="h-4 w-4 mr-2" />
                                 Télécharger
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => setDocToDelete(doc)} 
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Supprimer
-                              </DropdownMenuItem>
+                              {!readOnly && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => setDocToDelete(doc)} 
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
