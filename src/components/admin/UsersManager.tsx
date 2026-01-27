@@ -228,18 +228,14 @@ export const UsersManager = () => {
       if (userRole) return userRole.role;
     }
     
-    // 2️⃣ Vérifier le champ role_metier (pour tous les métiers)
-    if (utilisateur.role_metier === "macon") return "macon";
-    if (utilisateur.role_metier === "grutier") return "grutier";
-    if (utilisateur.role_metier === "finisseur") return "finisseur";
-    if (utilisateur.role_metier === "chef") return "chef";
-    if (utilisateur.role_metier === "conducteur") return "conducteur";
+    // 2️⃣ Vérifier le champ role_metier
+    if (utilisateur.role_metier) return utilisateur.role_metier;
     
     // 3️⃣ Si c'est un intérimaire → retourner "interimaire"
     if (utilisateur.agence_interim) return "interimaire";
     
-    // 4️⃣ Par défaut (ne devrait jamais arriver)
-    return "finisseur";
+    // 4️⃣ Rôle inconnu - afficher "non_defini" au lieu de finisseur par défaut
+    return "non_defini";
   };
 
   const handleEdit = (profile: any) => {
