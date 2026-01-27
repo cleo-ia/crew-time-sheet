@@ -2604,6 +2604,7 @@ export type Database = {
         | "grutier"
         | "chef"
         | "conducteur"
+        | "interimaire"
       statut_demande_conge:
         | "EN_ATTENTE"
         | "VALIDEE_CONDUCTEUR"
@@ -2767,7 +2768,14 @@ export const Constants = {
         "gestionnaire",
       ],
       repas_type: ["PANIER", "RESTO"],
-      role_metier_type: ["macon", "finisseur", "grutier", "chef", "conducteur"],
+      role_metier_type: [
+        "macon",
+        "finisseur",
+        "grutier",
+        "chef",
+        "conducteur",
+        "interimaire",
+      ],
       statut_demande_conge: [
         "EN_ATTENTE",
         "VALIDEE_CONDUCTEUR",
