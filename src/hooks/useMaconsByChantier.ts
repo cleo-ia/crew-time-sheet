@@ -162,52 +162,101 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         }
       }
 
-      // 2. LOGIQUE HYBRIDE : Priorité à affectations_jours_chef (hebdomadaire), fallback sur affectations (legacy)
-      
-      // ÉTAPE 2a : Récupérer les macon_id depuis affectations_jours_chef (source de vérité hebdo)
-      const { data: joursAffectations, error: joursError } = await supabase
-        .from("affectations_jours_chef")
-        .select("macon_id")
-        .eq("chantier_id", chantierId)
-        .eq("semaine", semaine)
-        .eq("entreprise_id", entrepriseId);
+       // 2. SÉLECTION DE LA SOURCE D'ÉQUIPE
+       // Tant que le système de planning n'est PAS officiellement activé, on doit continuer
+       // à fonctionner en mode legacy (table affectations) même si affectations_jours_chef
+       // contient des données partielles (cas observé en S05).
+       //
+       // Critère d'activation officielle : présence d'une validation conducteur pour la semaine.
+       let planningIsValidatedForWeek = false;
+       try {
+         const { data: validation, error: validationError } = await supabase
+           .from("planning_validations")
+           .select("id")
+           .eq("entreprise_id", entrepriseId)
+           .eq("semaine", semaine)
+           .limit(1)
+           .maybeSingle();
 
-      if (joursError) {
-        console.error("[useMaconsByChantier] Erreur affectations_jours_chef:", joursError);
-      }
+         if (validationError) {
+           console.error("[useMaconsByChantier] Erreur planning_validations:", validationError);
+         }
 
-      // Dédupliquer les macon_id
-      const maconIdsFromJours = [...new Set((joursAffectations || []).map(a => a.macon_id))];
-      console.log(`[useMaconsByChantier] ${maconIdsFromJours.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine}`);
+         planningIsValidatedForWeek = !!validation;
+       } catch (e) {
+         console.error("[useMaconsByChantier] Erreur check planning_validations:", e);
+       }
 
-      // ÉTAPE 2b : Fallback sur affectations si aucun résultat (rétrocompatibilité)
-      let finalMaconIds: string[] = maconIdsFromJours;
+       let finalMaconIds: string[] = [];
 
-      if (maconIdsFromJours.length === 0) {
-        console.log("[useMaconsByChantier] Fallback sur table affectations (legacy)");
-        const { data: legacyAffectations, error: legacyError } = await supabase
-          .from("affectations")
-          .select(`
-            macon_id,
-            chantiers!inner(entreprise_id)
-          `)
-          .eq("chantier_id", chantierId)
-          .is("date_fin", null);
+       if (planningIsValidatedForWeek) {
+         // MODE PLANNING (officiellement activé pour la semaine)
+         const { data: joursAffectations, error: joursError } = await supabase
+           .from("affectations_jours_chef")
+           .select("macon_id")
+           .eq("chantier_id", chantierId)
+           .eq("semaine", semaine)
+           .eq("entreprise_id", entrepriseId);
 
-        if (legacyError) {
-          console.error("[useMaconsByChantier] Erreur affectations legacy:", legacyError);
-        }
+         if (joursError) {
+           console.error("[useMaconsByChantier] Erreur affectations_jours_chef:", joursError);
+         }
 
-        // Filtrer par entreprise_id via le join pour garantir l'isolation
-        finalMaconIds = (legacyAffectations || [])
-          .filter((a: any) => a.chantiers?.entreprise_id === entrepriseId)
-          .map((a: any) => a.macon_id);
-        
-        console.log(`[useMaconsByChantier] ${finalMaconIds.length} employés trouvés via fallback affectations`);
-      }
+         // Dédupliquer les macon_id
+         const maconIdsFromJours = [...new Set((joursAffectations || []).map(a => a.macon_id))];
+         console.log(`[useMaconsByChantier] (planning) ${maconIdsFromJours.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine}`);
 
-      // ÉTAPE 3 : Charger les utilisateurs pour ces macon_id (hors chef déjà ajouté)
-      const maconIdsToLoad = finalMaconIds.filter(id => id !== chefId);
+         // Fallback legacy si aucun résultat (rétrocompatibilité)
+         finalMaconIds = maconIdsFromJours;
+
+         if (maconIdsFromJours.length === 0) {
+           console.log("[useMaconsByChantier] (planning) Fallback sur table affectations (legacy)");
+           const { data: legacyAffectations, error: legacyError } = await supabase
+             .from("affectations")
+             .select(`
+               macon_id,
+               chantiers!inner(entreprise_id)
+             `)
+             .eq("chantier_id", chantierId)
+             .is("date_fin", null);
+
+           if (legacyError) {
+             console.error("[useMaconsByChantier] Erreur affectations legacy:", legacyError);
+           }
+
+           // Filtrer par entreprise_id via le join pour garantir l'isolation
+           finalMaconIds = (legacyAffectations || [])
+             .filter((a: any) => a.chantiers?.entreprise_id === entrepriseId)
+             .map((a: any) => a.macon_id);
+
+           console.log(`[useMaconsByChantier] (planning) ${finalMaconIds.length} employés trouvés via fallback affectations`);
+         }
+       } else {
+         // MODE LEGACY (planning non validé → fonctionnement "comme avant")
+         console.log("[useMaconsByChantier] (legacy) Planning non validé pour cette semaine → utilisation de la table affectations");
+
+         const { data: legacyAffectations, error: legacyError } = await supabase
+           .from("affectations")
+           .select(`
+             macon_id,
+             chantiers!inner(entreprise_id)
+           `)
+           .eq("chantier_id", chantierId)
+           .is("date_fin", null);
+
+         if (legacyError) {
+           console.error("[useMaconsByChantier] Erreur affectations legacy:", legacyError);
+         }
+
+         finalMaconIds = (legacyAffectations || [])
+           .filter((a: any) => a.chantiers?.entreprise_id === entrepriseId)
+           .map((a: any) => a.macon_id);
+
+         console.log(`[useMaconsByChantier] (legacy) ${finalMaconIds.length} employés trouvés via affectations`);
+       }
+
+       // ÉTAPE 3 : Charger les utilisateurs pour ces macon_id (hors chef déjà ajouté)
+       const maconIdsToLoad = finalMaconIds.filter(id => id !== chefId);
 
       if (maconIdsToLoad.length > 0) {
         const { data: macons, error: maconsError } = await supabase
