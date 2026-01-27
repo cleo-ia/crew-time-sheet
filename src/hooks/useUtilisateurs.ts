@@ -196,6 +196,33 @@ export const useCreateUtilisateur = () => {
       // Récupérer l'entreprise_id avec fallback automatique
       const entrepriseId = await getCurrentEntrepriseId();
 
+      // Vérifier si un utilisateur avec le même nom/prénom existe déjà
+      const nomTrimmed = user.nom.trim();
+      const prenomTrimmed = user.prenom.trim();
+      
+      const { data: existing, error: checkError } = await supabase
+        .from("utilisateurs")
+        .select("id, nom, prenom, role_metier, agence_interim")
+        .eq("entreprise_id", entrepriseId)
+        .ilike("nom", nomTrimmed)
+        .ilike("prenom", prenomTrimmed)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (existing && existing.length > 0) {
+        const existingUser = existing[0];
+        const details = existingUser.role_metier 
+          ? `(${existingUser.role_metier})`
+          : existingUser.agence_interim 
+            ? `(intérimaire - ${existingUser.agence_interim})`
+            : "";
+        throw new Error(
+          `Un utilisateur "${existingUser.prenom} ${existingUser.nom}" ${details} existe déjà. ` +
+          `Utilisez la fonction de modification ou vérifiez le nom saisi.`
+        );
+      }
+
       // Create in utilisateurs with entreprise_id
       const { data: utilisateur, error: userError } = await supabase
         .from("utilisateurs")
