@@ -13,6 +13,7 @@ interface TaskBarsProps {
   onTaskClick: (tache: TacheChantier) => void;
   chantierId: string;
   scrollContainerRef?: RefObject<EmptyGanttGridRef>;
+  readOnly?: boolean;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -51,6 +52,7 @@ export const TaskBars = ({
   onTaskClick,
   chantierId,
   scrollContainerRef,
+  readOnly = false,
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
@@ -132,13 +134,16 @@ export const TaskBars = ({
   }, [sortedTaches, startDate, dayWidth, today]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent, tache: TacheChantier, currentLeft: number, currentRow: number) => {
+    // Bloquer le drag en mode lecture seule
+    if (readOnly) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
     setDraggedTaskId(tache.id);
     dragStartRef.current = { x: e.clientX, y: e.clientY, taskLeft: currentLeft, taskRow: currentRow };
     isDraggingRef.current = false;
-  }, []);
+  }, [readOnly]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!dragStartRef.current || !draggedTaskId) return;
@@ -293,7 +298,11 @@ export const TaskBars = ({
           <div
             key={tache.id}
             className={`absolute rounded-md pointer-events-auto transition-shadow overflow-hidden ${statusInfo.color} ${
-              isDragging ? "opacity-80 shadow-lg z-50 cursor-grabbing" : "cursor-grab hover:brightness-95 hover:shadow-md"
+              readOnly 
+                ? "cursor-pointer hover:brightness-95" 
+                : isDragging 
+                  ? "opacity-80 shadow-lg z-50 cursor-grabbing" 
+                  : "cursor-grab hover:brightness-95 hover:shadow-md"
             }`}
             style={{
               left: `${displayLeft}px`,
@@ -302,7 +311,7 @@ export const TaskBars = ({
               height: `${BAR_HEIGHT}px`,
               transition: isDragging ? "none" : "box-shadow 0.2s",
             }}
-            onMouseDown={(e) => handleMouseDown(e, tache, left, row)}
+            onMouseDown={readOnly ? undefined : (e) => handleMouseDown(e, tache, left, row)}
             onClick={(e) => handleClick(e, tache)}
           >
             {/* Label container with sticky behavior using transform */}

@@ -23,6 +23,7 @@ import { fr } from "date-fns/locale";
 interface ChantierPlanningTabProps {
   chantierId: string;
   chantierNom?: string;
+  readOnly?: boolean;
 }
 
 // Start from January 2015 to allow scrolling far back and forward
@@ -37,7 +38,7 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
   { value: "year", label: "Année" },
 ];
 
-export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlanningTabProps) => {
+export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
   const { data: todos = [] } = useTodosChantier(chantierId);
   const { data: chantierDetail } = useChantierDetail(chantierId);
@@ -521,23 +522,25 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
             </SelectContent>
           </Select>
 
-          {/* Add task button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  onClick={() => setShowCreateDialog(true)} 
-                  size="sm"
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Ajouter une tâche</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* Add task button - hidden in readOnly mode */}
+          {!readOnly && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => setShowCreateDialog(true)} 
+                    size="sm"
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ajouter une tâche</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {/* Export Excel button */}
           <TooltipProvider>
@@ -578,6 +581,7 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
               onTaskClick={handleTaskClick}
               chantierId={chantierId}
               scrollContainerRef={ganttRef}
+              readOnly={readOnly}
             />
           )}
           {planningTodos.length > 0 && (
@@ -619,24 +623,27 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom }: ChantierPlannin
       </div>
 
       {/* Info text when empty */}
-      {taches.length === 0 && (
+      {taches.length === 0 && !readOnly && (
         <p className="text-center text-sm text-muted-foreground py-2">
           Cliquez sur le bouton <span className="inline-flex items-center justify-center w-5 h-5 bg-orange-500 text-white rounded text-xs mx-1"><Plus className="h-3 w-3" /></span> pour créer votre première tâche
         </p>
       )}
 
-      {/* Dialogs */}
-      <TaskFormDialog
+      {/* Dialogs - TaskFormDialog only in edit mode */}
+      {!readOnly && (
+        <TaskFormDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        chantierId={chantierId}
-      />
+          chantierId={chantierId}
+        />
+      )}
 
       <TaskDetailDialog
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         tache={selectedTache}
         chantierId={chantierId}
+        readOnly={readOnly}
       />
 
       {selectedTodo && (

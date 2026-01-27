@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Building2, CalendarDays, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChantierDetail } from "@/hooks/useChantierDetail";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 interface ChantierDetailHeaderProps {
   chantier: ChantierDetail;
@@ -15,11 +17,21 @@ interface ChantierDetailHeaderProps {
 export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: userRole } = useCurrentUserRole();
 
-  // Déterminer le chemin de retour en fonction de la route actuelle
-  const isFromConducteurRoute = location.pathname.startsWith("/chantiers/");
-  const backPath = isFromConducteurRoute ? "/chantiers" : "/admin?tab=chantiers";
-  const backLabel = isFromConducteurRoute ? "Retour aux chantiers" : "Retour aux chantiers";
+  // Déterminer le chemin de retour en fonction de la route et du rôle
+  const { backPath, backLabel } = useMemo(() => {
+    // Si admin, retour vers admin
+    if (location.pathname.startsWith("/admin")) {
+      return { backPath: "/admin?tab=chantiers", backLabel: "Retour aux chantiers" };
+    }
+    // Si chef, retour vers la page de saisie
+    if (userRole === "chef") {
+      return { backPath: "/", backLabel: "Retour à la saisie" };
+    }
+    // Sinon (conducteur), retour vers la liste des chantiers
+    return { backPath: "/chantiers", backLabel: "Retour aux chantiers" };
+  }, [location.pathname, userRole]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
