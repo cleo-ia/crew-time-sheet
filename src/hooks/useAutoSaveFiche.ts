@@ -253,33 +253,57 @@ export const useAutoSaveFiche = () => {
         // 🔥 CORRECTION MULTI-CHEF: Ne sauvegarder que les jours assignés à ce chef
         // Pour les finisseurs: jours saisis uniquement (multi-conducteur)
         // Pour les maçons: jours assignés via affectations_jours_chef (ou fallback 5 jours)
+        // 
+        // NOUVEAU: On vérifie d'abord si le planning est actif (validé par un conducteur)
+        // Sinon on reste en mode legacy (tous les jours)
         let selectedDays: typeof workDays[number][] = [...workDays];
 
         if (chantierId !== null) {
-          // Maçons: vérifier s'il y a des jours spécifiques assignés à ce chef
-          const { data: affectationsJours } = await supabase
-            .from("affectations_jours_chef")
-            .select("jour")
-            .eq("macon_id", entry.employeeId)
-            .eq("chef_id", chefId)
-            .eq("chantier_id", chantierId)
-            .eq("semaine", weekId);
-
-          if (affectationsJours && affectationsJours.length > 0) {
-            // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
-            const dayNameByDate = Object.fromEntries(
-              Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
-            );
-            const assignedDayNames = affectationsJours
-              .map(a => dayNameByDate[a.jour])
-              .filter((name): name is typeof workDays[number] => !!name);
+          // Maçons: vérifier d'abord si le planning est validé
+          const entrepriseIdLocal = localStorage.getItem("current_entreprise_id");
+          
+          // Vérifier si le planning est actif pour cette semaine
+          let isPlanningActive = false;
+          if (entrepriseIdLocal) {
+            const { data: planningValidation } = await supabase
+              .from("planning_validations")
+              .select("id")
+              .eq("entreprise_id", entrepriseIdLocal)
+              .eq("semaine", weekId)
+              .maybeSingle();
             
-            if (assignedDayNames.length > 0) {
-              selectedDays = assignedDayNames;
-            }
-            // Si pas de correspondance, garder workDays (fallback)
+            isPlanningActive = planningValidation !== null;
           }
-          // Si aucune affectation jour n'existe, garder workDays (rétro-compatibilité)
+          
+          // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
+          if (!isPlanningActive) {
+            selectedDays = [...workDays];
+          } else {
+            // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
+            const { data: affectationsJours } = await supabase
+              .from("affectations_jours_chef")
+              .select("jour")
+              .eq("macon_id", entry.employeeId)
+              .eq("chef_id", chefId)
+              .eq("chantier_id", chantierId)
+              .eq("semaine", weekId);
+
+            if (affectationsJours && affectationsJours.length > 0) {
+              // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
+              const dayNameByDate = Object.fromEntries(
+                Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
+              );
+              const assignedDayNames = affectationsJours
+                .map(a => dayNameByDate[a.jour])
+                .filter((name): name is typeof workDays[number] => !!name);
+              
+              if (assignedDayNames.length > 0) {
+                selectedDays = assignedDayNames;
+              }
+              // Si pas de correspondance, garder workDays (fallback)
+            }
+            // Si aucune affectation jour n'existe, garder workDays (rétro-compatibilité)
+          }
         } else {
           // Finisseurs: seulement les jours effectivement saisis
           selectedDays = workDays.filter(d => normalizedDays[d] !== undefined);

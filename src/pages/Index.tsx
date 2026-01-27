@@ -17,6 +17,7 @@ import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+import { usePlanningMode } from "@/hooks/usePlanningMode";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChefMaconsManager } from "@/components/chef/ChefMaconsManager";
@@ -287,10 +288,14 @@ const Index = () => {
   const { isTransportComplete } = useTransportValidation(ficheId, undefined, allAbsentDays);
   const { toast } = useToast();
   
+  // Vérifier si le planning est actif (validé par un conducteur)
+  const { isActive: isPlanningActive } = usePlanningMode(selectedWeek);
+  
   // CORRECTION BUG MULTI-CHANTIER: Charger les affectations jour pour ce chef/semaine
   // afin de ne transmettre QUE les jours où l'employé est affecté à ce chantier
+  // 🔥 On ne charge QUE si le planning est actif, sinon mode legacy
   const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
-    selectedChef || null,
+    isPlanningActive ? (selectedChef || null) : null,
     selectedWeek || ""
   );
 
@@ -368,8 +373,13 @@ const Index = () => {
     const days = [0,1,2,3,4].map((d) => format(addDays(monday, d), "yyyy-MM-dd"));
     
     // CORRECTION BUG MULTI-CHANTIER: Fonction pour obtenir les jours autorisés pour un employé
-    // selon ses affectations. Si pas d'affectations définies, fallback sur tous les jours (legacy).
+    // selon ses affectations. Si pas d'affectations définies OU planning non validé, fallback sur tous les jours (legacy).
     const getAuthorizedDaysForEmployee = (employeeId: string): string[] => {
+      // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours sont autorisés
+      if (!isPlanningActive) {
+        return days;
+      }
+      
       // Si aucune donnée d'affectation, comportement legacy (tous les jours)
       if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
         return days; // Retourne toutes les dates ISO
