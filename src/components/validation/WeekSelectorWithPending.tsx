@@ -43,7 +43,7 @@ export const WeekSelectorWithPending = ({ value, onChange, disabled }: WeekSelec
     const currentDate = parseISOWeek(currentWeek);
     const weeks: string[] = [];
     
-    for (let i = -1; i <= 1; i++) {
+    for (let i = -4; i <= 1; i++) {
       const weekDate = addWeeks(currentDate, i);
       weeks.push(format(weekDate, "RRRR-'S'II"));
     }
