@@ -14,6 +14,7 @@ import { useSaveSignature } from "@/hooks/useSaveSignature";
 import { useUpdateFicheStatus } from "@/hooks/useFiches";
 import { useTransportByChantier } from "@/hooks/useTransportByChantier";
 import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+import { usePlanningMode } from "@/hooks/usePlanningMode";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -31,7 +32,14 @@ const SignatureMacons = () => {
 
   const { data: maconsData, isLoading } = useMaconsByChantier(chantierId || "", semaine || "", chefId || undefined);
   const { data: transportData } = useTransportByChantier(chantierId, semaine);
-  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(chefId || null, semaine || "");
+  // Vérifier si le planning est actif (validé par un conducteur)
+  const { isActive: isPlanningActive } = usePlanningMode(semaine || "");
+  
+  // Ne charger les affectations jours QUE si le planning est actif
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+    isPlanningActive ? (chefId || null) : null,
+    semaine || ""
+  );
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
   const initializeNextWeek = useInitializeNextWeekFromPrevious();
@@ -42,6 +50,11 @@ const SignatureMacons = () => {
   // Fonction pour filtrer les données d'un maçon selon ses jours affectés
   const getFilteredMaconData = useMemo(() => {
     return (macon: MaconWithFiche): MaconWithFiche => {
+      // 🔥 MODE LEGACY : Si le planning n'est pas validé, ne pas filtrer
+      if (!isPlanningActive) {
+        return macon;
+      }
+      
       // Le chef n'est jamais filtré
       if (macon.isChef) {
         return macon;
@@ -76,7 +89,7 @@ const SignatureMacons = () => {
         intemperie: filteredJours.reduce((sum, j) => sum + Number(j.HI || 0), 0),
       };
     };
-  }, [affectationsJoursChef]);
+  }, [isPlanningActive, affectationsJoursChef]);
 
   // Update local state when data loads and sort: non-temporary workers first, then temporary workers
   useEffect(() => {
