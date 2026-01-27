@@ -53,6 +53,9 @@ export interface EnterpriseFeatures {
   
   // Points météo quotidien basé sur la ville du chantier
   pointsMeteo: boolean;
+  
+  // Demande de transport matériaux vers le dépôt
+  transportMateriaux: boolean;
 }
 
 export interface EnterpriseRoutes {
@@ -128,6 +131,7 @@ export const defaultFeatures: EnterpriseFeatures = {
   contrainteVendredi12h: false, // Désactivé par défaut pour les tests
   ratioGlobal: false, // Désactivé par défaut, activé uniquement pour Limoge Revillon
   pointsMeteo: false, // Désactivé par défaut
+  transportMateriaux: true, // Demandes de transport matériaux vers le dépôt
 };
 
 export const defaultRoutes: EnterpriseRoutes = {

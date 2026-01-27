@@ -796,6 +796,7 @@ export type Database = {
           actif: boolean | null
           couleur_primaire: string | null
           created_at: string | null
+          email_depot: string | null
           id: string
           logo_url: string | null
           nom: string
@@ -806,6 +807,7 @@ export type Database = {
           actif?: boolean | null
           couleur_primaire?: string | null
           created_at?: string | null
+          email_depot?: string | null
           id?: string
           logo_url?: string | null
           nom: string
@@ -816,6 +818,7 @@ export type Database = {
           actif?: boolean | null
           couleur_primaire?: string | null
           created_at?: string | null
+          email_depot?: string | null
           id?: string
           logo_url?: string | null
           nom?: string
@@ -1352,6 +1355,124 @@ export type Database = {
             columns: ["fiche_transport_id"]
             isOneToOne: false
             referencedRelation: "fiches_transport"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiches_transport_materiaux: {
+        Row: {
+          chantier_id: string
+          conducteur_id: string
+          created_at: string | null
+          entreprise_id: string
+          id: string
+          jour_livraison: string
+          moyen_transport: string | null
+          responsable_depot: string | null
+          semaine_livraison: number
+          statut: string | null
+          transmise_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chantier_id: string
+          conducteur_id: string
+          created_at?: string | null
+          entreprise_id: string
+          id?: string
+          jour_livraison: string
+          moyen_transport?: string | null
+          responsable_depot?: string | null
+          semaine_livraison: number
+          statut?: string | null
+          transmise_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chantier_id?: string
+          conducteur_id?: string
+          created_at?: string | null
+          entreprise_id?: string
+          id?: string
+          jour_livraison?: string
+          moyen_transport?: string | null
+          responsable_depot?: string | null
+          semaine_livraison?: number
+          statut?: string | null
+          transmise_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiches_transport_materiaux_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiches_transport_materiaux_conducteur_id_fkey"
+            columns: ["conducteur_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiches_transport_materiaux_conducteur_id_fkey"
+            columns: ["conducteur_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiches_transport_materiaux_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiches_transport_materiaux_lignes: {
+        Row: {
+          categorie: string | null
+          created_at: string | null
+          designation: string
+          entreprise_id: string
+          fiche_id: string
+          id: string
+          quantite: number
+          reel_charge: number | null
+          unite: string | null
+        }
+        Insert: {
+          categorie?: string | null
+          created_at?: string | null
+          designation: string
+          entreprise_id: string
+          fiche_id: string
+          id?: string
+          quantite?: number
+          reel_charge?: number | null
+          unite?: string | null
+        }
+        Update: {
+          categorie?: string | null
+          created_at?: string | null
+          designation?: string
+          entreprise_id?: string
+          fiche_id?: string
+          id?: string
+          quantite?: number
+          reel_charge?: number | null
+          unite?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiches_transport_materiaux_lignes_fiche_id_fkey"
+            columns: ["fiche_id"]
+            isOneToOne: false
+            referencedRelation: "fiches_transport_materiaux"
             referencedColumns: ["id"]
           },
         ]
