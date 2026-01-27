@@ -1,182 +1,139 @@
 
-# Plan de correction : Mode Legacy pour le Planning
+# Plan : Accès Chantiers pour les Conducteurs
 
-## Contexte du probleme
+## Contexte
 
-Le chef Jerome DEPART voit son equipe avec 0h et tous les jours marques comme "Jour non affecte" en S05. Cela vient du fait que :
-- Le hook `useMaconsByChantier` a ete corrige pour ignorer le planning si non valide
-- MAIS les autres composants (`TimeEntryTable`, `SignatureMacons`, etc.) continuent d'utiliser `affectations_jours_chef` pour filtrer les jours
+Les conducteurs de travaux doivent pouvoir accéder à la liste complète des chantiers de leur entreprise pour :
+- Consulter et tester les plannings Gantt
+- Créer de nouveaux chantiers
+- Modifier les chantiers existants
 
-## Objectif
+Actuellement, cette fonctionnalité n'est accessible que via `/admin`, réservée aux rôles admin/gestionnaire/rh.
 
-Tant que le planning n'est pas officiellement valide par un conducteur, l'application doit fonctionner en mode legacy :
-- Pas de badge "Jour non affecte"
-- Tous les jours sont editables
-- Les totaux incluent tous les jours travailles
-- Le chef compose son equipe manuellement via "Gerer mon equipe"
+## Solution proposée
 
-## Solution technique
+Créer une nouvelle route `/chantiers` dédiée aux conducteurs avec accès complet (CRUD) sur les chantiers, sans passer par l'interface d'administration.
 
-### Etape 1 : Creer un hook centralise pour verifier le mode planning
-
-Creer un nouveau hook `usePlanningMode` qui retourne un booleen indiquant si le planning est actif pour une semaine donnee.
+## Architecture
 
 ```text
-src/hooks/usePlanningMode.ts
-+----------------------------------+
-| usePlanningMode(semaine: string) |
-| Returns: { isActive: boolean }   |
-+----------------------------------+
-        |
-        v
-  Requete planning_validations
-        |
-        v
-  isActive = true si validation existe
++------------------+     +----------------------+     +-------------------+
+|   AppNav.tsx     |     |  ChantiersPage.tsx   |     | ChantierDetail    |
+|  (Bouton Chantiers) --> |  (Liste + CRUD)      | --> | /chantiers/:id    |
+|  role: conducteur|     |  Réutilise           |     | (Planning, Gantt) |
++------------------+     |  ChantiersManager    |     +-------------------+
+                         +----------------------+
 ```
 
-### Etape 2 : Modifier TimeEntryTable.tsx
+## Fichiers à créer
 
-Ajouter le hook `usePlanningMode` et modifier la logique :
+### 1. Nouvelle page : `src/pages/ChantiersPage.tsx`
 
-1. Si `isActive === false`, forcer `isDayAuthorizedForEmployee` a retourner `true` pour tous les jours
-2. Ne pas charger `affectationsJoursChef` si le planning n'est pas actif
+Page dédiée pour les conducteurs, intégrant le composant `ChantiersManager` existant.
 
-Fichier : `src/components/timesheet/TimeEntryTable.tsx`
+Structure :
+- AppNav (navigation)
+- PageHeader avec titre "Mes Chantiers"
+- ChantiersManager (composant existant, réutilisé tel quel)
 
-Modifications :
-- Ligne ~247-250 : Conditionner le chargement de `useAffectationsJoursByChef` a `isActive`
-- Ligne ~253-285 : Modifier `isDayAuthorizedForEmployee` pour ignorer le filtrage si `!isActive`
+### 2. Modifier `src/components/admin/ChantiersManager.tsx`
 
-### Etape 3 : Modifier Index.tsx
+Ajouter une prop optionnelle `basePath` pour contrôler la route de navigation vers les détails :
+- Par défaut : `/admin/chantiers/:id` (comportement actuel)
+- Pour conducteurs : `/chantiers/:id`
 
-Dans la fonction `handleSaveAndSign`, ne pas filtrer les jours si le planning n'est pas actif.
+Modification ligne 179 :
+```typescript
+// Avant
+onDoubleClick={() => navigate(`/admin/chantiers/${chantier.id}`)}
 
-Fichier : `src/pages/Index.tsx`
+// Après
+onDoubleClick={() => navigate(`${basePath || '/admin/chantiers'}/${chantier.id}`)}
+```
 
-Modifications :
-- Ligne ~292-295 : Conditionner le chargement de `useAffectationsJoursByChef`
-- Ligne ~372-390 : Si planning non actif, retourner tous les jours
+## Fichiers à modifier
 
-### Etape 4 : Modifier SignatureMacons.tsx
+### 3. `src/App.tsx` - Ajouter les nouvelles routes
 
-Conditionner le filtrage des ficheJours selon le mode planning.
-
-Fichier : `src/pages/SignatureMacons.tsx`
-
-Modifications :
-- Ligne ~34 : Conditionner le chargement de `useAffectationsJoursByChef`
-- Ligne ~43-79 : Si planning non actif, retourner les donnees sans filtrage
-
-### Etape 5 : Modifier useAutoSaveFiche.ts
-
-Ne pas filtrer les jours a sauvegarder si le planning n'est pas actif.
-
-Fichier : `src/hooks/useAutoSaveFiche.ts`
-
-Modifications :
-- Ligne ~258-282 : Ajouter une verification du mode planning avant de filtrer
-
-### Etape 6 : Modifier ChefMaconsManager.tsx
-
-Empecher la creation d'entrees dans `affectations_jours_chef` si le planning n'est pas actif (puisque ces donnees ne seront pas utilisees de toute facon).
-
-Fichier : `src/components/chef/ChefMaconsManager.tsx`
-
-Modifications :
-- Ligne ~294-318 : Ne pas appeler `createDefaultAffectationsJours` ni `updateJoursForMember` si planning non actif
-
-## Resume des fichiers a modifier
-
-| Fichier | Modification |
-|---------|--------------|
-| `src/hooks/usePlanningMode.ts` | NOUVEAU - Hook centralise |
-| `src/components/timesheet/TimeEntryTable.tsx` | Conditionner filtrage jours |
-| `src/pages/Index.tsx` | Conditionner filtrage transmission |
-| `src/pages/SignatureMacons.tsx` | Conditionner filtrage recapitulatif |
-| `src/hooks/useAutoSaveFiche.ts` | Conditionner filtrage sauvegarde |
-| `src/components/chef/ChefMaconsManager.tsx` | Ne pas creer affectations si legacy |
-
-## Comportement attendu apres correction
-
-1. Chef Jerome DEPART ouvre S05
-2. Le systeme detecte : pas de validation planning pour S05 -> mode legacy
-3. Toute l'equipe s'affiche avec les heures saisies
-4. Aucun badge "Jour non affecte"
-5. Le chef peut modifier tous les jours normalement
-6. La transmission inclut tous les jours travailles
-
-## Retrocompatibilite
-
-- Les donnees existantes dans `affectations_jours_chef` sont ignorees (pas supprimees)
-- Des qu'un conducteur valide le planning S+1, le mode planning s'active automatiquement
-- Le blocage des salaries deja affectes reste actif (via table `affectations`)
-
-## Section technique detaillee
-
-### Nouveau hook usePlanningMode
+Ajouter 2 routes accessibles aux conducteurs :
 
 ```typescript
-// src/hooks/usePlanningMode.ts
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// Route liste des chantiers
+<Route 
+  path="/chantiers" 
+  element={
+    <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+      <ChantiersPage />
+    </RequireRole>
+  } 
+/>
 
-export const usePlanningMode = (semaine: string) => {
-  const entrepriseId = localStorage.getItem("current_entreprise_id");
-  
-  const { data: isActive = false, isLoading } = useQuery({
-    queryKey: ["planning-mode", entrepriseId, semaine],
-    queryFn: async () => {
-      if (!entrepriseId || !semaine) return false;
-      
-      const { data, error } = await supabase
-        .from("planning_validations")
-        .select("id")
-        .eq("entreprise_id", entrepriseId)
-        .eq("semaine", semaine)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data !== null;
-    },
-    enabled: !!entrepriseId && !!semaine,
-    staleTime: 30000, // Cache 30 secondes
-  });
-  
-  return { isActive, isLoading };
-};
+// Route détail chantier (réutilise ChantierDetail existant)
+<Route 
+  path="/chantiers/:id" 
+  element={
+    <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+      <ChantierDetail />
+    </RequireRole>
+  } 
+/>
 ```
 
-### Modification de isDayAuthorizedForEmployee
+### 4. `src/components/navigation/AppNav.tsx` - Ajouter le bouton navigation
+
+Ajouter un bouton "Chantiers" visible pour les conducteurs :
 
 ```typescript
-// Dans TimeEntryTable.tsx
-const { isActive: isPlanningActive } = usePlanningMode(weekId);
+const canSeeChantiers = userRole && ["super_admin", "conducteur"].includes(userRole);
 
-const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
-  // Si planning non actif -> mode legacy, tous les jours autorises
-  if (!isPlanningActive) return true;
-  
-  // Le chef est toujours autorise
-  if (chefId && employeeId === chefId) return true;
-  
-  // Mode conducteur gere separement
-  if (isConducteurMode) return true;
-  
-  // Mode edit autorise tout
-  if (mode === "edit") return true;
-  
-  // Retrocompatibilite si pas d'affectations
-  if (!affectationsJoursChef || affectationsJoursChef.length === 0) return true;
-  
-  // Verifier l'affectation pour ce jour
-  const monday = parseISOWeek(weekId);
-  const dayIndex = { "Lundi": 0, "Mardi": 1, "Mercredi": 2, "Jeudi": 3, "Vendredi": 4 }[dayName];
-  if (dayIndex === undefined) return true;
-  
-  const targetDate = format(addDays(monday, dayIndex), "yyyy-MM-dd");
-  return affectationsJoursChef.some(
-    aff => aff.macon_id === employeeId && aff.jour === targetDate
-  );
-}, [isPlanningActive, chefId, isConducteurMode, mode, affectationsJoursChef, weekId]);
+// Dans le JSX, après le bouton Planning S+1 :
+{canSeeChantiers && (
+  <Button
+    asChild
+    variant="ghost"
+    size="sm"
+    className={getButtonClasses("/chantiers", "validation-conducteur")}
+    style={getButtonStyle("/chantiers", "validation-conducteur")}
+  >
+    <Link to="/chantiers">
+      <Building2 className="h-4 w-4" />
+      Chantiers
+    </Link>
+  </Button>
+)}
 ```
+
+### 5. `src/pages/ChantierDetail.tsx` - Navigation retour dynamique
+
+Modifier le header pour détecter d'où vient l'utilisateur et adapter le lien retour :
+- Si vient de `/chantiers` → retour vers `/chantiers`
+- Si vient de `/admin` → retour vers `/admin?tab=chantiers`
+
+## Résumé des modifications
+
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `src/pages/ChantiersPage.tsx` | CRÉER | Nouvelle page liste chantiers pour conducteurs |
+| `src/components/admin/ChantiersManager.tsx` | MODIFIER | Ajouter prop `basePath` pour navigation flexible |
+| `src/App.tsx` | MODIFIER | Ajouter routes `/chantiers` et `/chantiers/:id` |
+| `src/components/navigation/AppNav.tsx` | MODIFIER | Ajouter bouton "Chantiers" pour conducteurs |
+| `src/pages/ChantierDetail.tsx` | MODIFIER | Navigation retour contextuelle |
+
+## Permissions et sécurité
+
+- Routes protégées par `RequireRole` : seuls `super_admin` et `conducteur` peuvent accéder
+- Les données sont déjà filtrées par `entreprise_id` via le hook `useChantiers`
+- Les RLS policies existantes s'appliquent automatiquement
+
+## Comportement attendu
+
+1. Un conducteur se connecte
+2. Il voit le nouveau bouton "Chantiers" dans la navigation (après "Planning S+1")
+3. Clic → accède à `/chantiers` avec la liste complète des chantiers de son entreprise
+4. Il peut créer, modifier, supprimer des chantiers
+5. Double-clic sur un chantier → `/chantiers/:id` avec le planning Gantt, fichiers, todos, etc.
+6. Bouton retour → revient à `/chantiers`
+
+## Note importante
+
+Les admins conservent leur accès via `/admin?tab=chantiers` avec toutes les fonctionnalités. Les deux routes coexistent et utilisent les mêmes composants/données.
