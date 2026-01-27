@@ -5,7 +5,7 @@ import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw, ShieldCheck, Package } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
@@ -39,6 +39,7 @@ import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -520,6 +521,9 @@ const ValidationConducteur = () => {
           theme="validation-conducteur"
           actions={
             <>
+              {effectiveConducteurId && (
+                <TransportMateriauxButton conducteurId={effectiveConducteurId} />
+              )}
               <CongesButton
                 onClick={() => setShowConges(true)}
                 pendingCount={nbCongesEnAttente + nbDemandesTraitees}
