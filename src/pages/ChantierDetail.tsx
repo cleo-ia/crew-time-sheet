@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChantierDetail } from "@/hooks/useChantierDetail";
@@ -16,12 +16,14 @@ import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp } from "
 
 const ChantierDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { data: chantier, isLoading, error } = useChantierDetail(id);
   const { data: userRole } = useCurrentUserRole();
   const [showEditDialog, setShowEditDialog] = useState(false);
   
-  // Mode lecture seule pour les chefs
-  const isReadOnly = userRole === "chef";
+  // Mode lecture seule si vient de la page chef OU si le rôle est chef
+  const fromChef = searchParams.get("from") === "chef";
+  const isReadOnly = fromChef || userRole === "chef";
 
   if (isLoading) {
     return (
