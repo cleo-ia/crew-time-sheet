@@ -64,6 +64,7 @@ export const InterimaireFormDialog = ({
       } else {
         const result = await createUtilisateur.mutateAsync({
           ...formData,
+          role_metier: 'interimaire',
         });
         onSuccess?.(result);
       }
