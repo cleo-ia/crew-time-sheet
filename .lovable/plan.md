@@ -1,89 +1,85 @@
 
 
-# Correction du role_metier pour les intérimaires
+# Correction du filtrage des utilisateurs administratifs dans le planning
 
-## Contexte
+## Problème identifié
 
-L'analyse révèle que **TOUS les intérimaires** (21 utilisateurs) ont `role_metier = NULL`. Cela crée une incohérence car :
-- Ils sont filtrés par `agence_interim` (logique actuelle)
-- Mais ils n'ont pas de `role_metier` explicite
-- Cela peut causer des confusions dans certaines vues ou requêtes futures
+Le modal "Ajouter un employé au planning" affiche des utilisateurs qui ne devraient pas y apparaître :
 
-## Modifications à effectuer
+| Utilisateur | Rôle auth | role_metier | Affiché comme |
+|-------------|-----------|-------------|---------------|
+| Theo Gouin | super_admin | NULL | Maçon ❌ |
+| Estelle Vermeersch | gestionnaire | NULL | Maçon ❌ |
+| Clément Thomas | admin | NULL | (déjà exclu ✓) |
 
-### 1. Nettoyage des données existantes (Migration SQL)
+### Cause racine
 
-Mise à jour du `role_metier` pour tous les intérimaires existants :
-
-```sql
--- Mettre à jour tous les intérimaires existants avec role_metier = 'interimaire'
-UPDATE utilisateurs 
-SET role_metier = 'interimaire', updated_at = now()
-WHERE agence_interim IS NOT NULL 
-  AND agence_interim != ''
-  AND (role_metier IS NULL OR role_metier != 'interimaire');
-```
-
-### 2. Ajout de 'interimaire' au type role_metier
-
-Le type `role_metier` dans la table utilisateurs doit être étendu pour accepter la valeur `'interimaire'` :
-
-```sql
--- Vérifier si la colonne role_metier accepte 'interimaire' et l'ajouter si nécessaire
-ALTER TABLE utilisateurs 
-  DROP CONSTRAINT IF EXISTS utilisateurs_role_metier_check;
-
--- Note: Si role_metier est un type TEXT sans contrainte, pas de modification nécessaire
-```
-
-### 3. Modification du InterimaireFormDialog
-
-Ajout automatique de `role_metier: 'interimaire'` lors de la création :
+Dans `useAllEmployes.ts`, le filtre à la ligne 26-32 n'exclut que les rôles `admin` et `rh` :
 
 ```typescript
-// InterimaireFormDialog.tsx - ligne 65-68
-const result = await createUtilisateur.mutateAsync({
-  ...formData,
-  role_metier: 'interimaire',  // NOUVEAU: toujours définir le role_metier
-});
+const { data: adminRoles } = await supabase
+  .from("user_roles")
+  .select("user_id")
+  .eq("entreprise_id", entrepriseId)
+  .in("role", ["admin", "rh"]); // ← Manque: super_admin, gestionnaire, conducteur
 ```
 
-### 4. Mise à jour du type TypeScript
+Les rôles `super_admin`, `gestionnaire` et `conducteur` ne sont pas exclus, donc ces utilisateurs sont récupérés puis catégorisés comme "maçon" par le fallback de `getEmployeType`.
 
-Ajout de `'interimaire'` aux valeurs possibles du type :
+---
+
+## Solution proposée
+
+### Modification de `useAllEmployes.ts`
+
+Étendre le filtre d'exclusion pour inclure TOUS les rôles administratifs/non-terrain :
 
 ```typescript
-// useUtilisateurs.ts - ligne 14
-role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur' | 'interimaire' | null;
+// Ligne 29-30 - Avant
+.in("role", ["admin", "rh"]);
+
+// Après
+.in("role", ["admin", "rh", "super_admin", "gestionnaire", "conducteur"]);
 ```
 
-## Résultat attendu
+---
 
-| Avant | Après |
-|-------|-------|
-| Intérimaires identifiés par `agence_interim` seul | Intérimaires identifiés par `agence_interim` ET `role_metier = 'interimaire'` |
-| 21 intérimaires sans `role_metier` | 21 intérimaires avec `role_metier = 'interimaire'` |
-| Incohérence potentielle | Cohérence totale avec les autres rôles |
+## Rôles à exclure du planning
 
-## Fichiers impactés
+| Rôle | Raison d'exclusion |
+|------|-------------------|
+| `admin` | Utilisateur administrateur système |
+| `rh` | Ressources humaines (bureau) |
+| `super_admin` | Super administrateur (ex: Theo Gouin) |
+| `gestionnaire` | Gestionnaire (ex: Estelle Vermeersch) |
+| `conducteur` | Conducteur de travaux (déjà exclu par `role_metier.neq.conducteur`) |
+
+---
+
+## Rôles conservés dans le planning
+
+| Rôle métier | Affichage | Utilisateurs concernés |
+|-------------|-----------|----------------------|
+| `chef` | Chef | Chefs d'équipe terrain |
+| `macon` | Maçon | Maçons, aides, apprentis |
+| `finisseur` | Finisseur | Finisseurs |
+| `grutier` | Grutier | Grutiers |
+| `interimaire` | Intérim | Travailleurs temporaires |
+
+---
+
+## Fichier impacté
 
 | Fichier | Modification |
 |---------|-------------|
-| Migration SQL | Update des intérimaires existants |
-| src/components/shared/InterimaireFormDialog.tsx | Ajout de `role_metier: 'interimaire'` à la création |
-| src/hooks/useUtilisateurs.ts | Ajout de `'interimaire'` au type TypeScript |
+| `src/hooks/useAllEmployes.ts` | Ajouter `super_admin`, `gestionnaire`, `conducteur` au filtre d'exclusion |
 
-## Récapitulatif de la protection complète
+---
 
-Après cette correction, **tous les rôles terrain** auront leur `role_metier` correctement défini :
+## Résultat attendu
 
-| Rôle | Création via | role_metier défini par |
-|------|--------------|----------------------|
-| Chef | ChefsManager.tsx | `role_metier: 'chef'` |
-| Conducteur | ConducteursManager.tsx | `role_metier: 'conducteur'` |
-| Maçon | MaconsManager.tsx | `role_metier: 'macon'` |
-| Finisseur | FinisseursManager.tsx | `role_metier: 'finisseur'` |
-| Grutier | GrutiersManager.tsx | `role_metier: 'grutier'` |
-| Intérimaire | InterimaireFormDialog.tsx | `role_metier: 'interimaire'` (NOUVEAU) |
-| Via invitation | Trigger handle_new_user_signup | Mapping automatique selon le rôle d'invitation |
+Après cette correction :
+- **Theo Gouin** (`super_admin`) → Ne sera plus affiché dans le modal
+- **Estelle Vermeersch** (`gestionnaire`) → Ne sera plus affichée dans le modal
+- Les vrais travailleurs terrain continueront d'être affichés correctement
 
