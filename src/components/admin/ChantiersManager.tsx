@@ -20,7 +20,11 @@ import { useChantiers, useCreateChantier, useUpdateChantier, useDeleteChantier }
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { ChantierDocumentsUpload } from "./ChantierDocumentsUpload";
 
-export const ChantiersManager = () => {
+interface ChantiersManagerProps {
+  basePath?: string;
+}
+
+export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersManagerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
@@ -176,7 +180,7 @@ export const ChantiersManager = () => {
                 <TableRow 
                   key={chantier.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onDoubleClick={() => navigate(`/admin/chantiers/${chantier.id}`)}
+                  onDoubleClick={() => navigate(`${basePath}/${chantier.id}`)}
                 >
                   <TableCell className="font-medium">{chantier.nom}</TableCell>
                   <TableCell>
