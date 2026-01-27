@@ -27,7 +27,7 @@ export const useAllEmployes = () => {
         .from("user_roles")
         .select("user_id")
         .eq("entreprise_id", entrepriseId)
-        .in("role", ["admin", "rh"]);
+        .in("role", ["admin", "rh", "super_admin", "gestionnaire", "conducteur"]);
       
       const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
 
