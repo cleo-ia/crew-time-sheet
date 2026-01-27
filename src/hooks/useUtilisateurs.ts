@@ -11,7 +11,7 @@ export interface Utilisateur {
   auth_user_id: string | null;
   role?: string;
   agence_interim?: string | null;
-  role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur' | null;
+  role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur' | 'interimaire' | null;
   
   // Champs contractuels
   matricule?: string | null;
@@ -179,7 +179,7 @@ export const useCreateUtilisateur = () => {
       prenom: string; 
       email?: string;
       agence_interim?: string; 
-      role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur';
+      role_metier?: 'macon' | 'finisseur' | 'grutier' | 'chef' | 'conducteur' | 'interimaire';
       matricule?: string;
       echelon?: string;
       niveau?: string;
