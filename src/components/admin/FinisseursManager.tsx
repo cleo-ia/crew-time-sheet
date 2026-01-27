@@ -433,8 +433,8 @@ export const FinisseursManager = () => {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              {editingFinisseur ? "Modifier" : "Créer"}
+            <Button onClick={handleSave} disabled={createUtilisateur.isPending || updateUtilisateur.isPending}>
+              {createUtilisateur.isPending ? "Création..." : (editingFinisseur ? "Modifier" : "Créer")}
             </Button>
           </DialogFooter>
         </DialogContent>

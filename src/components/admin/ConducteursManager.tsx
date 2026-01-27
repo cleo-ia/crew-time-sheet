@@ -192,8 +192,8 @@ export const ConducteursManager = () => {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              {editingConducteur ? "Modifier" : "Créer"}
+            <Button onClick={handleSave} disabled={createUtilisateur.isPending || updateUtilisateur.isPending}>
+              {createUtilisateur.isPending ? "Création..." : (editingConducteur ? "Modifier" : "Créer")}
             </Button>
           </DialogFooter>
         </DialogContent>

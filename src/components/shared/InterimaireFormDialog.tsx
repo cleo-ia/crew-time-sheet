@@ -124,8 +124,8 @@ export const InterimaireFormDialog = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSave} disabled={!formData.agence_interim.trim()}>
-            {editingInterimaire ? "Modifier" : "Créer"}
+          <Button onClick={handleSave} disabled={!formData.agence_interim.trim() || createUtilisateur.isPending || updateUtilisateur.isPending}>
+            {createUtilisateur.isPending ? "Création..." : (editingInterimaire ? "Modifier" : "Créer")}
           </Button>
         </DialogFooter>
       </DialogContent>

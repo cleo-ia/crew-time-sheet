@@ -406,8 +406,8 @@ export const GrutiersManager = () => {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              {editingGrutier ? "Modifier" : "Créer"}
+            <Button onClick={handleSave} disabled={createUtilisateur.isPending || updateUtilisateur.isPending}>
+              {createUtilisateur.isPending ? "Création..." : (editingGrutier ? "Modifier" : "Créer")}
             </Button>
           </DialogFooter>
         </DialogContent>
