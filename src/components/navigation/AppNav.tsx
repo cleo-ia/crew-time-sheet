@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays } from "lucide-react";
+import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-engo-bourgogne.png";       // Fichier Engo = logo SDER
@@ -75,6 +75,7 @@ export const AppNav = () => {
   const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
   const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire", "rh"].includes(userRole);
   const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
+  const canSeeChantiers = userRole && ["super_admin", "conducteur"].includes(userRole);
 
   if (isLoading) return null;
 
@@ -133,6 +134,22 @@ export const AppNav = () => {
                 <Link to="/planning-main-oeuvre">
                   <CalendarDays className="h-4 w-4" />
                   Planning S+1
+                </Link>
+              </Button>
+            )}
+
+            {/* Chantiers - visible par conducteurs et super_admin */}
+            {canSeeChantiers && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/chantiers", "validation-conducteur")}
+                style={getButtonStyle("/chantiers", "validation-conducteur")}
+              >
+                <Link to="/chantiers">
+                  <Building2 className="h-4 w-4" />
+                  Chantiers
                 </Link>
               </Button>
             )}

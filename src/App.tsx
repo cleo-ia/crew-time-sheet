@@ -14,6 +14,7 @@ import SignatureMacons from "./pages/SignatureMacons";
 import SignatureFinisseurs from "./pages/SignatureFinisseurs";
 import AdminPanel from "./pages/AdminPanel";
 import ChantierDetail from "./pages/ChantierDetail";
+import ChantiersPage from "./pages/ChantiersPage";
 import PlanningMainOeuvre from "./pages/PlanningMainOeuvre";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -106,6 +107,26 @@ const App = () => (
               element={
                 <RequireRole allowedRoles={["super_admin", "conducteur", "admin"]}>
                   <PlanningMainOeuvre />
+                </RequireRole>
+              } 
+            />
+
+            {/* Chantiers - Accessible par: super_admin, conducteur */}
+            <Route 
+              path="/chantiers" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                  <ChantiersPage />
+                </RequireRole>
+              } 
+            />
+            
+            {/* Chantier Detail (conducteurs) - Accessible par: super_admin, conducteur */}
+            <Route 
+              path="/chantiers/:id" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                  <ChantierDetail />
                 </RequireRole>
               } 
             />

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Building2, CalendarDays, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,12 @@ interface ChantierDetailHeaderProps {
 
 export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailHeaderProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Déterminer le chemin de retour en fonction de la route actuelle
+  const isFromConducteurRoute = location.pathname.startsWith("/chantiers/");
+  const backPath = isFromConducteurRoute ? "/chantiers" : "/admin?tab=chantiers";
+  const backLabel = isFromConducteurRoute ? "Retour aux chantiers" : "Retour aux chantiers";
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
@@ -30,11 +36,11 @@ export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailH
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate("/admin?tab=chantiers")}
+        onClick={() => navigate(backPath)}
         className="gap-2 -ml-2"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour aux chantiers
+        {backLabel}
       </Button>
 
       {/* Header card */}
