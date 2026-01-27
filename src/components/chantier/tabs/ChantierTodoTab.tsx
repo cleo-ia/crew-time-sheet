@@ -9,6 +9,7 @@ import { KanbanTodoCard } from "./KanbanTodoCard";
 
 interface ChantierTodoTabProps {
   chantierId: string;
+  readOnly?: boolean;
 }
 
 type TodoStatus = "A_FAIRE" | "EN_COURS" | "TERMINE";
@@ -47,7 +48,7 @@ interface KanbanColumn {
   todos: TodoChantier[];
 }
 
-export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
+export const ChantierTodoTab = ({ chantierId, readOnly = false }: ChantierTodoTabProps) => {
   const { data: todos = [], isLoading } = useTodosChantier(chantierId);
   const updateTodo = useUpdateTodo();
   const [selectedTodo, setSelectedTodo] = useState<TodoChantier | null>(null);
@@ -148,14 +149,16 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
             {totalTodos} todo{totalTodos > 1 ? 's' : ''} au total
           </span>
         </div>
-        <Button 
-          size="sm" 
-          onClick={() => setIsFormOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau todo
-        </Button>
+        {!readOnly && (
+          <Button 
+            size="sm" 
+            onClick={() => setIsFormOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau todo
+          </Button>
+        )}
       </div>
 
       {/* Kanban board */}
@@ -212,7 +215,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
                       <KanbanTodoCard
                         todo={todo}
                         isOverdue={isOverdue(todo)}
-                        isDraggable={column.id === "EN_COURS" || column.id === "TERMINE"}
+                        isDraggable={!readOnly && (column.id === "EN_COURS" || column.id === "TERMINE")}
                         onClick={() => handleTodoClick(todo)}
                       />
                     </div>
@@ -222,7 +225,7 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
             </div>
 
             {/* Add todo button - only in "À faire" column */}
-            {column.id === "A_FAIRE" && (
+            {column.id === "A_FAIRE" && !readOnly && (
               <div className="p-3 border-t border-border/30">
                 <Button 
                   variant="ghost" 
@@ -240,17 +243,20 @@ export const ChantierTodoTab = ({ chantierId }: ChantierTodoTabProps) => {
       </div>
 
       {/* Dialogs */}
-      <TodoFormDialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        chantierId={chantierId}
-      />
+      {!readOnly && (
+        <TodoFormDialog
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          chantierId={chantierId}
+        />
+      )}
 
       {selectedTodo && (
         <TodoDetailDialog
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
           todo={selectedTodo}
+          readOnly={readOnly}
         />
       )}
     </>

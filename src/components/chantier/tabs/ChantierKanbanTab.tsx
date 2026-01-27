@@ -8,6 +8,7 @@ import { TaskFormDialog } from "../planning/TaskFormDialog";
 
 interface ChantierKanbanTabProps {
   chantierId: string;
+  readOnly?: boolean;
 }
 
 type ComputedStatus = "A_FAIRE" | "EN_COURS" | "TERMINE" | "EN_RETARD";
@@ -36,7 +37,7 @@ interface KanbanColumn {
   tasks: TacheChantier[];
 }
 
-export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
+export const ChantierKanbanTab = ({ chantierId, readOnly = false }: ChantierKanbanTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -125,14 +126,16 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
             {totalTasks} tâche{totalTasks > 1 ? 's' : ''} au total
           </span>
         </div>
-        <Button 
-          size="sm" 
-          onClick={() => setCreateDialogOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouvelle tâche
-        </Button>
+        {!readOnly && (
+          <Button 
+            size="sm" 
+            onClick={() => setCreateDialogOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nouvelle tâche
+          </Button>
+        )}
       </div>
 
       {/* Kanban board */}
@@ -190,7 +193,7 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
             </div>
 
             {/* Add task button - only in "À venir" column */}
-            {column.id === "A_FAIRE" && (
+            {column.id === "A_FAIRE" && !readOnly && (
               <div className="p-3 border-t border-border/30">
                 <Button 
                   variant="ghost" 
@@ -213,14 +216,17 @@ export const ChantierKanbanTab = ({ chantierId }: ChantierKanbanTabProps) => {
         onOpenChange={setDetailDialogOpen}
         tache={selectedTache}
         chantierId={chantierId}
+        readOnly={readOnly}
       />
 
-      {/* Create task dialog */}
-      <TaskFormDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        chantierId={chantierId}
-      />
+      {/* Create task dialog - only render if not readOnly */}
+      {!readOnly && (
+        <TaskFormDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          chantierId={chantierId}
+        />
+      )}
     </>
   );
 };

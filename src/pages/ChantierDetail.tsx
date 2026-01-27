@@ -99,13 +99,13 @@ const ChantierDetail = () => {
               <ChantierPlanningTab chantierId={chantier.id} chantierNom={chantier.nom} readOnly={isReadOnly} />
             </TabsContent>
             <TabsContent value="recap">
-              <ChantierKanbanTab chantierId={chantier.id} />
+              <ChantierKanbanTab chantierId={chantier.id} readOnly={isReadOnly} />
             </TabsContent>
             <TabsContent value="fichiers">
               <ChantierFichiersTab chantierId={chantier.id} />
             </TabsContent>
             <TabsContent value="todo">
-              <ChantierTodoTab chantierId={chantier.id} />
+              <ChantierTodoTab chantierId={chantier.id} readOnly={isReadOnly} />
             </TabsContent>
             <TabsContent value="rentabilite">
               <ChantierRentabiliteTab chantierId={chantier.id} montantVendu={chantier.montant_vendu ?? 0} />
