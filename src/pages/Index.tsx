@@ -493,6 +493,17 @@ const Index = () => {
           <>
             <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => navigate(`/chantiers/${selectedChantier}`)}
+              >
+                <CalendarDays className="h-4 w-4" />
+                Planning tâches
+              </Button>
+            )}
+            {selectedChantier && (
               <ConversationButton
                 onClick={() => setShowConversation(true)}
                 unreadCount={unreadData?.byChantier.get(selectedChantier) || 0}
@@ -550,23 +561,10 @@ const Index = () => {
                 <WeekSelectorChef value={selectedWeek} onChange={setSelectedWeek} chefId={selectedChef} />
               </div>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    Choisir un chantier
-                  </label>
-                  {selectedChantier && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 text-xs px-2"
-                      onClick={() => navigate(`/chantiers/${selectedChantier}`)}
-                    >
-                      <CalendarDays className="h-3 w-3" />
-                      Planning
-                    </Button>
-                  )}
-                </div>
+                <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  Choisir un chantier
+                </label>
                 <ChantierSelector value={selectedChantier} onChange={setSelectedChantier} chefId={selectedChef} />
               </div>
             </div>
