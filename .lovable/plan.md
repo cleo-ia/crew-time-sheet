@@ -1,203 +1,226 @@
 
-# Mode lecture seule pour les onglets Todo et Récap
+# Mode lecture seule complet pour les chefs dans TaskDetailDialog
 
 ## Problème identifié
 
-Le mode `isReadOnly` est bien calculé dans `ChantierDetail.tsx` mais il n'est passé qu'à l'onglet **Planning**. Les onglets **Todo** et **Récap** ne reçoivent pas ce flag et restent donc entièrement éditables.
+Le `TaskDetailDialog` ne respecte pas correctement la prop `readOnly` dans plusieurs onglets :
 
-## Composants à modifier
+| Onglet | Problème |
+|--------|----------|
+| **Date** | Tous les inputs (dates, heures, montant) restent éditables |
+| **Rentabilité** | Bouton "Ajouter un achat" visible |
+| **Footer** | Zone de commentaire active |
 
-### 1. `src/pages/ChantierDetail.tsx`
+## Spécification confirmée
 
-Passer la prop `readOnly` aux composants Todo et Kanban :
+- **Mode lecture seule** : Dates, heures, montants, status, description → NON modifiables
+- **Uploads autorisés** : Les chefs peuvent toujours ajouter des fichiers
 
-```typescript
-<TabsContent value="recap">
-  <ChantierKanbanTab chantierId={chantier.id} readOnly={isReadOnly} />
+## Fichier à modifier
+
+### `src/components/chantier/planning/TaskDetailDialog.tsx`
+
+### Modification 1 : Onglet "Date" (lignes ~504-575)
+
+Remplacer les inputs éditables par des affichages statiques en mode `readOnly` :
+
+**Avant** :
+```tsx
+<TabsContent value="date" className="p-5 space-y-5 mt-0 flex-1 overflow-y-auto">
+  <h4>Date estimée</h4>
+  <div className="grid grid-cols-2 gap-6">
+    <Input type="date" value={formData.date_debut} onChange={...} />
+    <Input type="date" value={formData.date_fin} onChange={...} />
+  </div>
+  <h4>Heures</h4>
+  <Input type="number" value={formData.heures_estimees} onChange={...} />
+  <Input type="number" value={formData.heures_realisees} onChange={...} />
+  <h4>Montant vendu</h4>
+  <Input type="number" value={formData.montant_vendu} onChange={...} />
 </TabsContent>
-<TabsContent value="todo">
-  <ChantierTodoTab chantierId={chantier.id} readOnly={isReadOnly} />
+```
+
+**Après** :
+```tsx
+<TabsContent value="date" className="p-5 space-y-5 mt-0 flex-1 overflow-y-auto">
+  <h4>Date estimée</h4>
+  <div className="grid grid-cols-2 gap-6">
+    <div className="space-y-2">
+      <span className="text-sm text-muted-foreground">Date de début</span>
+      {readOnly ? (
+        <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+          {formatDateDisplay(formData.date_debut)}
+        </p>
+      ) : (
+        <Input type="date" value={formData.date_debut} onChange={...} />
+      )}
+    </div>
+    <div className="space-y-2">
+      <span className="text-sm text-muted-foreground">Date de fin</span>
+      {readOnly ? (
+        <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+          {formatDateDisplay(formData.date_fin)}
+        </p>
+      ) : (
+        <Input type="date" value={formData.date_fin} onChange={...} />
+      )}
+    </div>
+  </div>
+  
+  <h4>Heures</h4>
+  <div className="grid grid-cols-2 gap-6">
+    <div className="space-y-2">
+      <span className="text-sm text-muted-foreground">Heures estimées</span>
+      {readOnly ? (
+        <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+          {formData.heures_estimees || "0"}
+        </p>
+      ) : (
+        <Input type="number" value={formData.heures_estimees} onChange={...} />
+      )}
+    </div>
+    <div className="space-y-2">
+      <span className="text-sm text-muted-foreground">Heures réalisées</span>
+      {readOnly ? (
+        <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+          {formData.heures_realisees || "0"}
+        </p>
+      ) : (
+        <Input type="number" value={formData.heures_realisees} onChange={...} />
+      )}
+    </div>
+  </div>
+  
+  <h4>Montant vendu</h4>
+  <div className="space-y-2">
+    {readOnly ? (
+      <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+        {formData.montant_vendu || "0"} €
+      </p>
+    ) : (
+      <Input type="number" value={formData.montant_vendu} onChange={...} />
+    )}
+    <span className="text-xs text-muted-foreground">Montant en euros (€)</span>
+  </div>
 </TabsContent>
 ```
 
----
+### Modification 2 : Onglet "Rentabilité" (lignes ~640-650)
 
-### 2. `src/components/chantier/tabs/ChantierTodoTab.tsx`
+Masquer le bouton "Ajouter un achat" en mode lecture seule :
 
-**Modifications :**
-- Ajouter prop `readOnly?: boolean`
-- Masquer le bouton "Nouveau todo" en mode lecture
-- Masquer le bouton "Ajouter un todo" en mode lecture
-- Désactiver le drag & drop des cartes
-- Passer `readOnly` au `TodoDetailDialog`
+```tsx
+{achatsForTask.length > 0 ? (
+  // ... liste des achats
+) : (
+  <div className="p-8 text-center">
+    <p className="text-sm text-muted-foreground mb-4">Aucun achat ajouté</p>
+    {!readOnly && (
+      <div className="flex items-center justify-center gap-3">
+        <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
+          Ajouter un achat
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
+          <span className="text-muted-foreground">⏵</span>
+          Tutoriel vidéo
+        </Button>
+      </div>
+    )}
+  </div>
+)}
+```
 
-```typescript
-interface ChantierTodoTabProps {
-  chantierId: string;
-  readOnly?: boolean;  // NOUVEAU
-}
+### Modification 3 : Footer commentaires (lignes ~860-873)
 
-export const ChantierTodoTab = ({ chantierId, readOnly = false }: ChantierTodoTabProps) => {
-  // ...
+Masquer la zone de commentaire en mode lecture seule :
 
-  // Header - masquer le bouton si readOnly
-  {!readOnly && (
-    <Button size="sm" onClick={() => setIsFormOpen(true)} className="gap-2">
+```tsx
+{/* Footer - Comment section - hidden in readOnly mode */}
+{!readOnly && (
+  <div className="border-t p-4 flex items-center gap-3 shrink-0 bg-muted/20">
+    <Input
+      value={comment}
+      onChange={(e) => setComment(e.target.value)}
+      placeholder="Commentez ici ..."
+      className="flex-1 h-10 bg-background"
+    />
+    <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-lg">
       <Plus className="h-4 w-4" />
-      Nouveau todo
     </Button>
-  )}
-
-  // Cartes - désactiver le drag si readOnly
-  <KanbanTodoCard
-    todo={todo}
-    isOverdue={isOverdue(todo)}
-    isDraggable={!readOnly && (column.id === "EN_COURS" || column.id === "TERMINE")}
-    onClick={() => handleTodoClick(todo)}
-  />
-
-  // Bouton "Ajouter un todo" - masquer si readOnly
-  {column.id === "A_FAIRE" && !readOnly && (
-    <div className="p-3 border-t border-border/30">...</div>
-  )}
-
-  // Dialog de détail - passer readOnly
-  <TodoDetailDialog
-    open={isDetailOpen}
-    onOpenChange={setIsDetailOpen}
-    todo={selectedTodo}
-    readOnly={readOnly}  // NOUVEAU
-  />
-
-  // Ne pas rendre le formulaire de création en mode readOnly
-  {!readOnly && (
-    <TodoFormDialog ... />
-  )}
-};
-```
-
----
-
-### 3. `src/components/chantier/tabs/TodoDetailDialog.tsx`
-
-**Modifications :**
-- Ajouter prop `readOnly?: boolean`
-- Masquer le bouton "Valider" si readOnly
-- Masquer le bouton "Supprimer" si readOnly
-- Masquer le bouton "Sauvegarder" si readOnly
-- Remplacer les inputs par du texte statique si readOnly
-- Masquer la zone d'upload de fichiers si readOnly
-- Masquer les options de suppression dans le menu des documents si readOnly
-
-```typescript
-interface TodoDetailDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  todo: TodoChantier;
-  readOnly?: boolean;  // NOUVEAU
-}
-
-export const TodoDetailDialog = ({ open, onOpenChange, todo, readOnly = false }: TodoDetailDialogProps) => {
-  // ...
-
-  // Mode lecture seule : affichage statique
-  if (readOnly) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Détail du Todo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Titre</Label><p className="font-medium">{todo.nom}</p></div>
-            <div><Label>Description</Label><p>{todo.description || "Non renseigné"}</p></div>
-            {/* ... autres champs en lecture seule ... */}
-            {/* Documents : affichage sans options de suppression/upload */}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Mode édition : code existant
-  return (...);
-};
-```
-
----
-
-### 4. `src/components/chantier/tabs/ChantierKanbanTab.tsx`
-
-**Modifications :**
-- Ajouter prop `readOnly?: boolean`
-- Masquer le bouton "Nouvelle tâche" en mode lecture
-- Masquer le bouton "Ajouter une tâche" en mode lecture
-- Passer `readOnly` au `TaskDetailDialog`
-
-```typescript
-interface ChantierKanbanTabProps {
-  chantierId: string;
-  readOnly?: boolean;  // NOUVEAU
-}
-
-export const ChantierKanbanTab = ({ chantierId, readOnly = false }: ChantierKanbanTabProps) => {
-  // ...
-
-  // Header - masquer le bouton si readOnly
-  {!readOnly && (
-    <Button size="sm" onClick={() => setCreateDialogOpen(true)} className="gap-2">
-      <Plus className="h-4 w-4" />
-      Nouvelle tâche
+    <Button size="icon" className="h-10 w-10 shrink-0 rounded-lg bg-orange-500 hover:bg-orange-600">
+      <Send className="h-4 w-4" />
     </Button>
-  )}
-
-  // Bouton "Ajouter une tâche" - masquer si readOnly
-  {column.id === "A_FAIRE" && !readOnly && (
-    <div className="p-3 border-t border-border/30">...</div>
-  )}
-
-  // Dialog de détail - passer readOnly
-  <TaskDetailDialog
-    open={detailDialogOpen}
-    onOpenChange={setDetailDialogOpen}
-    tache={selectedTache}
-    chantierId={chantierId}
-    readOnly={readOnly}  // NOUVEAU
-  />
-
-  // Ne pas rendre le formulaire de création en mode readOnly
-  {!readOnly && (
-    <TaskFormDialog ... />
-  )}
-};
+  </div>
+)}
 ```
 
----
+### Modification 4 : Onglet "Fichiers" - Conserver les uploads (déjà OK)
 
-### 5. `src/components/chantier/planning/TaskDetailDialog.tsx` (déjà modifié)
+L'onglet Fichiers (lignes 657-856) **conserve déjà** la fonctionnalité d'upload pour les chefs car les conditions `{!readOnly && ...}` ne s'appliquent qu'à :
+- Le bouton de suppression dans le menu déroulant des documents
+- Aucune modification nécessaire pour permettre les uploads
 
-Ce composant a normalement déjà une prop `readOnly`. Il faut vérifier qu'elle est bien utilisée et la propager depuis `ChantierKanbanTab`.
+**Vérification** : Les lignes 681-690 et 694-707 montrent que la zone d'upload et le bouton "+" sont actuellement masqués en mode `readOnly`. Selon votre demande ("Uploads autorisés"), ces sections doivent rester **visibles** même en mode `readOnly`.
 
----
+**Correction requise** : Supprimer la condition `{!readOnly && ...}` autour de la zone d'upload dans l'onglet Fichiers pour permettre aux chefs d'ajouter des fichiers.
 
-## Résumé des fichiers à modifier
+```tsx
+// Ligne 679-706 - Supprimer la condition readOnly pour garder l'upload actif
+<div className="flex items-center justify-between mb-3">
+  <h4 className="font-semibold text-base">Fichiers</h4>
+  {/* Bouton + toujours visible, même en readOnly */}
+  <Button 
+    variant="outline" 
+    size="icon" 
+    className="h-8 w-8 rounded-lg"
+    onClick={() => fileInputRef.current?.click()}
+  >
+    <Plus className="h-4 w-4" />
+  </Button>
+</div>
 
-| Fichier | Modification |
-|---------|-------------|
-| `ChantierDetail.tsx` | Passer `readOnly={isReadOnly}` à ChantierKanbanTab et ChantierTodoTab |
-| `ChantierTodoTab.tsx` | Ajouter prop `readOnly`, masquer boutons création, désactiver drag |
-| `TodoDetailDialog.tsx` | Ajouter prop `readOnly`, affichage statique en lecture seule |
-| `ChantierKanbanTab.tsx` | Ajouter prop `readOnly`, masquer boutons création, propager au dialog |
+{/* Zone d'upload toujours visible */}
+<div
+  className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer mb-4"
+  onClick={() => fileInputRef.current?.click()}
+>
+  <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+  <p className="text-sm text-muted-foreground">
+    Cliquez pour ajouter des fichiers
+  </p>
+  <p className="text-xs text-muted-foreground mt-1">
+    PDF, JPG, PNG (max 10 MB)
+  </p>
+</div>
 
-## Comportement après correction
+{/* Mais le bouton Supprimer reste masqué en readOnly */}
+{!readOnly && (
+  <>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem onClick={() => setDocToDelete(doc)} className="text-destructive">
+      <Trash2 className="h-4 w-4 mr-2" />
+      Supprimer
+    </DropdownMenuItem>
+  </>
+)}
+```
+
+## Résumé des modifications
 
 | Élément | Mode édition | Mode lecture (chef) |
 |---------|--------------|---------------------|
-| Bouton "Nouvelle tâche" | Visible | Masqué |
-| Bouton "Nouveau todo" | Visible | Masqué |
-| Drag & drop todos | Actif | Désactivé |
-| Modifier un todo/tâche | Possible | Impossible |
-| Supprimer un todo/tâche | Possible | Impossible |
-| Upload documents | Possible | Impossible |
-| Voir les détails | Possible | Possible (lecture seule) |
-| Télécharger documents | Possible | Possible |
+| Titre de tâche | Éditable | Texte statique ✓ (déjà OK) |
+| Statut | Dropdown | Badge statique ✓ (déjà OK) |
+| Dates (début/fin) | Input date | **Texte statique** |
+| Heures estimées | Input number | **Texte statique** |
+| Heures réalisées | Input number | **Texte statique** |
+| Montant vendu | Input number | **Texte statique** |
+| Bouton "Ajouter achat" | Visible | **Masqué** |
+| Zone commentaires | Visible | **Masquée** |
+| Upload fichiers | ✓ | ✓ **Conservé** |
+| Supprimer fichiers | ✓ | Masqué ✓ (déjà OK) |
+| Bouton suppression tâche | Visible | Masqué ✓ (déjà OK) |
+
+## Note technique
+
+Les modifications sont uniquement côté **frontend**. Les politiques RLS actuelles sur `taches_chantier` permettent encore les écritures pour tous les utilisateurs authentifiés. Une future amélioration pourrait restreindre les écritures au niveau base de données pour les rôles `chef`, mais cela n'est pas dans le périmètre de cette correction.
