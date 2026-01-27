@@ -294,31 +294,50 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       return;
     }
     
-    setTransportDays((prev) => {
-      const newDays = prev.map((day, index) => {
-        if (index === 0) return day; // Garder le Lundi tel quel
-        
-        // Copier les véhicules du Lundi avec de nouveaux IDs
-        const copiedVehicules: TransportVehicle[] = monday.vehicules.map(v => ({
-          ...v,
-          id: crypto.randomUUID(),
-        }));
-        
-        return {
-          ...day,
-          vehicules: copiedVehicules,
-        };
-      });
+    // Construire les nouvelles données
+    const newDays = transportDays.map((day, index) => {
+      if (index === 0) return day; // Garder le Lundi tel quel
       
-      isDirty.current = true;
-      return newDays;
+      // Copier les véhicules du Lundi avec de nouveaux IDs
+      const copiedVehicules: TransportVehicle[] = monday.vehicules.map(v => ({
+        ...v,
+        id: crypto.randomUUID(),
+      }));
+      
+      return {
+        ...day,
+        vehicules: copiedVehicules,
+      };
     });
+    
+    // Mettre à jour le state
+    setTransportDays(newDays);
+    isDirty.current = true;
+    
+    // Annuler tout debounce en cours
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    
+    // Sauvegarder IMMÉDIATEMENT (pas de debounce)
+    setIsSaving(true);
+    autoSave.mutate({
+      ficheId: ficheId || "",
+      semaine: selectedWeekString,
+      chantierId,
+      chefId,
+      days: newDays,
+      isDirty: true,
+    });
+    setIsSaving(false);
+    isDirty.current = false;
     
     toast({
       title: "Données dupliquées",
       description: "Les informations du Lundi ont été appliquées à toute la semaine.",
     });
-  }, [transportDays]);
+  }, [transportDays, ficheId, selectedWeekString, chantierId, chefId, autoSave]);
 
   const handleSave = async () => {
     setIsSaving(true);

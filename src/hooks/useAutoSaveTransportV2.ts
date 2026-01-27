@@ -147,9 +147,11 @@ export const useAutoSaveTransportV2 = () => {
 
       return { saved: true, transportId };
     },
-    onSuccess: () => {
-      // Ne pas invalider les queries pendant l'auto-save pour éviter la fermeture de l'accordéon
-      // Les invalidations seront faites lors de la validation finale
+    onSuccess: (result) => {
+      // Invalider le cache pour garantir le rechargement des données fraîches à la réouverture
+      if (result?.saved) {
+        queryClient.invalidateQueries({ queryKey: ["transport-v2"] });
+      }
     },
     onError: (error) => {
       console.error("[useAutoSaveTransportV2] Error:", error);
