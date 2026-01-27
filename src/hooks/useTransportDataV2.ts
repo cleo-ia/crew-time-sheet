@@ -122,7 +122,7 @@ export const useTransportDataV2 = (ficheId: string | null, conducteurId?: string
       }
     },
     enabled: !!ficheId,
-    refetchOnMount: false,
+    refetchOnMount: true, // Toujours recharger à l'ouverture du composant
     staleTime: 30000,
   });
 };
