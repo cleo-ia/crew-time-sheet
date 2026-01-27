@@ -1,82 +1,45 @@
 
-# Correction : Retour vers la bonne page pour les chefs
+# Correction : Mode lecture seule basé sur l'URL
 
 ## Problème identifié
 
-Le hook `useCurrentUserRole` retourne le rôle **prioritaire** de l'utilisateur (ex: `super_admin` > `conducteur` > `chef`). Donc quand un utilisateur avec plusieurs rôles accède au planning depuis la page chef, le hook peut retourner un autre rôle, et le bouton "Retour" redirige vers `/chantiers` au lieu de `/`.
+Le mode lecture seule ne fonctionne pas car la détection est basée sur `userRole === "chef"`. Or le hook `useCurrentUserRole` retourne le **rôle prioritaire** de l'utilisateur.
 
-De plus, même pour un utilisateur **uniquement chef**, la logique actuelle ne fonctionne pas si le hook met du temps à charger (`userRole` peut être `undefined` au premier rendu).
+Si le compte a plusieurs rôles (ex: `super_admin` + `chef`), le hook retourne `super_admin`, et donc `isReadOnly = false`.
 
-## Solution proposée
+**Preuve** : Vous arrivez sur la page via `/chantiers/:id?from=chef`, mais le paramètre n'est pas utilisé pour déterminer le mode lecture seule.
 
-Utiliser un **paramètre dans l'URL** (`?from=chef`) pour indiquer l'origine de la navigation. C'est plus fiable que de se baser sur le rôle.
+## Solution
 
-### Flux utilisateur corrigé
+Utiliser le paramètre URL `?from=chef` (déjà présent) pour forcer le mode lecture seule, en plus de la vérification du rôle.
 
-```text
-Chef clique "Planning tâches"
-        ↓
-Navigation vers /chantiers/abc123?from=chef
-        ↓
-ChantierDetailHeader lit le paramètre "from=chef"
-        ↓
-Bouton "Retour" → navigue vers "/" (page de saisie)
-```
+## Fichier à modifier
 
-## Fichiers à modifier
+### `src/pages/ChantierDetail.tsx`
 
-### 1. `src/pages/Index.tsx`
-
-Ajouter le paramètre `?from=chef` dans l'URL de navigation :
+Lire le paramètre `from` dans l'URL et l'utiliser pour déterminer `isReadOnly` :
 
 ```typescript
-// Ligne ~498
-onClick={() => navigate(`/chantiers/${selectedChantier}?from=chef`)}
+import { useParams, useSearchParams } from "react-router-dom";
+
+// Dans le composant :
+const [searchParams] = useSearchParams();
+const { data: userRole } = useCurrentUserRole();
+
+// Mode lecture seule si vient de la page chef OU si le rôle est chef
+const fromChef = searchParams.get("from") === "chef";
+const isReadOnly = fromChef || userRole === "chef";
 ```
 
-### 2. `src/components/chantier/ChantierDetailHeader.tsx`
+## Comportement après correction
 
-Lire le paramètre `from` de l'URL et l'utiliser pour déterminer le chemin de retour :
+| Origine | Paramètre URL | Rôle détecté | Mode |
+|---------|---------------|--------------|------|
+| Page Index (chef clique "Planning tâches") | `?from=chef` | n'importe lequel | **Lecture seule** |
+| Page /chantiers (conducteur) | aucun | conducteur | Édition |
+| Admin panel | aucun | admin | Édition |
+| Chef uniquement accédant directement | aucun | chef | **Lecture seule** |
 
-```typescript
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+## Résumé
 
-export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailHeaderProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const { data: userRole } = useCurrentUserRole();
-
-  const { backPath, backLabel } = useMemo(() => {
-    // Si admin, retour vers admin
-    if (location.pathname.startsWith("/admin")) {
-      return { backPath: "/admin?tab=chantiers", backLabel: "Retour aux chantiers" };
-    }
-    
-    // Si vient de la page chef (paramètre from=chef dans l'URL)
-    const fromChef = searchParams.get("from") === "chef";
-    if (fromChef || userRole === "chef") {
-      return { backPath: "/", backLabel: "Retour à la saisie" };
-    }
-    
-    // Sinon (conducteur), retour vers la liste des chantiers
-    return { backPath: "/chantiers", backLabel: "Retour aux chantiers" };
-  }, [location.pathname, userRole, searchParams]);
-  
-  // ... reste du code
-};
-```
-
-## Résumé des modifications
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/Index.tsx` | Ajouter `?from=chef` dans l'URL de navigation |
-| `src/components/chantier/ChantierDetailHeader.tsx` | Lire `searchParams.get("from")` et rediriger vers `/` si `from=chef` |
-
-## Avantages de cette solution
-
-- Fonctionne même avec un compte multi-rôles (super_admin + chef)
-- Ne dépend pas du timing de chargement du hook `useCurrentUserRole`
-- Explicite et prévisible
-- Le paramètre `?from=chef` n'affecte pas le fonctionnement de la page
+Une seule ligne à modifier dans `ChantierDetail.tsx` pour lire le paramètre URL et forcer le mode lecture seule quand `from=chef`.
