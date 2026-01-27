@@ -22,6 +22,7 @@ interface TodoDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   todo: TodoChantier;
+  readOnly?: boolean;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -54,7 +55,7 @@ const formatFileDate = (dateString: string) => {
   return format(date, "d MMM yyyy", { locale: fr });
 };
 
-export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogProps) => {
+export const TodoDetailDialog = ({ open, onOpenChange, todo, readOnly = false }: TodoDetailDialogProps) => {
   const [nom, setNom] = useState(todo.nom);
   const [description, setDescription] = useState(todo.description || "");
   const [statut, setStatut] = useState(todo.statut);
@@ -201,150 +202,190 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
           <DialogHeader>
             <div className="flex items-center justify-between pr-8">
               <DialogTitle>Détail du Todo</DialogTitle>
-              <div className="flex items-center gap-2">
-                {isEnCours && (
-                  <Button
-                    size="sm"
-                    className="gap-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={handleValidateTodo}
-                    disabled={updateTodo.isPending}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Valider
-                  </Button>
-                )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
+              {!readOnly && (
+                <div className="flex items-center gap-2">
+                  {isEnCours && (
+                    <Button
+                      size="sm"
+                      className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={handleValidateTodo}
+                      disabled={updateTodo.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Valider
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Cette action est irréversible. Le todo sera définitivement supprimé.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce todo ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action est irréversible. Le todo sera définitivement supprimé.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             </div>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="nom">Titre *</Label>
-              <Input
-                id="nom"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                required
-              />
+              {readOnly ? (
+                <p className="text-sm font-medium py-2">{nom}</p>
+              ) : (
+                <Input
+                  id="nom"
+                  value={nom}
+                  onChange={(e) => setNom(e.target.value)}
+                  required
+                />
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
+              {readOnly ? (
+                <p className="text-sm text-muted-foreground py-2">{description || "Non renseigné"}</p>
+              ) : (
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Statut</Label>
-                <Select value={statut} onValueChange={(v) => setStatut(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A_FAIRE">À faire</SelectItem>
-                    <SelectItem value="EN_COURS">En cours</SelectItem>
-                    <SelectItem value="TERMINE">Terminé</SelectItem>
-                  </SelectContent>
-                </Select>
+                {readOnly ? (
+                  <p className="text-sm font-medium py-2">
+                    {statut === "A_FAIRE" ? "À faire" : statut === "EN_COURS" ? "En cours" : "Terminé"}
+                  </p>
+                ) : (
+                  <Select value={statut} onValueChange={(v) => setStatut(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A_FAIRE">À faire</SelectItem>
+                      <SelectItem value="EN_COURS">En cours</SelectItem>
+                      <SelectItem value="TERMINE">Terminé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label>Priorité</Label>
-                <Select value={priorite} onValueChange={(v) => setPriorite(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BASSE">Basse</SelectItem>
-                    <SelectItem value="NORMALE">Normale</SelectItem>
-                    <SelectItem value="HAUTE">Haute</SelectItem>
-                  </SelectContent>
-                </Select>
+                {readOnly ? (
+                  <p className="text-sm font-medium py-2">
+                    {priorite === "BASSE" ? "Basse" : priorite === "NORMALE" ? "Normale" : "Haute"}
+                  </p>
+                ) : (
+                  <Select value={priorite} onValueChange={(v) => setPriorite(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BASSE">Basse</SelectItem>
+                      <SelectItem value="NORMALE">Normale</SelectItem>
+                      <SelectItem value="HAUTE">Haute</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="date_echeance">Échéance</Label>
-              <Input
-                id="date_echeance"
-                type="date"
-                value={dateEcheance}
-                onChange={(e) => setDateEcheance(e.target.value)}
-              />
+              {readOnly ? (
+                <p className="text-sm font-medium py-2">
+                  {dateEcheance ? format(new Date(dateEcheance), "d MMMM yyyy", { locale: fr }) : "Non définie"}
+                </p>
+              ) : (
+                <Input
+                  id="date_echeance"
+                  type="date"
+                  value={dateEcheance}
+                  onChange={(e) => setDateEcheance(e.target.value)}
+                />
+              )}
             </div>
 
-            {/* Afficher sur le planning */}
-            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
-              <div className="flex items-center gap-2">
+            {/* Afficher sur le planning - read-only display */}
+            {readOnly ? (
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 p-3 bg-muted/20">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <Label htmlFor="afficher-planning-detail" className="text-sm font-medium cursor-pointer">
-                    Afficher sur le planning
-                  </Label>
-                  {!dateEcheance && (
-                    <p className="text-xs text-muted-foreground">Nécessite une date d'échéance</p>
-                  )}
-                </div>
+                <span className="text-sm">Afficher sur le planning :</span>
+                <span className="text-sm font-medium">{afficherPlanning ? "Oui" : "Non"}</span>
               </div>
-              <Switch
-                id="afficher-planning-detail"
-                checked={afficherPlanning}
-                onCheckedChange={setAfficherPlanning}
-                disabled={!dateEcheance}
-              />
-            </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <Label htmlFor="afficher-planning-detail" className="text-sm font-medium cursor-pointer">
+                      Afficher sur le planning
+                    </Label>
+                    {!dateEcheance && (
+                      <p className="text-xs text-muted-foreground">Nécessite une date d'échéance</p>
+                    )}
+                  </div>
+                </div>
+                <Switch
+                  id="afficher-planning-detail"
+                  checked={afficherPlanning}
+                  onCheckedChange={setAfficherPlanning}
+                  disabled={!dateEcheance}
+                />
+              </div>
+            )}
 
             {/* Documents section */}
             <div className="space-y-3">
               <Label>Documents</Label>
               
-              {/* Upload zone */}
-              <div
-                className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Cliquez pour ajouter des fichiers
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PDF, JPG, PNG (max 10 MB)
-                </p>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.jpg,.jpeg,.png"
-                multiple
-                onChange={handleFileSelect}
-              />
+              {/* Upload zone - only show if not readOnly */}
+              {!readOnly && (
+                <>
+                  <div
+                    className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Cliquez pour ajouter des fichiers
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PDF, JPG, PNG (max 10 MB)
+                    </p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    multiple
+                    onChange={handleFileSelect}
+                  />
+                </>
+              )}
 
               {/* Documents grid - card style like Fichiers tab */}
               {docsLoading ? (
@@ -401,14 +442,18 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
                                   <Download className="h-4 w-4 mr-2" />
                                   Télécharger
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => setDocToDelete(doc)} 
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
+                                {!readOnly && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => setDocToDelete(doc)} 
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Supprimer
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -439,11 +484,13 @@ export const TodoDetailDialog = ({ open, onOpenChange, todo }: TodoDetailDialogP
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Annuler
+                {readOnly ? "Fermer" : "Annuler"}
               </Button>
-              <Button onClick={handleSave} disabled={!nom.trim() || updateTodo.isPending}>
-                {updateTodo.isPending ? "Sauvegarde..." : "Sauvegarder"}
-              </Button>
+              {!readOnly && (
+                <Button onClick={handleSave} disabled={!nom.trim() || updateTodo.isPending}>
+                  {updateTodo.isPending ? "Sauvegarde..." : "Sauvegarder"}
+                </Button>
+              )}
             </div>
           </div>
 
