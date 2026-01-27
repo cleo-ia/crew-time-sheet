@@ -507,24 +507,36 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Date de début</span>
-                <Input
-                  type="date"
-                  value={formData.date_debut}
-                  onChange={(e) => handleFieldChange("date_debut", e.target.value)}
-                  onBlur={handleFieldBlur}
-                  className="h-10"
-                />
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+                    {formatDateDisplay(formData.date_debut)}
+                  </p>
+                ) : (
+                  <Input
+                    type="date"
+                    value={formData.date_debut}
+                    onChange={(e) => handleFieldChange("date_debut", e.target.value)}
+                    onBlur={handleFieldBlur}
+                    className="h-10"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Date de fin</span>
-                <Input
-                  type="date"
-                  value={formData.date_fin}
-                  onChange={(e) => handleFieldChange("date_fin", e.target.value)}
-                  onBlur={handleFieldBlur}
-                  min={formData.date_debut}
-                  className="h-10"
-                />
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+                    {formatDateDisplay(formData.date_fin)}
+                  </p>
+                ) : (
+                  <Input
+                    type="date"
+                    value={formData.date_fin}
+                    onChange={(e) => handleFieldChange("date_fin", e.target.value)}
+                    onBlur={handleFieldBlur}
+                    min={formData.date_debut}
+                    className="h-10"
+                  />
+                )}
               </div>
             </div>
 
@@ -533,43 +545,61 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Heures estimées</span>
-                <Input
-                  type="number"
-                  value={formData.heures_estimees}
-                  onChange={(e) => handleFieldChange("heures_estimees", e.target.value)}
-                  onBlur={handleFieldBlur}
-                  min={0}
-                  className="h-10"
-                  placeholder="0"
-                />
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+                    {formData.heures_estimees || "0"}
+                  </p>
+                ) : (
+                  <Input
+                    type="number"
+                    value={formData.heures_estimees}
+                    onChange={(e) => handleFieldChange("heures_estimees", e.target.value)}
+                    onBlur={handleFieldBlur}
+                    min={0}
+                    className="h-10"
+                    placeholder="0"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Heures réalisées</span>
-                <Input
-                  type="number"
-                  value={formData.heures_realisees}
-                  onChange={(e) => handleFieldChange("heures_realisees", e.target.value)}
-                  onBlur={handleFieldBlur}
-                  min={0}
-                  className="h-10"
-                  placeholder="0"
-                />
+                {readOnly ? (
+                  <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+                    {formData.heures_realisees || "0"}
+                  </p>
+                ) : (
+                  <Input
+                    type="number"
+                    value={formData.heures_realisees}
+                    onChange={(e) => handleFieldChange("heures_realisees", e.target.value)}
+                    onBlur={handleFieldBlur}
+                    min={0}
+                    className="h-10"
+                    placeholder="0"
+                  />
+                )}
               </div>
             </div>
 
             {/* Montant vendu */}
             <h4 className="font-semibold text-base pt-2">Montant vendu</h4>
             <div className="space-y-2">
-              <Input
-                type="number"
-                value={formData.montant_vendu}
-                onChange={(e) => handleFieldChange("montant_vendu", e.target.value)}
-                onBlur={handleFieldBlur}
-                min={0}
-                step="0.01"
-                className="h-10"
-                placeholder="0"
-              />
+              {readOnly ? (
+                <p className="text-sm font-medium h-10 flex items-center bg-muted/30 px-3 rounded-md">
+                  {formData.montant_vendu || "0"} €
+                </p>
+              ) : (
+                <Input
+                  type="number"
+                  value={formData.montant_vendu}
+                  onChange={(e) => handleFieldChange("montant_vendu", e.target.value)}
+                  onBlur={handleFieldBlur}
+                  min={0}
+                  step="0.01"
+                  className="h-10"
+                  placeholder="0"
+                />
+              )}
               <span className="text-xs text-muted-foreground">Montant en euros (€)</span>
             </div>
           </TabsContent>
@@ -639,15 +669,17 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
                 ) : (
                   <div className="p-8 text-center">
                     <p className="text-sm text-muted-foreground mb-4">Aucun achat ajouté</p>
-                    <div className="flex items-center justify-center gap-3">
-                      <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
-                        Ajouter un achat
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
-                        <span className="text-muted-foreground">⏵</span>
-                        Tutoriel vidéo
-                      </Button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex items-center justify-center gap-3">
+                        <Button variant="default" size="sm" className="bg-orange-500 hover:bg-orange-600 h-9 px-4">
+                          Ajouter un achat
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2 h-9 px-4">
+                          <span className="text-muted-foreground">⏵</span>
+                          Tutoriel vidéo
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -678,33 +710,29 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
             />
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-base">Fichiers</h4>
-              {!readOnly && (
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            
-            {/* Upload zone - hidden in readOnly mode */}
-            {!readOnly && (
-              <div
-                className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer mb-4"
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Cliquez pour ajouter des fichiers
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PDF, JPG, PNG (max 10 MB)
-                </p>
-              </div>
-            )}
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Upload zone - always visible (uploads allowed for chefs) */}
+            <div
+              className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer mb-4"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Cliquez pour ajouter des fichiers
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, JPG, PNG (max 10 MB)
+              </p>
+            </div>
             
             {documents.length === 0 ? (
               <div className="text-center py-4">
@@ -856,21 +884,23 @@ export const TaskDetailDialog = ({ open, onOpenChange, tache, chantierId, initia
           </TabsContent>
         </Tabs>
 
-        {/* Footer - Comment section */}
-        <div className="border-t p-4 flex items-center gap-3 shrink-0 bg-muted/20">
-          <Input
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Commentez ici ..."
-            className="flex-1 h-10 bg-background"
-          />
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-lg">
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button size="icon" className="h-10 w-10 shrink-0 rounded-lg bg-orange-500 hover:bg-orange-600">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Footer - Comment section - hidden in readOnly mode */}
+        {!readOnly && (
+          <div className="border-t p-4 flex items-center gap-3 shrink-0 bg-muted/20">
+            <Input
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Commentez ici ..."
+              className="flex-1 h-10 bg-background"
+            />
+            <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-lg">
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button size="icon" className="h-10 w-10 shrink-0 rounded-lg bg-orange-500 hover:bg-orange-600">
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </DialogContent>
 
       {/* Lightbox for images */}
