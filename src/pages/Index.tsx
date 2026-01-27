@@ -497,7 +497,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={() => navigate(`/chantiers/${selectedChantier}`)}
+                onClick={() => navigate(`/chantiers/${selectedChantier}?from=chef`)}
               >
                 <CalendarDays className="h-4 w-4" />
                 Planning tâches

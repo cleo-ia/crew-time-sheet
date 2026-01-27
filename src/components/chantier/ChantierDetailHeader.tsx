@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Building2, CalendarDays, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,21 +17,23 @@ interface ChantierDetailHeaderProps {
 export const ChantierDetailHeader = ({ chantier, onImageClick }: ChantierDetailHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { data: userRole } = useCurrentUserRole();
 
-  // Déterminer le chemin de retour en fonction de la route et du rôle
+  // Déterminer le chemin de retour en fonction de la route, du paramètre from et du rôle
   const { backPath, backLabel } = useMemo(() => {
     // Si admin, retour vers admin
     if (location.pathname.startsWith("/admin")) {
       return { backPath: "/admin?tab=chantiers", backLabel: "Retour aux chantiers" };
     }
-    // Si chef, retour vers la page de saisie
-    if (userRole === "chef") {
+    // Si vient de la page chef (paramètre from=chef dans l'URL) ou si le rôle est chef
+    const fromChef = searchParams.get("from") === "chef";
+    if (fromChef || userRole === "chef") {
       return { backPath: "/", backLabel: "Retour à la saisie" };
     }
     // Sinon (conducteur), retour vers la liste des chantiers
     return { backPath: "/chantiers", backLabel: "Retour aux chantiers" };
-  }, [location.pathname, userRole]);
+  }, [location.pathname, userRole, searchParams]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
