@@ -1,4 +1,4 @@
-import { Plus, Trash2, User, AlertTriangle, Users, CloudRain } from "lucide-react";
+import { Plus, Trash2, User, AlertTriangle, Users, CloudRain, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
@@ -29,6 +29,8 @@ interface TransportDayAccordionProps {
   isReadOnly?: boolean;
   isAllAbsent?: boolean;
   isIntemperie?: boolean;
+  isMonday?: boolean;
+  onDuplicateToWeek?: () => void;
 }
 
 export const TransportDayAccordion = ({
@@ -41,6 +43,8 @@ export const TransportDayAccordion = ({
   isReadOnly = false,
   isAllAbsent = false,
   isIntemperie = false,
+  isMonday = false,
+  onDuplicateToWeek,
 }: TransportDayAccordionProps) => {
   
   // Récupérer le nom du conducteur connecté
@@ -140,6 +144,14 @@ export const TransportDayAccordion = ({
   const completedCount = day.vehicules.filter(
     (v) => v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
   ).length;
+  
+  // Le bouton de duplication est visible si c'est lundi et qu'il y a au moins 1 véhicule avec immat
+  const canDuplicate = isMonday && day.vehicules.some(v => v.immatriculation) && !isReadOnly;
+  
+  const handleDuplicateClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher l'ouverture/fermeture de l'accordéon
+    onDuplicateToWeek?.();
+  };
 
   return (
     <AccordionItem value={day.date} className={`border rounded-lg mb-2 ${(isAllAbsent || isIntemperie) ? 'bg-muted/50 opacity-75' : ''}`}>
@@ -147,6 +159,18 @@ export const TransportDayAccordion = ({
         <div className="flex items-center justify-between w-full pr-4">
           <div className="flex items-center gap-2">
             <span className="font-medium capitalize">{dayLabel}</span>
+            {/* Bouton dupliquer pour le lundi */}
+            {canDuplicate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDuplicateClick}
+                className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Appliquer à la semaine
+              </Button>
+            )}
             {/* Badge intempérie (priorité sur absent) */}
             {isIntemperie && (
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs">

@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { format, addDays } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion } from "@/components/ui/accordion";
 import { Loader2 } from "lucide-react";
-import { TransportDayV2 } from "@/types/transport";
+import { TransportDayV2, TransportVehicle } from "@/types/transport";
 import { TransportDayAccordion } from "./TransportDayAccordion";
 import { useSaveTransportV2 } from "@/hooks/useSaveTransportV2";
 import { useTransportDataV2 } from "@/hooks/useTransportDataV2";
@@ -12,6 +12,7 @@ import { useAutoSaveTransportV2 } from "@/hooks/useAutoSaveTransportV2";
 import { useCopyPreviousWeekTransport } from "@/hooks/useCopyPreviousWeekTransport";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 interface TransportSheetV2Props {
   selectedWeek: Date;
@@ -279,6 +280,46 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     });
   };
 
+  // Dupliquer les données du Lundi vers le reste de la semaine
+  const duplicateMondayToWeek = useCallback(() => {
+    if (transportDays.length === 0) return;
+    
+    const monday = transportDays[0];
+    if (!monday.vehicules.some(v => v.immatriculation)) {
+      toast({
+        title: "Aucune donnée à dupliquer",
+        description: "Veuillez d'abord remplir les informations du Lundi.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setTransportDays((prev) => {
+      const newDays = prev.map((day, index) => {
+        if (index === 0) return day; // Garder le Lundi tel quel
+        
+        // Copier les véhicules du Lundi avec de nouveaux IDs
+        const copiedVehicules: TransportVehicle[] = monday.vehicules.map(v => ({
+          ...v,
+          id: crypto.randomUUID(),
+        }));
+        
+        return {
+          ...day,
+          vehicules: copiedVehicules,
+        };
+      });
+      
+      isDirty.current = true;
+      return newDays;
+    });
+    
+    toast({
+      title: "Données dupliquées",
+      description: "Les informations du Lundi ont été appliquées à toute la semaine.",
+    });
+  }, [transportDays]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -414,7 +455,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
 
 
       <Accordion type="single" collapsible value={openDay} onValueChange={handleOpenDayChange}>
-        {transportDays.map((day) => (
+        {transportDays.map((day, index) => (
           <TransportDayAccordion
             key={day.date}
             day={day}
@@ -426,6 +467,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             isReadOnly={isReadOnly}
             isAllAbsent={allAbsentDays.includes(day.date)}
             isIntemperie={allIntempDays.includes(day.date)}
+            isMonday={index === 0}
+            onDuplicateToWeek={duplicateMondayToWeek}
           />
         ))}
       </Accordion>
