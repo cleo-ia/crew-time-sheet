@@ -407,8 +407,8 @@ export const MaconsManager = () => {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              {editingMacon ? "Modifier" : "Créer"}
+            <Button onClick={handleSave} disabled={createUtilisateur.isPending || updateUtilisateur.isPending}>
+              {createUtilisateur.isPending ? "Création..." : (editingMacon ? "Modifier" : "Créer")}
             </Button>
           </DialogFooter>
         </DialogContent>

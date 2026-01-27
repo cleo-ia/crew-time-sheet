@@ -476,8 +476,8 @@ export const ChefsManager = () => {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              {editingChef ? "Modifier" : "Créer"}
+            <Button onClick={handleSave} disabled={createUtilisateur.isPending || updateUtilisateur.isPending}>
+              {createUtilisateur.isPending ? "Création..." : (editingChef ? "Modifier" : "Créer")}
             </Button>
           </DialogFooter>
         </DialogContent>
