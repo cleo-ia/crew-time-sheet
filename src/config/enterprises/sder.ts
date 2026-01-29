@@ -16,8 +16,8 @@ export const sderConfig: EnterpriseConfig = {
   features: {
     ...defaultFeatures,
     // Mêmes fonctionnalités que Limoge Revillon (même secteur)
-    // Points météo activé pour SDER
     pointsMeteo: true,
+    ratioGlobal: true,
   },
   
   routes: {
