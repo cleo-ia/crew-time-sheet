@@ -1,61 +1,55 @@
 
-# Plan : Badge dynamique par entreprise dans le Planning S+1
+# Plan : Activer la feature ratioGlobal pour SDER
 
 ## Contexte
-Actuellement, le badge vert dans le Planning Main d'Oeuvre affiche toujours "LR: X" (Limoge Revillon), même quand l'utilisateur est connecté à une autre entreprise comme SDER.
+SDER, comme Limoge Revillon, est une entreprise de gros œuvre qui a besoin de suivre les ratios journaliers de production (M³ béton, ML voile, M² coffrage).
 
-## Objectif
-Afficher dynamiquement l'abréviation de l'entreprise courante (LR, SDER, EB) dans le badge de compteur d'employés.
+## Analyse de sécurité effectuée
 
----
+| Point vérifié | Statut | Détail |
+|---------------|--------|--------|
+| Table `ratios_journaliers` | ✅ | Colonne `entreprise_id` présente |
+| Trigger d'isolation | ✅ | `tr_ratios_set_entreprise` remplit automatiquement l'`entreprise_id` via la fiche parente |
+| Isolation des données | ✅ | Les ratios sont liés à `fiche_id`, déjà filtré par entreprise |
+| Hook `useRatiosJournaliers` | ✅ | Filtre par `fiche_id` - pas de requête globale |
+| Composant `RatioGlobalSheet` | ✅ | Dépend de `ficheId` isolé par entreprise |
+| RLS sur table `fiches` | ✅ | Politique active avec `user_has_access_to_entreprise()` |
 
-## Modifications à effectuer
+## Résultat : Activation sûre
 
-### 1. Ajouter le champ `shortName` au type de configuration
-
-**Fichier** : `src/config/enterprises/types.ts`
-
-Ajouter un nouveau champ optionnel `shortName` dans l'interface `EnterpriseConfig` :
-- Ce champ contiendra l'abréviation courte de l'entreprise (2-4 caractères)
-- Exemples : "LR" pour Limoge Revillon, "SDER" pour SDER, "EB" pour Engo Bourgogne
-
-### 2. Mettre à jour les configurations des entreprises
-
-**Fichiers** :
-- `src/config/enterprises/limoge-revillon.ts` → ajouter `shortName: 'LR'`
-- `src/config/enterprises/sder.ts` → ajouter `shortName: 'SDER'`
-- `src/config/enterprises/engo-bourgogne.ts` → ajouter `shortName: 'EB'`
-
-### 3. Modifier le composant PlanningChantierAccordion
-
-**Fichier** : `src/components/planning/PlanningChantierAccordion.tsx`
-
-1. Importer le hook `useEnterpriseConfig` depuis `@/hooks/useEnterpriseConfig`
-2. Récupérer l'abréviation de l'entreprise courante : `const { shortName } = useEnterpriseConfig()`
-3. Remplacer le texte codé en dur "LR:" par `{shortName}:`
+Aucun risque de fuite de données entre SDER et Limoge Revillon. Chaque entreprise verra uniquement ses propres ratios.
 
 ---
 
-## Résultat attendu
+## Modification à effectuer
 
-| Entreprise connectée | Badge affiché |
-|---------------------|---------------|
-| Limoge Revillon | **LR: 0** |
-| SDER | **SDER: 0** |
-| Engo Bourgogne | **EB: 0** |
+### Fichier : `src/config/enterprises/sder.ts`
+
+Ajouter `ratioGlobal: true` dans la section `features` :
+
+```typescript
+features: {
+  ...defaultFeatures,
+  pointsMeteo: true,
+  ratioGlobal: true,  // ← AJOUTER CETTE LIGNE
+},
+```
 
 ---
 
-## Détails techniques
+## Impact utilisateur
 
-### Fichiers modifiés
-1. `src/config/enterprises/types.ts` - Ajout du champ `shortName?: string`
-2. `src/config/enterprises/limoge-revillon.ts` - Ajout de `shortName: 'LR'`
-3. `src/config/enterprises/sder.ts` - Ajout de `shortName: 'SDER'`
-4. `src/config/enterprises/engo-bourgogne.ts` - Ajout de `shortName: 'EB'`
-5. `src/components/planning/PlanningChantierAccordion.tsx` - Utilisation dynamique du shortName
+Après activation, les chefs SDER verront dans leur interface de saisie :
+- Un accordéon **"Ratio Global"** dépliant un tableau avec :
+  - Colonnes : M³ béton, ML voile, M² coffrage (+ nb personnes pour chaque)
+  - Sélecteur météo du jour
+  - Champs observations et incidents
+  - Ligne de totaux et ratios par personne
 
-### Impact
-- Aucun changement de logique métier
-- Le badge s'adaptera automatiquement à l'entreprise connectée
-- Cohérent avec l'architecture multi-tenant existante
+Les conducteurs SDER verront ces données en **lecture seule** lors de la validation des fiches.
+
+---
+
+## Aucune migration base de données requise
+
+La table `ratios_journaliers` et son trigger existent déjà. L'activation est purement frontend via le feature flag.
