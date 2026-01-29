@@ -743,9 +743,13 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
                         }
                         console.log("✅ Toutes les signatures créées avec succès");
                       } else {
-                        // Si c'est une fiche simple, signer uniquement celle-ci
+                        // Si c'est une fiche simple, utiliser l'UUID réel depuis allFiches
+                        const realFicheId = allFiches[0]?.id;
+                        if (!realFicheId) {
+                          throw new Error("Impossible de récupérer l'ID réel de la fiche");
+                        }
                         await saveSignatureMutation.mutateAsync({
-                          ficheId: ficheId,
+                          ficheId: realFicheId,
                           userId: conducteurId,
                           role: "conducteur",
                           signatureData,
