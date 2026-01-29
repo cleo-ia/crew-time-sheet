@@ -30,6 +30,7 @@ import { Employe, JOURS_SEMAINE_FR } from "@/hooks/useAllEmployes";
 import { PlanningEmployeRow } from "./PlanningEmployeRow";
 import { AddEmployeeToPlanningDialog } from "./AddEmployeeToPlanningDialog";
 import { cn } from "@/lib/utils";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 
 interface InsertionData {
   statut_insertion: string;
@@ -68,6 +69,7 @@ export const PlanningChantierAccordion = ({
   isLoading,
   forceOpen,
 }: PlanningChantierAccordionProps) => {
+  const { shortName } = useEnterpriseConfig();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customHoursInput, setCustomHoursInput] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -420,7 +422,7 @@ export const PlanningChantierAccordion = ({
                 {/* Badges LR / App / Intérim */}
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs px-1.5">
-                    LR: {countsByCategory.totalLR}
+                    {shortName}: {countsByCategory.totalLR}
                   </Badge>
                   <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-xs px-1.5">
                     App: {countsByCategory.totalApp}

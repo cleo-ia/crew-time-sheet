@@ -5,6 +5,7 @@ export const engoBourgogneConfig: EnterpriseConfig = {
   id: 'engo-bourgogne-id', // Sera remplacé par l'UUID réel
   slug: 'engo-bourgogne',
   nom: 'Engo Bourgogne',
+  shortName: 'EB',
   
   labels: {
     ...defaultLabels,
