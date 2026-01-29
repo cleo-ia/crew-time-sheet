@@ -82,6 +82,7 @@ export interface EnterpriseConfig {
   id: string;
   slug: string;
   nom: string;
+  shortName: string; // Abréviation courte (2-4 caractères) ex: "LR", "SDER", "EB"
   dossierRef?: string; // Référence dossier pour export Excel RH (ex: "C093195")
   
   // Configuration
