@@ -1,55 +1,113 @@
 
-# Plan : Activer la feature ratioGlobal pour SDER
 
-## Contexte
-SDER, comme Limoge Revillon, est une entreprise de gros œuvre qui a besoin de suivre les ratios journaliers de production (M³ béton, ML voile, M² coffrage).
+# Plan : Correction de l'erreur de signature conducteur (UUID invalide)
 
-## Analyse de sécurité effectuée
+## Diagnostic confirmé
 
-| Point vérifié | Statut | Détail |
-|---------------|--------|--------|
-| Table `ratios_journaliers` | ✅ | Colonne `entreprise_id` présente |
-| Trigger d'isolation | ✅ | `tr_ratios_set_entreprise` remplit automatiquement l'`entreprise_id` via la fiche parente |
-| Isolation des données | ✅ | Les ratios sont liés à `fiche_id`, déjà filtré par entreprise |
-| Hook `useRatiosJournaliers` | ✅ | Filtre par `fiche_id` - pas de requête globale |
-| Composant `RatioGlobalSheet` | ✅ | Dépend de `ficheId` isolé par entreprise |
-| RLS sur table `fiches` | ✅ | Politique active avec `user_has_access_to_entreprise()` |
+L'erreur `invalid input syntax for type uuid: "da638cc1-...-2026-S05"` est causée par l'utilisation d'un **ID composite** (chantier + semaine) au lieu d'un **UUID réel** lors de la signature d'une fiche simple.
 
-## Résultat : Activation sûre
+**Localisation du bug :** `FicheDetail.tsx` lignes 745-752
 
-Aucun risque de fuite de données entre SDER et Limoge Revillon. Chaque entreprise verra uniquement ses propres ratios.
+```typescript
+} else {
+  // Si c'est une fiche simple, signer uniquement celle-ci
+  await saveSignatureMutation.mutateAsync({
+    ficheId: ficheId,  // ← BUG: ficheId = ID composite, pas un UUID
+    ...
+  });
+}
+```
+
+---
+
+## Analyse de non-régression
+
+| Vérification | Statut | Détail |
+|--------------|--------|--------|
+| `allFiches` jamais vide | ✅ | Early return si `!ficheData` (ligne 128), et `allFiches` inclut toujours au moins `ficheData` lui-même |
+| Cas multi-fiches inchangé | ✅ | La boucle `for (const fiche of allFiches)` utilise déjà `fiche.id` (UUID réel) |
+| `SignatureMacons.tsx` | ✅ | Utilise `selectedMacon.ficheId` provenant de requête directe → UUID réel |
+| `SignatureFinisseurs.tsx` | ✅ | Utilise `ficheFinisseur.id` provenant de requête directe → UUID réel |
+| Hook `useSaveSignature` | ✅ | Aucune modification, mutation standard |
+| RLS signatures | ✅ | Politique `true` temporaire, pas de restriction |
+| Autres pages application | ✅ | Aucun autre composant n'utilise cette logique de signature conducteur |
 
 ---
 
 ## Modification à effectuer
 
-### Fichier : `src/config/enterprises/sder.ts`
+### Fichier : `src/components/validation/FicheDetail.tsx`
 
-Ajouter `ratioGlobal: true` dans la section `features` :
-
+**Lignes 745-752 - Avant :**
 ```typescript
-features: {
-  ...defaultFeatures,
-  pointsMeteo: true,
-  ratioGlobal: true,  // ← AJOUTER CETTE LIGNE
-},
+} else {
+  // Si c'est une fiche simple, signer uniquement celle-ci
+  await saveSignatureMutation.mutateAsync({
+    ficheId: ficheId,
+    userId: conducteurId,
+    role: "conducteur",
+    signatureData,
+  });
+}
+```
+
+**Après :**
+```typescript
+} else {
+  // Si c'est une fiche simple, utiliser l'UUID réel depuis allFiches
+  const realFicheId = allFiches[0]?.id;
+  if (!realFicheId) {
+    throw new Error("Impossible de récupérer l'ID réel de la fiche");
+  }
+  await saveSignatureMutation.mutateAsync({
+    ficheId: realFicheId,
+    userId: conducteurId,
+    role: "conducteur",
+    signatureData,
+  });
+}
 ```
 
 ---
 
-## Impact utilisateur
+## Pourquoi `allFiches[0]?.id` est garanti valide
 
-Après activation, les chefs SDER verront dans leur interface de saisie :
-- Un accordéon **"Ratio Global"** dépliant un tableau avec :
-  - Colonnes : M³ béton, ML voile, M² coffrage (+ nb personnes pour chaque)
-  - Sélecteur météo du jour
-  - Champs observations et incidents
-  - Ligne de totaux et ratios par personne
-
-Les conducteurs SDER verront ces données en **lecture seule** lors de la validation des fiches.
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Flux d'exécution dans FicheDetail.tsx                      │
+├─────────────────────────────────────────────────────────────┤
+│  1. useFicheDetailWithJours(ficheId) → ficheData            │
+│     ↓                                                        │
+│  2. if (!ficheData) → return "Fiche introuvable" (ligne 128)│
+│     ↓                                                        │
+│  3. allFiches = ficheData.all_fiches (contient 1+ fiches)   │
+│     ↓                                                        │
+│  4. SignaturePad visible seulement si ficheData existe      │
+│     ↓                                                        │
+│  5. allFiches[0].id = UUID réel depuis table `fiches`       │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Aucune migration base de données requise
+## Résultat attendu
 
-La table `ratios_journaliers` et son trigger existent déjà. L'activation est purement frontend via le feature flag.
+Après ce fix :
+1. Le conducteur peut signer les fiches individuelles et composites
+2. La fiche passe au statut `ENVOYE_RH`
+3. Le service RH voit la fiche dans sa liste de validation
+4. Aucun impact sur les autres pages (SignatureMacons, SignatureFinisseurs, etc.)
+
+---
+
+## Section technique
+
+**Tables impliquées :**
+- `signatures` : insertion avec `fiche_id` (UUID), `signed_by`, `role`, `signature_data`
+- `fiches` : mise à jour du `statut` vers `ENVOYE_RH`
+
+**Hooks impliqués :**
+- `useSaveSignature` : mutation d'insertion signature (inchangé)
+- `useUpdateFicheStatus` : mise à jour statut (inchangé)
+- `useFicheDetailWithJours` : source de `allFiches` avec UUIDs réels
+
