@@ -234,10 +234,11 @@ serve(async (req) => {
     }
 
     // Vérifier si une fiche utilisateurs existe (liaison automatique future via trigger)
+    // Utiliser ilike pour une comparaison case-insensitive (évite les doublons Jorge.martins vs jorge.martins)
     const { data: existingUtilisateur } = await supabaseAdmin
       .from('utilisateurs')
       .select('id, prenom, nom, role_metier')
-      .eq('email', email.toLowerCase())
+      .ilike('email', email.trim())
       .eq('entreprise_id', finalEntrepriseId)
       .maybeSingle();
 
