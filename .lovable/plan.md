@@ -1,47 +1,75 @@
 
-# Plan : Nettoyer l'invitation Jorge Martins pour recommencer
 
-## Situation actuelle
+# Correction de la comparaison case-sensitive des emails
 
-L'invitation pour `jorge.martins@groupe-engo.com` (SDER) a été consommée prématurément par le scan Outlook Safe Links. Un compte auth a été créé mais sans mot de passe défini par l'utilisateur.
+## Problème identifié
+L'invitation envoyée à `Jorge.martins@groupe-engo.com` (J majuscule) n'a pas été liée à la fiche RH existante car :
+- L'Edge Function `invite-user` convertit l'email en minuscules (`email.toLowerCase()`)
+- La requête SQL compare avec `=` (case-sensitive) : `jorge.martins` ≠ `Jorge.martins`
+- Résultat : Supabase Auth crée un nouveau compte et le trigger crée un doublon
 
-## Actions à effectuer
+## Solution
 
-### Étape 1 : Supprimer l'utilisateur auth via edge function
+### 1. Modifier l'Edge Function `invite-user`
+**Fichier** : `supabase/functions/invite-user/index.ts`
 
-Appeler l'edge function `delete-user` pour supprimer proprement :
-- L'entrée dans `auth.users`
-- Le profile associé
+Changer la requête de recherche utilisateurs (lignes 237-242) :
 
 ```typescript
-// Appel à l'edge function delete-user
-POST /delete-user
-{
-  "userId": "b801200a-7906-4612-9b87-81ea274a201e"
-}
+// AVANT
+const { data: existingUtilisateur } = await supabaseAdmin
+  .from('utilisateurs')
+  .select('id, prenom, nom, role_metier')
+  .eq('email', email.toLowerCase())
+  .eq('entreprise_id', finalEntrepriseId)
+  .maybeSingle();
+
+// APRÈS
+const { data: existingUtilisateur } = await supabaseAdmin
+  .from('utilisateurs')
+  .select('id, prenom, nom, role_metier')
+  .ilike('email', email.trim())
+  .eq('entreprise_id', finalEntrepriseId)
+  .maybeSingle();
 ```
 
-### Étape 2 : Supprimer l'invitation
+### 2. Modifier le trigger `handle_new_user_signup`
+**Migration SQL** :
 
 ```sql
-DELETE FROM invitations 
-WHERE id = 'b3033050-77d2-4b37-9200-db7a1bf9c154';
+-- Recherche invitation : case-insensitive
+SELECT * INTO invitation_record
+FROM public.invitations
+WHERE LOWER(email) = LOWER(user_email)
+  AND status = 'pending'
+  AND expires_at > now()
+LIMIT 1;
+
+-- Recherche utilisateurs : case-insensitive  
+SELECT id INTO existing_utilisateur_id
+FROM public.utilisateurs
+WHERE LOWER(email) = LOWER(user_email)
+LIMIT 1;
 ```
 
-### Étape 3 : Réinitialiser le lien auth_user_id (si nécessaire)
+## Pourquoi aucune régression ?
 
-La fiche RH dans `utilisateurs` n'a pas de `auth_user_id` donc elle est déjà prête pour être ré-associée.
+| Scénario existant | Impact |
+|---|---|
+| Philippe Fay (`philippe.fay@...`) - email déjà en minuscules | Aucun changement - continue de matcher |
+| Connexion utilisateurs existants | Non impacté - comparaison sur auth_user_id |
+| Multi-entreprises | Non impacté - filtre `entreprise_id` préservé |
+| Magic links / OTP | Non impacté - passe par Supabase Auth directement |
+| Validation regex email | Déjà case-insensitive (flag `/i`) |
 
-## Résultat attendu
+## Après correction : Fusion des doublons Jorge Martins
 
-Après ces opérations :
-- Aucune invitation pour Jorge Martins
-- Aucun compte auth pour Jorge Martins  
-- La fiche RH `utilisateurs` reste intacte (id: `9f1e3a0f-7f14-4521-99db-4fe6d8722374`)
-- Tu peux renvoyer une nouvelle invitation depuis le panneau admin SDER
+Une migration séparée fusionnera les deux enregistrements :
+1. Transférer `auth_user_id` de `fdf8b8bb-...` vers `9f1e3a0f-...`
+2. Supprimer le doublon `fdf8b8bb-...`
+3. Nettoyer les entrées orphelines dans `profiles` et `user_roles`
 
-## Fichiers concernés
+## Fichiers modifiés
+- `supabase/functions/invite-user/index.ts` - Comparaison ILIKE
+- Migration SQL - Trigger `handle_new_user_signup` case-insensitive
 
-Aucune modification de code nécessaire - uniquement des opérations sur la base de données via :
-- Edge function `delete-user` existante
-- Requête SQL de suppression d'invitation
