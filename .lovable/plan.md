@@ -1,116 +1,47 @@
 
-# Plan : Préserver le contexte d'entreprise dans les liens email
+# Plan : Nettoyer l'invitation Jorge Martins pour recommencer
 
-## Problème identifié
+## Situation actuelle
 
-Lorsqu'un utilisateur SDER clique sur un lien de réinitialisation de mot de passe ou d'invitation, il arrive sur la page `/auth` qui affiche Limoge Revillon par défaut car :
-1. Les emails de réinitialisation/invitation redirigent vers `/auth` sans contexte d'entreprise
-2. La page Auth initialise le carrousel à l'index 0 (Limoge Revillon) par défaut
+L'invitation pour `jorge.martins@groupe-engo.com` (SDER) a été consommée prématurément par le scan Outlook Safe Links. Un compte auth a été créé mais sans mot de passe défini par l'utilisateur.
 
-## Solution proposée
+## Actions à effectuer
 
-Ajouter un paramètre `entreprise` dans les URLs de redirection et le lire à l'arrivée sur `/auth`.
+### Étape 1 : Supprimer l'utilisateur auth via edge function
 
----
-
-## Modifications techniques
-
-### 1. Edge function `invite-user/index.ts`
-
-Modifier les 3 appels `redirectTo` pour inclure le slug d'entreprise :
+Appeler l'edge function `delete-user` pour supprimer proprement :
+- L'entrée dans `auth.users`
+- Le profile associé
 
 ```typescript
-// Récupérer le slug de l'entreprise
-const { data: entreprise } = await supabaseAdmin
-  .from('entreprises')
-  .select('slug')
-  .eq('id', finalEntrepriseId)
-  .single();
-
-const entrepriseSlug = entreprise?.slug || '';
-const baseUrl = req.headers.get('origin') || 'https://crew-time-sheet.lovable.app';
-const redirectUrl = `${baseUrl}/auth?entreprise=${entrepriseSlug}`;
-
-// Ligne 272, 322, 400 : utiliser redirectUrl
+// Appel à l'edge function delete-user
+POST /delete-user
+{
+  "userId": "b801200a-7906-4612-9b87-81ea274a201e"
+}
 ```
 
-### 2. Page `Auth.tsx` - Frontend
+### Étape 2 : Supprimer l'invitation
 
-#### a) Lire le paramètre `entreprise` depuis l'URL au chargement
-
-```typescript
-// Dans le useEffect initial ou avec useSearchParams
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const entrepriseParam = params.get('entreprise');
-  
-  if (entrepriseParam) {
-    const index = ENTREPRISES.findIndex(e => e.slug === entrepriseParam);
-    if (index >= 0) {
-      setSelectedIndex(index);
-      // Optionnel : nettoyer l'URL
-      window.history.replaceState({}, '', '/auth');
-    }
-  }
-}, []);
+```sql
+DELETE FROM invitations 
+WHERE id = 'b3033050-77d2-4b37-9200-db7a1bf9c154';
 ```
 
-#### b) Modifier `handleResetPassword` pour inclure l'entreprise sélectionnée
+### Étape 3 : Réinitialiser le lien auth_user_id (si nécessaire)
 
-```typescript
-const handleResetPassword = async () => {
-  // ...validation...
-  const redirectUrl = `${window.location.origin}/auth?entreprise=${selectedEntreprise.slug}`;
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectUrl,
-  });
-  // ...
-};
-```
+La fiche RH dans `utilisateurs` n'a pas de `auth_user_id` donc elle est déjà prête pour être ré-associée.
 
-#### c) Modifier `handleMagicLink` pour la cohérence
+## Résultat attendu
 
-```typescript
-const handleMagicLink = async () => {
-  // ...validation...
-  const redirectUrl = `${window.location.origin}/auth?entreprise=${selectedEntreprise.slug}`;
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectUrl },
-  });
-  // ...
-};
-```
+Après ces opérations :
+- Aucune invitation pour Jorge Martins
+- Aucun compte auth pour Jorge Martins  
+- La fiche RH `utilisateurs` reste intacte (id: `9f1e3a0f-7f14-4521-99db-4fe6d8722374`)
+- Tu peux renvoyer une nouvelle invitation depuis le panneau admin SDER
 
----
+## Fichiers concernés
 
-## Flux après correction
-
-```text
-                    AVANT                              APRES
-                    -----                              -----
-Invitation SDER                            Invitation SDER
-      |                                          |
-      v                                          v
-Email: redirectTo=/auth                    Email: redirectTo=/auth?entreprise=sder
-      |                                          |
-      v                                          v
-Page Auth: Limoge (defaut)                 Page Auth: SDER (pre-selectionne)
-```
-
----
-
-## Fichiers modifies
-
-| Fichier | Modification |
-|---------|-------------|
-| `supabase/functions/invite-user/index.ts` | Ajouter le slug d'entreprise dans les 3 URLs de redirection |
-| `src/pages/Auth.tsx` | Lire le parametre `entreprise` de l'URL + modifier `handleResetPassword` et `handleMagicLink` |
-
----
-
-## Impact
-
-- Aucun changement de comportement pour les utilisateurs existants
-- Les nouveaux liens email redirigeront vers la bonne entreprise
-- La selection manuelle du carrousel reste possible
+Aucune modification de code nécessaire - uniquement des opérations sur la base de données via :
+- Edge function `delete-user` existante
+- Requête SQL de suppression d'invitation
