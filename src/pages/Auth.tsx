@@ -362,12 +362,17 @@ const Auth = () => {
         toast.error("Email doit être @groupe-engo.com");
         return;
       }
-      const redirectUrl = `${window.location.origin}/auth?entreprise=${selectedEntreprise.slug}`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+      
+      // Appel à l'edge function pour envoyer l'email avec branding dynamique
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: email,
+          entreprise_slug: selectedEntreprise.slug
+        }
       });
+      
       if (error) throw error;
-      toast.success("Email envoyé pour définir un mot de passe.");
+      toast.success("Email envoyé pour réinitialiser votre mot de passe.");
     } catch (err: any) {
       toast.error(err?.message || "Impossible d'envoyer l'email");
     } finally {
