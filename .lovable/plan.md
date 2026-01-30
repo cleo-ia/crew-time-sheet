@@ -1,33 +1,38 @@
 
 
-# Suppression du compte auth orphelin Jorge Martins
+# Suppression de la bannière "Mode développement"
+
+## Résumé
+
+Supprimer la bannière d'avertissement "Mode développement : Authentification désactivée" qui s'affiche à tort sur la page chef de chantier, même en production.
 
 ## Problème identifié
 
-L'erreur `AuthApiError: A user with this email address has already been registered` indique que le compte existe toujours dans `auth.users` (table système de Supabase Auth).
+La bannière est affichée **de manière inconditionnelle** dans `src/pages/Index.tsx` (lignes 476-484), sans vérification de l'environnement. C'est un résidu de développement qui n'aurait jamais dû arriver en production.
 
-**Historique** :
-1. Lors de la première inscription, un compte auth a été créé avec l'ID `fdf8b8bb-9af9-4da6-bd12-aa491b992506`
-2. Nous avons nettoyé `utilisateurs`, `profiles`, `user_roles`
-3. **MAIS** le compte dans `auth.users` n'a pas été supprimé
+## Modification
 
-## Solution
+### Fichier : `src/pages/Index.tsx`
 
-Appeler l'Edge Function `delete-user` avec l'ID `fdf8b8bb-9af9-4da6-bd12-aa491b992506` pour supprimer le compte auth orphelin.
+**Action** : Supprimer entièrement le bloc suivant (lignes 476-484) :
 
-## Actions à effectuer
-
-1. **Appeler l'Edge Function `delete-user`** avec le userId `fdf8b8bb-9af9-4da6-bd12-aa491b992506`
-2. L'API `supabaseAdmin.auth.admin.deleteUser()` supprimera le compte auth
-3. Réessayer l'invitation pour Jorge.martins@groupe-engo.com
-
-## Code technique
-
-L'Edge Function `delete-user` utilise cette logique :
-```typescript
-const authUserId = utilisateurData?.auth_user_id || userId;
-const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+```tsx
+{/* Warning Banner */}
+<div className="bg-amber-500/10 border-b border-amber-500/20 py-2">
+  <div className="container mx-auto px-4">
+    <p className="text-xs text-amber-700 dark:text-amber-300 text-center flex items-center justify-center gap-2">
+      <AlertTriangle className="h-3 w-3" />
+      Mode développement : Authentification désactivée. Sélectionnez manuellement le chef de chantier.
+    </p>
+  </div>
+</div>
 ```
 
-Même si l'utilisateur n'existe plus dans la table `utilisateurs`, la fonction tentera de supprimer le compte auth avec l'ID fourni.
+Après suppression, le `<PageHeader>` suivra directement le `<AppNav />`.
+
+## Impact
+
+- Supprime le message trompeur en production
+- Aucun impact fonctionnel (c'était purement cosmétique)
+- L'authentification reste entièrement fonctionnelle (protégée par `RequireAuth`)
 
