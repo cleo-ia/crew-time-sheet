@@ -1,92 +1,122 @@
 
+# Correction des emails reset password avec branding dynamique
 
-# Correction des emails de réinitialisation de mot de passe
+## Problème
+Les emails de réinitialisation de mot de passe envoyés depuis la page de connexion utilisent le template Supabase par défaut avec le branding "Limoge Revillon" statique, au lieu du branding dynamique de l'entreprise sélectionnée (SDER, Engo Bourgogne, etc.).
 
-## Problèmes identifiés
+## Cause racine
+La fonction `handleResetPassword` dans `Auth.tsx` appelle directement `supabase.auth.resetPasswordForEmail()` - l'API native Supabase qui utilise les templates email configurés dans le dashboard Supabase.
 
-### 1. Emails reset password avec branding "Limoge Revillon"
-Les appels à `resetPasswordForEmail()` dans `invite-user/index.ts` (lignes 284 et 334) utilisent encore le template statique Supabase au lieu de Resend avec branding dynamique.
+## Solution
 
-### 2. Problème de connexion après reset
-Les logs montrent que le compte `sebastien.lanteri@groupe-engo.com` a été correctement créé et que le mot de passe a été défini avec succès (login à 14:26:18). Les erreurs "Invalid login credentials" ultérieures sont liées à :
-- Un token expiré réutilisé ("One-time token not found")
-- Un mot de passe incorrect lors des tentatives suivantes
+### 1. Créer une nouvelle edge function `send-password-reset`
 
-Pour résoudre ce cas immédiat, l'utilisateur peut demander un nouveau reset password depuis la page de connexion.
+**Fichier : `supabase/functions/send-password-reset/index.ts`**
 
-## Solution technique
+Cette fonction :
+- Reçoit l'email et le slug de l'entreprise
+- Valide que l'email est bien `@groupe-engo.com`
+- Récupère le nom de l'entreprise depuis le slug
+- Génère un lien de recovery via `supabaseAdmin.auth.admin.generateLink()`
+- Envoie l'email via Resend avec `generatePasswordResetEmailHtml()` et le branding dynamique
 
-### Fichier : `supabase/functions/_shared/emailTemplate.ts`
+### 2. Modifier `Auth.tsx`
 
-Ajouter une nouvelle fonction de template pour les emails de reset password :
-
-```typescript
-export function generatePasswordResetEmailHtml(
-  entrepriseNom: string,
-  resetUrl: string,
-  email: string
-): string {
-  // Template similaire aux invitations mais adapté au reset password
-  // Header: "${entrepriseNom} - Groupe Engo"
-  // Titre: "Réinitialisation de mot de passe"
-  // Message: "Vous avez demandé à réinitialiser votre mot de passe..."
-  // CTA: "Réinitialiser mon mot de passe"
-}
-```
-
-### Fichier : `supabase/functions/invite-user/index.ts`
-
-Modifier les deux endroits où `resetPasswordForEmail()` est appelé :
-
-**Ligne 280-311 (mode resend - utilisateur existant avec même rôle) :**
+Remplacer l'appel direct à `supabase.auth.resetPasswordForEmail()` par un appel à la nouvelle edge function :
 
 ```typescript
-// Au lieu de:
-const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(...)
-
-// Utiliser generateLink + Resend:
-const { data: resetLinkData, error: resetLinkError } = await supabaseAdmin.auth.admin.generateLink({
-  type: 'recovery',
-  email: email.toLowerCase(),
-  options: { redirectTo: redirectUrl }
-});
-
-const resetLink = resetLinkData?.properties?.action_link;
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-await resend.emails.send({
-  from: 'DIVA <rappels-diva-LR@groupe-engo.com>',
-  to: [email.toLowerCase()],
-  subject: `Réinitialisation de mot de passe - ${entrepriseNom}`,
-  html: generatePasswordResetEmailHtml(entrepriseNom, resetLink, email),
-});
+const handleResetPassword = async () => {
+  // ...validation email...
+  
+  const response = await supabase.functions.invoke('send-password-reset', {
+    body: {
+      email: email.trim(),
+      entreprise_slug: selectedEntreprise.slug
+    }
+  });
+  
+  if (response.error) throw response.error;
+  toast.success("Email envoyé pour réinitialiser votre mot de passe.");
+};
 ```
 
-**Ligne 333-343 (ajout de rôle - même logique) :**
+### 3. Configurer la fonction dans `config.toml`
 
-Appliquer la même modification pour envoyer l'email de reset via Resend.
+Ajouter la configuration pour désactiver la vérification JWT (la fonction est publique).
+
+## Flux résultant
+
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Page Auth (/auth)                               │
+│                                                                         │
+│  1. Utilisateur entre son email                                         │
+│  2. Clique sur "Réinitialiser mot de passe"                            │
+│  3. Appel à l'edge function send-password-reset                        │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   Edge Function: send-password-reset                    │
+│                                                                         │
+│  1. Valide l'email (@groupe-engo.com)                                  │
+│  2. Récupère le nom de l'entreprise depuis le slug                     │
+│  3. Génère le lien de recovery (supabaseAdmin.auth.admin.generateLink) │
+│  4. Envoie l'email via Resend avec branding dynamique                  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Email reçu                                    │
+│                                                                         │
+│  Header: "SDER - Groupe Engo" (dynamique selon l'entreprise)           │
+│  Contenu: "Vous avez demandé à réinitialiser votre mot de passe..."   │
+│  Bouton: "Réinitialiser mon mot de passe"                              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Fichiers modifiés
+
+| Fichier | Action |
+|---------|--------|
+| `supabase/functions/send-password-reset/index.ts` | Création |
+| `supabase/config.toml` | Ajout configuration |
+| `src/pages/Auth.tsx` | Modification `handleResetPassword` |
 
 ## Résultat attendu
 
-Avant :
-- Email reset password avec header "Limoge Revillon - Groupe ENGO" statique
+| Avant | Après |
+|-------|-------|
+| Email avec header "Limoge Revillon - Groupe ENGO" | Email avec header dynamique selon l'entreprise sélectionnée |
+| Template Supabase par défaut | Template DIVA personnalisé via Resend |
 
-Après :
-- Email reset password avec header dynamique selon l'entreprise (SDER, Limoge Revillon, Engo Bourgogne)
+## Détails techniques
 
-## Pour le cas immédiat (sebastien.lanteri)
+### Edge function `send-password-reset`
 
-L'utilisateur peut :
-1. Aller sur la page de connexion SDER
-2. Cliquer sur "Mot de passe oublié" 
-3. Recevoir un nouveau lien de reset (encore avec le branding Limoge Revillon jusqu'à cette correction)
-4. Définir son mot de passe correctement
+```typescript
+// Entrées
+{
+  email: string,         // Email de l'utilisateur
+  entreprise_slug: string // Slug de l'entreprise sélectionnée (limoge-revillon, sder, engo-bourgogne)
+}
 
-Une fois la correction déployée, tous les futurs emails de reset auront le bon branding.
+// Sorties
+{
+  success: true,
+  message: "Email de réinitialisation envoyé"
+}
+```
 
-## Tests à effectuer
+### Template utilisé
 
-1. Réinviter un utilisateur existant sur SDER qui a déjà le même rôle
-2. Vérifier que l'email reçu affiche "SDER - Groupe Engo"
-3. Cliquer sur le lien et vérifier que le reset password fonctionne
-4. Se connecter avec le nouveau mot de passe
+La fonction `generatePasswordResetEmailHtml()` existe déjà dans `_shared/emailTemplate.ts` et affiche :
+- Header avec le nom de l'entreprise dynamique
+- Message de réinitialisation de mot de passe
+- Bouton CTA vers le lien de reset
 
+### Sécurité
+
+- Validation du domaine email `@groupe-engo.com`
+- Pas de JWT requis (fonction publique pour permettre le reset)
+- L'email doit correspondre à un compte existant (géré par Supabase)
