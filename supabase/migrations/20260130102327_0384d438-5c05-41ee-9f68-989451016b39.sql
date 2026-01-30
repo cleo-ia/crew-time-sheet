@@ -1,0 +1,1 @@
+DELETE FROM invitations WHERE id = '7b196a0f-2a3c-4f65-97f7-820a8b9bbd98';
