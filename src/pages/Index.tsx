@@ -47,11 +47,14 @@ import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesSheet } from "@/components/conges/CongesSheet";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isOnline } = useAuth();
+  const { data: currentRole } = useCurrentUserRole();
+  const isChefRole = currentRole === "chef";
   const isContrainteVendredi12h = useFeatureEnabled('contrainteVendredi12h');
   const isRatioGlobalEnabled = useFeatureEnabled('ratioGlobal');
   const isPointsMeteoEnabled = useFeatureEnabled('pointsMeteo');
@@ -541,7 +544,13 @@ const Index = () => {
                   <Users className="h-4 w-4 text-primary" />
                   Chef de chantier
                 </label>
-                <UserSelector role="chef" value={selectedChef} onChange={setSelectedChef} />
+                {isChefRole ? (
+                  <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted/50 rounded-md text-sm text-muted-foreground">
+                    {chefInfo ? `${chefInfo.prenom} ${chefInfo.nom}` : "Chargement..."}
+                  </div>
+                ) : (
+                  <UserSelector role="chef" value={selectedChef} onChange={setSelectedChef} />
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
