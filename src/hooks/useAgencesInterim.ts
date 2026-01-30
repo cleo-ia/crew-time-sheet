@@ -2,14 +2,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useAgencesInterim = () => {
+  // Récupérer l'entreprise courante depuis localStorage
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+
   return useQuery({
-    queryKey: ["agences-interim"],
+    queryKey: ["agences-interim", entrepriseId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("utilisateurs")
         .select("agence_interim")
         .not("agence_interim", "is", null)
         .neq("agence_interim", "");
+
+      // Filtrer par entreprise
+      if (entrepriseId) {
+        query = query.eq("entreprise_id", entrepriseId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -23,5 +33,6 @@ export const useAgencesInterim = () => {
       return uniqueAgences as string[];
     },
     staleTime: 5 * 60 * 1000, // Cache 5 minutes
+    enabled: !!entrepriseId,
   });
 };
