@@ -152,6 +152,17 @@ serve(async (req) => {
       );
     }
 
+    // Récupérer le slug de l'entreprise pour les URLs de redirection
+    const { data: entrepriseData } = await supabaseAdmin
+      .from('entreprises')
+      .select('slug')
+      .eq('id', finalEntrepriseId)
+      .single();
+    
+    const entrepriseSlug = entrepriseData?.slug || '';
+    const baseUrl = req.headers.get('origin') || 'https://crew-time-sheet.lovable.app';
+    const redirectUrl = `${baseUrl}/auth?entreprise=${entrepriseSlug}`;
+
     // Validation de l'email
     if (!email || typeof email !== 'string') {
       return new Response(
@@ -269,7 +280,7 @@ serve(async (req) => {
         const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
           email.toLowerCase(),
           {
-            redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
+            redirectTo: redirectUrl,
           }
         );
 
@@ -319,7 +330,7 @@ serve(async (req) => {
       const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
         email.toLowerCase(),
         {
-          redirectTo: `${req.headers.get('origin') || 'https://crew-time-sheet.lovable.app'}/auth`,
+          redirectTo: redirectUrl,
         }
       );
 
@@ -397,7 +408,7 @@ serve(async (req) => {
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email.toLowerCase(),
       {
-        redirectTo: `${req.headers.get('origin') || 'http://localhost:5173'}/auth`,
+        redirectTo: redirectUrl,
       }
     );
 

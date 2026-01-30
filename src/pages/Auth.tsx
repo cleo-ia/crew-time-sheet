@@ -40,8 +40,20 @@ const ENTREPRISES = [
 ];
 
 const Auth = () => {
-  // Sélection entreprise
+  // Sélection entreprise - lire depuis l'URL en priorité
   const [selectedIndex, setSelectedIndex] = useState(() => {
+    // 1. D'abord vérifier le paramètre URL (liens email)
+    const urlParams = new URLSearchParams(window.location.search);
+    const entrepriseParam = urlParams.get('entreprise');
+    if (entrepriseParam) {
+      const index = ENTREPRISES.findIndex(e => e.slug === entrepriseParam);
+      if (index >= 0) {
+        // Nettoyer l'URL après lecture
+        window.history.replaceState({}, '', '/auth');
+        return index;
+      }
+    }
+    // 2. Sinon, utiliser le localStorage
     const savedSlug = localStorage.getItem("entreprise_slug");
     if (savedSlug) {
       const index = ENTREPRISES.findIndex(e => e.slug === savedSlug);
@@ -311,7 +323,7 @@ const Auth = () => {
         toast.error("Email doit être @groupe-engo.com");
         return;
       }
-      const redirectUrl = `${window.location.origin}/auth`;
+      const redirectUrl = `${window.location.origin}/auth?entreprise=${selectedEntreprise.slug}`;
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: redirectUrl },
@@ -337,7 +349,7 @@ const Auth = () => {
         toast.error("Email doit être @groupe-engo.com");
         return;
       }
-      const redirectUrl = `${window.location.origin}/auth`;
+      const redirectUrl = `${window.location.origin}/auth?entreprise=${selectedEntreprise.slug}`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
