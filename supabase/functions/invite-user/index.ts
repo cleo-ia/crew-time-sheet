@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import { generateInvitationEmailHtml } from "../_shared/emailTemplate.ts";
+import { generateInvitationEmailHtml, generatePasswordResetEmailHtml } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -276,27 +276,56 @@ serve(async (req) => {
       }
 
       // Si c'est un mode resend (utilisateur existe avec le même rôle pour cette entreprise)
-      // Envoyer un email de récupération de mot de passe
+      // Envoyer un email de récupération de mot de passe via Resend avec branding dynamique
       if (existingRole) {
-        console.log('User already has this role, sending password reset email');
+        console.log('User already has this role, sending password reset email via Resend');
         
-        // Utiliser resetPasswordForEmail qui ENVOIE réellement l'email
-        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
-          email.toLowerCase(),
-          {
+        // Utiliser generateLink pour obtenir le lien sans envoyer l'email Supabase
+        const { data: resetLinkData, error: resetLinkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email.toLowerCase(),
+          options: {
             redirectTo: redirectUrl,
           }
-        );
+        });
 
-        if (resetError) {
-          console.error('Error sending reset password email:', resetError);
+        if (resetLinkError) {
+          console.error('Error generating reset link:', resetLinkError);
           return new Response(
-            JSON.stringify({ error: 'Failed to send reset email', details: resetError.message }),
+            JSON.stringify({ error: 'Failed to generate reset link', details: resetLinkError.message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log('Password reset email sent successfully');
+        const resetLink = resetLinkData?.properties?.action_link;
+        if (!resetLink) {
+          console.error('No action_link in generateLink response');
+          return new Response(
+            JSON.stringify({ error: 'Failed to get reset link from response' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Envoyer l'email via Resend avec branding dynamique
+        const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+        const emailHtml = generatePasswordResetEmailHtml(entrepriseNom, resetLink, email.toLowerCase());
+
+        const { error: emailError } = await resend.emails.send({
+          from: 'DIVA <rappels-diva-LR@groupe-engo.com>',
+          to: [email.toLowerCase()],
+          subject: `Réinitialisation de mot de passe - ${entrepriseNom}`,
+          html: emailHtml,
+        });
+
+        if (emailError) {
+          console.error('Error sending reset email via Resend:', emailError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to send reset email', details: emailError }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Password reset email sent successfully via Resend with branding:', entrepriseNom);
 
         return new Response(
           JSON.stringify({
@@ -330,16 +359,36 @@ serve(async (req) => {
         );
       }
 
-      // Envoyer également un email de reset pour que l'utilisateur puisse se connecter
-      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
-        email.toLowerCase(),
-        {
+      // Envoyer également un email de reset via Resend pour que l'utilisateur puisse se connecter
+      const { data: resetLinkData, error: resetLinkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email.toLowerCase(),
+        options: {
           redirectTo: redirectUrl,
         }
-      );
+      });
 
-      if (resetError) {
-        console.warn('Warning: Role added but reset email failed:', resetError);
+      if (resetLinkError) {
+        console.warn('Warning: Role added but reset link generation failed:', resetLinkError);
+      } else {
+        const resetLink = resetLinkData?.properties?.action_link;
+        if (resetLink) {
+          const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+          const emailHtml = generatePasswordResetEmailHtml(entrepriseNom, resetLink, email.toLowerCase());
+
+          const { error: emailError } = await resend.emails.send({
+            from: 'DIVA <rappels-diva-LR@groupe-engo.com>',
+            to: [email.toLowerCase()],
+            subject: `Nouveau rôle ajouté - ${entrepriseNom}`,
+            html: emailHtml,
+          });
+
+          if (emailError) {
+            console.warn('Warning: Role added but reset email failed:', emailError);
+          } else {
+            console.log('Reset email sent successfully via Resend for new role');
+          }
+        }
       }
 
       console.log('Role added successfully for existing user');
