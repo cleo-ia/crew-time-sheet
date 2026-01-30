@@ -11,24 +11,22 @@ export const useSaveTransportV2 = () => {
     mutationFn: async (params: SaveTransportParamsV2) => {
       const { ficheId: providedFicheId, semaine, chantierId, days, chefId } = params;
 
+      // Validation obligatoire : chantier requis
+      if (!chantierId) {
+        throw new Error("Le chantier est obligatoire pour enregistrer une fiche de trajet");
+      }
+
       console.log("[useSaveTransportV2] Starting save", { providedFicheId, semaine, chantierId });
 
       // Gérer ficheId
       let ficheId = providedFicheId;
       if (!ficheId) {
-        let query = supabase
+        const { data: existingFiche } = await supabase
           .from("fiches")
           .select("id")
           .eq("semaine", semaine)
-          .eq("user_id", chefId);
-
-        if (chantierId) {
-          query = query.eq("chantier_id", chantierId);
-        } else {
-          query = query.is("chantier_id", null);
-        }
-
-        const { data: existingFiche } = await query
+          .eq("user_id", chefId)
+          .eq("chantier_id", chantierId)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();

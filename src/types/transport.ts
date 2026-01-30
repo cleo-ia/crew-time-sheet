@@ -78,14 +78,14 @@ export interface TransportSheetV2 {
   id?: string;
   ficheId: string;
   semaine: string;
-  chantierId: string | null;
+  chantierId: string; // Obligatoire - toujours lié à un chantier
   days: TransportDayV2[]; // 5 jours
 }
 
 export interface SaveTransportParamsV2 {
   ficheId: string;
   semaine: string;
-  chantierId: string | null;
+  chantierId: string; // Obligatoire - toujours lié à un chantier
   chefId: string;
   days: TransportDayV2[];
   isDirty?: boolean;

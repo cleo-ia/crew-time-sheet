@@ -32,22 +32,21 @@ export const useAutoSaveTransportV2 = () => {
         return { saved: false };
       }
 
+      // Validation obligatoire : chantier requis
+      if (!chantierId) {
+        console.log("[useAutoSaveTransportV2] Missing chantierId, skipping");
+        return { saved: false };
+      }
+
       // Même logique que useSaveTransportV2 mais sans toast
       let ficheId = providedFicheId;
       if (!ficheId) {
-        let query = supabase
+        const { data: existingFiche } = await supabase
           .from("fiches")
           .select("id")
           .eq("semaine", semaine)
-          .eq("user_id", chefId);
-
-        if (chantierId) {
-          query = query.eq("chantier_id", chantierId);
-        } else {
-          query = query.is("chantier_id", null);
-        }
-
-        const { data: existingFiche } = await query
+          .eq("user_id", chefId)
+          .eq("chantier_id", chantierId)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
