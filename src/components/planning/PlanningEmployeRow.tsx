@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { X, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { X, AlertTriangle, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { 
@@ -25,6 +26,9 @@ interface PlanningEmployeRowProps {
   onRemove: (employeId: string) => void;
   isLoading?: boolean;
   conflictDays?: Map<string, string>; // jour -> nom du chantier en conflit
+  isChef?: boolean; // L'employé est-il un chef de chantier?
+  isChantierPrincipal?: boolean; // Est-ce le chantier principal du chef?
+  onSetChantierPrincipal?: (employeId: string) => void; // Callback pour définir comme principal
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
@@ -76,6 +80,9 @@ export const PlanningEmployeRow = ({
   onRemove,
   isLoading,
   conflictDays,
+  isChef,
+  isChantierPrincipal,
+  onSetChantierPrincipal,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
@@ -104,11 +111,55 @@ export const PlanningEmployeRow = ({
         {typeColors.label}
       </span>
 
-      {/* Nom avec couleur selon type */}
-      <div className={cn("flex-1 min-w-[140px]", textColor)}>
+      {/* Nom avec couleur selon type + badge chef principal/secondaire */}
+      <div className={cn("flex-1 min-w-[140px] flex items-center gap-1.5", textColor)}>
         <span className="font-semibold">
           {employe.nom?.toUpperCase()} {employe.prenom}
         </span>
+        
+        {/* Badge Principal/Secondaire pour les chefs multi-chantiers */}
+        {isChef && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 cursor-pointer transition-colors",
+                  isChantierPrincipal 
+                    ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 hover:bg-amber-100" 
+                    : "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isChantierPrincipal && onSetChantierPrincipal) {
+                    onSetChantierPrincipal(employe.id);
+                  }
+                }}
+              >
+                {isChantierPrincipal ? (
+                  <>
+                    <Star className="h-2.5 w-2.5 mr-0.5 fill-current" />
+                    Principal
+                  </>
+                ) : (
+                  "Secondaire"
+                )}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[220px]">
+              {isChantierPrincipal ? (
+                <p className="text-xs">
+                  <strong>Chantier principal</strong> : les heures du chef sont comptées ici.
+                </p>
+              ) : (
+                <p className="text-xs">
+                  <strong>Chantier secondaire</strong> : cliquer pour définir comme principal. 
+                  Les heures ne sont pas comptées sur ce chantier.
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Adresse courte (ex: "71 macon") */}

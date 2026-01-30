@@ -31,6 +31,7 @@ import { PlanningEmployeRow } from "./PlanningEmployeRow";
 import { AddEmployeeToPlanningDialog } from "./AddEmployeeToPlanningDialog";
 import { cn } from "@/lib/utils";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import { useSetChantierPrincipal } from "@/hooks/useSetChantierPrincipal";
 
 interface InsertionData {
   statut_insertion: string;
@@ -52,6 +53,7 @@ interface PlanningChantierAccordionProps {
   onInsertionChange?: (chantierId: string, data: InsertionData) => void;
   isLoading?: boolean;
   forceOpen?: boolean;
+  chefsWithPrincipal?: Map<string, string>; // chef_id -> chantier_principal_id
 }
 
 export const PlanningChantierAccordion = ({
@@ -68,8 +70,10 @@ export const PlanningChantierAccordion = ({
   onInsertionChange,
   isLoading,
   forceOpen,
+  chefsWithPrincipal,
 }: PlanningChantierAccordionProps) => {
   const { shortName } = useEnterpriseConfig();
+  const { mutate: setChantierPrincipal } = useSetChantierPrincipal();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customHoursInput, setCustomHoursInput] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -495,23 +499,38 @@ export const PlanningChantierAccordion = ({
               </div>
             ) : (
               <div className="bg-card rounded-b-md">
-                {employeAffectations.map(({ employe, affectations: empAff }) => (
-                  <PlanningEmployeRow
-                    key={employe.id}
-                    employe={employe}
-                    affectations={empAff}
-                    weekDays={weekDays}
-                    onDayToggle={(empId, date, checked) => 
-                      onDayToggle(empId, chantier.id, date, checked)
-                    }
-                    onVehiculeChange={(empId, vehiculeId) =>
-                      onVehiculeChange(empId, chantier.id, vehiculeId)
-                    }
-                    onRemove={(empId) => onRemoveEmploye(empId, chantier.id)}
-                    isLoading={isLoading}
-                    conflictDays={conflictsByEmploye.get(employe.id)}
-                  />
-                ))}
+                {employeAffectations.map(({ employe, affectations: empAff }) => {
+                  // Vérifier si cet employé est un chef (role_metier = 'chef')
+                  const isChef = employe.role_metier === 'chef';
+                  // Vérifier si c'est son chantier principal
+                  const chantierPrincipalId = chefsWithPrincipal?.get(employe.id);
+                  const isChantierPrincipal = isChef && chantierPrincipalId === chantier.id;
+                  // Un chef est "multi-chantiers" s'il a un chantier principal défini
+                  const isMultiChantierChef = isChef && !!chantierPrincipalId;
+                  
+                  return (
+                    <PlanningEmployeRow
+                      key={employe.id}
+                      employe={employe}
+                      affectations={empAff}
+                      weekDays={weekDays}
+                      onDayToggle={(empId, date, checked) => 
+                        onDayToggle(empId, chantier.id, date, checked)
+                      }
+                      onVehiculeChange={(empId, vehiculeId) =>
+                        onVehiculeChange(empId, chantier.id, vehiculeId)
+                      }
+                      onRemove={(empId) => onRemoveEmploye(empId, chantier.id)}
+                      isLoading={isLoading}
+                      conflictDays={conflictsByEmploye.get(employe.id)}
+                      isChef={isMultiChantierChef}
+                      isChantierPrincipal={isChantierPrincipal}
+                      onSetChantierPrincipal={(empId) => 
+                        setChantierPrincipal({ employeId: empId, chantierId: chantier.id })
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
 

@@ -2438,6 +2438,7 @@ export type Database = {
           agence_interim: string | null
           auth_user_id: string | null
           base_horaire: string | null
+          chantier_principal_id: string | null
           created_at: string
           degre: string | null
           echelon: string | null
@@ -2464,6 +2465,7 @@ export type Database = {
           agence_interim?: string | null
           auth_user_id?: string | null
           base_horaire?: string | null
+          chantier_principal_id?: string | null
           created_at?: string
           degre?: string | null
           echelon?: string | null
@@ -2490,6 +2492,7 @@ export type Database = {
           agence_interim?: string | null
           auth_user_id?: string | null
           base_horaire?: string | null
+          chantier_principal_id?: string | null
           created_at?: string
           degre?: string | null
           echelon?: string | null
@@ -2512,6 +2515,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "utilisateurs_chantier_principal_id_fkey"
+            columns: ["chantier_principal_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "utilisateurs_entreprise_id_fkey"
             columns: ["entreprise_id"]
