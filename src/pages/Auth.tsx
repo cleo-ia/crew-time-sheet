@@ -43,13 +43,12 @@ const Auth = () => {
   // Sélection entreprise - lire depuis l'URL en priorité
   const [selectedIndex, setSelectedIndex] = useState(() => {
     // 1. D'abord vérifier le paramètre URL (liens email)
+    // IMPORTANT: Ne PAS appeler replaceState ici car le hash contient les tokens d'auth
     const urlParams = new URLSearchParams(window.location.search);
     const entrepriseParam = urlParams.get('entreprise');
     if (entrepriseParam) {
       const index = ENTREPRISES.findIndex(e => e.slug === entrepriseParam);
       if (index >= 0) {
-        // Nettoyer l'URL après lecture
-        window.history.replaceState({}, '', '/auth');
         return index;
       }
     }
@@ -108,25 +107,39 @@ const Auth = () => {
       const params = new URLSearchParams(rawHash);
       const access_token = params.get('access_token');
       const refresh_token = params.get('refresh_token');
+      const type = params.get('type'); // invite, recovery, signup, magiclink
 
-      // Empêche la redirection avant d'afficher le formulaire de mot de passe
+      // Seulement activer le mode "définir mot de passe" pour invite/recovery/signup
+      // Les magic links (type=magiclink ou autre) doivent juste connecter l'utilisateur
+      const isPasswordSetupFlow = type === 'invite' || type === 'recovery' || type === 'signup';
+
       if (access_token) {
-        setIsInviteMode(true);
         try {
+          // Toujours établir la session d'abord
           if (refresh_token) {
             await supabase.auth.setSession({ access_token, refresh_token });
           } else {
             await supabase.auth.setSession({ access_token, refresh_token: '' });
           }
+          
           const { data: { session } } = await supabase.auth.getSession();
+          
           if (session?.user) {
-            setInvitedUser(session.user);
-            toast.info("Veuillez définir votre mot de passe pour finaliser votre compte");
+            if (isPasswordSetupFlow) {
+              // Mode invitation/récupération: afficher le formulaire de mot de passe
+              setIsInviteMode(true);
+              setInvitedUser(session.user);
+              toast.info("Veuillez définir votre mot de passe pour finaliser votre compte");
+            }
+            // Pour les magic links, la session est établie, l'utilisateur sera redirigé normalement
           }
-          // Nettoie l'URL pour éviter les redétections
+          
+          // Nettoie l'URL après traitement des tokens (conserve le pathname)
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (err) {
           console.error("Auth invitation handling error:", err);
+          // Nettoyer l'URL même en cas d'erreur
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     };
