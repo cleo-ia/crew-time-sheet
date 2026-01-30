@@ -32,7 +32,7 @@ export const useAgencesInterim = () => {
 
       return uniqueAgences as string[];
     },
-    staleTime: 5 * 60 * 1000, // Cache 5 minutes
+    staleTime: 1 * 60 * 1000, // Cache 1 minute pour plus de réactivité
     enabled: !!entrepriseId,
   });
 };
