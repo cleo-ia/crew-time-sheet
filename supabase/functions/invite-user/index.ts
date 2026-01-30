@@ -1,5 +1,7 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { generateInvitationEmailHtml } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,14 +154,15 @@ serve(async (req) => {
       );
     }
 
-    // Récupérer le slug de l'entreprise pour les URLs de redirection
+    // Récupérer le slug ET le nom de l'entreprise pour les URLs et l'email
     const { data: entrepriseData } = await supabaseAdmin
       .from('entreprises')
-      .select('slug')
+      .select('slug, nom')
       .eq('id', finalEntrepriseId)
       .single();
     
     const entrepriseSlug = entrepriseData?.slug || '';
+    const entrepriseNom = entrepriseData?.nom || 'Groupe Engo';
     const baseUrl = req.headers.get('origin') || 'https://crew-time-sheet.lovable.app';
     const redirectUrl = `${baseUrl}/auth?entreprise=${entrepriseSlug}`;
 
@@ -405,16 +408,18 @@ serve(async (req) => {
 
     console.log('Invitation created in database:', invitation.id, 'for entreprise:', finalEntrepriseId);
 
-    // Envoyer l'email d'invitation via l'API Admin de Supabase Auth
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      email.toLowerCase(),
-      {
+    // Générer le lien d'invitation via generateLink (sans envoyer d'email)
+    // Cette méthode crée l'utilisateur dans auth.users ET génère le lien
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email: email.toLowerCase(),
+      options: {
         redirectTo: redirectUrl,
       }
-    );
+    });
 
-    if (inviteError) {
-      console.error('Error sending invitation email:', inviteError);
+    if (linkError) {
+      console.error('Error generating invitation link:', linkError);
       
       // Supprimer l'invitation de la base de données en cas d'échec
       await supabaseAdmin
@@ -423,12 +428,57 @@ serve(async (req) => {
         .eq('id', invitation.id);
 
       return new Response(
-        JSON.stringify({ error: 'Failed to send invitation email', details: inviteError.message }),
+        JSON.stringify({ error: 'Failed to generate invitation link', details: linkError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Invitation email sent successfully');
+    console.log('Invitation link generated successfully');
+
+    // Envoyer l'email via Resend avec le template personnalisé
+    const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+    const invitationLink = linkData.properties?.action_link;
+    
+    if (!invitationLink) {
+      console.error('No action_link in generateLink response');
+      
+      // Rollback: supprimer l'invitation et l'utilisateur créé
+      await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
+      if (linkData.user?.id) {
+        await supabaseAdmin.auth.admin.deleteUser(linkData.user.id);
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Failed to get invitation link from response' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const emailHtml = generateInvitationEmailHtml(entrepriseNom, invitationLink, email.toLowerCase(), role);
+
+    const { error: emailError } = await resend.emails.send({
+      from: 'DIVA <rappels-diva-LR@groupe-engo.com>',
+      to: [email.toLowerCase()],
+      subject: `Invitation à rejoindre DIVA - ${entrepriseNom}`,
+      html: emailHtml,
+    });
+
+    if (emailError) {
+      console.error('Error sending invitation email via Resend:', emailError);
+      
+      // Rollback: supprimer l'invitation et l'utilisateur créé
+      await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
+      if (linkData.user?.id) {
+        await supabaseAdmin.auth.admin.deleteUser(linkData.user.id);
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Failed to send invitation email', details: String(emailError) }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Invitation email sent successfully via Resend to:', email.toLowerCase());
 
     return new Response(
       JSON.stringify({
