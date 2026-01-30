@@ -283,6 +283,23 @@ async function syncEntreprise(
   // deno-lint-ignore no-explicit-any
   const chantiersMap = new Map((chantiersData || []).map((c: any) => [c.id, c]))
 
+  // 3b. NOUVEAU: Récupérer les chefs avec leur chantier principal depuis utilisateurs
+  // Pour éviter les doublons d'heures pour les chefs multi-chantiers
+  const { data: chefsData } = await supabase
+    .from('utilisateurs')
+    .select('id, chantier_principal_id')
+    .not('chantier_principal_id', 'is', null)
+    .eq('entreprise_id', entrepriseId)
+
+  // Map: chef_id -> chantier_principal_id
+  const chefPrincipalMap = new Map<string, string>()
+  // deno-lint-ignore no-explicit-any
+  for (const chef of (chefsData || []) as any[]) {
+    chefPrincipalMap.set(chef.id, chef.chantier_principal_id)
+  }
+  
+  console.log(`[sync-planning-to-teams] ${chefPrincipalMap.size} chef(s) avec chantier principal défini`)
+
   // 4. Traiter chaque employé du planning
   for (const [key, affectations] of planningByEmployeChantier) {
     const [employeId, chantierId] = key.split('|')
@@ -290,6 +307,41 @@ async function syncEntreprise(
     // deno-lint-ignore no-explicit-any
     const joursPlanning = affectations.map((a: any) => a.jour).sort()
     const chantier = chantiersMap.get(chantierId)
+
+    // NOUVEAU: Vérifier si c'est un chef sur un chantier SECONDAIRE
+    const chantierPrincipal = chefPrincipalMap.get(employeId)
+    if (chantierPrincipal && chantierId !== chantierPrincipal) {
+      // C'est un chef sur un chantier secondaire → skip la création de SA fiche personnelle
+      // Mais on crée quand même les affectations_jours_chef pour router l'équipe vers ce chantier
+      console.log(`[sync-planning-to-teams] Chef ${employeNom} sur chantier secondaire ${chantierId} (principal: ${chantierPrincipal}), skip fiche personnelle`)
+      
+      // Créer uniquement les affectations_jours_chef pour que l'équipe soit routée vers ce chef/chantier
+      // NE PAS créer de fiche/fiches_jours pour le chef lui-même
+      // deno-lint-ignore no-explicit-any
+      const chantierObj = chantier as any
+      if (chantierObj?.chef_id) {
+        for (const jour of joursPlanning) {
+          await supabase
+            .from('affectations_jours_chef')
+            .upsert({
+              macon_id: employeId,
+              chef_id: chantierObj.chef_id,
+              chantier_id: chantierId,
+              jour,
+              semaine: currentWeek,
+              entreprise_id: entrepriseId
+            }, { onConflict: 'macon_id,jour' })
+        }
+      }
+      
+      results.push({ 
+        employe_id: employeId, 
+        employe_nom: employeNom, 
+        action: 'skipped', 
+        details: `Chef multi-chantiers - heures comptées sur chantier principal` 
+      })
+      continue
+    }
 
     // Récupérer les affectations S-1 de ce couple employé-chantier
     const affS1 = s1ByEmployeChantier.get(key)

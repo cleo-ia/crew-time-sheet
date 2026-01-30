@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,37 @@ import { generatePlanningExcel, preparePlanningData } from "@/lib/planningExcelE
 import { useToast } from "@/hooks/use-toast";
 import { usePlanningValidation } from "@/hooks/usePlanningValidation";
 
+// Hook pour récupérer les chefs avec leur chantier principal
+const useChefsWithPrincipal = () => {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  
+  return useQuery({
+    queryKey: ["chefs-chantier-principal", entrepriseId],
+    queryFn: async () => {
+      if (!entrepriseId) return new Map<string, string>();
+      
+      const { data, error } = await supabase
+        .from("utilisateurs")
+        .select("id, chantier_principal_id")
+        .eq("entreprise_id", entrepriseId)
+        .not("chantier_principal_id", "is", null);
+      
+      if (error) throw error;
+      
+      // Créer une Map chef_id -> chantier_principal_id
+      const map = new Map<string, string>();
+      (data || []).forEach((chef) => {
+        if (chef.chantier_principal_id) {
+          map.set(chef.id, chef.chantier_principal_id);
+        }
+      });
+      
+      return map;
+    },
+    enabled: !!entrepriseId,
+  });
+};
+
 const PlanningMainOeuvre = () => {
   const currentWeek = getCurrentWeek();
   const [semaine, setSemaine] = useState(getNextWeek(currentWeek)); // Par défaut S+1
@@ -62,6 +95,7 @@ const PlanningMainOeuvre = () => {
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
   const { data: affectations = [], isLoading: loadingAffectations } = usePlanningAffectations(semaine);
+  const { data: chefsWithPrincipal = new Map() } = useChefsWithPrincipal();
   
   // Mutations
   const upsertAffectation = useUpsertPlanningAffectation();
@@ -424,6 +458,7 @@ const PlanningMainOeuvre = () => {
                   onInsertionChange={handleInsertionChange}
                   isLoading={isMutating}
                   forceOpen={allExpanded}
+                  chefsWithPrincipal={chefsWithPrincipal}
                 />
               ))}
             </div>
