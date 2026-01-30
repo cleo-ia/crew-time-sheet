@@ -4,6 +4,7 @@ import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+import { usePlanningMode } from "@/hooks/usePlanningMode";
 import {
   AccordionItem,
   AccordionTrigger,
@@ -69,8 +70,15 @@ export const TransportDayAccordion = ({
   // Récupérer les maçons pour détecter les trajets perso
   const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
   
+  // Vérifier si le planning est actif (validé par un conducteur)
+  const { isActive: isPlanningActive } = usePlanningMode(semaine);
+  
   // Récupérer les affectations journalières pour ce chef
-  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(chefId, semaine);
+  const { data: rawAffectationsJoursChef = [] } = useAffectationsJoursByChef(chefId, semaine);
+  
+  // En mode legacy, ignorer les affectations journalières pour ne pas bloquer les conducteurs
+  // Tous les membres de l'équipe restent sélectionnables
+  const affectationsJoursChef = isPlanningActive ? rawAffectationsJoursChef : [];
 
   // Détecter si un conducteur assigné est en "Trajet perso"
   const hasTrajetPersoIssue = useMemo(() => {
