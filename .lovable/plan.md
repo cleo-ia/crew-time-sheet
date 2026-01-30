@@ -1,59 +1,160 @@
 
+# Plan de correction : Erreur d'invitation "invalid input value for enum app_role"
 
-## Correction de l'affichage des agences d'intérim
+## Diagnostic
 
-### Problème identifié
-Les agences d'intérim récemment ajoutées n'apparaissent pas immédiatement dans la liste de suggestions car le cache React Query n'est pas invalidé après la création d'un intérimaire.
+L'erreur provient du trigger `handle_new_user_signup` qui s'exécute lors de la création d'un utilisateur dans `auth.users`. Ce trigger contient un bloc CASE qui compare `invitation_record.role` (de type `app_role`) avec des valeurs de chaîne incluant `'macon'`, `'finisseur'`, et `'grutier'`.
 
-### Garantie de non-régression
+Le problème : PostgreSQL essaie de convertir ces chaînes en type `app_role` pour effectuer la comparaison, mais ces valeurs n'existent pas dans l'enum `app_role` (qui contient : super_admin, admin, rh, conducteur, chef, gestionnaire).
 
-| Zone de l'application | Impact | Explication |
-|----------------------|--------|-------------|
-| Admin > Intérimaires | ✅ Aucune régression | Seul endroit utilisant le composant |
-| Admin > autres onglets | ✅ Aucune régression | Aucune dépendance |
-| Saisie d'heures (Chef) | ✅ Aucune régression | Le dialog de création urgente fonctionne identiquement |
-| Finisseurs (Conducteur) | ✅ Aucune régression | Le dialog de création fonctionne identiquement |
-| Consultation RH | ✅ Aucune régression | Aucune dépendance sur useAgencesInterim |
-| Exports Excel | ✅ Aucune régression | Utilisent agence_interim directement depuis utilisateurs |
-| Validation / Signatures | ✅ Aucune régression | Aucune dépendance |
-| Planning | ✅ Aucune régression | Aucune dépendance |
-| Chantiers | ✅ Aucune régression | Aucune dépendance |
+## Solution proposée
 
-La modification est **additive** et ne supprime aucune logique existante.
+Modifier le trigger `handle_new_user_signup` pour supprimer les comparaisons avec des rôles qui n'existent pas dans `app_role`. Ces rôles (macon, finisseur, grutier) ne sont jamais utilisés pour les invitations car l'edge function `invite-user` n'accepte que : admin, rh, conducteur, chef.
 
-### Solution technique
+### Changement dans la fonction
 
-**Fichier 1 : `src/components/shared/InterimaireFormDialog.tsx`**
+```sql
+-- AVANT (problématique)
+mapped_role_metier := CASE invitation_record.role
+  WHEN 'chef' THEN 'chef'
+  WHEN 'conducteur' THEN 'conducteur'
+  WHEN 'macon' THEN 'macon'         -- Erreur ici
+  WHEN 'finisseur' THEN 'finisseur' -- Erreur ici  
+  WHEN 'grutier' THEN 'grutier'     -- Erreur ici
+  ELSE NULL
+END;
 
-Ajouter l'invalidation du cache des agences après création/modification :
-
-```typescript
-import { useQueryClient } from "@tanstack/react-query";
-
-// Dans le composant :
-const queryClient = useQueryClient();
-
-// Dans handleSave, après la création/modification réussie :
-queryClient.invalidateQueries({ queryKey: ["agences-interim"] });
+-- APRES (corrigé)
+mapped_role_metier := CASE invitation_record.role::text
+  WHEN 'chef' THEN 'chef'
+  WHEN 'conducteur' THEN 'conducteur'
+  ELSE NULL
+END;
 ```
 
-**Fichier 2 : `src/hooks/useAgencesInterim.ts`** (optionnel)
+La solution caste `invitation_record.role` en TEXT avant la comparaison, ce qui évite le problème de conversion d'enum.
 
-Réduire le temps de cache pour plus de réactivité :
+---
 
-```typescript
-staleTime: 1 * 60 * 1000, // 1 minute au lieu de 5
+## Détails techniques
+
+### Étape 1 : Migration SQL
+
+Créer une migration pour mettre à jour la fonction `handle_new_user_signup` :
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user_signup()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  invitation_record record;
+  user_email text;
+  existing_utilisateur_id uuid;
+  invitation_entreprise_id uuid;
+  mapped_role_metier text;
+BEGIN
+  user_email := NEW.email;
+
+  -- Vérifier le domaine email
+  IF user_email !~* '^[a-z0-9._%+-]+@groupe-engo\.com$' THEN
+    RAISE EXCEPTION 'Email domain must be @groupe-engo.com';
+  END IF;
+
+  -- Chercher une invitation valide
+  SELECT * INTO invitation_record
+  FROM public.invitations
+  WHERE email = user_email
+    AND status = 'pending'
+    AND expires_at > now()
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No valid invitation found for email: %', user_email;
+  END IF;
+
+  invitation_entreprise_id := invitation_record.entreprise_id;
+
+  -- Mapper le rôle d'invitation vers role_metier (seulement chef et conducteur)
+  -- Les autres rôles métiers (macon, finisseur, grutier) sont assignés 
+  -- via les fiches RH et non via les invitations
+  mapped_role_metier := CASE invitation_record.role::text
+    WHEN 'chef' THEN 'chef'
+    WHEN 'conducteur' THEN 'conducteur'
+    ELSE NULL
+  END;
+
+  -- Créer le profile avec entreprise_id
+  INSERT INTO public.profiles (id, email, first_name, last_name, entreprise_id, created_at, updated_at)
+  VALUES (
+    NEW.id,
+    user_email,
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name',
+    invitation_entreprise_id,
+    now(),
+    now()
+  );
+
+  -- Vérifier si un utilisateur avec cet email existe déjà
+  SELECT id INTO existing_utilisateur_id
+  FROM public.utilisateurs
+  WHERE email = user_email
+  LIMIT 1;
+
+  IF existing_utilisateur_id IS NOT NULL THEN
+    -- Associer le compte Auth à la fiche RH existante
+    UPDATE public.utilisateurs
+    SET auth_user_id = NEW.id,
+        entreprise_id = invitation_entreprise_id,
+        role_metier = COALESCE(role_metier, mapped_role_metier::role_metier_type),
+        updated_at = now()
+    WHERE id = existing_utilisateur_id;
+  ELSE
+    -- Créer une nouvelle entrée dans utilisateurs
+    INSERT INTO public.utilisateurs (id, auth_user_id, email, prenom, nom, entreprise_id, role_metier, created_at, updated_at)
+    VALUES (
+      NEW.id,
+      NEW.id,
+      user_email,
+      NEW.raw_user_meta_data->>'first_name',
+      NEW.raw_user_meta_data->>'last_name',
+      invitation_entreprise_id,
+      mapped_role_metier::role_metier_type,
+      now(),
+      now()
+    );
+  END IF;
+
+  -- Assigner le rôle avec entreprise_id
+  INSERT INTO public.user_roles (user_id, role, entreprise_id)
+  VALUES (NEW.id, invitation_record.role, invitation_entreprise_id);
+
+  -- Marquer l'invitation comme acceptée
+  UPDATE public.invitations
+  SET status = 'accepted',
+      accepted_at = now(),
+      updated_at = now()
+  WHERE id = invitation_record.id;
+
+  RETURN NEW;
+END;
+$$;
 ```
 
-### Pourquoi c'est sûr ?
+### Étape 2 : Validation
 
-1. **Changement additif** : On ajoute une invalidation de cache, on ne modifie pas la logique métier
-2. **Scope limité** : Le `queryKey` `["agences-interim"]` n'est utilisé que par `useAgencesInterim`
-3. **Isolation maintenue** : Le filtre par `entreprise_id` reste actif
-4. **Aucun effet de bord** : L'invalidation force simplement un rechargement des données fraîches
+Une fois la migration appliquée :
+1. Tester l'invitation d'un chef SDER (philippe.fay@groupe-engo.com)
+2. Vérifier que l'email d'invitation est bien envoyé
+3. Vérifier les logs pour confirmer l'absence d'erreur
 
-### Résultat attendu
-- Après création d'un intérimaire avec une nouvelle agence → elle apparaît immédiatement dans les suggestions
-- Toutes les agences SDER (PROMAN, BBKAMP, ADEQUAT ANNECY, etc.) seront visibles
-- Les données Limoge Révillon restent isolées et invisibles pour SDER
+---
 
+## Impact
+
+- Aucun changement dans le comportement fonctionnel
+- Les invitations pour les rôles admin, rh, conducteur, chef fonctionneront correctement
+- Les rôles métiers (macon, finisseur, grutier) continueront à être gérés via les fiches RH, pas via les invitations
