@@ -1,49 +1,33 @@
 
 
-# Nettoyage du doublon Jorge Martins
+# Suppression du compte auth orphelin Jorge Martins
 
-## Résumé des données à supprimer
+## Problème identifié
 
-Le doublon créé automatiquement lors de l'inscription avec l'email en minuscule :
+L'erreur `AuthApiError: A user with this email address has already been registered` indique que le compte existe toujours dans `auth.users` (table système de Supabase Auth).
 
-| Table | ID | Contenu |
-|-------|-----|---------|
-| `profiles` | `fdf8b8bb-9af9-4da6-bd12-aa491b992506` | email: jorge.martins@... (sans nom/prénom) |
-| `user_roles` | `6e37381c-08fd-44a1-a1b7-9f4c4f4e11ea` | rôle chef pour SDER |
-| `utilisateurs` | `fdf8b8bb-9af9-4da6-bd12-aa491b992506` | email: jorge.martins@... (sans nom/prénom) |
+**Historique** :
+1. Lors de la première inscription, un compte auth a été créé avec l'ID `fdf8b8bb-9af9-4da6-bd12-aa491b992506`
+2. Nous avons nettoyé `utilisateurs`, `profiles`, `user_roles`
+3. **MAIS** le compte dans `auth.users` n'a pas été supprimé
 
-## À conserver
+## Solution
 
-La fiche RH originale avec les bonnes informations :
-- **ID** : `9f1e3a0f-7f14-4521-99db-4fe6d8722374`
-- **Nom** : MARTINS DOMINGUES Jorge
-- **Email** : Jorge.martins@groupe-engo.com (J majuscule)
-- **Rôle métier** : chef
+Appeler l'Edge Function `delete-user` avec l'ID `fdf8b8bb-9af9-4da6-bd12-aa491b992506` pour supprimer le compte auth orphelin.
 
-## Migration SQL
+## Actions à effectuer
 
-```sql
--- 1. Supprimer le rôle associé au doublon
-DELETE FROM public.user_roles
-WHERE user_id = 'fdf8b8bb-9af9-4da6-bd12-aa491b992506';
+1. **Appeler l'Edge Function `delete-user`** avec le userId `fdf8b8bb-9af9-4da6-bd12-aa491b992506`
+2. L'API `supabaseAdmin.auth.admin.deleteUser()` supprimera le compte auth
+3. Réessayer l'invitation pour Jorge.martins@groupe-engo.com
 
--- 2. Supprimer le profile doublon
-DELETE FROM public.profiles
-WHERE id = 'fdf8b8bb-9af9-4da6-bd12-aa491b992506';
+## Code technique
 
--- 3. Supprimer l'entrée utilisateur doublon
-DELETE FROM public.utilisateurs
-WHERE id = 'fdf8b8bb-9af9-4da6-bd12-aa491b992506';
+L'Edge Function `delete-user` utilise cette logique :
+```typescript
+const authUserId = utilisateurData?.auth_user_id || userId;
+const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
 ```
 
-## Note importante
-
-L'invitation a déjà été purgée précédemment - aucune action nécessaire sur la table `invitations`.
-
-## Après la suppression
-
-Jorge MARTINS DOMINGUES devra recevoir une **nouvelle invitation** pour pouvoir s'inscrire, cette fois le système :
-1. Trouvera bien sa fiche RH existante (grâce à la correction case-insensitive)
-2. Associera le compte auth à cette fiche
-3. Aucun doublon ne sera créé
+Même si l'utilisateur n'existe plus dans la table `utilisateurs`, la fonction tentera de supprimer le compte auth avec l'ID fourni.
 
