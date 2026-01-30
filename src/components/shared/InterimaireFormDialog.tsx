@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +28,7 @@ export const InterimaireFormDialog = ({
     agence_interim: "",
   });
 
+  const queryClient = useQueryClient();
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
   const { toast } = useToast();
@@ -68,6 +70,8 @@ export const InterimaireFormDialog = ({
         });
         onSuccess?.(result);
       }
+      // Invalider le cache des agences pour que la nouvelle agence apparaisse immédiatement
+      queryClient.invalidateQueries({ queryKey: ["agences-interim"] });
       onOpenChange(false);
       setFormData({ nom: "", prenom: "", agence_interim: "" });
     } catch (error) {
