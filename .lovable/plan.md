@@ -1,67 +1,59 @@
 
 
-## Isolation des agences d'intérim par entreprise
+## Correction de l'affichage des agences d'intérim
 
 ### Problème identifié
-Le hook `useAgencesInterim` récupère les agences d'intérim depuis la table `utilisateurs` **sans filtrer par entreprise**. Résultat : SDER voit les agences créées par Limoge Revillon (Adequat, Manpower, etc.).
+Les agences d'intérim récemment ajoutées n'apparaissent pas immédiatement dans la liste de suggestions car le cache React Query n'est pas invalidé après la création d'un intérimaire.
 
-### Solution
+### Garantie de non-régression
 
-Ajouter un filtre `entreprise_id` dans le hook pour ne récupérer que les agences des intérimaires de l'entreprise courante.
+| Zone de l'application | Impact | Explication |
+|----------------------|--------|-------------|
+| Admin > Intérimaires | ✅ Aucune régression | Seul endroit utilisant le composant |
+| Admin > autres onglets | ✅ Aucune régression | Aucune dépendance |
+| Saisie d'heures (Chef) | ✅ Aucune régression | Le dialog de création urgente fonctionne identiquement |
+| Finisseurs (Conducteur) | ✅ Aucune régression | Le dialog de création fonctionne identiquement |
+| Consultation RH | ✅ Aucune régression | Aucune dépendance sur useAgencesInterim |
+| Exports Excel | ✅ Aucune régression | Utilisent agence_interim directement depuis utilisateurs |
+| Validation / Signatures | ✅ Aucune régression | Aucune dépendance |
+| Planning | ✅ Aucune régression | Aucune dépendance |
+| Chantiers | ✅ Aucune régression | Aucune dépendance |
 
-### Modification technique
+La modification est **additive** et ne supprime aucune logique existante.
 
-**Fichier : `src/hooks/useAgencesInterim.ts`**
+### Solution technique
+
+**Fichier 1 : `src/components/shared/InterimaireFormDialog.tsx`**
+
+Ajouter l'invalidation du cache des agences après création/modification :
 
 ```typescript
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
-export const useAgencesInterim = () => {
-  // Récupérer l'entreprise courante depuis localStorage
-  const entrepriseId = localStorage.getItem("current_entreprise_id");
+// Dans le composant :
+const queryClient = useQueryClient();
 
-  return useQuery({
-    queryKey: ["agences-interim", entrepriseId],
-    queryFn: async () => {
-      let query = supabase
-        .from("utilisateurs")
-        .select("agence_interim")
-        .not("agence_interim", "is", null)
-        .neq("agence_interim", "");
-
-      // Filtrer par entreprise
-      if (entrepriseId) {
-        query = query.eq("entreprise_id", entrepriseId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const uniqueAgences = [
-        ...new Set(
-          data.map((u) => u.agence_interim?.trim()).filter(Boolean)
-        ),
-      ].sort();
-
-      return uniqueAgences as string[];
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!entrepriseId,
-  });
-};
+// Dans handleSave, après la création/modification réussie :
+queryClient.invalidateQueries({ queryKey: ["agences-interim"] });
 ```
 
-### Points clés
-| Aspect | Détail |
-|--------|--------|
-| **Filtre** | `.eq("entreprise_id", entrepriseId)` |
-| **Cache** | `queryKey` inclut `entrepriseId` pour isoler le cache par entreprise |
-| **Sécurité** | `enabled: !!entrepriseId` évite les requêtes sans contexte d'entreprise |
+**Fichier 2 : `src/hooks/useAgencesInterim.ts`** (optionnel)
+
+Réduire le temps de cache pour plus de réactivité :
+
+```typescript
+staleTime: 1 * 60 * 1000, // 1 minute au lieu de 5
+```
+
+### Pourquoi c'est sûr ?
+
+1. **Changement additif** : On ajoute une invalidation de cache, on ne modifie pas la logique métier
+2. **Scope limité** : Le `queryKey` `["agences-interim"]` n'est utilisé que par `useAgencesInterim`
+3. **Isolation maintenue** : Le filtre par `entreprise_id` reste actif
+4. **Aucun effet de bord** : L'invalidation force simplement un rechargement des données fraîches
 
 ### Résultat attendu
-- **SDER** : verra uniquement les agences renseignées pour les intérimaires SDER
-- **Limoge Revillon** : continuera de voir ses propres agences (Adequat, Manpower, etc.)
-- **Nouvelle entreprise** : commencera avec une liste vide, puis se remplira au fur et à mesure
+- Après création d'un intérimaire avec une nouvelle agence → elle apparaît immédiatement dans les suggestions
+- Toutes les agences SDER (PROMAN, BBKAMP, ADEQUAT ANNECY, etc.) seront visibles
+- Les données Limoge Révillon restent isolées et invisibles pour SDER
 
