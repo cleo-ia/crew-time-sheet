@@ -89,14 +89,16 @@ export const useDashboardStats = () => {
           .eq("statut", "VALIDE_CHEF")
           .not("chantier_id", "is", null),
 
-        // Heures semaine courante
+        // Heures semaine courante (uniquement fiches transmises)
         supabase
           .from("fiches")
           .select("total_heures, chantier_id")
           .eq("semaine", semaineCourante)
+          .eq("entreprise_id", entrepriseId)
+          .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
           .not("chantier_id", "is", null),
 
-        // Heures mois en cours
+        // Heures mois en cours (uniquement fiches transmises)
         (() => {
           const now = new Date();
           const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
@@ -106,6 +108,8 @@ export const useDashboardStats = () => {
             .select("total_heures, chantier_id, created_at")
             .gte("created_at", monthStart)
             .lte("created_at", monthEnd)
+            .eq("entreprise_id", entrepriseId)
+            .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"])
             .not("chantier_id", "is", null);
         })(),
 
