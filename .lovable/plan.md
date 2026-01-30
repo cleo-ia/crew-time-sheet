@@ -1,74 +1,92 @@
 
 
-# Migration des emails d'invitation vers Resend
+# Correction des emails de réinitialisation de mot de passe
 
-## Objectif
+## Problèmes identifiés
 
-Personnaliser dynamiquement les emails d'invitation pour afficher le nom de l'entreprise correcte (SDER, Limoge Revillon, Engo Bourgogne) au lieu du template statique "Limoge Revillon" de Supabase.
+### 1. Emails reset password avec branding "Limoge Revillon"
+Les appels à `resetPasswordForEmail()` dans `invite-user/index.ts` (lignes 284 et 334) utilisent encore le template statique Supabase au lieu de Resend avec branding dynamique.
 
-## Analyse des risques
+### 2. Problème de connexion après reset
+Les logs montrent que le compte `sebastien.lanteri@groupe-engo.com` a été correctement créé et que le mot de passe a été défini avec succès (login à 14:26:18). Les erreurs "Invalid login credentials" ultérieures sont liées à :
+- Un token expiré réutilisé ("One-time token not found")
+- Un mot de passe incorrect lors des tentatives suivantes
 
-Après analyse approfondie du code existant, voici les garanties de non-régression :
+Pour résoudre ce cas immédiat, l'utilisateur peut demander un nouveau reset password depuis la page de connexion.
 
-### Pourquoi c'est sûr
+## Solution technique
 
-1. **Création utilisateur préservée** : La fonction `generateLink({ type: 'invite' })` de Supabase crée l'utilisateur dans `auth.users` exactement comme `inviteUserByEmail()`. La documentation officielle confirme : "generateLink() handles the creation of the user for signup, invite and magiclink".
+### Fichier : `supabase/functions/_shared/emailTemplate.ts`
 
-2. **Trigger inchangé** : Le trigger `handle_new_user_signup` se déclenche sur toute insertion dans `auth.users`. La création via `generateLink()` déclenche ce trigger normalement, donc les tables `profiles`, `user_roles`, et `utilisateurs` seront correctement mises à jour.
+Ajouter une nouvelle fonction de template pour les emails de reset password :
 
-3. **Lien d'invitation compatible** : Le lien généré par `generateLink()` a exactement le même format que celui de `inviteUserByEmail()` (avec les tokens dans le hash). La page de connexion (`Auth.tsx`) continuera de fonctionner sans modification.
+```typescript
+export function generatePasswordResetEmailHtml(
+  entrepriseNom: string,
+  resetUrl: string,
+  email: string
+): string {
+  // Template similaire aux invitations mais adapté au reset password
+  // Header: "${entrepriseNom} - Groupe Engo"
+  // Titre: "Réinitialisation de mot de passe"
+  // Message: "Vous avez demandé à réinitialiser votre mot de passe..."
+  // CTA: "Réinitialiser mon mot de passe"
+}
+```
 
-4. **Resend éprouvé** : Le service Resend est déjà utilisé avec succès depuis 6 semaines pour 4 fonctions de rappel (chefs, conducteurs, finisseurs). Même configuration, même clé API.
+### Fichier : `supabase/functions/invite-user/index.ts`
 
-### Ce qui ne change pas
+Modifier les deux endroits où `resetPasswordForEmail()` est appelé :
 
-- Structure de la table `invitations`
-- Mode Bootstrap (premier admin sans authentification)
-- Validation du domaine `@groupe-engo.com`
-- Gestion des utilisateurs existants (ajout de rôle, renvoi d'invitation)
-- Redirection vers `/auth?entreprise=xxx`
-- Formulaire de définition du mot de passe
+**Ligne 280-311 (mode resend - utilisateur existant avec même rôle) :**
 
-## Modifications techniques
+```typescript
+// Au lieu de:
+const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(...)
 
-### 1. Template d'email d'invitation
+// Utiliser generateLink + Resend:
+const { data: resetLinkData, error: resetLinkError } = await supabaseAdmin.auth.admin.generateLink({
+  type: 'recovery',
+  email: email.toLowerCase(),
+  options: { redirectTo: redirectUrl }
+});
 
-**Fichier** : `supabase/functions/_shared/emailTemplate.ts`
+const resetLink = resetLinkData?.properties?.action_link;
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+await resend.emails.send({
+  from: 'DIVA <rappels-diva-LR@groupe-engo.com>',
+  to: [email.toLowerCase()],
+  subject: `Réinitialisation de mot de passe - ${entrepriseNom}`,
+  html: generatePasswordResetEmailHtml(entrepriseNom, resetLink, email),
+});
+```
 
-Ajout d'une nouvelle fonction qui génère un email d'invitation avec le nom d'entreprise en paramètre, utilisant le même design professionnel que les emails de rappel existants.
+**Ligne 333-343 (ajout de rôle - même logique) :**
 
-### 2. Fonction d'invitation
-
-**Fichier** : `supabase/functions/invite-user/index.ts`
-
-Modifications :
-- Récupérer le nom complet de l'entreprise (pas seulement le slug)
-- Remplacer `inviteUserByEmail()` par `generateLink({ type: 'invite' })` pour générer le lien sans envoyer d'email
-- Envoyer l'email via Resend avec le template personnalisé contenant le nom d'entreprise
-- Conserver la logique de rollback existante en cas d'erreur
+Appliquer la même modification pour envoyer l'email de reset via Resend.
 
 ## Résultat attendu
 
-Avant (problème actuel) :
-```
-Header : "Limoge Revillon - Groupe ENGO"
-```
+Avant :
+- Email reset password avec header "Limoge Revillon - Groupe ENGO" statique
 
-Après (corrigé) :
-```
-Header : "SDER - Groupe ENGO"     (pour invitations SDER)
-Header : "Limoge Revillon - Groupe ENGO"  (pour invitations LR)
-Header : "Engo Bourgogne - Groupe ENGO"   (pour invitations EB)
-```
+Après :
+- Email reset password avec header dynamique selon l'entreprise (SDER, Limoge Revillon, Engo Bourgogne)
 
-## Point d'attention
+## Pour le cas immédiat (sebastien.lanteri)
 
-Les emails de réinitialisation de mot de passe (pour utilisateurs existants) continuent d'utiliser le template Supabase. Une migration similaire pourra être faite en phase 2 si nécessaire.
+L'utilisateur peut :
+1. Aller sur la page de connexion SDER
+2. Cliquer sur "Mot de passe oublié" 
+3. Recevoir un nouveau lien de reset (encore avec le branding Limoge Revillon jusqu'à cette correction)
+4. Définir son mot de passe correctement
 
-## Tests recommandés
+Une fois la correction déployée, tous les futurs emails de reset auront le bon branding.
 
-1. Inviter un nouvel utilisateur pour chaque entreprise et vérifier le contenu de l'email
-2. Cliquer sur le lien d'invitation et vérifier l'arrivée sur le bon carrousel d'entreprise
-3. Définir le mot de passe et vérifier la création complète du compte
-4. Vérifier que les rappels existants fonctionnent toujours
+## Tests à effectuer
+
+1. Réinviter un utilisateur existant sur SDER qui a déjà le même rôle
+2. Vérifier que l'email reçu affiche "SDER - Groupe Engo"
+3. Cliquer sur le lien et vérifier que le reset password fonctionne
+4. Se connecter avec le nouveau mot de passe
 
