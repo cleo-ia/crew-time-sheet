@@ -11,6 +11,11 @@ export const useSaveTransport = () => {
     mutationFn: async (params: SaveTransportParams) => {
       const { ficheId: providedFicheId, semaine, chantierId, days, chefId } = params;
 
+      // Validation obligatoire : chantier requis
+      if (!chantierId) {
+        throw new Error("Le chantier est obligatoire pour enregistrer une fiche de trajet");
+      }
+
       // 0. Si pas de ficheId, chercher d'abord une fiche existante ou en créer une
       let ficheId = providedFicheId;
       if (!ficheId) {

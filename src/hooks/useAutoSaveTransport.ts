@@ -9,6 +9,12 @@ export const useAutoSaveTransport = () => {
     mutationFn: async (params: SaveTransportParams) => {
       const { ficheId: providedFicheId, semaine, chantierId, days, chefId } = params;
 
+      // Validation obligatoire : chantier requis
+      if (!chantierId) {
+        console.log("[useAutoSaveTransport] Missing chantierId, skipping");
+        return null;
+      }
+
       // 0. Si pas de ficheId, chercher d'abord une fiche existante ou en créer une
       let ficheId = providedFicheId;
       if (!ficheId) {
