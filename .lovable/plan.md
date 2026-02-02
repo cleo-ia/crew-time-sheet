@@ -1,45 +1,161 @@
 
-# Correction : Persistance des données de saisie conducteur
+# Correction : Auto-save conducteur utilisant la mauvaise table d'affectations
 
-## Problème
+## Diagnostic confirmé
 
-Les heures saisies pour les finisseurs (ex: 40h au lieu de 39h) ne sont pas sauvegardées après un refresh de page.
+Sur `/validation-conducteur?tab=mes-heures`, les heures saisies ne persistent pas après refresh car l'auto-save utilise la **mauvaise table d'affectations**.
 
-## Cause racine
+### Flux actuel (bug)
 
-Le `chantierId` n'est pas correctement propagé dans les jours (`entry.days[].chantierId`), ce qui fait échouer silencieusement l'auto-save.
+1. Conducteur modifie les heures d'un finisseur
+2. `TimeEntryTable` déclenche `autoSaveMutation.mutate({ timeEntries, weekId, chantierId, chefId })`
+3. `useAutoSaveFiche` voit `chantierId !== null` et cherche les jours autorisés dans `affectations_jours_chef`
+4. Cette table retourne `[]` car les finisseurs ne sont pas des maçons gérés par des chefs
+5. `selectedDays = []` → aucun `fiches_jours` n'est écrit
+6. Refresh → les données reviennent aux valeurs initiales
 
-Le bug se situe à la ligne 541 de `TimeEntryTable.tsx` :
-```typescript
-if (!currentDay.chantierCode) { // ❌ Vérifie le CODE, pas l'ID
-```
+### Cause racine
 
-Si `code_chantier_du_jour` est enregistré en base mais que le chantier correspondant n'est pas trouvé, le `chantierCode` est présent mais le `chantierId` reste `null`. L'auto-save skip alors l'employé car il n'a pas de chantier.
+Le paramètre `mode` défini dans les props de `TimeEntryTable` n'est **jamais transmis** à l'auto-save.
 
 ## Solution
 
-Modifier la condition ligne 541 pour vérifier `chantierId` plutôt que `chantierCode` :
+### 1. Modifier l'interface de `useAutoSaveFiche`
+
+Ajouter le paramètre `mode` pour distinguer chef/conducteur :
 
 ```typescript
-if (!currentDay.chantierId) { // ✅ Vérifie l'ID (nécessaire pour la sauvegarde)
+interface SaveFicheParams {
+  timeEntries: TimeEntry[];
+  weekId: string;
+  chantierId: string | null;
+  chefId: string;
+  forceNormalize?: boolean;
+  mode?: "chef" | "conducteur";  // ← NOUVEAU
+}
 ```
 
-## Fichier modifié
+### 2. Brancher la logique conducteur dans `useAutoSaveFiche.ts`
 
-`src/components/timesheet/TimeEntryTable.tsx` - Ligne 541
+À la ligne 262, ajouter une branche spécifique pour le mode conducteur :
+
+```typescript
+if (chantierId !== null) {
+  const isConducteurMode = params.mode === "conducteur";
+  
+  if (isConducteurMode) {
+    // MODE CONDUCTEUR : utiliser affectations_finisseurs_jours
+    const { data: affectationsFinisseurs } = await supabase
+      .from("affectations_finisseurs_jours")
+      .select("date")
+      .eq("finisseur_id", entry.employeeId)
+      .eq("conducteur_id", chefId)
+      .eq("chantier_id", chantierId)
+      .eq("semaine", weekId);
+    
+    if (affectationsFinisseurs && affectationsFinisseurs.length > 0) {
+      const assignedDayNames = affectationsFinisseurs
+        .map(a => dayNameByDate[a.date])
+        .filter(Boolean);
+      selectedDays = assignedDayNames;
+    } else {
+      selectedDays = [];
+    }
+  } else {
+    // MODE CHEF : utiliser affectations_jours_chef (code existant)
+    // ...
+  }
+}
+```
+
+### 3. Passer `mode` dans les appels auto-save de `TimeEntryTable.tsx`
+
+Modifier les 3 appels à `autoSaveMutation.mutate` (lignes 879, 902, 912) :
+
+```typescript
+autoSaveMutation.mutate({ 
+  timeEntries: entries, 
+  weekId, 
+  chantierId, 
+  chefId,
+  mode: isConducteurMode ? "conducteur" : "chef"  // ← AJOUT
+});
+```
+
+## Fichiers modifiés
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useAutoSaveFiche.ts` | Ajouter param `mode` + branche conducteur avec `affectations_finisseurs_jours` |
+| `src/components/timesheet/TimeEntryTable.tsx` | Passer `mode` aux 3 appels d'auto-save |
 
 ## Analyse de non-régression
 
-| Page | Mode | Impact |
-|------|------|--------|
-| Index.tsx (Chef) | `chantierId` en prop | Aucun - le code modifié n'est exécuté qu'en mode conducteur |
-| ValidationConducteur.tsx | mode conducteur | Correction appliquée - le chantierId sera toujours synchronisé depuis les affectations |
-| FicheDetail.tsx (Lecture) | readOnly | Aucun - pas d'auto-save |
-| FicheDetail.tsx (Édition) | mode edit | Aucun - utilise initialData avec chantierId déjà résolu |
+### Page `/` (saisie chef - maçons)
+
+| Élément | Impact |
+|---------|--------|
+| Appel `TimeEntryTable` | `mode` non passé → défaut `"create"` |
+| Auto-save | `mode` sera `undefined` ou `"chef"` → **branche existante** |
+| Table utilisée | `affectations_jours_chef` → **INCHANGÉ** |
+| Résultat | ✅ **Aucune régression** |
+
+### Page `/validation-conducteur` (finisseurs)
+
+| Élément | Impact |
+|---------|--------|
+| Appel `TimeEntryTable` | `mode="conducteur"` déjà passé |
+| Auto-save | `mode = "conducteur"` → **nouvelle branche** |
+| Table utilisée | `affectations_finisseurs_jours` → **CORRIGÉ** |
+| Résultat | ✅ **Bug corrigé** |
+
+### Page FicheDetail (édition admin/RH)
+
+| Élément | Impact |
+|---------|--------|
+| Appel `TimeEntryTable` | `mode="edit"` |
+| Auto-save interne | Non utilisé (sauvegarde manuelle via `useSaveFicheJours`) |
+| Résultat | ✅ **Aucune régression** |
 
 ## Comportement attendu après correction
 
-1. L'utilisateur modifie les heures (39h → 40h)
-2. Le `chantierId` est automatiquement rempli depuis les affectations
-3. L'auto-save trouve un `chantierId` valide et sauvegarde les données
-4. Après refresh, les données sont correctement restaurées (40h)
+```text
+Nouveau flux (mode conducteur) :
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. Conducteur modifie les heures (39h → 40h)                            │
+│ 2. Auto-save déclenché avec mode = "conducteur"                         │
+│ 3. Requête vers affectations_finisseurs_jours                           │
+│    → Retourne les jours affectés (Lundi-Vendredi)                       │
+│ 4. Upsert fiches_jours avec les nouvelles heures                        │
+│ 5. Refresh → données correctement restaurées (40h)                      │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Flux chef (inchangé) :
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. Chef modifie les heures d'un maçon                                   │
+│ 2. Auto-save déclenché avec mode = "chef" (ou undefined)                │
+│ 3. Requête vers affectations_jours_chef (comme avant)                   │
+│ 4. Upsert fiches_jours avec les nouvelles heures                        │
+│ 5. Refresh → données correctement restaurées                            │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+## Tests à effectuer après implémentation
+
+### Test principal (correction du bug)
+
+1. Aller sur `/validation-conducteur?tab=mes-heures&semaine=2026-S07`
+2. Modifier les heures d'un finisseur (ex: José AMARAL, lundi 8h → 9h)
+3. Attendre 2 secondes (debounce auto-save)
+4. Vérifier dans le réseau une requête d'écriture vers `fiches_jours`
+5. Refresh (F5)
+6. Confirmer que le total reste à 40h et lundi est à 9h
+
+### Test de non-régression (chef)
+
+1. Aller sur `/` (page saisie chef)
+2. Sélectionner un chantier et une semaine
+3. Modifier les heures d'un maçon
+4. Attendre 2 secondes
+5. Refresh (F5)
+6. Confirmer que les heures sont bien sauvegardées
