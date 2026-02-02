@@ -1,77 +1,109 @@
-# Plan : Gestion des Chefs Multi-Chantiers sans Doublon d'Heures
 
-## ✅ IMPLÉMENTÉ
+# Plan : Auto-définition du chantier principal lors du premier ajout d'un chef
 
-### Contexte
+## Contexte
 
-Deux chefs sont actuellement affectés sur plusieurs chantiers :
-- **Sébastien Bouillet** : MAILLARD + DAVOULT
-- **Giovanni Dorazio** : CREUSOT VILET + CREUSOT HENRI
+Actuellement, lorsqu'un chef est ajouté pour la première fois dans le planning, le système ne définit pas automatiquement de chantier principal. Cela crée une incohérence :
+- Sébastien Bouillet apparaît sur DAVOULT avec le badge "Secondaire"
+- Mais il n'a pas de chantier principal réellement assigné dans le planning courant
 
-Le système créait des fiches distinctes pour chaque chantier, générant des doublons d'heures (78h au lieu de 39h par semaine).
+## Objectif
 
-## Solution Implémentée
+Implémenter la règle métier : **"Le premier chantier où un chef est ajouté devient automatiquement son chantier principal"**
 
-### ✅ Volet 1 : Modification du schéma de données
+## Fichiers à modifier
 
-Colonne `chantier_principal_id` ajoutée dans la table `utilisateurs` pour identifier le chantier principal d'un chef multi-chantiers.
+| Fichier | Modification |
+|---------|--------------|
+| `src/pages/PlanningMainOeuvre.tsx` | Modifier `handleAddEmploye` pour auto-définir le principal |
 
-**Migration exécutée** : Colonne ajoutée + initialisée pour les chefs existants (premier chantier actif par ordre de création)
+## Implémentation détaillée
 
-### ✅ Volet 2 : Modification de la synchronisation
+### Modification de `handleAddEmploye` (lignes 194-209)
 
-`supabase/functions/sync-planning-to-teams/index.ts` modifié pour :
+```typescript
+const handleAddEmploye = async (
+  employeId: string, 
+  chantierId: string, 
+  days: string[]
+) => {
+  // Créer une affectation pour chaque jour sélectionné
+  for (const date of days) {
+    await upsertAffectation.mutateAsync({
+      employe_id: employeId,
+      chantier_id: chantierId,
+      jour: date,
+      semaine,
+      entreprise_id: entrepriseId,
+    });
+  }
 
-1. **Détecter les chefs multi-chantiers** via `utilisateurs.chantier_principal_id`
-2. **Skip la création de fiche personnelle** pour un chef sur un chantier secondaire
-3. **Créer uniquement les affectations_jours_chef** pour router l'équipe vers ce chef
+  // 🆕 AUTO-DÉFINITION DU CHANTIER PRINCIPAL
+  // Si cet employé est un chef sans chantier principal défini,
+  // ce chantier devient automatiquement son chantier principal
+  if (!chefsWithPrincipal.has(employeId)) {
+    // Vérifier si c'est un chef (via une requête)
+    const { data: empData } = await supabase
+      .from("utilisateurs")
+      .select("role_metier")
+      .eq("id", employeId)
+      .maybeSingle();
 
-**Logique :**
+    if (empData?.role_metier === "chef") {
+      // Définir ce chantier comme principal
+      await supabase
+        .from("utilisateurs")
+        .update({ chantier_principal_id: chantierId })
+        .eq("id", employeId);
+
+      // Rafraîchir le cache pour que l'UI se mette à jour
+      queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+
+      toast({
+        title: "Chantier principal défini",
+        description: "Ce chef est automatiquement rattaché à ce chantier comme site principal.",
+      });
+    }
+  }
+};
 ```
-Pour chaque couple (employé, chantier) dans le planning :
-  SI l'employé a un chantier_principal_id défini ET ce n'est PAS ce chantier :
-    → SKIP la création de fiche/fiches_jours personnelle
-    → CRÉER les affectations_jours_chef pour l'équipe
+
+### Dépendances nécessaires
+
+Le code actuel utilise déjà :
+- `supabase` (importé ligne 4)
+- `chefsWithPrincipal` (ligne 98, déjà passé au composant)
+- `toast` (ligne 82)
+
+Il faudra ajouter :
+- `useQueryClient` de React Query pour invalider le cache
+
+### Ajouts au fichier
+
+1. Import de `useQueryClient` :
+```typescript
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 ```
 
-### ✅ Volet 3 : Indication visuelle dans le Planning
+2. Initialisation dans le composant :
+```typescript
+const queryClient = useQueryClient();
+```
 
-**Fichiers modifiés :**
-- `src/components/planning/PlanningEmployeRow.tsx` : Badge "★ Principal" / "Secondaire" cliquable
-- `src/components/planning/PlanningChantierAccordion.tsx` : Détection des chefs + passage des props
-- `src/pages/PlanningMainOeuvre.tsx` : Hook `useChefsWithPrincipal` pour récupérer les données
-- `src/hooks/useSetChantierPrincipal.ts` : Nouveau hook pour changer le chantier principal
+## Comportement attendu après modification
 
-**Comportement :**
-- Badge **★ Principal** (jaune) sur le chantier où les heures sont comptées
-- Badge **Secondaire** (gris) sur les autres chantiers - cliquer pour définir comme principal
-- Tooltip explicatif au survol
+| Scénario | Résultat |
+|----------|----------|
+| Chef ajouté pour la 1ère fois sur un chantier | Badge "Principal ★" affiché, `chantier_principal_id` défini en base |
+| Chef déjà rattaché à un principal, ajouté sur un autre chantier | Badge "Secondaire" affiché, pas de modification en base |
+| Maçon / Finisseur / Intérimaire ajouté | Aucun changement (la logique ne s'applique qu'aux chefs) |
 
-### ✅ Volet 4 : Script de nettoyage des doublons historiques
+## Résumé des changements
 
-**Fichier créé :**
-- `cleanup-doublons-chefs.sql` : Script SQL pour supprimer les fiches secondaires
-
-## Prochaines Étapes (Manuel)
-
-1. **Exécuter le script de nettoyage** dans Cloud View > Run SQL :
-   - Ouvrir `cleanup-doublons-chefs.sql`
-   - Exécuter les étapes 1-2 pour vérifier les doublons
-   - Exécuter les étapes 3-5 pour supprimer les fiches secondaires
-   - Exécuter l'étape 6 pour confirmer qu'il n'y a plus de doublons
-
-2. **Tester le flux complet** :
-   - Aller sur /planning-main-oeuvre
-   - Vérifier que Sébastien Bouillet affiche "★ Principal" sur MAILLARD et "Secondaire" sur DAVOULT
-   - Déclencher une synchronisation manuelle (Admin > Rappels > Synchroniser maintenant)
-   - Vérifier dans les logs que le chef est "skipped" sur le chantier secondaire
-
-## Impact sur le flux
-
-| Étape | Avant | Après |
-|-------|-------|-------|
-| Planning S+1 | Chef planifié sur 2 chantiers = 2 fiches x 39h | Chef planifié sur 2 chantiers = 1 fiche x 39h (principal uniquement) |
-| Sync Teams | 78h stockées en base | 39h stockées en base |
-| Saisie Chef | Peut modifier ses heures depuis les 2 chantiers | Ses heures sont uniquement modifiables depuis le principal |
-| Équipe | Membres ont leurs fiches sur chaque chantier | Inchangé |
-| RH | Déduplication → 39h affichées (mais 78h en base) | 39h stockées = 39h affichées (cohérent) |
+```text
+src/pages/PlanningMainOeuvre.tsx
+├─ Import useQueryClient (ligne ~1-5)
+├─ Ajouter const queryClient = useQueryClient() (ligne ~82)
+└─ Modifier handleAddEmploye (lignes 194-209) :
+   └─ Ajouter la logique de détection chef + définition principal
+```
