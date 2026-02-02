@@ -254,6 +254,30 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     weekId
   );
 
+  // Récupérer le chantier principal du chef pour bloquer la saisie de ses heures sur les chantiers secondaires
+  const { data: chefChantierPrincipal } = useQuery({
+    queryKey: ["chef-chantier-principal", chefId],
+    queryFn: async () => {
+      if (!chefId) return null;
+      
+      const { data, error } = await supabase
+        .from("utilisateurs")
+        .select("chantier_principal_id")
+        .eq("id", chefId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data?.chantier_principal_id || null;
+    },
+    enabled: !!chefId && !isConducteurMode,
+  });
+
+  // Vérifie si le chef est sur un chantier secondaire (pas son principal)
+  const isChefOnSecondaryChantier = useMemo(() => {
+    if (!chefId || !chantierId || !chefChantierPrincipal) return false;
+    return chantierId !== chefChantierPrincipal;
+  }, [chefId, chantierId, chefChantierPrincipal]);
+
   // Helper pour vérifier si un employé est autorisé à travailler un jour donné
   const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
     // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours sont autorisés
@@ -1296,6 +1320,16 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
               </AccordionTrigger>
 
               <AccordionContent className="p-0">
+                {/* Message d'info pour le chef sur un chantier secondaire */}
+                {isChef && isChefOnSecondaryChantier && (
+                  <div className="mx-4 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <span className="font-medium">ℹ️ Chantier secondaire :</span>{" "}
+                      Vous pouvez consulter et gérer votre équipe ici, mais vos propres heures doivent être saisies sur votre chantier principal pour éviter les doublons.
+                    </p>
+                  </div>
+                )}
+                
                 {/* Days Grid */}
                 <div className="p-4 space-y-3">
       {(() => {
@@ -1342,13 +1376,18 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                         // Vérifier si ce jour est autorisé pour ce chef (mode chef uniquement)
                         const isBlockedByChefAffectation = !isConducteurMode && mode !== "edit" && !isDayAuthorizedForEmployee(entry.employeeId, day);
                         
-                        const isDayBlocked = isBlockedByConducteur || isBlockedByChefAffectation;
+                        // Vérifier si c'est le chef lui-même et qu'il est sur un chantier secondaire
+                        // Dans ce cas, ses heures sont en lecture seule pour éviter les doublons
+                        const isChefBlockedOnSecondary = isChef && isChefOnSecondaryChantier;
+                        
+                        const isDayBlocked = isBlockedByConducteur || isBlockedByChefAffectation || isChefBlockedOnSecondary;
                         
                         return (
                       <div
                         key={day}
                         className={`rounded-lg border p-3 ${
                           dayData.absent ? "bg-destructive/5 border-destructive/20" : 
+                          isChefBlockedOnSecondary ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700" :
                           isDayBlocked ? "bg-amber-50/50 border-amber-200" :
                           "bg-muted/30 border-border/30"
                         }`}
@@ -1357,7 +1396,12 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{day}</span>
-                            {isDayBlocked && (
+                            {isChefBlockedOnSecondary && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600">
+                                🔒 Saisie sur votre chantier principal uniquement
+                              </span>
+                            )}
+                            {isDayBlocked && !isChefBlockedOnSecondary && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">
                                 {isBlockedByConducteur ? "🔒 Autre conducteur" : "🔒 Jour non affecté"}
                               </span>
