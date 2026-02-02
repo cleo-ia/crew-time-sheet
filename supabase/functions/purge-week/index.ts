@@ -21,12 +21,20 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { semaine, chantier_id } = await req.json();
+    const { semaine, chantier_id, entreprise_id } = await req.json();
 
     // Validate semaine parameter
     if (!semaine || typeof semaine !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid "semaine" parameter' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate entreprise_id parameter (MANDATORY for safety)
+    if (!entreprise_id || typeof entreprise_id !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid "entreprise_id" parameter - required for safety' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -40,13 +48,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    const filterByChantier = chantier_id && typeof chantier_id === 'string';
-    console.log(`🚀 Starting purge for week: ${semaine}${filterByChantier ? ` (chantier: ${chantier_id})` : ' (all chantiers)'}`);
-
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch enterprise info for logging
+    const { data: entreprise } = await supabase
+      .from('entreprises')
+      .select('nom, slug')
+      .eq('id', entreprise_id)
+      .single();
+
+    const entrepriseLabel = entreprise?.slug || entreprise?.nom || entreprise_id;
+    const filterByChantier = chantier_id && typeof chantier_id === 'string';
+    
+    console.log(`🚀 Starting purge for week: ${semaine}, entreprise: ${entrepriseLabel}${filterByChantier ? `, chantier: ${chantier_id}` : ''}`);
 
     const results: Record<string, number> = {};
 
@@ -55,7 +72,8 @@ Deno.serve(async (req) => {
     let affQuery = supabase
       .from('affectations_finisseurs_jours')
       .delete({ count: 'exact' })
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
     
     if (filterByChantier) {
       affQuery = affQuery.eq('chantier_id', chantier_id);
@@ -89,7 +107,8 @@ Deno.serve(async (req) => {
         .from('affectations')
         .delete({ count: 'exact' })
         .gte('date_debut', startDateStr)
-        .lte('date_debut', endDateStr);
+        .lte('date_debut', endDateStr)
+        .eq('entreprise_id', entreprise_id);
       
       if (filterByChantier) {
         affMaconsQuery = affMaconsQuery.eq('chantier_id', chantier_id);
@@ -109,7 +128,8 @@ Deno.serve(async (req) => {
     let fichesQuery = supabase
       .from('fiches')
       .select('id')
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
     
     if (filterByChantier) {
       fichesQuery = fichesQuery.eq('chantier_id', chantier_id);
@@ -125,7 +145,8 @@ Deno.serve(async (req) => {
       const { error: sigError, count: sigCount } = await supabase
         .from('signatures')
         .delete({ count: 'exact' })
-        .in('fiche_id', ficheIdsList);
+        .in('fiche_id', ficheIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (sigError) throw sigError;
       results.signatures = sigCount || 0;
@@ -139,7 +160,8 @@ Deno.serve(async (req) => {
     let ftfQuery = supabase
       .from('fiches_transport_finisseurs')
       .select('id')
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
     
     // Filter by fiche_id if we have filtered fiches
     if (filterByChantier && fichesIds && fichesIds.length > 0) {
@@ -158,7 +180,8 @@ Deno.serve(async (req) => {
       const { error: ftfjError, count: ftfjCount } = await supabase
         .from('fiches_transport_finisseurs_jours')
         .delete({ count: 'exact' })
-        .in('fiche_transport_finisseur_id', ftfIdsList);
+        .in('fiche_transport_finisseur_id', ftfIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (ftfjError) throw ftfjError;
       results.fiches_transport_finisseurs_jours = ftfjCount || 0;
@@ -174,7 +197,8 @@ Deno.serve(async (req) => {
       const { error: ftfError, count: ftfCount } = await supabase
         .from('fiches_transport_finisseurs')
         .delete({ count: 'exact' })
-        .in('id', ftfIdsList);
+        .in('id', ftfIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (ftfError) throw ftfError;
       results.fiches_transport_finisseurs = ftfCount || 0;
@@ -188,7 +212,8 @@ Deno.serve(async (req) => {
     let ftQuery = supabase
       .from('fiches_transport')
       .select('id')
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
     
     if (filterByChantier) {
       ftQuery = ftQuery.eq('chantier_id', chantier_id);
@@ -201,7 +226,8 @@ Deno.serve(async (req) => {
       const { error: ftjError, count: ftjCount } = await supabase
         .from('fiches_transport_jours')
         .delete({ count: 'exact' })
-        .in('fiche_transport_id', ftIdsList);
+        .in('fiche_transport_id', ftIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (ftjError) throw ftjError;
       results.fiches_transport_jours = ftjCount || 0;
@@ -217,7 +243,8 @@ Deno.serve(async (req) => {
       const { error: ftError, count: ftCount } = await supabase
         .from('fiches_transport')
         .delete({ count: 'exact' })
-        .in('id', ftIdsList);
+        .in('id', ftIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (ftError) throw ftError;
       results.fiches_transport = ftCount || 0;
@@ -233,7 +260,8 @@ Deno.serve(async (req) => {
       const { error: fjError, count: fjCount } = await supabase
         .from('fiches_jours')
         .delete({ count: 'exact' })
-        .in('fiche_id', ficheIdsList);
+        .in('fiche_id', ficheIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (fjError) throw fjError;
       results.fiches_jours = fjCount || 0;
@@ -249,7 +277,8 @@ Deno.serve(async (req) => {
       const { error: fichesError, count: fichesCount } = await supabase
         .from('fiches')
         .delete({ count: 'exact' })
-        .in('id', ficheIdsList);
+        .in('id', ficheIdsList)
+        .eq('entreprise_id', entreprise_id);
       
       if (fichesError) throw fichesError;
       results.fiches = fichesCount || 0;
@@ -263,7 +292,8 @@ Deno.serve(async (req) => {
     let ajcQuery = supabase
       .from('affectations_jours_chef')
       .delete({ count: 'exact' })
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
 
     if (filterByChantier) {
       ajcQuery = ajcQuery.eq('chantier_id', chantier_id);
@@ -279,7 +309,8 @@ Deno.serve(async (req) => {
     let paQuery = supabase
       .from('planning_affectations')
       .delete({ count: 'exact' })
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
 
     if (filterByChantier) {
       paQuery = paQuery.eq('chantier_id', chantier_id);
@@ -295,7 +326,8 @@ Deno.serve(async (req) => {
     const { error: pvError, count: pvCount } = await supabase
       .from('planning_validations')
       .delete({ count: 'exact' })
-      .eq('semaine', semaine);
+      .eq('semaine', semaine)
+      .eq('entreprise_id', entreprise_id);
 
     if (pvError) throw pvError;
     results.planning_validations = pvCount || 0;
@@ -304,12 +336,14 @@ Deno.serve(async (req) => {
     // Calculate total
     const total = Object.values(results).reduce((sum, count) => sum + count, 0);
 
-    console.log(`🎉 Purge completed! Total records deleted: ${total}`);
+    console.log(`🎉 Purge completed for ${entrepriseLabel}! Total records deleted: ${total}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         semaine,
+        entreprise_id,
+        entreprise_nom: entreprise?.nom || null,
         chantier_id: filterByChantier ? chantier_id : null,
         deleted: results,
         total
