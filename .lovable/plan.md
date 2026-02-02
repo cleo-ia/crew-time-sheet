@@ -1,121 +1,180 @@
 
 
-# Ajout d'un Indicateur Visuel pour le Chantier Principal
+# Analyse d'Impact Complète : Aucune Régression Garantie
 
-## Objectif
+## Résumé de la Modification
 
-Pour les chefs multi-chantiers, ajouter un indicateur visuel dans le sélecteur de chantier ("Choisir un chantier") qui identifie clairement le **chantier principal** - celui sur lequel le chef peut saisir ses propres heures.
+Permettre aux chefs **multi-chantier uniquement** de sélectionner comme conducteur n'importe quel membre de leurs équipes (tous chantiers confondus) dans la fiche de trajet.
 
-## Comportement Attendu
+## Architecture Actuelle Analysée
 
-| Chantier | Affichage actuel | Affichage après correction |
-|----------|------------------|---------------------------|
-| LE ROSEYRAN (principal) | `LE ROSEYRAN` | `⭐ LE ROSEYRAN` + badge "Principal" |
-| COEUR DE BALME EST (secondaire) | `COEUR DE BALME EST` | `COEUR DE BALME EST` (inchangé) |
+### Fichiers utilisant `useMaconsByChantier`
 
-## Modification Technique
+| Fichier | Contexte d'utilisation | Impact de la modification |
+|---------|------------------------|--------------------------|
+| `TransportDayAccordion.tsx` | Fiche de trajet - sélection conducteur | **MODIFIÉ** - ajout conditionnel pour multi-chantier |
+| `TransportSheet.tsx` | Ancienne version fiche trajet | **MODIFIÉ** - même logique pour cohérence |
+| `CongesSheet.tsx` | Demandes de congés - liste équipe | **NON IMPACTÉ** - besoin local (équipe du chantier actuel) |
+| `Index.tsx` | Page principale - passe les données | **NON IMPACTÉ** - utilise déjà le hook standard |
+| `ChefMaconsManager.tsx` | Gestion équipe chef | **NON IMPACTÉ** - logique différente |
+| `SignatureMacons.tsx` | Page signatures | **NON IMPACTÉ** - hook différent (chantier spécifique) |
 
-**Fichier** : `src/components/timesheet/ChantierSelector.tsx`
+### Fichiers utilisant `ConducteurCombobox`
 
-### 1. Ajouter la récupération du chantier principal du chef
+| Fichier | Contexte | Impact |
+|---------|----------|--------|
+| `TransportDayAccordion.tsx` | TransportSheetV2 (version actuelle) | **MODIFIÉ** |
+| `TransportSheet.tsx` | TransportSheet (ancienne version) | **MODIFIÉ** pour cohérence |
 
-Ajouter une query pour récupérer le `chantier_principal_id` de l'utilisateur sélectionné :
+## Plan Technique
 
-```typescript
-// Récupérer le chantier principal du chef (pour l'indicateur visuel)
-const { data: chefChantierPrincipal } = useQuery({
-  queryKey: ["chef-chantier-principal", chefId],
-  queryFn: async () => {
-    if (!chefId) return null;
-    
-    const { data, error } = await supabase
-      .from("utilisateurs")
-      .select("chantier_principal_id")
-      .eq("id", chefId)
-      .maybeSingle();
-    
-    if (error) throw error;
-    return data?.chantier_principal_id || null;
-  },
-  enabled: !!chefId,
-});
-```
+### 1. Créer un nouveau hook (nouveau fichier)
 
-### 2. Modifier l'affichage des options du Select
+**Fichier** : `src/hooks/useMaconsAllChantiersByChef.ts`
 
-Ajouter une icône étoile et un badge "Principal" pour le chantier principal :
+Ce hook :
+- Récupère tous les `chantier_id` distincts où le chef a des affectations pour la semaine
+- Si 1 seul chantier → `isMultiChantier = false`
+- Si plusieurs chantiers → récupère les employés de TOUS ces chantiers avec indication du chantier d'origine
 
 ```typescript
-// Dans le rendu des SelectItem
-{chantiers.map((chantier) => {
-  const isPrincipal = chefChantierPrincipal === chantier.id;
-  
-  return (
-    <SelectItem key={chantier.id} value={chantier.id} className={compact ? "text-sm" : "text-base"}>
-      {compact ? (
-        <span className="flex items-center gap-1">
-          {isPrincipal && <Star className="h-3 w-3 text-amber-500 fill-amber-500" />}
-          {chantier.code_chantier} - {chantier.nom}
-          {isPrincipal && <span className="text-[10px] text-amber-600 font-medium ml-1">(Mes heures)</span>}
-        </span>
-      ) : (
-        <div className="flex flex-col">
-          <span className="font-medium flex items-center gap-1.5">
-            {isPrincipal && <Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
-            {chantier.nom}
-            {isPrincipal && (
-              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                Mes heures
-              </span>
-            )}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {chantier.code_chantier} • {chantier.ville}
-          </span>
-        </div>
-      )}
-    </SelectItem>
-  );
-})}
+interface MaconFromAllChantiers {
+  id: string;
+  nom: string;
+  prenom: string;
+  isChef?: boolean;
+  chantierId: string;
+  chantierCode?: string;  // Pour affichage ex: "BALME"
+  ficheJours?: FicheJour[];
+}
+
+interface UseMaconsAllChantiersResult {
+  isMultiChantier: boolean;
+  allMacons: MaconFromAllChantiers[];
+  isLoading: boolean;
+}
 ```
 
-### 3. Import de l'icône Star
+### 2. Modifier `TransportDayAccordion.tsx`
 
 ```typescript
-import { Star } from "lucide-react";
+// Importer le nouveau hook
+import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
+
+// Dans le composant
+const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
+const { isMultiChantier, allMacons, isLoading: loadingAllMacons } = useMaconsAllChantiersByChef(chefId, semaine);
+
+// Utiliser conditionnellement
+const maconsForCombobox = isMultiChantier ? allMacons : macons;
+
+// Passer au ConducteurCombobox
+<ConducteurCombobox
+  macons={maconsForCombobox}
+  currentChantierId={chantierId}  // Nouveau prop pour afficher le chantier d'origine
+  ...
+/>
 ```
 
-## Exemple Visuel
+### 3. Modifier `ConducteurCombobox.tsx` (optionnel - amélioration UX)
 
-**Avant** :
-```
-┌────────────────────────────────────────┐
-│ COEUR DE BALME EST                     │
-│ CI229BALME • GRENOBLE                  │
-├────────────────────────────────────────┤
-│ ✓ LE ROSEYRAN                          │  ← Sélectionné mais rien n'indique que c'est le principal
-│ CI230ROSEYRAN • LA TRONCHE             │
-└────────────────────────────────────────┘
-```
+Ajouter un indicateur visuel pour les employés venant d'un autre chantier :
 
-**Après** :
-```
-┌────────────────────────────────────────┐
-│ COEUR DE BALME EST                     │
-│ CI229BALME • GRENOBLE                  │
-├────────────────────────────────────────┤
-│ ⭐ LE ROSEYRAN  [Mes heures]           │  ← Indicateur clair
-│ CI230ROSEYRAN • LA TRONCHE             │
-└────────────────────────────────────────┘
+```typescript
+// Props ajoutées
+interface ConducteurComboboxProps {
+  macons: MaconData[];
+  currentChantierId?: string;  // Nouveau
+  ...
+}
+
+// Dans le rendu
+{macon.chantierId && macon.chantierId !== currentChantierId && (
+  <span className="text-xs text-muted-foreground ml-1">
+    ({macon.chantierCode || 'Autre chantier'})
+  </span>
+)}
 ```
 
-## Pourquoi "Mes heures" plutôt que "Principal"
+### 4. Modifier `TransportSheet.tsx` (ancienne version - cohérence)
 
-Le terme "Principal" est un peu technique. "Mes heures" est plus clair pour le chef car il comprend immédiatement que c'est sur ce chantier qu'il pourra saisir ses propres heures.
+Appliquer la même logique pour maintenir la cohérence si cette version est encore utilisée quelque part.
 
-## Impact
+## Pourquoi Aucune Régression
 
-- **Aucun autre fichier modifié**
-- **Aucune régression** : l'ajout est purement visuel
-- **Compatible avec tous les chefs** : ceux qui n'ont qu'un seul chantier ne verront pas de différence (pas de badge "Mes heures" si un seul chantier disponible)
+### 1. Modification conditionnelle et isolée
+
+La modification n'affecte le comportement **QUE** pour les chefs multi-chantier :
+
+```typescript
+// Chef mono-chantier : comportement IDENTIQUE
+if (!isMultiChantier) {
+  // Utilise macons standard → aucun changement
+}
+
+// Chef multi-chantier : nouveau comportement
+if (isMultiChantier) {
+  // Utilise allMacons → accès à tous les employés
+}
+```
+
+### 2. Aucun changement sur les autres pages
+
+| Page/Composant | Hook utilisé | Changement |
+|----------------|--------------|------------|
+| SignatureMacons | `useAffectationsJoursByChefAndChantier` | ❌ Aucun |
+| TimeEntryTable | `useAffectationsJoursByChefAndChantier` | ❌ Aucun |
+| ChefMaconsManager | `useAffectationsJoursByChef` | ❌ Aucun |
+| CongesSheet | `useMaconsByChantier` | ❌ Aucun - utilise toujours l'équipe locale |
+
+### 3. Le nouveau hook est indépendant
+
+Le nouveau hook `useMaconsAllChantiersByChef` :
+- Ne modifie **AUCUN** hook existant
+- Est utilisé **UNIQUEMENT** dans les composants transport
+- Retourne `isMultiChantier = false` pour les chefs mono-chantier
+
+### 4. Rétrocompatibilité totale
+
+- Les chefs mono-chantier ne voient **AUCUN** changement
+- Les conducteurs (mode verrouillé) ne sont **PAS** impactés
+- Le mode legacy (sans planning validé) reste fonctionnel
+
+## Scénarios de Test Post-Implémentation
+
+| Scénario | Résultat attendu |
+|----------|------------------|
+| Chef mono-chantier sur fiche trajet | Voit uniquement son équipe locale |
+| Chef multi-chantier sur chantier A | Voit employés de A + employés de B avec indicateur |
+| Chef multi-chantier sur chantier B | Voit employés de B + employés de A avec indicateur |
+| Conducteur sur fiche trajet | Champs verrouillés, aucun changement |
+| Saisie heures (TimeEntryTable) | Aucun changement |
+| Signatures (SignatureMacons) | Aucun changement |
+| Gestion équipe (ChefMaconsManager) | Aucun changement |
+
+## Fichiers Modifiés
+
+1. **Nouveau** : `src/hooks/useMaconsAllChantiersByChef.ts`
+2. **Modifié** : `src/components/transport/TransportDayAccordion.tsx`
+3. **Modifié** : `src/components/transport/ConducteurCombobox.tsx` (indicateur visuel)
+4. **Modifié** : `src/components/transport/TransportSheet.tsx` (cohérence)
+
+## Fichiers NON Modifiés
+
+- `src/hooks/useMaconsByChantier.ts` ← **INTOUCHÉ**
+- `src/pages/Index.tsx` ← **INTOUCHÉ**
+- `src/pages/SignatureMacons.tsx` ← **INTOUCHÉ**
+- `src/components/timesheet/TimeEntryTable.tsx` ← **INTOUCHÉ**
+- `src/components/chef/ChefMaconsManager.tsx` ← **INTOUCHÉ**
+- `src/components/conges/CongesSheet.tsx` ← **INTOUCHÉ**
+
+## Conclusion
+
+**Risque de régression : AUCUN**
+
+La modification est :
+- **Additive** : nouveau hook, pas de modification des hooks existants
+- **Conditionnelle** : n'affecte que les chefs multi-chantier
+- **Isolée** : uniquement dans les composants transport
+- **Rétrocompatible** : le comportement par défaut reste identique
 
