@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCallback, useMemo } from "react";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
 import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
 import {
@@ -69,6 +70,12 @@ export const TransportDayAccordion = ({
   
   // Récupérer les maçons pour détecter les trajets perso
   const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
+  
+  // Récupérer tous les maçons de tous les chantiers si chef multi-chantier
+  const { isMultiChantier, allMacons } = useMaconsAllChantiersByChef(chefId, semaine);
+  
+  // Utiliser la liste multi-chantier si applicable, sinon la liste standard
+  const maconsForCombobox = isMultiChantier ? allMacons : macons;
   
   // Vérifier si le planning est actif (validé par un conducteur)
   const { isActive: isPlanningActive } = usePlanningMode(semaine);
@@ -270,7 +277,7 @@ export const TransportDayAccordion = ({
                       <div>
                         <Label className="text-xs">Conducteur Matin *</Label>
                         <ConducteurCombobox
-                          macons={macons}
+                          macons={maconsForCombobox}
                           date={day.date}
                           value={vehicule.conducteurMatinId}
                           onChange={(value) => updateVehicule(vehicule.id, "conducteurMatinId", value)}
@@ -283,13 +290,14 @@ export const TransportDayAccordion = ({
                           }
                           affectationsJoursChef={affectationsJoursChef}
                           chefId={chefId}
+                          currentChantierId={chantierId || undefined}
                         />
                       </div>
                       
                       <div>
                         <Label className="text-xs">Conducteur Soir *</Label>
                         <ConducteurCombobox
-                          macons={macons}
+                          macons={maconsForCombobox}
                           date={day.date}
                           value={vehicule.conducteurSoirId}
                           onChange={(value) => updateVehicule(vehicule.id, "conducteurSoirId", value)}
@@ -302,6 +310,7 @@ export const TransportDayAccordion = ({
                           }
                           affectationsJoursChef={affectationsJoursChef}
                           chefId={chefId}
+                          currentChantierId={chantierId || undefined}
                         />
                       </div>
                     </>
