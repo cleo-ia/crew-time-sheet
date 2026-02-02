@@ -76,6 +76,31 @@ export const useAffectationsJoursByMacon = (maconId: string | null, semaine: str
   });
 };
 
+// Récupérer les affectations jours par chef ET par chantier pour une semaine
+export const useAffectationsJoursByChefAndChantier = (
+  chefId: string | null, 
+  chantierId: string | null,
+  semaine: string
+) => {
+  return useQuery({
+    queryKey: ["affectations-jours-chef", "by-chef-chantier", chefId, chantierId, semaine],
+    queryFn: async () => {
+      if (!chefId || !chantierId || !semaine) return [];
+      
+      const { data, error } = await supabase
+        .from("affectations_jours_chef")
+        .select("*")
+        .eq("chef_id", chefId)
+        .eq("chantier_id", chantierId)
+        .eq("semaine", semaine);
+      
+      if (error) throw error;
+      return data as AffectationJourChef[];
+    },
+    enabled: !!chefId && !!chantierId && !!semaine,
+  });
+};
+
 // Créer ou mettre à jour une affectation jour
 export const useUpsertAffectationJourChef = () => {
   const queryClient = useQueryClient();
