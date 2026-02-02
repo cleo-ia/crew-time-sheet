@@ -86,6 +86,7 @@ const Index = () => {
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [weekInitialized, setWeekInitialized] = useState(false);
   const saveFiche = useSaveFiche();
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
@@ -93,12 +94,13 @@ const Index = () => {
   // Récupérer les messages non lus pour ce chantier (utiliser auth.uid() pour cohérence avec RLS)
   const { data: unreadData } = useUnreadMessages(authUserId, selectedChantier ? [selectedChantier] : undefined);
 
-  // Mettre à jour selectedWeek quand initialWeek change
+  // Mettre à jour selectedWeek UNIQUEMENT au premier chargement (pas à chaque changement de chantier)
   useEffect(() => {
-    if (initialWeek) {
+    if (initialWeek && !weekInitialized) {
       setSelectedWeek(initialWeek);
+      setWeekInitialized(true);
     }
-  }, [initialWeek]);
+  }, [initialWeek, weekInitialized]);
 
   // Auto-sélection du chef connecté au chargement + validation multi-tenant
   useEffect(() => {
@@ -332,6 +334,7 @@ const Index = () => {
     if (selectedChef !== previousChef && previousChef !== "") {
       setSelectedChantier("");
       setTimeEntries([]);
+      setWeekInitialized(false); // Permettre une nouvelle initialisation de semaine
     }
     setPreviousChef(selectedChef);
   }, [selectedChef, previousChef]);
