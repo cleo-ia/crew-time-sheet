@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,7 @@ const PlanningMainOeuvre = () => {
   const enterpriseConfig = useEnterpriseConfig();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Hook de validation du planning
   const { 
@@ -205,6 +206,34 @@ const PlanningMainOeuvre = () => {
         semaine,
         entreprise_id: entrepriseId,
       });
+    }
+
+    // AUTO-DÉFINITION DU CHANTIER PRINCIPAL
+    // Si cet employé est un chef sans chantier principal défini,
+    // ce chantier devient automatiquement son chantier principal
+    if (!chefsWithPrincipal.has(employeId)) {
+      // Vérifier si c'est un chef (via une requête)
+      const { data: empData } = await supabase
+        .from("utilisateurs")
+        .select("role_metier")
+        .eq("id", employeId)
+        .maybeSingle();
+
+      if (empData?.role_metier === "chef") {
+        // Définir ce chantier comme principal
+        await supabase
+          .from("utilisateurs")
+          .update({ chantier_principal_id: chantierId })
+          .eq("id", employeId);
+
+        // Rafraîchir le cache pour que l'UI se mette à jour
+        queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+
+        toast({
+          title: "Chantier principal défini",
+          description: "Ce chef est automatiquement rattaché à ce chantier comme site principal.",
+        });
+      }
     }
   };
 
