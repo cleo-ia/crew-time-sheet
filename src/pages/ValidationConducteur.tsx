@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { useAffectationsByConducteur, useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
+import { useChantiers } from "@/hooks/useChantiers";
 import { WeeklyForecastDialog } from "@/components/weather/WeeklyForecastDialog";
 import { useFichesEnAttentePourConducteur } from "@/hooks/useFichesEnAttentePourConducteur";
 import { ConversationButton } from "@/components/chat/ConversationButton";
@@ -178,6 +179,33 @@ const ValidationConducteur = () => {
   const finisseurs = useMemo(() => {
     return allFinisseurs.filter(f => f.affectedDays && f.affectedDays.length > 0);
   }, [allFinisseurs]);
+  
+  // Charger les chantiers pour afficher les noms
+  const { data: chantiers = [] } = useChantiers();
+  const chantiersMap = useMemo(() => {
+    const map = new Map<string, { nom: string; code: string | null }>();
+    chantiers.forEach(ch => {
+      map.set(ch.id, { nom: ch.nom, code: ch.code_chantier });
+    });
+    return map;
+  }, [chantiers]);
+
+  // Grouper les finisseurs par chantier pour l'affichage
+  const finisseursByChantier = useMemo(() => {
+    const grouped = new Map<string, typeof finisseurs>();
+    
+    finisseurs.forEach(f => {
+      // Déterminer le chantier principal (premier jour affecté)
+      const chantierId = f.affectedDays?.[0]?.chantier_id || "sans-chantier";
+      
+      if (!grouped.has(chantierId)) {
+        grouped.set(chantierId, []);
+      }
+      grouped.get(chantierId)!.push(f);
+    });
+    
+    return grouped;
+  }, [finisseurs]);
 
   // Calculer les IDs gérés par ce conducteur (pour les notifications de congés)
   const allManagedIds = useMemo(() => {
@@ -702,15 +730,44 @@ const ValidationConducteur = () => {
                   {selectedWeek && effectiveConducteurId ? (
                     finisseurs.length > 0 ? (
                       <>
-                        <TimeEntryTable 
-                          chantierId={null}
-                          weekId={selectedWeek}
-                          chefId={effectiveConducteurId}
-                          onEntriesChange={setTimeEntries}
-                          mode="conducteur"
-                          affectationsJours={affectationsJours}
-                          allAffectations={allAffectationsEnriched}
-                        />
+                        {Array.from(finisseursByChantier.entries()).map(([chantierId, chantierFinisseurs]) => {
+                          const chantierInfo = chantiersMap.get(chantierId);
+                          const chantierLabel = chantierInfo 
+                            ? `${chantierInfo.code || ""} ${chantierInfo.nom}`.trim()
+                            : "Équipe sans chantier";
+                          
+                          return (
+                            <div key={chantierId} className="space-y-4">
+                              {finisseursByChantier.size > 1 && (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                                  <Package className="h-5 w-5 text-primary" />
+                                  <h3 className="font-semibold text-primary">{chantierLabel}</h3>
+                                  <span className="text-sm text-muted-foreground">
+                                    ({chantierFinisseurs.length} finisseur{chantierFinisseurs.length > 1 ? "s" : ""})
+                                  </span>
+                                </div>
+                              )}
+                              <TimeEntryTable 
+                                chantierId={chantierId !== "sans-chantier" ? chantierId : null}
+                                weekId={selectedWeek}
+                                chefId={effectiveConducteurId}
+                                onEntriesChange={(entries) => {
+                                  setTimeEntries(prev => {
+                                    const otherEntries = prev.filter(e => 
+                                      !chantierFinisseurs.some(f => f.id === e.employeeId)
+                                    );
+                                    return [...otherEntries, ...entries];
+                                  });
+                                }}
+                                mode="conducteur"
+                                affectationsJours={affectationsJours?.filter(a => 
+                                  chantierFinisseurs.some(f => f.id === a.finisseur_id)
+                                )}
+                                allAffectations={allAffectationsEnriched}
+                              />
+                            </div>
+                          );
+                        })}
 
                         <Card className="p-6 shadow-md border-border/50">
                           <div className="flex flex-col gap-3">
