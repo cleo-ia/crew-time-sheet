@@ -17,12 +17,27 @@ export const useSetChantierPrincipal = () => {
       employeId: string; 
       chantierId: string;
     }) => {
-      const { error } = await supabase
+      // 1. Mettre à jour le chantier principal de l'utilisateur
+      const { error: userError } = await supabase
         .from("utilisateurs")
         .update({ chantier_principal_id: chantierId })
         .eq("id", employeId);
 
-      if (error) throw error;
+      if (userError) throw userError;
+
+      // 2. Si le chantier n'a pas de chef, associer ce chef
+      const { data: chantier } = await supabase
+        .from("chantiers")
+        .select("chef_id")
+        .eq("id", chantierId)
+        .single();
+
+      if (!chantier?.chef_id) {
+        await supabase
+          .from("chantiers")
+          .update({ chef_id: employeId })
+          .eq("id", chantierId);
+      }
     },
     onSuccess: () => {
       // Invalider les queries pour rafraîchir les données
