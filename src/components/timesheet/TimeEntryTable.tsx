@@ -537,8 +537,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
             if (daysFromDb[dayLabel]) {
               const currentDay = daysFromDb[dayLabel];
               
-              // ✅ Enrichir le chantier depuis les affectations si le code est manquant
-              if (!currentDay.chantierCode) {
+              // ✅ Enrichir le chantierId depuis les affectations s'il est manquant (nécessaire pour l'auto-save)
+              if (!currentDay.chantierId) {
                 const chantierInfo = chantiers.find(c => c.id === affectation.chantier_id);
                 
                 daysFromDb[dayLabel] = {
