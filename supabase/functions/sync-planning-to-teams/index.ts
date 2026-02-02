@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
     let totalCopied = 0
     let totalCreated = 0
     let totalDeleted = 0
+    let totalProtected = 0
 
     let skippedEntreprises = 0
 
@@ -142,6 +143,7 @@ Deno.serve(async (req) => {
       totalCopied += stats.copied
       totalCreated += stats.created
       totalDeleted += stats.deleted
+      totalProtected += stats.protected || 0
     }
 
     console.log(`[sync-planning-to-teams] ${skippedEntreprises} entreprise(s) ignorée(s) (planning non validé)`)
@@ -162,18 +164,18 @@ Deno.serve(async (req) => {
         semaine: currentWeek,
         semaine_precedente: previousWeek,
         entreprises: uniqueEntreprises.length,
-        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted },
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
         results: allResults.slice(0, 50) // Limiter pour éviter payload trop gros
       }
     })
 
-    console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés`)
+    console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés, ${totalProtected} protégés`)
 
     return new Response(
       JSON.stringify({
         success: true,
         semaine: currentWeek,
-        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted },
+        stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
         duration_ms
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -211,7 +213,7 @@ async function syncEntreprise(
   previousWeek: string
 ) {
   const results: SyncResult[] = []
-  const stats = { copied: 0, created: 0, deleted: 0 }
+  const stats = { copied: 0, created: 0, deleted: 0, protected: 0 }
 
   // 1. Récupérer le planning S pour cette entreprise
   const { data: planningData, error: planningError } = await supabase
@@ -224,6 +226,75 @@ async function syncEntreprise(
     .eq('entreprise_id', entrepriseId)
 
   if (planningError) throw planningError
+
+  // ========================================================================
+  // NOUVELLE ÉTAPE: Calculer le chef responsable par chantier depuis le planning
+  // ========================================================================
+  // deno-lint-ignore no-explicit-any
+  const chefsByChantier = new Map<string, { chefId: string; dayCount: number; chefNom: string }>()
+  
+  // deno-lint-ignore no-explicit-any
+  for (const aff of (planningData || []) as any[]) {
+    if (aff.employe?.role_metier === 'chef') {
+      const chantierId = aff.chantier_id
+      const chefId = aff.employe_id
+      const chefNom = `${aff.employe.prenom || ''} ${aff.employe.nom || ''}`.trim()
+      
+      const existing = chefsByChantier.get(chantierId)
+      if (!existing || existing.dayCount < 1) {
+        // Premier chef trouvé ou on incrémente
+        chefsByChantier.set(chantierId, { 
+          chefId, 
+          dayCount: (existing?.dayCount || 0) + 1,
+          chefNom 
+        })
+      } else if (existing.chefId === chefId) {
+        // Même chef, incrémenter les jours
+        existing.dayCount++
+      } else {
+        // Chef différent : garder celui avec le plus de jours
+        // On continue de compter
+      }
+    }
+  }
+
+  // Recompter proprement : grouper par chantier, puis par chef, compter les jours
+  const chefDaysPerChantier = new Map<string, Map<string, { count: number; nom: string }>>()
+  // deno-lint-ignore no-explicit-any
+  for (const aff of (planningData || []) as any[]) {
+    if (aff.employe?.role_metier === 'chef') {
+      const chantierId = aff.chantier_id
+      const chefId = aff.employe_id
+      const chefNom = `${aff.employe.prenom || ''} ${aff.employe.nom || ''}`.trim()
+      
+      if (!chefDaysPerChantier.has(chantierId)) {
+        chefDaysPerChantier.set(chantierId, new Map())
+      }
+      const chefsMap = chefDaysPerChantier.get(chantierId)!
+      const existing = chefsMap.get(chefId)
+      if (existing) {
+        existing.count++
+      } else {
+        chefsMap.set(chefId, { count: 1, nom: chefNom })
+      }
+    }
+  }
+
+  // Pour chaque chantier, déterminer le chef avec le plus de jours
+  const plannedChefByChantier = new Map<string, { chefId: string; chefNom: string }>()
+  for (const [chantierId, chefsMap] of chefDaysPerChantier) {
+    let bestChef: { chefId: string; chefNom: string; count: number } | null = null
+    for (const [chefId, data] of chefsMap) {
+      if (!bestChef || data.count > bestChef.count) {
+        bestChef = { chefId, chefNom: data.nom, count: data.count }
+      }
+    }
+    if (bestChef) {
+      plannedChefByChantier.set(chantierId, { chefId: bestChef.chefId, chefNom: bestChef.chefNom })
+    }
+  }
+
+  console.log(`[sync-planning-to-teams] ${plannedChefByChantier.size} chantier(s) avec chef planifié`)
 
   // Grouper par couple (employé, chantier) pour gérer les multi-chantiers
   // deno-lint-ignore no-explicit-any
@@ -277,13 +348,96 @@ async function syncEntreprise(
   const chantierIds = [...new Set((planningData || []).map((a: any) => a.chantier_id))]
   const { data: chantiersData } = await supabase
     .from('chantiers')
-    .select('id, chef_id, conducteur_id, entreprise_id')
+    .select('id, chef_id, conducteur_id, entreprise_id, code_chantier, ville')
     .in('id', chantierIds.length > 0 ? chantierIds : ['00000000-0000-0000-0000-000000000000'])
 
   // deno-lint-ignore no-explicit-any
   const chantiersMap = new Map((chantiersData || []).map((c: any) => [c.id, c]))
 
-  // 3b. NOUVEAU: Récupérer les chefs avec leur chantier principal depuis utilisateurs
+  // ========================================================================
+  // NOUVELLE ÉTAPE: Mettre à jour chantiers.chef_id depuis le planning
+  // ET migrer les données si le chef change
+  // ========================================================================
+  for (const [chantierId, plannedChef] of plannedChefByChantier) {
+    // deno-lint-ignore no-explicit-any
+    const chantier = chantiersMap.get(chantierId) as any
+    if (!chantier) continue
+
+    const currentChefId = chantier.chef_id
+    const newChefId = plannedChef.chefId
+
+    // Si le chef planifié est différent du chef actuel, mettre à jour
+    if (currentChefId !== newChefId) {
+      console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef change de ${currentChefId || 'NULL'} vers ${newChefId} (${plannedChef.chefNom})`)
+      
+      // 1. Mettre à jour chantiers.chef_id
+      const { error: updateChantierError } = await supabase
+        .from('chantiers')
+        .update({ chef_id: newChefId })
+        .eq('id', chantierId)
+      
+      if (updateChantierError) {
+        console.error(`[sync-planning-to-teams] Erreur update chantiers.chef_id:`, updateChantierError)
+      } else {
+        // Mettre à jour l'objet local
+        chantier.chef_id = newChefId
+        chantiersMap.set(chantierId, chantier)
+        
+        // 2. Migrer les fiches de la semaine courante vers le nouveau chef
+        const { error: updateFichesError } = await supabase
+          .from('fiches')
+          .update({ user_id: newChefId })
+          .eq('chantier_id', chantierId)
+          .eq('semaine', currentWeek)
+        
+        if (updateFichesError) {
+          console.error(`[sync-planning-to-teams] Erreur migration fiches:`, updateFichesError)
+        } else {
+          console.log(`[sync-planning-to-teams] Fiches du chantier ${chantierId} migrées vers chef ${newChefId}`)
+        }
+        
+        // 3. Migrer les affectations_jours_chef vers le nouveau chef
+        const { error: updateAffectationsError } = await supabase
+          .from('affectations_jours_chef')
+          .update({ chef_id: newChefId })
+          .eq('chantier_id', chantierId)
+          .eq('semaine', currentWeek)
+          .eq('entreprise_id', entrepriseId)
+        
+        if (updateAffectationsError) {
+          console.error(`[sync-planning-to-teams] Erreur migration affectations:`, updateAffectationsError)
+        } else {
+          console.log(`[sync-planning-to-teams] Affectations du chantier ${chantierId} migrées vers chef ${newChefId}`)
+        }
+      }
+    }
+  }
+
+  // ========================================================================
+  // Mettre chef_id = NULL pour les chantiers du planning sans chef planifié
+  // (pour que l'équipe soit gérée côté conducteur)
+  // ========================================================================
+  for (const chantierId of chantierIds as string[]) {
+    if (!plannedChefByChantier.has(chantierId)) {
+      // deno-lint-ignore no-explicit-any
+      const chantier = chantiersMap.get(chantierId) as any
+      if (chantier && chantier.chef_id !== null) {
+        console.log(`[sync-planning-to-teams] Chantier ${chantierId}: aucun chef planifié, reset chef_id à NULL (conducteur gérera)`)
+        
+        const { error: resetError } = await supabase
+          .from('chantiers')
+          .update({ chef_id: null })
+          .eq('id', chantierId)
+        
+        if (!resetError) {
+          chantier.chef_id = null
+          chantiersMap.set(chantierId, chantier)
+        }
+      }
+    }
+  }
+
+  // 3b. Récupérer les chefs avec leur chantier principal depuis utilisateurs
   // Pour éviter les doublons d'heures pour les chefs multi-chantiers
   const { data: chefsData } = await supabase
     .from('utilisateurs')
@@ -310,41 +464,22 @@ async function syncEntreprise(
     // deno-lint-ignore no-explicit-any
     const chantier = chantiersMap.get(chantierId) as any
 
-    // AUTO-ASSIGNATION: Si c'est un chef et que le chantier n'a pas de chef_id, l'assigner
-    if (employe?.role_metier === 'chef' && chantier && !chantier.chef_id) {
-      console.log(`[sync-planning-to-teams] Auto-assignation chef ${employeNom} au chantier ${chantierId}`)
-      const { error: updateError } = await supabase
-        .from('chantiers')
-        .update({ chef_id: employeId })
-        .eq('id', chantierId)
-      
-      if (!updateError) {
-        // Mettre à jour l'objet local pour le reste du traitement
-        chantier.chef_id = employeId
-        chantiersMap.set(chantierId, chantier)
-      } else {
-        console.error(`[sync-planning-to-teams] Erreur auto-assignation chef:`, updateError)
-      }
-    }
-
     // NOUVEAU: Vérifier si c'est un chef sur un chantier SECONDAIRE
     const chantierPrincipal = chefPrincipalMap.get(employeId)
-    if (chantierPrincipal && chantierId !== chantierPrincipal) {
+    if (chantierPrincipal && chantierId !== chantierPrincipal && employe?.role_metier === 'chef') {
       // C'est un chef sur un chantier secondaire → skip la création de SA fiche personnelle
       // Mais on crée quand même les affectations_jours_chef pour router l'équipe vers ce chantier
       console.log(`[sync-planning-to-teams] Chef ${employeNom} sur chantier secondaire ${chantierId} (principal: ${chantierPrincipal}), skip fiche personnelle`)
       
       // Créer uniquement les affectations_jours_chef pour que l'équipe soit routée vers ce chef/chantier
       // NE PAS créer de fiche/fiches_jours pour le chef lui-même
-      // deno-lint-ignore no-explicit-any
-      const chantierObj = chantier as any
-      if (chantierObj?.chef_id) {
+      if (chantier?.chef_id) {
         for (const jour of joursPlanning) {
           await supabase
             .from('affectations_jours_chef')
             .upsert({
               macon_id: employeId,
-              chef_id: chantierObj.chef_id,
+              chef_id: chantier.chef_id,
               chantier_id: chantierId,
               jour,
               semaine: currentWeek,
@@ -563,6 +698,9 @@ async function copyFichesFromPreviousWeek(
     return { copied: false, reason: 'Pas de jours S-1 à copier' }
   }
 
+  // ✅ FIX: Utiliser le chef COURANT du chantier, pas celui de S-1
+  const currentChefId = chantier?.chef_id || ficheS1.user_id
+
   // Créer ou récupérer la fiche S
   let ficheIdS = existingFiche?.id
 
@@ -573,7 +711,7 @@ async function copyFichesFromPreviousWeek(
         salarie_id: employeId,
         chantier_id: chantierId,
         semaine: currentWeek,
-        user_id: ficheS1.user_id,
+        user_id: currentChefId, // ✅ Chef courant, pas celui de S-1
         statut: 'BROUILLON',
         total_heures: 0
       })
@@ -638,13 +776,13 @@ async function copyFichesFromPreviousWeek(
   })
 
   if (chantier?.chef_id) {
-    // Router vers affectations_jours_chef
+    // Router vers affectations_jours_chef avec le chef COURANT
     for (const jour of jours) {
       await supabase
         .from('affectations_jours_chef')
         .upsert({
           macon_id: employeId,
-          chef_id: chantier.chef_id,
+          chef_id: chantier.chef_id, // ✅ Chef courant
           chantier_id: chantierId,
           jour,
           semaine: currentWeek,
