@@ -99,12 +99,13 @@ export const TransportFinisseurAccordion = ({
       })) ||
       weekDays.map((date) => {
         const dateStr = format(date, "yyyy-MM-dd");
+        const isTrajetPerso = trajetPersoByDate.get(dateStr) || false;
         return {
           date: dateStr,
           conducteurMatinId: finisseurId,
           conducteurSoirId: finisseurId,
-          immatriculation: "",
-          trajetPerso: trajetPersoByDate.get(dateStr) || false,
+          immatriculation: isTrajetPerso ? "VEHICULE_PERSO" : "",
+          trajetPerso: isTrajetPerso,
         };
       })
   );
@@ -127,12 +128,13 @@ export const TransportFinisseurAccordion = ({
         }
         
         // Sinon, créer un nouveau jour vide
+        const isTrajetPerso = trajetPersoByDate.get(dateStr) || false;
         return {
           date: dateStr,
           conducteurMatinId: finisseurId,
           conducteurSoirId: finisseurId,
-          immatriculation: "",
-          trajetPerso: trajetPersoByDate.get(dateStr) || false,
+          immatriculation: isTrajetPerso ? "VEHICULE_PERSO" : "",
+          trajetPerso: isTrajetPerso,
         };
       });
       
