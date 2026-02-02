@@ -28,7 +28,7 @@ import { TeamMemberCombobox } from "@/components/chef/TeamMemberCombobox";
 import { TransportFinisseurAccordion } from "@/components/transport/TransportFinisseurAccordion";
 import { TransportFinisseurDay, CodeTrajet } from "@/types/transport";
 import { ChantierSelector } from "./ChantierSelector";
-import { useAffectationsJoursByChef, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
+import { useAffectationsJoursByChefAndChantier, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
 
 import { format, addDays } from "date-fns";
@@ -249,8 +249,10 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
 
   // Charger les affectations jours chef pour le mode chef (pas conducteur)
   // On ne charge QUE si le planning est actif, sinon on est en mode legacy
-  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+  // ✅ FILTRE PAR CHANTIER pour gérer les employés partagés entre plusieurs chantiers
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChefAndChantier(
     isPlanningActive && !isConducteurMode && mode !== "edit" ? chefId || null : null,
+    isPlanningActive && !isConducteurMode && mode !== "edit" ? chantierId : null,
     weekId
   );
 
@@ -312,7 +314,9 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     const targetDate = format(addDays(monday, dayIndex), "yyyy-MM-dd");
     
     return affectationsJoursChef.some(
-      aff => aff.macon_id === employeeId && aff.jour === targetDate
+      aff => aff.macon_id === employeeId && 
+             aff.jour === targetDate &&
+             aff.chantier_id === chantierId
     );
   }, [isPlanningActive, chefId, isConducteurMode, mode, affectationsJoursChef, weekId]);
 
