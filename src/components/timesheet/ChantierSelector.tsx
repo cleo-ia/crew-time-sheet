@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { addDays, format } from "date-fns";
+import { Star } from "lucide-react";
 
 interface ChantierSelectorProps {
   value?: string;
@@ -93,6 +94,24 @@ export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compac
     enabled: !!chefId && !!semaine && !!entrepriseId,
   });
 
+  // Récupérer le chantier principal du chef (pour l'indicateur visuel)
+  const { data: chefChantierPrincipal } = useQuery({
+    queryKey: ["chef-chantier-principal", chefId],
+    queryFn: async () => {
+      if (!chefId) return null;
+      
+      const { data, error } = await supabase
+        .from("utilisateurs")
+        .select("chantier_principal_id")
+        .eq("id", chefId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data?.chantier_principal_id || null;
+    },
+    enabled: !!chefId,
+  });
+
   // Fusionner les chantiers (base + planning) et dédupliquer
   const chantiers = (() => {
     const baseList = chantiersBase || [];
@@ -142,20 +161,36 @@ export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compac
       </SelectTrigger>
       <SelectContent>
         {chantiers && chantiers.length > 0 ? (
-          chantiers.map((chantier) => (
-            <SelectItem key={chantier.id} value={chantier.id} className={compact ? "text-sm" : "text-base"}>
-              {compact ? (
-                <span>{chantier.code_chantier} - {chantier.nom}</span>
-              ) : (
-                <div className="flex flex-col">
-                  <span className="font-medium">{chantier.nom}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {chantier.code_chantier} • {chantier.ville}
+          chantiers.map((chantier) => {
+            const isPrincipal = chefChantierPrincipal === chantier.id;
+            
+            return (
+              <SelectItem key={chantier.id} value={chantier.id} className={compact ? "text-sm" : "text-base"}>
+                {compact ? (
+                  <span className="flex items-center gap-1">
+                    {isPrincipal && <Star className="h-3 w-3 text-amber-500 fill-amber-500" />}
+                    {chantier.code_chantier} - {chantier.nom}
+                    {isPrincipal && <span className="text-[10px] text-amber-600 font-medium ml-1">(Mes heures)</span>}
                   </span>
-                </div>
-              )}
-            </SelectItem>
-          ))
+                ) : (
+                  <div className="flex flex-col">
+                    <span className="font-medium flex items-center gap-1.5">
+                      {isPrincipal && <Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
+                      {chantier.nom}
+                      {isPrincipal && (
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                          Mes heures
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {chantier.code_chantier} • {chantier.ville}
+                    </span>
+                  </div>
+                )}
+              </SelectItem>
+            );
+          })
         ) : (
           <div className="p-4 text-center text-sm text-muted-foreground">
             {(!chefId && !conducteurId)
