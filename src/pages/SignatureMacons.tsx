@@ -13,7 +13,7 @@ import { useMaconsByChantier, type MaconWithFiche } from "@/hooks/useMaconsByCha
 import { useSaveSignature } from "@/hooks/useSaveSignature";
 import { useUpdateFicheStatus } from "@/hooks/useFiches";
 import { useTransportByChantier } from "@/hooks/useTransportByChantier";
-import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+import { useAffectationsJoursByChefAndChantier } from "@/hooks/useAffectationsJoursChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { format } from "date-fns";
@@ -35,9 +35,10 @@ const SignatureMacons = () => {
   // Vérifier si le planning est actif (validé par un conducteur)
   const { isActive: isPlanningActive } = usePlanningMode(semaine || "");
   
-  // Ne charger les affectations jours QUE si le planning est actif
-  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+  // Ne charger les affectations jours QUE si le planning est actif - filtré par chantier
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChefAndChantier(
     isPlanningActive ? (chefId || null) : null,
+    isPlanningActive ? chantierId : null,
     semaine || ""
   );
   const saveSignature = useSaveSignature();
@@ -121,20 +122,14 @@ const SignatureMacons = () => {
     }
   }, [maconsData]);
 
-  // Auto-select first unsigned mason with loaded data
+  // Auto-select first unsigned mason - priorité au chef
   useEffect(() => {
     if (macons.length > 0 && !selectedMacon) {
-      // Priorité : maçon non-signé avec ficheJours chargées
-      const firstUnsignedWithData = macons.find((m) => 
-        !m.signed && 
-        m.ficheJours && 
-        m.ficheJours.length > 0
-      );
-      
-      // Fallback : premier maçon non-signé même sans données
+      // Priorité 1 : Le chef non-signé (premier de la liste triée)
+      const chefUnsigned = macons.find((m) => m.isChef && !m.signed);
+      // Priorité 2 : Premier employé non-signé
       const firstUnsigned = macons.find((m) => !m.signed);
-      
-      setSelectedMacon(firstUnsignedWithData || firstUnsigned || null);
+      setSelectedMacon(chefUnsigned || firstUnsigned || macons[0]);
     }
   }, [macons, selectedMacon]);
 
