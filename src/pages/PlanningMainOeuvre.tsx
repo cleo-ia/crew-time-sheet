@@ -208,47 +208,50 @@ const PlanningMainOeuvre = () => {
       });
     }
 
-    // AUTO-DÉFINITION DU CHANTIER PRINCIPAL
-    // Si cet employé est un chef sans chantier principal défini,
-    // ce chantier devient automatiquement son chantier principal
-    if (!chefsWithPrincipal.has(employeId)) {
-      // Vérifier si c'est un chef (via une requête)
-      const { data: empData } = await supabase
-        .from("utilisateurs")
-        .select("role_metier")
-        .eq("id", employeId)
-        .maybeSingle();
+    // Vérifier si c'est un chef (via une requête)
+    const { data: empData } = await supabase
+      .from("utilisateurs")
+      .select("role_metier")
+      .eq("id", employeId)
+      .maybeSingle();
 
-      if (empData?.role_metier === "chef") {
-        // Définir ce chantier comme principal pour le chef
+    if (empData?.role_metier === "chef") {
+      // 1. TOUJOURS associer le chef au chantier si pas de chef_id existant
+      // (indépendamment de si le chef a déjà un chantier principal)
+      const { data: chantierData } = await supabase
+        .from("chantiers")
+        .select("chef_id")
+        .eq("id", chantierId)
+        .single();
+
+      if (!chantierData?.chef_id) {
+        await supabase
+          .from("chantiers")
+          .update({ chef_id: employeId })
+          .eq("id", chantierId);
+        
+        // Invalider le cache des chantiers
+        queryClient.invalidateQueries({ queryKey: ["chantiers"] });
+        
+        toast({
+          title: "Chef associé au chantier",
+          description: "Ce chef est désormais responsable de ce chantier.",
+        });
+      }
+
+      // 2. Définir comme chantier principal seulement si le chef n'en a pas
+      if (!chefsWithPrincipal.has(employeId)) {
         await supabase
           .from("utilisateurs")
           .update({ chantier_principal_id: chantierId })
           .eq("id", employeId);
-
-        // Associer ce chef au chantier (si pas déjà un chef assigné)
-        const { data: chantierData } = await supabase
-          .from("chantiers")
-          .select("chef_id")
-          .eq("id", chantierId)
-          .single();
-
-        if (!chantierData?.chef_id) {
-          await supabase
-            .from("chantiers")
-            .update({ chef_id: employeId })
-            .eq("id", chantierId);
-          
-          // Invalider le cache des chantiers
-          queryClient.invalidateQueries({ queryKey: ["chantiers"] });
-        }
 
         // Rafraîchir le cache pour que l'UI se mette à jour
         queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
 
         toast({
           title: "Chantier principal défini",
-          description: "Ce chef est rattaché à ce chantier.",
+          description: "Les heures du chef seront comptées sur ce chantier.",
         });
       }
     }

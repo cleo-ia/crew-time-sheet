@@ -218,7 +218,7 @@ async function syncEntreprise(
     .from('planning_affectations')
     .select(`
       *,
-      employe:utilisateurs!planning_affectations_employe_id_fkey(id, prenom, nom)
+      employe:utilisateurs!planning_affectations_employe_id_fkey(id, prenom, nom, role_metier)
     `)
     .eq('semaine', currentWeek)
     .eq('entreprise_id', entrepriseId)
@@ -303,10 +303,29 @@ async function syncEntreprise(
   // 4. Traiter chaque employé du planning
   for (const [key, affectations] of planningByEmployeChantier) {
     const [employeId, chantierId] = key.split('|')
-    const employeNom = (affectations[0]?.employe?.prenom || '') + ' ' + (affectations[0]?.employe?.nom || '') || employeId
+    const employe = affectations[0]?.employe
+    const employeNom = (employe?.prenom || '') + ' ' + (employe?.nom || '') || employeId
     // deno-lint-ignore no-explicit-any
     const joursPlanning = affectations.map((a: any) => a.jour).sort()
-    const chantier = chantiersMap.get(chantierId)
+    // deno-lint-ignore no-explicit-any
+    const chantier = chantiersMap.get(chantierId) as any
+
+    // AUTO-ASSIGNATION: Si c'est un chef et que le chantier n'a pas de chef_id, l'assigner
+    if (employe?.role_metier === 'chef' && chantier && !chantier.chef_id) {
+      console.log(`[sync-planning-to-teams] Auto-assignation chef ${employeNom} au chantier ${chantierId}`)
+      const { error: updateError } = await supabase
+        .from('chantiers')
+        .update({ chef_id: employeId })
+        .eq('id', chantierId)
+      
+      if (!updateError) {
+        // Mettre à jour l'objet local pour le reste du traitement
+        chantier.chef_id = employeId
+        chantiersMap.set(chantierId, chantier)
+      } else {
+        console.error(`[sync-planning-to-teams] Erreur auto-assignation chef:`, updateError)
+      }
+    }
 
     // NOUVEAU: Vérifier si c'est un chef sur un chantier SECONDAIRE
     const chantierPrincipal = chefPrincipalMap.get(employeId)

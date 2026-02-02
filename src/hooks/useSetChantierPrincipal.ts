@@ -45,6 +45,7 @@ export const useSetChantierPrincipal = () => {
       queryClient.invalidateQueries({ queryKey: ["all-employes"] });
       queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });
       queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+      queryClient.invalidateQueries({ queryKey: ["chantiers"] });
       
       toast.success("Chantier principal mis à jour", {
         description: "Les heures du chef seront comptées sur ce chantier.",
