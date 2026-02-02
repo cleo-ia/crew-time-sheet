@@ -44,10 +44,9 @@ export const ConducteurCombobox = ({
 
   // Fonction helper pour détecter si un maçon est en trajet perso ce jour-là ou déjà affecté
   const getMaconStatus = (macon: MaconData) => {
-    // Toujours autoriser le chef lui-même
-    if (chefId && macon.id === chefId) {
-      return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday: false };
-    }
+    // Le chef est exempté UNIQUEMENT de la vérification d'affectation de jour
+    // MAIS doit respecter les autres contraintes (trajet perso, absent, déjà affecté)
+    const isChef = chefId && macon.id === chefId;
 
     // Vérifier si l'employé est affecté pour ce jour
     const hasAffectationToday = affectationsJoursChef?.some(
@@ -55,7 +54,8 @@ export const ConducteurCombobox = ({
     ) ?? true;
     
     // Si affectationsJoursChef existe et non vide mais l'employé n'a pas ce jour → bloqué
-    const isNotAffectedToday = affectationsJoursChef && 
+    // Exception : le chef est TOUJOURS considéré comme affecté (ne pas le bloquer sur ce critère)
+    const isNotAffectedToday = !isChef && affectationsJoursChef && 
       affectationsJoursChef.length > 0 && 
       !hasAffectationToday;
 
@@ -69,9 +69,15 @@ export const ConducteurCombobox = ({
     }
     
     const isDejaAffecte = otherConducteursIds.includes(macon.id);
+    // Le chef peut aussi être marqué absent, cette vérification doit aussi s'appliquer
     const isAbsent = Number(jourData.heures || 0) === 0;
     
-    return { isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", isDejaAffecte, isAbsent, isNotAffectedToday };
+    return { 
+      isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", 
+      isDejaAffecte, 
+      isAbsent, 
+      isNotAffectedToday 
+    };
   };
 
   const selectedMacon = macons.find(macon => macon.id === value);
