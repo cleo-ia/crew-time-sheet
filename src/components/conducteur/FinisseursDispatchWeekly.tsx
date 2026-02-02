@@ -39,6 +39,7 @@ import {
   useAffectationsPreviousWeekByConducteur,
   useAffectationsCurrentWeekByConducteur,
   useFinisseursPartiellementAffectes,
+  useEmployesAffectedByOtherConducteurs,
 } from "@/hooks/useAffectationsFinisseursJours";
 import { useCopyPreviousWeekFinisseurs } from "@/hooks/useCopyPreviousWeekFinisseurs";
 import { useCreateFicheJourForAffectation } from "@/hooks/useCreateFicheJourForAffectation";
@@ -77,8 +78,24 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   const { data: finisseursPartielsIds = [], isLoading: loadingPartiels } = 
     useFinisseursPartiellementAffectes(semaine);
   
+  // NOUVEAU: Charger les employés affectés à d'AUTRES conducteurs (toute durée)
+  const { data: employesAutresConducteurs = [] } = useEmployesAffectedByOtherConducteurs(
+    conducteurId,
+    semaine
+  );
+  
   // Charger les affectations des chefs pour bloquer les finisseurs déjà affectés
   const { data: affectationsChefSemaine = [] } = useAffectationsJoursChef(semaine);
+  
+  // Map des conducteurs pour afficher leurs noms
+  const { data: allConducteurs = [] } = useUtilisateursByRoles(["conducteur"]);
+  const conducteurNamesMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allConducteurs.forEach((c) => {
+      map.set(c.id, `${c.prenom || ""} ${c.nom || ""}`.trim() || "Conducteur");
+    });
+    return map;
+  }, [allConducteurs]);
 
   const upsertMutation = useUpsertAffectationJour();
   const deleteMutation = useDeleteAffectationJour();
@@ -274,7 +291,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   
   // Vérifier le statut d'un employé pour affichage badge
   const getEmployeStatus = (employeId: string) => {
-    // Affecté par un chef cette semaine ?
+    // 1. Affecté par un chef cette semaine ?
     const chefDaysCount = getChefAffectedDaysCount(employeId);
     if (chefDaysCount > 0) {
       return { 
@@ -285,23 +302,30 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       };
     }
     
-    // Déjà dans mon équipe ?
-    const isInTeam = mesEmployesActuels.some(f => f.id === employeId) || pendingFinisseurs.includes(employeId);
-    if (isInTeam) {
-      const days = getAffectedDaysCount(employeId);
-      if (days === 5) {
-        return { type: "complet", label: "5/5 jours", className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20" };
-      } else if (days > 0) {
-        return { type: "partiel", label: `${days}/5 jours`, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" };
-      }
-      return { type: "added", label: "Ajouté", className: "bg-primary/10 text-primary border-primary/20" };
+    // 2. NOUVEAU: Affecté à un AUTRE conducteur (toute durée, y compris 5/5) ?
+    const autreConducteur = employesAutresConducteurs.find((e) => e.finisseurId === employeId);
+    if (autreConducteur) {
+      const conducteurNom = conducteurNamesMap.get(autreConducteur.conducteurId) || "autre conducteur";
+      return { 
+        type: "autre-conducteur", 
+        label: autreConducteur.daysCount === 5 
+          ? `Géré par ${conducteurNom}` 
+          : `${autreConducteur.daysCount}/5 j. ${conducteurNom}`,
+        className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        blocked: true
+      };
     }
     
-    // Affecté à un autre conducteur ?
-    const isAffectedOther = finisseursPartielsIds.includes(employeId) && 
-      !finisseursCurrentIds.includes(employeId);
-    if (isAffectedOther) {
-      return { type: "autre", label: "Autre conducteur", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" };
+    // 3. Déjà dans mon équipe ?
+    const isInTeam = mesEmployesActuels.some(f => f.id === employeId) || pendingFinisseurs.includes(employeId);
+    if (isInTeam) {
+      const daysCount = getAffectedDaysCount(employeId);
+      if (daysCount === 5) {
+        return { type: "complet", label: "5/5 jours", className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20" };
+      } else if (daysCount > 0) {
+        return { type: "partiel", label: `${daysCount}/5 jours`, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" };
+      }
+      return { type: "added", label: "Ajouté", className: "bg-primary/10 text-primary border-primary/20" };
     }
     
     return { type: "available", label: "Disponible", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" };

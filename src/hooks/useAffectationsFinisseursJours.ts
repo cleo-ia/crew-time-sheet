@@ -192,3 +192,40 @@ export const useDeleteAffectationJour = () => {
     },
   });
 };
+
+// Récupérer les employés affectés à d'AUTRES conducteurs (toute durée, y compris 5/5)
+export const useEmployesAffectedByOtherConducteurs = (
+  currentConducteurId: string,
+  semaine: string
+) => {
+  return useQuery({
+    queryKey: ["employes-autres-conducteurs", currentConducteurId, semaine],
+    queryFn: async () => {
+      if (!currentConducteurId || !semaine) return [];
+
+      const { data, error } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id, conducteur_id, date")
+        .eq("semaine", semaine)
+        .neq("conducteur_id", currentConducteurId);
+
+      if (error) throw error;
+
+      // Compter les jours par finisseur et par conducteur
+      const countMap = new Map<string, { conducteurId: string; count: number }>();
+      (data || []).forEach((a) => {
+        if (!countMap.has(a.finisseur_id)) {
+          countMap.set(a.finisseur_id, { conducteurId: a.conducteur_id, count: 0 });
+        }
+        countMap.get(a.finisseur_id)!.count++;
+      });
+
+      return Array.from(countMap.entries()).map(([finisseurId, info]) => ({
+        finisseurId,
+        conducteurId: info.conducteurId,
+        daysCount: info.count,
+      }));
+    },
+    enabled: !!currentConducteurId && !!semaine,
+  });
+};
