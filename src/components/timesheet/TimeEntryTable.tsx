@@ -295,8 +295,9 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     // En mode edit, on autorise tout
     if (mode === "edit") return true;
     
-    // Si pas d'affectations jours configurées, autoriser tout (rétrocompatibilité)
-    if (!affectationsJoursChef || affectationsJoursChef.length === 0) return true;
+    // ✅ FIX: En planning actif, si pas d'affectations pour cet employé sur ce chantier = jour NON autorisé
+    // Cela évite les "39h fantômes" quand le chef sélectionné ne correspond pas aux affectations
+    if (!affectationsJoursChef || affectationsJoursChef.length === 0) return false;
     
     // Vérifier si l'employé a une affectation pour ce jour
     const monday = parseISOWeek(weekId);

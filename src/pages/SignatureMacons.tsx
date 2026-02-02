@@ -60,9 +60,17 @@ const SignatureMacons = () => {
         return macon;
       }
 
-      // Si pas d'affectations configurées, retourner tel quel (rétrocompatibilité)
+      // ✅ FIX: En planning actif, pas de fallback qui afficherait 39h
+      // Si pas d'affectations configurées, retourner 0h pour éviter les heures fantômes
       if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-        return macon;
+        return {
+          ...macon,
+          ficheJours: [],
+          totalHeures: 0,
+          paniers: 0,
+          trajets: 0,
+          intemperie: 0,
+        };
       }
 
       // Récupérer les jours autorisés pour ce maçon
@@ -70,10 +78,16 @@ const SignatureMacons = () => {
         .filter(aff => aff.macon_id === macon.id)
         .map(aff => aff.jour);
 
-      // Si aucune affectation spécifique pour ce maçon, afficher tout
-      // (il est peut-être affecté avant la mise en place du système de jours)
+      // ✅ FIX: Si aucune affectation spécifique pour ce maçon, afficher 0h
       if (joursAutorises.length === 0) {
-        return macon;
+        return {
+          ...macon,
+          ficheJours: [],
+          totalHeures: 0,
+          paniers: 0,
+          trajets: 0,
+          intemperie: 0,
+        };
       }
 
       // Filtrer les ficheJours

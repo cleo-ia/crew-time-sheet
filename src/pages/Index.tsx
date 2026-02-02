@@ -386,9 +386,10 @@ const Index = () => {
         return days;
       }
       
-      // Si aucune donnée d'affectation, comportement legacy (tous les jours)
+      // ✅ FIX: En planning actif, pas de fallback à 5 jours
+      // Si pas d'affectations configurées, aucun jour autorisé → empêche transmission fantôme
       if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-        return days; // Retourne toutes les dates ISO
+        return []; // Aucun jour autorisé
       }
       
       // Filtrer les affectations de cet employé spécifiquement
@@ -396,9 +397,9 @@ const Index = () => {
         aff => aff.macon_id === employeeId
       );
       
-      // Si cet employé n'a pas d'affectation spécifique, fallback legacy
+      // ✅ FIX: Si cet employé n'a pas d'affectation spécifique, 0 jour (pas de fantômes)
       if (employeeAffectations.length === 0) {
-        return days;
+        return [];
       }
       
       // Retourner uniquement les dates ISO où l'employé est affecté à ce chef/chantier

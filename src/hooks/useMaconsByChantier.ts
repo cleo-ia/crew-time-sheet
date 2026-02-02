@@ -191,12 +191,19 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
 
        if (planningIsValidatedForWeek) {
          // MODE PLANNING (officiellement activé pour la semaine)
-         const { data: joursAffectations, error: joursError } = await supabase
+         // ✅ FIX: Filtrer par chef_id si fourni pour éviter d'afficher les employés d'un autre chef
+         let query = supabase
            .from("affectations_jours_chef")
            .select("macon_id")
            .eq("chantier_id", chantierId)
            .eq("semaine", semaine)
            .eq("entreprise_id", entrepriseId);
+         
+         if (chefId) {
+           query = query.eq("chef_id", chefId);
+         }
+         
+         const { data: joursAffectations, error: joursError } = await query;
 
          if (joursError) {
            console.error("[useMaconsByChantier] Erreur affectations_jours_chef:", joursError);
@@ -204,7 +211,7 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
 
          // Dédupliquer les macon_id
          const maconIdsFromJours = [...new Set((joursAffectations || []).map(a => a.macon_id))];
-         console.log(`[useMaconsByChantier] (planning) ${maconIdsFromJours.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine}`);
+         console.log(`[useMaconsByChantier] (planning) ${maconIdsFromJours.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine} (chef: ${chefId || 'tous'})`);
 
          // Fallback legacy si aucun résultat (rétrocompatibilité)
          finalMaconIds = maconIdsFromJours;
