@@ -1,235 +1,157 @@
 
-# Plan de correction : Éliminer définitivement les "39h fantômes"
+## Compréhension (je reformule ce que tu veux, en mode “règles simples”)
 
-## Contexte du problème
+Quand le planning est **validé + synchronisé** pour une semaine donnée :
 
-### Symptôme observé
-BABAY affiche 39h sur ROSEYRAN alors qu'il n'est affecté que 2 jours (Lundi + Mardi). Les 3 autres jours sont sur un autre chantier avec un autre chef.
+1) **Si un chantier a un chef** (chef_id renseigné)  
+   → l’équipe doit être gérée côté **Saisie hebdomadaire** par **ce chef**  
+   → chaque maçon n’a que les jours planifiés “1” sur ce chantier  
+   → les autres jours doivent apparaître en **lecture seule**, fond **jaune pâle**, badge **“Jour non affecté”**  
+   → aucun “39h fantôme”.
 
-### Cause racine identifiée
-Trois fallbacks "legacy" dans le code UI autorisent TOUS les jours quand la requête `affectationsJoursChef` est vide ou pas chargée :
-1. `TimeEntryTable.tsx` ligne 299
-2. `Index.tsx` ligne 390-401  
-3. `SignatureMacons.tsx` ligne 63-77
+2) **Si un chantier n’a pas de chef** (chef_id = NULL)  
+   → l’équipe doit être gérée côté **conducteur** (/validation-conducteur) par le conducteur du chantier.
 
-### Pourquoi ça se produit
-La requête `useAffectationsJoursByChefAndChantier(chefId, chantierId, semaine)` retourne un tableau vide quand :
-- Le `chefId` sélectionné dans l'UI ne correspond pas au chef réel des affectations
-- Le `chefId` n'est pas encore chargé au premier render
-- L'employé est partagé entre plusieurs chefs/chantiers
+Oui, c’est clair et je confirme que je comprends exactement ce que tu veux.
 
 ---
 
-## Changements prévus
+## Pourquoi BABAY a disparu après le dernier changement (et pourquoi ce n’est pas “le planning multi-chantier” qui est cassé)
 
-### 1. Sécuriser `TimeEntryTable.tsx` - Autorisation des jours
+Le bug actuel vient d’une incohérence entre :
+- le **planning** (planning_affectations)  
+- et le **routage équipe** (chantiers.chef_id + affectations_jours_chef)
 
-**Localisation** : `src/components/timesheet/TimeEntryTable.tsx`, fonction `isDayAuthorizedForEmployee` (lignes 283-321)
+### Preuve (données réelles en base pour S07)
+Pour **S07** :
+- **LE ROSEYRAN** (CI230ROSEYRAN) a actuellement `chantiers.chef_id = Philippe FAY`
+- Or, dans le planning S07, le chef affecté sur ROSEYRAN est **Philippe DURAND** (5 jours)
 
-**Modification** :
-```text
-AVANT (ligne 299):
-// Si pas d'affectations jours configurées, autoriser tout (rétrocompatibilité)
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) return true;
+Donc aujourd’hui, la synchronisation et les affectations jours sont “routées” vers **FAY**, pas vers **DURAND** :
+- `affectations_jours_chef` de BABAY sur ROSEYRAN existent bien (2 jours) **mais avec chef_id = FAY**
+- et une fiche BABAY/ROSEYRAN existe mais **user_id = FAY** et (actuellement) **0 jour en fiches_jours**
 
-APRÈS:
-// ✅ FIX: En planning actif, si pas d'affectations pour cet employé sur ce chantier = jour NON autorisé
-// Cela évite les 39h fantômes
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) return false;
-```
+Après notre dernier correctif frontend (filtrage par chef_id), quand tu sélectionnes DURAND :
+- la requête planning (`affectations_jours_chef` filtrée par chef_id=Durand) ne trouve plus BABAY
+→ il “disparaît”.
 
-**Impact** : Un employé sans affectation visible sur ce chantier verra tous ses jours en "Jour non affecté" (jaune, lecture seule) au lieu d'être ouverts avec 39h.
-
-**Garde-fou supplémentaire** : Ajouter un état de chargement pour éviter le "flash 39h" :
-- Récupérer `isLoading` de `useAffectationsJoursByChefAndChantier`
-- Si `isPlanningActive && isLoading` : afficher un skeleton au lieu des entrées
+Donc ce qu’on a “cassé”, c’est qu’on a rendu visible une incohérence déjà présente : le système routait ROSEYRAN vers le mauvais chef, et le frontend ne filtrait pas assez strictement avant.
 
 ---
 
-### 2. Sécuriser `Index.tsx` - Transmission des heures
+## Cause racine technique (là où il faut corriger pour respecter tes règles)
 
-**Localisation** : `src/pages/Index.tsx`, fonction `getAuthorizedDaysForEmployee` (lignes 383-406)
+Dans l’Edge Function **`sync-planning-to-teams`** :
+- le routage des maçons vers `affectations_jours_chef` utilise **`chantiers.chef_id`**
+- et l’auto-assignation du chef ne se fait que si `chantiers.chef_id` est **NULL** :
+  ```ts
+  if (employe.role_metier === 'chef' && chantier && !chantier.chef_id) {
+    update chantiers set chef_id = employeId
+  }
+  ```
+Donc si un chantier a déjà un chef_id (même ancien / incorrect), la sync **n’écrase jamais** ce chef_id, même si le planning validé dit le contraire.
 
-**Modification** :
-```text
-AVANT (lignes 390-401):
-// Si aucune donnée d'affectation, comportement legacy (tous les jours)
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-  return days; // Retourne toutes les dates ISO
-}
-// Si cet employé n'a pas d'affectation spécifique, fallback legacy
-if (employeeAffectations.length === 0) {
-  return days;
-}
-
-APRÈS:
-// ✅ FIX: En planning actif, pas de fallback à 5 jours
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-  return []; // Aucun jour autorisé → empêche transmission fantôme
-}
-// Si cet employé n'a pas d'affectation spécifique, 0 jour
-if (employeeAffectations.length === 0) {
-  return [];
-}
-```
-
-**Impact** : Lors de la transmission, seuls les jours réellement affectés sont envoyés. Un employé sans affectation visible transmettra 0h au lieu de 39h.
+C’est exactement le cas de ROSEYRAN : chef_id déjà renseigné (FAY), donc la sync n’a pas basculé vers DURAND.
 
 ---
 
-### 3. Sécuriser `SignatureMacons.tsx` - Filtrage des heures à la signature
+## Solution (celle qui respecte exactement tes 3 écrans)
 
-**Localisation** : `src/pages/SignatureMacons.tsx`, fonction `getFilteredMaconData` (lignes 51-92)
+### Objectif
+Faire en sorte que **la synchronisation rende cohérent** :
+- `planning_affectations` (qui dit quel chef est sur quel chantier cette semaine)
+avec
+- `chantiers.chef_id` (qui sert de source de vérité “chef vs conducteur” dans l’app)
+et
+- `affectations_jours_chef` + `fiches.user_id` (qui routent l’équipe côté saisie).
 
-**Modification** :
-```text
-AVANT (lignes 63-77):
-// Si pas d'affectations configurées, retourner tel quel (rétrocompatibilité)
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-  return macon;
-}
-// Si aucune affectation spécifique pour ce maçon, afficher tout
-if (joursAutorises.length === 0) {
-  return macon;
-}
+### Changement principal (Edge Function)
+Modifier `supabase/functions/sync-planning-to-teams/index.ts` pour :
 
-APRÈS:
-// ✅ FIX: En planning actif, pas de fallback
-if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-  // Retourner le maçon avec fiches vides et totaux à 0
-  return {
-    ...macon,
-    ficheJours: [],
-    totalHeures: 0,
-    paniers: 0,
-    trajets: 0,
-    intemperie: 0,
-  };
-}
-// Si aucune affectation spécifique, afficher 0h
-if (joursAutorises.length === 0) {
-  return {
-    ...macon,
-    ficheJours: [],
-    totalHeures: 0,
-    paniers: 0,
-    trajets: 0,
-    intemperie: 0,
-  };
-}
-```
+1) **Déterminer le chef “responsable” par chantier pour la semaine S**
+   - À partir de `planning_affectations` + join `utilisateurs.role_metier`
+   - Pour chaque chantier :
+     - prendre les entrées où `role_metier = 'chef'`
+     - si plusieurs chefs : choisir celui avec **le plus grand nombre de jours** (règle déterministe, stable)
 
-**Impact** : À l'écran de signature, un employé sans affectation visible affiche 0h au lieu de 39h.
+2) **Mettre à jour `chantiers.chef_id` avant de router l’équipe**
+   - Si `plannedChefId` existe et est différent du `chef_id` actuel :
+     - `UPDATE chantiers SET chef_id = plannedChefId WHERE id = chantierId`
+   - Si aucun chef n’est planifié sur le chantier :
+     - et si tu veux strictement ton écran 4, alors pour les chantiers présents dans le planning de la semaine :
+       - `UPDATE chantiers SET chef_id = NULL WHERE id = chantierId`
+     - (c’est optionnel selon si tu veux que “pas de chef cette semaine” = conducteur ; tu l’as demandé, donc je le propose)
 
----
+3) **Migrer les données de la semaine courante quand le chef change**
+   Sinon, même si on change `chef_id`, les fiches restent “appartenant” à l’ancien chef et l’écran ne retrouve plus rien (car `useFicheId` filtre par `user_id`).
+   - Pour le chantier concerné et la semaine courante :
+     - `UPDATE fiches SET user_id = plannedChefId WHERE chantier_id = ... AND semaine = currentWeek`
+     - `UPDATE affectations_jours_chef SET chef_id = plannedChefId WHERE chantier_id = ... AND semaine = currentWeek`
+   Cela remet tout en cohérence immédiatement.
 
-### 4. Filtrer les employés par chef dans `useMaconsByChantier.ts`
+4) **Corriger le cas “copie S-1 → S”**
+   Dans `copyFichesFromPreviousWeek`, quand on crée la fiche S, le code met actuellement :
+   - `user_id: ficheS1.user_id`
+   Ce qui propage un ancien chef même si le chantier a changé de chef.
+   On doit changer pour :
+   - `user_id: chantier.chef_id` (chef courant) quand il existe.
 
-**Localisation** : `src/hooks/useMaconsByChantier.ts`, lignes 192-210
-
-**Modification** :
-```text
-AVANT (lignes 194-199):
-const { data: joursAffectations, error: joursError } = await supabase
-  .from("affectations_jours_chef")
-  .select("macon_id")
-  .eq("chantier_id", chantierId)
-  .eq("semaine", semaine)
-  .eq("entreprise_id", entrepriseId);
-
-APRÈS:
-let query = supabase
-  .from("affectations_jours_chef")
-  .select("macon_id")
-  .eq("chantier_id", chantierId)
-  .eq("semaine", semaine)
-  .eq("entreprise_id", entrepriseId);
-
-// ✅ FIX: Filtrer par chef si fourni pour éviter d'afficher les employés d'un autre chef
-if (chefId) {
-  query = query.eq("chef_id", chefId);
-}
-
-const { data: joursAffectations, error: joursError } = await query;
-```
-
-**Impact** : La liste des employés d'un chantier ne contient que ceux affectés au chef sélectionné. Un employé partagé avec un autre chef n'apparaîtra pas dans cette vue.
+Résultat attendu :
+- ROSEYRAN → chef = DURAND (comme ton screen 2), équipe côté saisie chef
+- ROMANCHES → chef = FAY (comme ton screen 3), équipe côté saisie chef
+- BALCONS DE L’OISANS → chef = NULL, équipe côté conducteur (screen 4)
 
 ---
 
-## Analyse des risques de régression
-
-### Pages impactées et leur comportement attendu
-
-| Page/Composant | Mode Legacy (planning non validé) | Mode Planning (planning validé) |
-|----------------|-----------------------------------|--------------------------------|
-| **Saisie hebdo** (`Index.tsx`) | Tous les jours éditables, 39h par défaut ✅ Inchangé | Seuls les jours affectés éditables, total = somme des jours ✅ Corrigé |
-| **TimeEntryTable** | Tous les jours éditables ✅ Inchangé | Jours non affectés = jaune + lecture seule ✅ Corrigé |
-| **Signatures** (`SignatureMacons.tsx`) | Total = tous les jours ✅ Inchangé | Total = jours affectés uniquement ✅ Corrigé |
-| **ChefMaconsManager** | N/A - toujours disponible ✅ Inchangé | N/A - toujours disponible ✅ Inchangé |
-| **FinisseursDispatchWeekly** | Utilisé par conducteurs, pas affecté ✅ Inchangé | Utilisé par conducteurs, pas affecté ✅ Inchangé |
-| **ValidationConducteur** | Affiche les fiches transmises ✅ Inchangé | Affiche les fiches transmises ✅ Inchangé |
-| **ConsultationRH** | Lecture seule ✅ Inchangé | Lecture seule ✅ Inchangé |
-
-### Cas spéciaux vérifiés
-
-1. **Chef lui-même** : Toujours autorisé sur tous les jours (ligne 290 de `TimeEntryTable.tsx` conservée)
-2. **Mode conducteur** : Utilise `affectationsJours` (props), pas affecté par ce changement
-3. **Mode edit** : Autorise tout (ligne 296 conservée)
-4. **Entreprises sans planning validé** : Retombent sur le mode legacy, comportement inchangé
-
-### Garanties de non-régression
-
-| Scénario | Avant | Après | Risque |
-|----------|-------|-------|--------|
-| Planning NON validé | Tous les jours = 39h | Tous les jours = 39h | ✅ Aucun |
-| Planning validé, affectations OK | Jours filtrés correctement | Jours filtrés correctement | ✅ Aucun |
-| Planning validé, chef mismatch | Fallback 39h (BUG) | 0h affiché (CORRIGÉ) | ✅ Amélioration |
-| Planning validé, loading | Flash 39h possible | Skeleton affiché | ✅ Amélioration |
-| Chef lui-même | Tous les jours autorisés | Tous les jours autorisés | ✅ Aucun |
-| Mode conducteur/finisseur | Affectations via props | Affectations via props | ✅ Aucun |
-| Mode RH edit | Tous les jours autorisés | Tous les jours autorisés | ✅ Aucun |
+## Pourquoi ça corrige “BABAY invisible” ET “39h fantômes” sans casser le reste
+- Le frontend (nos derniers changements) devient correct dès que le backend est cohérent :
+  - `useMaconsByChantier` filtrera par le bon chef_id
+  - `TimeEntryTable` et `Index.tsx` ne pourront plus “inventer 5 jours”
+- On ne dépend plus d’un état “historique” de `chantiers.chef_id` qui peut être obsolète.
 
 ---
 
-## Fichiers modifiés
+## Plan d’exécution (implémentation + réparation des données)
 
-1. `src/components/timesheet/TimeEntryTable.tsx`
-   - Modifier `isDayAuthorizedForEmployee` (ligne 299)
-   - Ajouter gestion du loading state
+### Étape 1 — Corriger l’Edge Function
+- Modifier `sync-planning-to-teams` :
+  - calcul `plannedChefByChantier`
+  - updates `chantiers.chef_id`
+  - migration `fiches.user_id` + `affectations_jours_chef.chef_id` pour la semaine courante
+  - correction `copyFichesFromPreviousWeek` pour user_id
 
-2. `src/pages/Index.tsx`
-   - Modifier `getAuthorizedDaysForEmployee` (lignes 390-401)
+### Étape 2 — Redéployer l’Edge Function
+- Déployer `sync-planning-to-teams`
 
-3. `src/pages/SignatureMacons.tsx`
-   - Modifier `getFilteredMaconData` (lignes 63-77)
+### Étape 3 — Réparer S07 en relançant la sync
+- Relancer la sync en **mode force** sur `2026-S07` (pour régénérer et rerouter proprement)
 
-4. `src/hooks/useMaconsByChantier.ts`
-   - Ajouter filtre `.eq("chef_id", chefId)` (ligne 194-199)
+### Étape 4 — Vérifications (tests ciblés)
+1) **ROSEYRAN / S07 / Chef DURAND**
+   - BABAY apparaît
+   - Lundi + Mardi éditables
+   - Mer/Jeu/Ven “Jour non affecté” (jaune + badge)
+   - total ≈ 16h (ou 0h si aucune heure saisie, mais surtout pas 39h)
+2) **ROMANCHES / S07 / Chef FAY**
+   - BABAY apparaît
+   - Mer/Jeu/Ven éditables, L/M non affectés
+3) **BALCONS DE L’OISANS / S07 / Conducteur Romain DYE**
+   - équipe visible côté conducteur uniquement
+4) Vérifier qu’une transmission/signature ne prend que les jours planifiés.
 
 ---
 
-## Plan de test
+## Notes / garde-fous (important)
+- Le problème actuel montre aussi un point dangereux : si on ouvre une saisie avec le “mauvais chef”, l’auto-save peut nettoyer des jours (zéro tolérance).  
+  La correction backend (routage cohérent) réduit fortement ce risque, car les chefs verront les bons chantiers et les bons employés.
+- Si tu veux une sécurité supplémentaire, on pourra ensuite ajouter une règle UI : “si planning actif et selectedChef != chef_id du chantier → lecture seule + message”, mais ce n’est pas nécessaire pour résoudre le bug principal si la sync est corrigée.
 
-### Scénario principal (repro du bug BABAY)
-1. SDER, Semaine 2026-S07
-2. BABAY affecté : ROSEYRAN (L+M) + ROMANCHES (M+J+V)
-3. Ouvrir "Saisie hebdomadaire" sur ROSEYRAN
-4. **Vérifier** : BABAY affiche ~16h (pas 39h), jours M/J/V en jaune "Jour non affecté"
+---
 
-### Scénario mode legacy
-1. Choisir une semaine SANS planning validé
-2. Ouvrir "Saisie hebdomadaire"
-3. **Vérifier** : Tous les jours éditables, 39h par défaut
-
-### Scénario chef lui-même
-1. Chef ouvre sa propre saisie
-2. **Vérifier** : Tous ses jours sont éditables (pas bloqués)
-
-### Scénario transmission
-1. Cliquer "Transmettre / Signer"
-2. **Vérifier** : `employeesData` n'inclut que les jours affectés (pas 5/5)
-
-### Scénario signature
-1. Ouvrir l'écran de signature
-2. **Vérifier** : Récap heures = somme des jours affectés (pas 39h)
+## Fichiers concernés
+- `supabase/functions/sync-planning-to-teams/index.ts` (principal)
+- (retest uniquement) les pages déjà modifiées :
+  - `src/hooks/useMaconsByChantier.ts`
+  - `src/components/timesheet/TimeEntryTable.tsx`
+  - `src/pages/Index.tsx`
+  - `src/pages/SignatureMacons.tsx`
