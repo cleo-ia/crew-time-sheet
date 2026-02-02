@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useUtilisateursByRoles } from "@/hooks/useUtilisateurs";
-import { useAffectations } from "@/hooks/useAffectations";
+import { useAffectationsJoursChef } from "@/hooks/useAffectationsJoursChef";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 import { useChantiers } from "@/hooks/useChantiers";
 import {
@@ -78,7 +78,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     useFinisseursPartiellementAffectes(semaine);
   
   // Charger les affectations des chefs pour bloquer les finisseurs déjà affectés
-  const { data: affectationsChefs } = useAffectations();
+  const { data: affectationsChefSemaine = [] } = useAffectationsJoursChef(semaine);
 
   const upsertMutation = useUpsertAffectationJour();
   const deleteMutation = useDeleteAffectationJour();
@@ -202,13 +202,18 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     );
   };
 
-  // Vérifier si un finisseur est affecté par un chef (dans la table affectations)
+  // Vérifier si un finisseur est affecté par un chef cette semaine
   const isFinisseurAffectedByChef = (finisseurId: string): boolean => {
-    if (!affectationsChefs) return false;
-    
-    return affectationsChefs.some(
-      (aff: any) => aff.macon_id === finisseurId && aff.date_fin === null
+    return affectationsChefSemaine.some(
+      (aff) => aff.macon_id === finisseurId
     );
+  };
+
+  // Obtenir le nombre de jours affectés côté chef pour un employé
+  const getChefAffectedDaysCount = (finisseurId: string): number => {
+    return affectationsChefSemaine.filter(
+      (aff) => aff.macon_id === finisseurId
+    ).length;
   };
 
   // Employés de "mon équipe" (uniquement ceux affectés par CE conducteur OU avec fiches)
@@ -269,9 +274,15 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
   
   // Vérifier le statut d'un employé pour affichage badge
   const getEmployeStatus = (employeId: string) => {
-    // Affecté par un chef ?
-    if (isFinisseurAffectedByChef(employeId)) {
-      return { type: "chef", label: "Géré par chef", className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" };
+    // Affecté par un chef cette semaine ?
+    const chefDaysCount = getChefAffectedDaysCount(employeId);
+    if (chefDaysCount > 0) {
+      return { 
+        type: "chef", 
+        label: chefDaysCount === 5 ? "Géré par chef" : `${chefDaysCount}/5 jours chef`,
+        className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+        blocked: true
+      };
     }
     
     // Déjà dans mon équipe ?
@@ -301,11 +312,12 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
     const isInTeam = mesEmployesActuels.some(f => f.id === employeId) || pendingFinisseurs.includes(employeId);
     if (isInTeam) return;
     
-    if (isFinisseurAffectedByChef(employeId)) {
+    const status = getEmployeStatus(employeId);
+    if (status.blocked) {
       toast({
         variant: "destructive",
         title: "Employé non disponible",
-        description: "Cet employé est déjà géré par un chef de chantier.",
+        description: "Cet employé est déjà géré par un chef de chantier cette semaine.",
       });
       return;
     }
