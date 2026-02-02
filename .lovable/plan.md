@@ -1,180 +1,142 @@
 
+# Indicateur Visuel "Chantier Secondaire" pour le Chef dans le Récapitulatif Signatures
 
-# Analyse d'Impact Complète : Aucune Régression Garantie
+## Contexte
 
-## Résumé de la Modification
+Sur la page `/signature-macons`, quand le chef Philippe DURAND est sélectionné sur son **chantier secondaire** (ex: COEUR DE BALME EST), le récapitulatif de ses heures s'affiche normalement sans aucune indication que ces heures sont **à titre indicatif uniquement** puisque ses vraies heures sont saisies sur son chantier principal.
 
-Permettre aux chefs **multi-chantier uniquement** de sélectionner comme conducteur n'importe quel membre de leurs équipes (tous chantiers confondus) dans la fiche de trajet.
+## Objectif
 
-## Architecture Actuelle Analysée
+Ajouter un indicateur visuel clair dans le récapitulatif des heures quand :
+1. L'employé sélectionné est le **chef de chantier** (`isChef === true`)
+2. Et que le chantier actuel n'est **pas** son chantier principal
 
-### Fichiers utilisant `useMaconsByChantier`
+## Message à afficher
 
-| Fichier | Contexte d'utilisation | Impact de la modification |
-|---------|------------------------|--------------------------|
-| `TransportDayAccordion.tsx` | Fiche de trajet - sélection conducteur | **MODIFIÉ** - ajout conditionnel pour multi-chantier |
-| `TransportSheet.tsx` | Ancienne version fiche trajet | **MODIFIÉ** - même logique pour cohérence |
-| `CongesSheet.tsx` | Demandes de congés - liste équipe | **NON IMPACTÉ** - besoin local (équipe du chantier actuel) |
-| `Index.tsx` | Page principale - passe les données | **NON IMPACTÉ** - utilise déjà le hook standard |
-| `ChefMaconsManager.tsx` | Gestion équipe chef | **NON IMPACTÉ** - logique différente |
-| `SignatureMacons.tsx` | Page signatures | **NON IMPACTÉ** - hook différent (chantier spécifique) |
+Un bandeau d'avertissement visuel expliquant :
+- C'est un chantier secondaire
+- Les heures affichées sont à **titre indicatif**
+- Les heures réelles sont saisies sur son chantier principal
+- En fin de flux RH, seules les heures du chantier principal seront comptées
 
-### Fichiers utilisant `ConducteurCombobox`
+## Modifications Techniques
 
-| Fichier | Contexte | Impact |
-|---------|----------|--------|
-| `TransportDayAccordion.tsx` | TransportSheetV2 (version actuelle) | **MODIFIÉ** |
-| `TransportSheet.tsx` | TransportSheet (ancienne version) | **MODIFIÉ** pour cohérence |
+**Fichier** : `src/pages/SignatureMacons.tsx`
 
-## Plan Technique
-
-### 1. Créer un nouveau hook (nouveau fichier)
-
-**Fichier** : `src/hooks/useMaconsAllChantiersByChef.ts`
-
-Ce hook :
-- Récupère tous les `chantier_id` distincts où le chef a des affectations pour la semaine
-- Si 1 seul chantier → `isMultiChantier = false`
-- Si plusieurs chantiers → récupère les employés de TOUS ces chantiers avec indication du chantier d'origine
+### 1. Ajouter une query pour récupérer le chantier principal du chef
 
 ```typescript
-interface MaconFromAllChantiers {
-  id: string;
-  nom: string;
-  prenom: string;
-  isChef?: boolean;
-  chantierId: string;
-  chantierCode?: string;  // Pour affichage ex: "BALME"
-  ficheJours?: FicheJour[];
-}
+// Récupérer le chantier principal du chef
+const { data: chefChantierPrincipal } = useQuery({
+  queryKey: ["chef-chantier-principal-signature", chefId],
+  queryFn: async () => {
+    if (!chefId) return null;
+    
+    const { data, error } = await supabase
+      .from("utilisateurs")
+      .select("chantier_principal_id")
+      .eq("id", chefId)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data?.chantier_principal_id || null;
+  },
+  enabled: !!chefId,
+});
 
-interface UseMaconsAllChantiersResult {
-  isMultiChantier: boolean;
-  allMacons: MaconFromAllChantiers[];
-  isLoading: boolean;
-}
+// Calculer si on est sur un chantier secondaire
+const isChantierSecondaire = chefChantierPrincipal && chantierId && chefChantierPrincipal !== chantierId;
 ```
 
-### 2. Modifier `TransportDayAccordion.tsx`
+### 2. Ajouter le bandeau d'avertissement dans le récapitulatif des heures
+
+Avant le tableau des heures (ligne ~408), ajouter conditionnellement un bandeau d'avertissement pour le chef sur un chantier secondaire :
 
 ```typescript
-// Importer le nouveau hook
-import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
-
-// Dans le composant
-const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
-const { isMultiChantier, allMacons, isLoading: loadingAllMacons } = useMaconsAllChantiersByChef(chefId, semaine);
-
-// Utiliser conditionnellement
-const maconsForCombobox = isMultiChantier ? allMacons : macons;
-
-// Passer au ConducteurCombobox
-<ConducteurCombobox
-  macons={maconsForCombobox}
-  currentChantierId={chantierId}  // Nouveau prop pour afficher le chantier d'origine
-  ...
-/>
-```
-
-### 3. Modifier `ConducteurCombobox.tsx` (optionnel - amélioration UX)
-
-Ajouter un indicateur visuel pour les employés venant d'un autre chantier :
-
-```typescript
-// Props ajoutées
-interface ConducteurComboboxProps {
-  macons: MaconData[];
-  currentChantierId?: string;  // Nouveau
-  ...
-}
-
-// Dans le rendu
-{macon.chantierId && macon.chantierId !== currentChantierId && (
-  <span className="text-xs text-muted-foreground ml-1">
-    ({macon.chantierCode || 'Autre chantier'})
-  </span>
+{selectedMacon.isChef && isChantierSecondaire && (
+  <div className="flex items-start gap-3 p-4 mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+    <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+    <div className="flex-1">
+      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+        Chantier secondaire - Heures indicatives
+      </p>
+      <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+        Vos heures réelles sont saisies sur votre chantier principal. 
+        Les heures affichées ici sont à titre indicatif uniquement et ne seront pas comptabilisées pour la paie.
+      </p>
+    </div>
+  </div>
 )}
 ```
 
-### 4. Modifier `TransportSheet.tsx` (ancienne version - cohérence)
-
-Appliquer la même logique pour maintenir la cohérence si cette version est encore utilisée quelque part.
-
-## Pourquoi Aucune Régression
-
-### 1. Modification conditionnelle et isolée
-
-La modification n'affecte le comportement **QUE** pour les chefs multi-chantier :
+### 3. Modifier le header du récapitulatif pour le chef sur chantier secondaire
 
 ```typescript
-// Chef mono-chantier : comportement IDENTIQUE
-if (!isMultiChantier) {
-  // Utilise macons standard → aucun changement
-}
-
-// Chef multi-chantier : nouveau comportement
-if (isMultiChantier) {
-  // Utilise allMacons → accès à tous les employés
-}
+<CardTitle className="text-lg flex items-center gap-2">
+  <Clock className="h-5 w-5 text-primary" />
+  Récapitulatif de vos heures - Semaine {semaine}
+  {selectedMacon.isChef && (
+    <RoleBadge role="chef" size="sm" />
+  )}
+  {selectedMacon.isChef && isChantierSecondaire && (
+    <Badge variant="outline" className="ml-2 text-xs bg-amber-100 text-amber-700 border-amber-300">
+      Indicatif
+    </Badge>
+  )}
+</CardTitle>
+<p className="text-sm text-muted-foreground mt-1">
+  {selectedMacon.isChef && isChantierSecondaire 
+    ? "Heures de ce chantier secondaire (non comptabilisées)"
+    : "Vérifiez vos heures avant de signer"
+  }
+</p>
 ```
 
-### 2. Aucun changement sur les autres pages
+### 4. Importer les icônes nécessaires
 
-| Page/Composant | Hook utilisé | Changement |
-|----------------|--------------|------------|
-| SignatureMacons | `useAffectationsJoursByChefAndChantier` | ❌ Aucun |
-| TimeEntryTable | `useAffectationsJoursByChefAndChantier` | ❌ Aucun |
-| ChefMaconsManager | `useAffectationsJoursByChef` | ❌ Aucun |
-| CongesSheet | `useMaconsByChantier` | ❌ Aucun - utilise toujours l'équipe locale |
+```typescript
+import { AlertTriangle, Star } from "lucide-react";
+```
 
-### 3. Le nouveau hook est indépendant
+## Résultat Visuel Attendu
 
-Le nouveau hook `useMaconsAllChantiersByChef` :
-- Ne modifie **AUCUN** hook existant
-- Est utilisé **UNIQUEMENT** dans les composants transport
-- Retourne `isMultiChantier = false` pour les chefs mono-chantier
+**Pour le chef sur son chantier principal (inchangé)** :
+```
+┌──────────────────────────────────────────────────────────┐
+│ 🕐 Récapitulatif de vos heures - Semaine 2026-S07  [Chef de chantier] │
+│ Vérifiez vos heures avant de signer                     │
+├──────────────────────────────────────────────────────────┤
+│ ...tableau des heures...                                 │
+└──────────────────────────────────────────────────────────┘
+```
 
-### 4. Rétrocompatibilité totale
+**Pour le chef sur un chantier secondaire (NOUVEAU)** :
+```
+┌──────────────────────────────────────────────────────────┐
+│ 🕐 Récapitulatif de vos heures - Semaine 2026-S07  [Chef de chantier] [Indicatif] │
+│ Heures de ce chantier secondaire (non comptabilisées)   │
+├──────────────────────────────────────────────────────────┤
+│ ⚠️  Chantier secondaire - Heures indicatives            │
+│     Vos heures réelles sont saisies sur votre chantier  │
+│     principal. Les heures affichées ici sont à titre    │
+│     indicatif uniquement et ne seront pas comptabilisées│
+│     pour la paie.                                        │
+├──────────────────────────────────────────────────────────┤
+│ ...tableau des heures...                                 │
+└──────────────────────────────────────────────────────────┘
+```
 
-- Les chefs mono-chantier ne voient **AUCUN** changement
-- Les conducteurs (mode verrouillé) ne sont **PAS** impactés
-- Le mode legacy (sans planning validé) reste fonctionnel
+## Impact
 
-## Scénarios de Test Post-Implémentation
-
-| Scénario | Résultat attendu |
-|----------|------------------|
-| Chef mono-chantier sur fiche trajet | Voit uniquement son équipe locale |
-| Chef multi-chantier sur chantier A | Voit employés de A + employés de B avec indicateur |
-| Chef multi-chantier sur chantier B | Voit employés de B + employés de A avec indicateur |
-| Conducteur sur fiche trajet | Champs verrouillés, aucun changement |
-| Saisie heures (TimeEntryTable) | Aucun changement |
-| Signatures (SignatureMacons) | Aucun changement |
-| Gestion équipe (ChefMaconsManager) | Aucun changement |
-
-## Fichiers Modifiés
-
-1. **Nouveau** : `src/hooks/useMaconsAllChantiersByChef.ts`
-2. **Modifié** : `src/components/transport/TransportDayAccordion.tsx`
-3. **Modifié** : `src/components/transport/ConducteurCombobox.tsx` (indicateur visuel)
-4. **Modifié** : `src/components/transport/TransportSheet.tsx` (cohérence)
+- **Fichier unique modifié** : `src/pages/SignatureMacons.tsx`
+- **Aucune régression** : 
+  - Les maçons/ouvriers ne sont pas impactés
+  - Le chef sur son chantier principal ne voit aucun changement
+  - Seul le chef sur un chantier secondaire voit le nouveau bandeau
+- **RoleBadge et Badge déjà importés** dans ce fichier
 
 ## Fichiers NON Modifiés
 
-- `src/hooks/useMaconsByChantier.ts` ← **INTOUCHÉ**
-- `src/pages/Index.tsx` ← **INTOUCHÉ**
-- `src/pages/SignatureMacons.tsx` ← **INTOUCHÉ**
-- `src/components/timesheet/TimeEntryTable.tsx` ← **INTOUCHÉ**
-- `src/components/chef/ChefMaconsManager.tsx` ← **INTOUCHÉ**
-- `src/components/conges/CongesSheet.tsx` ← **INTOUCHÉ**
-
-## Conclusion
-
-**Risque de régression : AUCUN**
-
-La modification est :
-- **Additive** : nouveau hook, pas de modification des hooks existants
-- **Conditionnelle** : n'affecte que les chefs multi-chantier
-- **Isolée** : uniquement dans les composants transport
-- **Rétrocompatible** : le comportement par défaut reste identique
-
+- `src/hooks/useMaconsByChantier.ts` - aucun changement
+- `src/components/signature/SignaturePad.tsx` - aucun changement
+- Aucun autre fichier impacté
