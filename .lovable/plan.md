@@ -1,170 +1,215 @@
 
+# Plan : Corriger l'association automatique chef_id lors de l'ajout au planning
 
-# Plan : Ajouter le paramètre entreprise_id obligatoire à purge-week
+## Problème identifié
 
-## Objectif
+Quand un chef (FAY Philippe) est ajouté au planning d'un chantier (ROSEYRAN, ROMANCHE) :
+1. **Le chef a déjà un `chantier_principal_id`** → la condition `!chefsWithPrincipal.has(employeId)` est `false`
+2. **Donc on n'exécute PAS** la logique d'association `chef_id` au chantier
+3. **Résultat** : `chantiers.chef_id = NULL` pour ROSEYRAN et ROMANCHE
+4. **Synchronisation** : le routing utilise `chantier.chef_id` qui est `NULL` → route vers conducteur au lieu du chef
 
-Modifier la fonction Edge `purge-week` pour qu'elle accepte un paramètre `entreprise_id` **obligatoire**, garantissant que chaque purge n'affecte qu'une seule entreprise.
+### Règles clarifiées (confirmées par l'utilisateur)
+
+| Chantier | Employés concernés | Destination |
+|----------|-------------------|-------------|
+| Avec chef (`chef_id` défini) | TOUS (maçons, finisseurs, grutiers, intérimaires) | `affectations_jours_chef` |
+| Sans chef (`chef_id` NULL) | Maçons inclus | `affectations_finisseurs_jours` (côté conducteur) |
+| Un seul chef par chantier | Si plusieurs chefs planifiés = anomalie |
 
 ## Modifications à apporter
 
-### Fichier : `supabase/functions/purge-week/index.ts`
+### Fichier 1 : `src/pages/PlanningMainOeuvre.tsx`
 
-| Section | Modification |
-|---------|--------------|
-| Parsing body (ligne 24) | Ajouter `entreprise_id` aux paramètres extraits |
-| Validation (après ligne 32) | Ajouter validation obligatoire de `entreprise_id` |
-| Logs (ligne 44) | Inclure le nom de l'entreprise dans les logs |
-| Toutes les requêtes DELETE | Ajouter `.eq('entreprise_id', entreprise_id)` comme filtre |
-| Réponse (ligne 310-316) | Inclure `entreprise_id` dans la réponse |
+**Objectif** : Associer TOUJOURS le `chef_id` au chantier quand un chef est ajouté, indépendamment de son `chantier_principal_id`.
 
-## Détails techniques
+**Lignes concernées** : 195-255
 
-### 1. Extraction et validation du paramètre
-
+**Modification** :
 ```typescript
-// Ligne 24 : Ajouter entreprise_id
-const { semaine, chantier_id, entreprise_id } = await req.json();
+const handleAddEmploye = async (
+  employeId: string, 
+  chantierId: string, 
+  days: string[]
+) => {
+  // Créer les affectations...
+  for (const date of days) {
+    await upsertAffectation.mutateAsync({...});
+  }
 
-// Après ligne 32 : Validation obligatoire
-if (!entreprise_id || typeof entreprise_id !== 'string') {
-  return new Response(
-    JSON.stringify({ error: 'Missing or invalid "entreprise_id" parameter - required for safety' }),
-    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  // Vérifier si c'est un chef (via une requête)
+  const { data: empData } = await supabase
+    .from("utilisateurs")
+    .select("role_metier")
+    .eq("id", employeId)
+    .maybeSingle();
+
+  if (empData?.role_metier === "chef") {
+    // 1. TOUJOURS associer le chef au chantier si pas de chef_id existant
+    const { data: chantierData } = await supabase
+      .from("chantiers")
+      .select("chef_id")
+      .eq("id", chantierId)
+      .single();
+
+    if (!chantierData?.chef_id) {
+      await supabase
+        .from("chantiers")
+        .update({ chef_id: employeId })
+        .eq("id", chantierId);
+      
+      queryClient.invalidateQueries({ queryKey: ["chantiers"] });
+      
+      toast({
+        title: "Chef associé au chantier",
+        description: "Ce chef est désormais responsable de ce chantier.",
+      });
+    }
+
+    // 2. Définir comme chantier principal seulement si le chef n'en a pas
+    if (!chefsWithPrincipal.has(employeId)) {
+      await supabase
+        .from("utilisateurs")
+        .update({ chantier_principal_id: chantierId })
+        .eq("id", employeId);
+      
+      queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+      
+      toast({
+        title: "Chantier principal défini",
+        description: "Les heures du chef seront comptées sur ce chantier.",
+      });
+    }
+  }
+};
+```
+
+### Fichier 2 : `src/hooks/useSetChantierPrincipal.ts`
+
+**Objectif** : Invalider le cache des chantiers après mise à jour du `chef_id`.
+
+**Modification à la ligne 43-47** : Ajouter l'invalidation du cache `["chantiers"]`
+```typescript
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
+  queryClient.invalidateQueries({ queryKey: ["all-employes"] });
+  queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });
+  queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+  queryClient.invalidateQueries({ queryKey: ["chantiers"] }); // ✅ AJOUT
+  
+  toast.success("Chantier principal mis à jour", {
+    description: "Les heures du chef seront comptées sur ce chantier.",
+  });
+},
+```
+
+### Fichier 3 : `supabase/functions/sync-planning-to-teams/index.ts`
+
+**Objectif** : 
+1. Inclure le `role_metier` dans la requête planning
+2. Auto-assigner `chef_id` si un chef est planifié sur un chantier sans chef
+3. Router TOUS les employés vers `affectations_jours_chef` quand le chantier a un chef
+4. Router vers `affectations_finisseurs_jours` UNIQUEMENT si le chantier n'a pas de chef
+
+**Modification 1 - Ligne 217-225** : Ajouter `role_metier` à la requête
+```typescript
+const { data: planningData, error: planningError } = await supabase
+  .from('planning_affectations')
+  .select(`
+    *,
+    employe:utilisateurs!planning_affectations_employe_id_fkey(
+      id, prenom, nom, role_metier
+    )
+  `)
+  .eq('semaine', currentWeek)
+  .eq('entreprise_id', entrepriseId)
+```
+
+**Modification 2 - Après ligne 309** : Auto-assigner `chef_id` si nécessaire
+```typescript
+const chantier = chantiersMap.get(chantierId)
+const employe = affectations[0]?.employe
+
+// AUTO-ASSIGNATION: Si c'est un chef et que le chantier n'a pas de chef_id, l'assigner
+if (employe?.role_metier === 'chef' && chantier && !chantier.chef_id) {
+  console.log(`[sync] Auto-assignation chef ${employeNom} au chantier ${chantierId}`)
+  await supabase
+    .from('chantiers')
+    .update({ chef_id: employeId })
+    .eq('id', chantierId)
+  
+  // Mettre à jour l'objet local pour le reste du traitement
+  chantier.chef_id = employeId
+  chantiersMap.set(chantierId, chantier)
 }
 ```
 
-### 2. Récupération du nom de l'entreprise (optionnel, pour les logs)
+**Modification 3 - Fonctions `createNewAffectation` et `copyFichesFromPreviousWeek` (lignes 621-773)** : Modifier la logique de routing
 
+Actuellement :
 ```typescript
-// Après validation, récupérer le nom pour les logs
-const { data: entreprise } = await supabase
-  .from('entreprises')
-  .select('nom, slug')
-  .eq('id', entreprise_id)
-  .single();
-
-const entrepriseLabel = entreprise?.slug || entreprise?.nom || entreprise_id;
-console.log(`🚀 Starting purge for week: ${semaine}, entreprise: ${entrepriseLabel}${filterByChantier ? `, chantier: ${chantier_id}` : ''}`);
+if (chantier?.chef_id) {
+  // → affectations_jours_chef
+} else if (chantier?.conducteur_id) {
+  // → affectations_finisseurs_jours
+}
 ```
 
-### 3. Ajout du filtre entreprise_id à chaque table
-
-Les tables avec `entreprise_id` à filtrer :
-
-| Table | A la colonne entreprise_id ? |
-|-------|------------------------------|
-| `affectations_finisseurs_jours` | ✅ Oui |
-| `affectations` | ✅ Oui |
-| `fiches` | ✅ Oui |
-| `signatures` | ✅ Oui (via fiche_id déjà filtré) |
-| `fiches_transport_finisseurs` | ✅ Oui |
-| `fiches_transport_finisseurs_jours` | ✅ Oui |
-| `fiches_transport` | ✅ Oui |
-| `fiches_transport_jours` | ✅ Oui |
-| `fiches_jours` | ✅ Oui |
-| `affectations_jours_chef` | ✅ Oui |
-| `planning_affectations` | ✅ Oui |
-| `planning_validations` | ✅ Oui |
-
-### 4. Exemples de modifications par étape
-
-**Step 1 - affectations_finisseurs_jours :**
+Nouvelle logique :
 ```typescript
-let affQuery = supabase
-  .from('affectations_finisseurs_jours')
-  .delete({ count: 'exact' })
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
+if (chantier?.chef_id) {
+  // Chantier avec chef → TOUT LE MONDE va côté chef
+  for (const jour of joursPlanning) {
+    await supabase
+      .from('affectations_jours_chef')
+      .upsert({
+        macon_id: employeId,
+        chef_id: chantier.chef_id,
+        chantier_id: chantierId,
+        jour,
+        semaine: currentWeek,
+        entreprise_id: entrepriseId
+      }, { onConflict: 'macon_id,jour' })
+  }
+} else if (chantier?.conducteur_id) {
+  // Chantier SANS chef mais avec conducteur → tout le monde côté conducteur
+  for (const jour of joursPlanning) {
+    await supabase
+      .from('affectations_finisseurs_jours')
+      .upsert({
+        finisseur_id: employeId,
+        conducteur_id: chantier.conducteur_id,
+        chantier_id: chantierId,
+        date: jour,
+        semaine: currentWeek
+      }, { onConflict: 'finisseur_id,date' })
+  }
+}
 ```
 
-**Step 1.5 - affectations :**
-```typescript
-let affMaconsQuery = supabase
-  .from('affectations')
-  .delete({ count: 'exact' })
-  .gte('date_debut', startDateStr)
-  .lte('date_debut', endDateStr)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+## Résumé des modifications
 
-**Step 2 - fiches (requête SELECT) :**
-```typescript
-let fichesQuery = supabase
-  .from('fiches')
-  .select('id')
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+| Fichier | Modification | Impact |
+|---------|--------------|--------|
+| `PlanningMainOeuvre.tsx` | Déplacer l'association `chef_id` AVANT la condition `chefsWithPrincipal` | Correction immédiate côté frontend |
+| `useSetChantierPrincipal.ts` | Ajouter invalidation cache `["chantiers"]` | Cache cohérent |
+| `sync-planning-to-teams/index.ts` | Auto-assignation chef + routing unifié vers chef | Correction backend robuste |
 
-**Step 4 - fiches_transport_finisseurs :**
-```typescript
-let ftfQuery = supabase
-  .from('fiches_transport_finisseurs')
-  .select('id')
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+## Résultat attendu après correction
 
-**Step 6 - fiches_transport :**
-```typescript
-let ftQuery = supabase
-  .from('fiches_transport')
-  .select('id')
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+1. Quand FAY Philippe est ajouté au planning de ROSEYRAN :
+   - `chantiers.chef_id = FAY` ✅
+   - Son équipe (ADIGUZEL, BEYA, BABAY ROUIS) → `affectations_jours_chef` ✅
+   
+2. Quand la synchronisation s'exécute :
+   - Tous les employés du chantier → `affectations_jours_chef`
+   - Visible côté "Saisie hebdomadaire" du chef ✅
 
-**Step 10 - affectations_jours_chef :**
-```typescript
-let ajcQuery = supabase
-  .from('affectations_jours_chef')
-  .delete({ count: 'exact' })
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+3. Pour un chantier SANS chef (chef_id = NULL) :
+   - Les maçons aussi → `affectations_finisseurs_jours` (côté conducteur)
 
-**Step 11 - planning_affectations :**
-```typescript
-let paQuery = supabase
-  .from('planning_affectations')
-  .delete({ count: 'exact' })
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
+## Données corrompues S07
 
-**Step 12 - planning_validations :**
-```typescript
-const { error: pvError, count: pvCount } = await supabase
-  .from('planning_validations')
-  .delete({ count: 'exact' })
-  .eq('semaine', semaine)
-  .eq('entreprise_id', entreprise_id);  // ✅ AJOUT
-```
-
-### 5. Réponse enrichie
-
-```typescript
-return new Response(
-  JSON.stringify({
-    success: true,
-    semaine,
-    entreprise_id,
-    entreprise_nom: entreprise?.nom || null,
-    chantier_id: filterByChantier ? chantier_id : null,
-    deleted: results,
-    total
-  }),
-  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-);
-```
-
-## Résultat attendu
-
-Après cette modification :
-- L'appel `{ semaine: "2026-S07" }` retournera une erreur 400 "Missing entreprise_id"
-- L'appel `{ semaine: "2026-S07", entreprise_id: "uuid-sder" }` ne purgera **que** les données SDER
-- Les logs indiqueront clairement quelle entreprise est concernée
-- Aucun risque de purger accidentellement les données d'autres entreprises
-
+Après le déploiement, il faudra :
+1. **Purger** S07 SDER avec le nouveau `purge-week` (entreprise_id obligatoire)
+2. **Re-synchroniser** pour recréer les bonnes affectations
