@@ -72,10 +72,23 @@ export const AddEmployeeToPlanningDialog = ({
     existingAffectations.map(a => a.employe_id)
   );
 
+  // Créer une map des chefs pour vérification rapide
+  const chefIds = useMemo(() => {
+    return new Set(
+      allEmployes
+        .filter(emp => getEmployeType(emp) === "chef")
+        .map(emp => emp.id)
+    );
+  }, [allEmployes]);
+
   // Jours déjà pris par chaque employé (sur d'autres chantiers)
+  // EXCEPTION : Les chefs ne sont jamais bloqués car ils peuvent être multi-chantiers
   const daysTakenByEmploye = useMemo(() => {
     const map = new Map<string, Set<string>>();
     allAffectations.forEach(aff => {
+      // Les chefs peuvent être sur plusieurs chantiers le même jour
+      if (chefIds.has(aff.employe_id)) return;
+      
       if (aff.chantier_id !== chantierId) {
         if (!map.has(aff.employe_id)) {
           map.set(aff.employe_id, new Set());
@@ -84,7 +97,7 @@ export const AddEmployeeToPlanningDialog = ({
       }
     });
     return map;
-  }, [allAffectations, chantierId]);
+  }, [allAffectations, chantierId, chefIds]);
 
   // Priorité de tri par type (cohérent avec getEmployeType et useAllEmployes)
   const TYPE_PRIORITY: Record<string, number> = {
