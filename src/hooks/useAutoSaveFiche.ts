@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getCurrentEntrepriseId } from "@/lib/entreprise";
 
 type RepasType = "PANIER" | "RESTO" | null;
 
@@ -252,23 +253,28 @@ export const useAutoSaveFiche = () => {
 
         // 🔥 CORRECTION MULTI-CHEF: Ne sauvegarder que les jours assignés à ce chef
         // Pour les finisseurs: jours saisis uniquement (multi-conducteur)
-        // Pour les maçons: jours assignés via affectations_jours_chef (ou fallback 5 jours)
+        // Pour les maçons: jours assignés via affectations_jours_chef
         // 
-        // NOUVEAU: On vérifie d'abord si le planning est actif (validé par un conducteur)
-        // Sinon on reste en mode legacy (tous les jours)
+        // NOUVEAU: Récupération robuste de l'entrepriseId (localStorage + fallback user_roles)
+        // pour éviter les faux négatifs quand localStorage est vide/incohérent.
         let selectedDays: typeof workDays[number][] = [...workDays];
 
         if (chantierId !== null) {
-          // Maçons: vérifier d'abord si le planning est validé
-          const entrepriseIdLocal = localStorage.getItem("current_entreprise_id");
+          // ✅ FIX: Récupérer l'entrepriseId de façon robuste
+          let entrepriseIdRobust: string | null = null;
+          try {
+            entrepriseIdRobust = await getCurrentEntrepriseId();
+          } catch (e) {
+            console.warn("[AutoSave] Impossible de récupérer entrepriseId, mode legacy activé:", e);
+          }
           
           // Vérifier si le planning est actif pour cette semaine
           let isPlanningActive = false;
-          if (entrepriseIdLocal) {
+          if (entrepriseIdRobust) {
             const { data: planningValidation } = await supabase
               .from("planning_validations")
               .select("id")
-              .eq("entreprise_id", entrepriseIdLocal)
+              .eq("entreprise_id", entrepriseIdRobust)
               .eq("semaine", weekId)
               .maybeSingle();
             
@@ -297,12 +303,43 @@ export const useAutoSaveFiche = () => {
                 .map(a => dayNameByDate[a.jour])
                 .filter((name): name is typeof workDays[number] => !!name);
               
-              if (assignedDayNames.length > 0) {
-                selectedDays = assignedDayNames;
+              // ✅ FIX: PAS DE FALLBACK à 5 jours si aucune affectation trouvée en mode planning actif
+              // On garde uniquement les jours réellement assignés
+              selectedDays = assignedDayNames;
+              
+              // Si aucun jour assigné pour ce couple (employé, chantier), ne rien écrire
+              if (selectedDays.length === 0) {
+                console.log(`[AutoSave] Planning actif mais aucun jour assigné pour ${entry.employeeName} sur ce chantier, skip fiches_jours`);
               }
-              // Si pas de correspondance, garder workDays (fallback)
+            } else {
+              // ✅ FIX: ZÉRO TOLÉRANCE - Pas de fallback à 5 jours
+              // Si planning actif mais pas d'affectations, ne pas créer de jours fantômes
+              selectedDays = [];
+              console.log(`[AutoSave] Planning actif, pas d'affectations pour ${entry.employeeName}, selectedDays = []`);
             }
-            // Si aucune affectation jour n'existe, garder workDays (rétro-compatibilité)
+            
+            // ✅ FIX: Nettoyer les jours fantômes existants (dates hors planning)
+            // Supprimer les fiches_jours dont la date n'est pas dans les jours assignés
+            const selectedDatesISO = selectedDays.map(d => dates[d]);
+            if (selectedDatesISO.length > 0 || selectedDays.length === 0) {
+              // Récupérer toutes les dates de la semaine pour ce fiche
+              const allWeekDatesISO = Object.values(dates);
+              const datesToDelete = allWeekDatesISO.filter(d => !selectedDatesISO.includes(d));
+              
+              if (datesToDelete.length > 0) {
+                const { error: deleteError } = await supabase
+                  .from("fiches_jours")
+                  .delete()
+                  .eq("fiche_id", ficheId)
+                  .in("date", datesToDelete);
+                
+                if (deleteError) {
+                  console.error(`[AutoSave] Erreur suppression jours fantômes:`, deleteError);
+                } else {
+                  console.log(`[AutoSave] Supprimé ${datesToDelete.length} jour(s) fantôme(s) pour ${entry.employeeName}`);
+                }
+              }
+            }
           }
         } else {
           // Finisseurs: seulement les jours effectivement saisis

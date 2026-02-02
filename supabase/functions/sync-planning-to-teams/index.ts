@@ -757,7 +757,33 @@ async function createNewAffectation(
     }
   }
 
-  // Mettre à jour le total
+  // ✅ FIX: Nettoyer les jours fantômes (fiches_jours hors planning)
+  // Supprimer tous les fiches_jours pour cette fiche dont la date n'est pas dans joursPlanning
+  const mondayOfWeek = parseISOWeek(currentWeek)
+  const allWeekDates: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(mondayOfWeek)
+    d.setDate(mondayOfWeek.getDate() + i)
+    allWeekDates.push(d.toISOString().split('T')[0])
+  }
+  
+  const datesToDelete = allWeekDates.filter(d => !joursPlanning.includes(d))
+  
+  if (datesToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', ficheId)
+      .in('date', datesToDelete)
+    
+    if (deleteError) {
+      console.error(`[sync] Erreur suppression jours fantômes:`, deleteError)
+    } else {
+      console.log(`[sync] Supprimé ${datesToDelete.length} jour(s) fantôme(s) pour employé ${employeId} chantier ${chantierId}`)
+    }
+  }
+
+  // Mettre à jour le total (trigger DB recalculera après les suppressions)
   await supabase
     .from('fiches')
     .update({ total_heures: totalHeures })
