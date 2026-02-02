@@ -11,6 +11,8 @@ interface MaconData {
   prenom: string | null;
   nom: string | null;
   isChef?: boolean;
+  chantierId?: string;
+  chantierCode?: string;
   ficheJours?: Array<{
     date: string;
     heures?: number;
@@ -28,6 +30,7 @@ interface ConducteurComboboxProps {
   otherConducteursIds?: string[];
   affectationsJoursChef?: Array<{ macon_id: string; jour: string; chef_id: string }>;
   chefId?: string;
+  currentChantierId?: string;
 }
 
 export const ConducteurCombobox = ({ 
@@ -39,6 +42,7 @@ export const ConducteurCombobox = ({
   otherConducteursIds = [],
   affectationsJoursChef,
   chefId,
+  currentChantierId,
 }: ConducteurComboboxProps) => {
   const [open, setOpen] = useState(false);
 
@@ -156,6 +160,9 @@ export const ConducteurCombobox = ({
                       <span>{macon.prenom} {macon.nom}</span>
                       {macon.isChef && (
                         <span className="text-xs text-muted-foreground">(Chef)</span>
+                      )}
+                      {macon.chantierId && macon.chantierId !== currentChantierId && macon.chantierCode && (
+                        <span className="text-xs text-primary/70">({macon.chantierCode})</span>
                       )}
                       {isTrajetPerso && (
                         <span className="text-xs text-muted-foreground">(Trajet perso)</span>

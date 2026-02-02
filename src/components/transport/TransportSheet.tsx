@@ -11,6 +11,7 @@ import { useSaveTransport } from "@/hooks/useSaveTransport";
 import { useTransportData } from "@/hooks/useTransportData";
 import { useAutoSaveTransport } from "@/hooks/useAutoSaveTransport";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
 
 interface TransportSheetProps {
   selectedWeek: Date;
@@ -28,6 +29,8 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
   const autoSave = useAutoSaveTransport();
   const { data: existingTransport } = useTransportData(ficheId || null);
   const { data: macons = [] } = useMaconsByChantier(chantierId, selectedWeekString, chefId);
+  const { isMultiChantier, allMacons } = useMaconsAllChantiersByChef(chefId, selectedWeekString);
+  const maconsForCombobox = isMultiChantier ? allMacons : macons;
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Générer les 5 jours de la semaine (lundi à vendredi) si pas de données existantes OU si fiche vide
@@ -193,18 +196,20 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
               </TableCell>
               <TableCell>
                 <ConducteurCombobox
-                  macons={macons}
+                  macons={maconsForCombobox}
                   date={day.date}
                   value={day.conducteurAllerId}
                   onChange={(value) => updateDay(index, "conducteurAllerId", value)}
+                  currentChantierId={chantierId}
                 />
               </TableCell>
               <TableCell>
                 <ConducteurCombobox
-                  macons={macons}
+                  macons={maconsForCombobox}
                   date={day.date}
                   value={day.conducteurRetourId}
                   onChange={(value) => updateDay(index, "conducteurRetourId", value)}
+                  currentChantierId={chantierId}
                 />
               </TableCell>
               <TableCell>
