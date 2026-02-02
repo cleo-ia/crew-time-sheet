@@ -1,137 +1,103 @@
 
-# Plan : Corriger le filtrage des jours par chantier dans TimeEntryTable
 
-## Problème identifié
+# Plan : Bloquer les employés gérés par un chef dans le dialog conducteur
 
-Quand un employé (Slah BEYA) est partagé entre deux chantiers sur différents jours avec le **même chef** :
-- **COEUR DE BALME EST** : Lundi, Mardi (2 jours)
-- **LE ROSEYRAN** : Mercredi, Jeudi, Vendredi (3 jours)
+## Contexte
 
-L'interface de "Saisie hebdomadaire" affiche 39h (5 jours) sur **les deux chantiers** au lieu de respecter les jours planifiés pour chaque chantier.
+Le composant `FinisseursDispatchWeekly.tsx` permet au conducteur d'ajouter des employés à son équipe de finisseurs. Actuellement, il utilise le hook legacy `useAffectations()` qui vérifie la table `affectations` avec la condition `date_fin === null`. Or, le système moderne utilise `affectations_jours_chef` pour gérer les affectations hebdomadaires des chefs.
 
-### Cause racine vérifiée
+## Modification proposée
 
-Les données dans `affectations_jours_chef` sont **CORRECTES** :
-- Slah BEYA a bien 2 jours sur COEUR DE BALME EST et 3 jours sur LE ROSEYRAN
-- Le problème est uniquement côté **affichage/filtrage**
+### Fichier unique : `src/components/conducteur/FinisseursDispatchWeekly.tsx`
 
-**Ligne 252-255 de TimeEntryTable.tsx** :
-```typescript
-const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
-  chefId || null,  // ← Filtre par chef
-  weekId           // ← Filtre par semaine
-  // ❌ PAS DE FILTRE PAR CHANTIER !
-);
-```
-
-**Ligne 314-316** (vérification) :
-```typescript
-return affectationsJoursChef.some(
-  aff => aff.macon_id === employeeId && aff.jour === targetDate
-  // ❌ PAS DE VÉRIFICATION DU CHANTIER !
-);
-```
-
-Résultat : Le chef FAY sélectionne ROSEYRAN → le hook ramène les 5 affectations de Slah BEYA (2 COEUR + 3 ROSEYRAN) → `isDayAuthorizedForEmployee` dit "OK" pour tous les jours.
-
-## Modifications à apporter
-
-### Fichier 1 : `src/hooks/useAffectationsJoursChef.ts`
-
-**Objectif** : Ajouter une nouvelle fonction qui filtre aussi par `chantier_id`
-
-**Position** : Après la fonction `useAffectationsJoursByMacon` (ligne 77)
+**1. Ajouter l'import du hook existant (ligne 42)**
 
 ```typescript
-// Récupérer les affectations jours par chef ET par chantier pour une semaine
-export const useAffectationsJoursByChefAndChantier = (
-  chefId: string | null, 
-  chantierId: string | null,
-  semaine: string
-) => {
-  return useQuery({
-    queryKey: ["affectations-jours-chef", "by-chef-chantier", chefId, chantierId, semaine],
-    queryFn: async () => {
-      if (!chefId || !chantierId || !semaine) return [];
-      
-      const { data, error } = await supabase
-        .from("affectations_jours_chef")
-        .select("*")
-        .eq("chef_id", chefId)
-        .eq("chantier_id", chantierId)  // ✅ FILTRE PAR CHANTIER
-        .eq("semaine", semaine);
-      
-      if (error) throw error;
-      return data as AffectationJourChef[];
-    },
-    enabled: !!chefId && !!chantierId && !!semaine,
-  });
-};
+import { useAffectationsJoursChef } from "@/hooks/useAffectationsJoursChef";
 ```
 
-### Fichier 2 : `src/components/timesheet/TimeEntryTable.tsx`
-
-**Modification 1 - Ligne 31** : Importer le nouveau hook
-
-```typescript
-import { useAffectationsJoursByChef, useAffectationsJoursByChefAndChantier, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
-```
-
-**Modification 2 - Lignes 250-255** : Remplacer le hook par le nouveau avec `chantierId`
+**2. Remplacer le hook legacy (ligne 81)**
 
 Avant :
 ```typescript
-const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
-  isPlanningActive && !isConducteurMode && mode !== "edit" ? chefId || null : null,
-  weekId
-);
+const { data: affectationsChefs } = useAffectations();
 ```
 
 Après :
 ```typescript
-const { data: affectationsJoursChef = [] } = useAffectationsJoursByChefAndChantier(
-  isPlanningActive && !isConducteurMode && mode !== "edit" ? chefId || null : null,
-  isPlanningActive && !isConducteurMode && mode !== "edit" ? chantierId : null,  // ✅ AJOUT
-  weekId
-);
+const { data: affectationsChefSemaine = [] } = useAffectationsJoursChef(semaine);
 ```
 
-**Modification 3 - Ligne 314-316** : Ajouter vérification de sécurité (optionnel mais recommandé)
+**3. Réécrire `isFinisseurAffectedByChef` (lignes 206-212)**
 
 ```typescript
-return affectationsJoursChef.some(
-  aff => aff.macon_id === employeeId && 
-         aff.jour === targetDate &&
-         aff.chantier_id === chantierId  // ✅ SÉCURITÉ SUPPLÉMENTAIRE
-);
+const isFinisseurAffectedByChef = (finisseurId: string): boolean => {
+  return affectationsChefSemaine.some(
+    (aff) => aff.macon_id === finisseurId
+  );
+};
+
+const getChefAffectedDaysCount = (finisseurId: string): number => {
+  return affectationsChefSemaine.filter(
+    (aff) => aff.macon_id === finisseurId
+  ).length;
+};
 ```
 
-## Résumé des modifications
+**4. Mettre à jour `getEmployeStatus` (lignes 271-275)**
 
-| Fichier | Modification | Lignes |
-|---------|--------------|--------|
-| `useAffectationsJoursChef.ts` | Nouveau hook avec filtre `chantier_id` | Après ligne 77 |
-| `TimeEntryTable.tsx` | Import du nouveau hook | Ligne 31 |
-| `TimeEntryTable.tsx` | Utiliser le nouveau hook avec `chantierId` | Lignes 252-255 |
-| `TimeEntryTable.tsx` | Vérification `chantier_id` dans `isDayAuthorizedForEmployee` | Ligne 314-316 |
+```typescript
+const getEmployeStatus = (employeId: string) => {
+  const chefDaysCount = getChefAffectedDaysCount(employeId);
+  if (chefDaysCount > 0) {
+    return { 
+      type: "chef", 
+      label: chefDaysCount === 5 ? "Géré par chef" : `${chefDaysCount}/5 jours chef`,
+      className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+      blocked: true
+    };
+  }
+  // ... reste inchangé ...
+};
+```
 
-## Résultat attendu après correction
+**5. Mettre à jour `handleAddEmploye` (lignes 300-311)**
 
-| Chantier | Slah BEYA - Jours affichés | Heures calculées |
-|----------|---------------------------|------------------|
-| COEUR DE BALME EST | Lundi, Mardi (Me-J-V grisés "Jour non affecté") | ~15.5h |
-| LE ROSEYRAN | Mercredi, Jeudi, Vendredi (L-M grisés "Jour non affecté") | ~23.5h |
+Ajouter la vérification du flag `blocked` pour bloquer l'ajout.
 
-## Tests à effectuer après déploiement
+## Résumé technique
 
-1. Ouvrir "Saisie hebdomadaire" pour COEUR DE BALME EST
-   - Vérifier que Slah BEYA n'affiche que Lundi et Mardi éditables
-   - Vérifier que Mercredi, Jeudi, Vendredi sont grisés avec "Jour non affecté"
+| Élément | Changement |
+|---------|------------|
+| Import | Ajouter `useAffectationsJoursChef` |
+| Hook | Remplacer `useAffectations()` par `useAffectationsJoursChef(semaine)` |
+| `isFinisseurAffectedByChef` | Vérifier dans `affectationsChefSemaine` au lieu de `affectationsChefs` |
+| `getChefAffectedDaysCount` | Nouvelle fonction pour compter les jours |
+| `getEmployeStatus` | Retourner `blocked: true` si géré par chef |
+| Bouton "+" | Masquer/désactiver si `status.blocked === true` |
 
-2. Ouvrir "Saisie hebdomadaire" pour LE ROSEYRAN
-   - Vérifier que Slah BEYA n'affiche que Mercredi, Jeudi, Vendredi éditables
-   - Vérifier que Lundi et Mardi sont grisés avec "Jour non affecté"
+## Analyse d'impact - Aucune régression
 
-3. Vérifier les totaux d'heures
-   - COEUR DE BALME EST : ~15.5h pour Slah BEYA
-   - LE ROSEYRAN : ~23.5h pour Slah BEYA
+Cette modification est **totalement isolée** :
+
+- Le hook `useAffectationsJoursChef(semaine)` existe déjà et fonctionne
+- Aucun autre fichier n'est modifié
+- Le hook legacy `useAffectations()` reste disponible ailleurs
+- Les query keys sont différentes → pas de conflit de cache
+
+## Résultat attendu
+
+| Employé | Avant | Après |
+|---------|-------|-------|
+| Slah BEYA (5/5 jours chef) | "Disponible" + bouton "+" actif | "Géré par chef" (cyan) + bouton masqué |
+| Employé avec 3/5 jours chef | "Disponible" + bouton "+" actif | "3/5 jours chef" (cyan) + bouton masqué |
+| Employé disponible | "Disponible" + bouton "+" actif | Inchangé |
+
+## Tests à effectuer
+
+1. Vérifier que Slah BEYA affiche "5/5 jours chef" ou "Géré par chef" avec badge cyan
+2. Vérifier que le bouton "+" n'apparaît pas pour les employés gérés par chef
+3. Vérifier qu'un employé sans affectation chef reste "Disponible" et cliquable
+4. Vérifier que la page Index (Saisie hebdo) fonctionne toujours normalement
+5. Vérifier que ChefMaconsManager fonctionne toujours normalement
+
