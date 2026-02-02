@@ -1,34 +1,61 @@
 
-# Plan : Supprimer l'ancienne contrainte d'unicité
+# Plan : Corriger l'affichage du badge Principal/Secondaire
 
 ## Diagnostic
 
-La table `planning_affectations` possède actuellement **deux contraintes UNIQUE** :
+Le badge "Principal/Secondaire" ne s'affiche pas correctement car la query `chefs-chantier-principal` n'est **jamais rafraîchie** après :
+1. L'ajout initial d'un chef sur un chantier (auto-définition du principal)
+2. Un clic sur le badge "Secondaire" pour changer de principal
 
-| Contrainte | Définition | Statut |
-|------------|------------|--------|
-| `unique_employe_jour_entreprise` | UNIQUE (employe_id, jour, entreprise_id) | ❌ **À SUPPRIMER** - bloque les chefs multi-chantiers |
-| `planning_affectations_unique_per_chantier` | UNIQUE (employe_id, jour, chantier_id, entreprise_id) | ✅ Correcte |
+### Données actuelles dans la base
 
-## Problème
+| Employé | chantier_principal_id | Chantier correspondant |
+|---------|----------------------|------------------------|
+| FAY Philippe | `d356d762-3535-47c6-88eb-061df36abb83` | **CI229BALME** |
 
-La migration précédente a tenté de supprimer `planning_affectations_employe_id_jour_entreprise_id_key` mais la vraie contrainte s'appelle `unique_employe_jour_entreprise`.
+La base de données est **correcte** : CI229BALME est bien le principal de FAY Philippe.
+
+### Problème
+
+Le hook `useSetChantierPrincipal` invalide ces queries :
+- `planning-affectations`
+- `all-employes`
+- `utilisateurs`
+
+**Mais PAS** la query `chefs-chantier-principal` utilisée pour afficher le badge !
 
 ## Solution
 
-Exécuter une nouvelle migration pour supprimer la contrainte `unique_employe_jour_entreprise`.
+Modifier `useSetChantierPrincipal.ts` pour invalider également la query `chefs-chantier-principal`.
 
-## Migration SQL à exécuter
+## Fichier à modifier
 
-```sql
--- Supprimer l'ancienne contrainte qui bloque les chefs multi-chantiers
-ALTER TABLE planning_affectations 
-DROP CONSTRAINT IF EXISTS unique_employe_jour_entreprise;
+| Fichier | Modification |
+|---------|--------------|
+| `src/hooks/useSetChantierPrincipal.ts` | Ajouter l'invalidation de `chefs-chantier-principal` |
+
+## Code à modifier
+
+Ligne 29-31, ajouter :
+
+```typescript
+onSuccess: () => {
+  // Invalider les queries pour rafraîchir les données
+  queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
+  queryClient.invalidateQueries({ queryKey: ["all-employes"] });
+  queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });
+  queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] }); // AJOUT
+  
+  toast.success("Chantier principal mis à jour", {
+    description: "Les heures du chef seront comptées sur ce chantier.",
+  });
+},
 ```
 
 ## Résultat attendu
 
-Après cette migration :
-- FAY Philippe pourra être sur CI229BALME ET CI230ROSEYRAN simultanément
-- Les maçons/finisseurs/grutiers seront toujours bloqués par l'UI (contrôle applicatif)
-- La contrainte `planning_affectations_unique_per_chantier` empêchera les doublons (même employé, même jour, même chantier)
+Après cette correction :
+- FAY Philippe sur CI229BALME → Badge **"★ Principal"**
+- FAY Philippe sur CI230ROSEYRAN → Badge **"Secondaire"** (cliquable)
+- FAY Philippe sur CI232ROMANCHE → Badge **"Secondaire"** (cliquable)
+- Cliquer sur "Secondaire" change le principal et rafraîchit immédiatement l'affichage
