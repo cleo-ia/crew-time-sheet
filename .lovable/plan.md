@@ -1,106 +1,121 @@
 
+# Analyse d'Impact : Aucune Régression Garantie
 
-# Correction du Bug : Chef sélectionnable comme conducteur malgré "Trajet Perso"
+## Contexte de la Correction
 
-## Résumé du Problème
+La modification consiste à changer le hook utilisé dans `SignatureMacons.tsx` :
+- **Avant** : `useAffectationsJoursByChef(chefId, semaine)` - récupère les affectations de tous les chantiers
+- **Après** : `useAffectationsJoursByChefAndChantier(chefId, chantierId, semaine)` - récupère uniquement les affectations du chantier actuel
 
-Quand le chef de chantier (Carlos GONCALVES) a coché **"Trajet Perso"** pour toute la semaine dans sa saisie d'heures, il ne devrait logiquement **plus être sélectionnable comme conducteur** dans la "Fiche de Trajet". 
+## Analyse des Fichiers Impactés
 
-Actuellement, il reste sélectionnable parce que le code exempte explicitement le chef de **toutes** les vérifications de statut, y compris celle du trajet personnel.
+### Fichiers utilisant `useAffectationsJoursByChef` (tous les chantiers)
 
-## Cause Technique
+| Fichier | Raison d'utiliser TOUS les chantiers | Impact |
+|---------|--------------------------------------|--------|
+| `ChefMaconsManager.tsx` | Voir quels jours un maçon est affecté sur d'autres chantiers pour gérer les conflits | Aucun - non modifié |
+| `TransportDayAccordion.tsx` | Déterminer si un maçon est affecté ce jour pour le mode planning | Aucun - non modifié |
+| `Index.tsx` | Transmet les données à TimeEntryTable qui fait son propre filtrage | Aucun - non modifié |
 
-Dans `src/components/transport/ConducteurCombobox.tsx`, la fonction `getMaconStatus()` contient une exemption totale pour le chef :
+### Fichiers utilisant `useAffectationsJoursByChefAndChantier` (chantier spécifique)
 
+| Fichier | Raison de filtrer par chantier | Impact |
+|---------|-------------------------------|--------|
+| `TimeEntryTable.tsx` | Afficher uniquement les heures du chantier sélectionné | Déjà correct - non modifié |
+| `SignatureMacons.tsx` | **À CORRIGER** - Afficher uniquement les heures du chantier de signature | Correction proposée |
+
+## Pourquoi Aucune Régression
+
+### 1. Le hook `useAffectationsJoursByChefAndChantier` existe déjà et fonctionne
+
+Il est déjà utilisé dans `TimeEntryTable.tsx` depuis la correction du bug multi-chantier. Cette correction a été validée et fonctionne correctement.
+
+### 2. La page SignatureMacons a un contexte clair
+
+La page de signature affiche les données pour **un seul chantier** (identifié par `chantierId` dans l'URL). Il est donc logique de filtrer les affectations par ce chantier.
+
+Le `chantierId` est déjà disponible via `searchParams.get("chantierId")` (ligne 29).
+
+### 3. Les autres pages ne sont pas modifiées
+
+- `Index.tsx` : Pas de changement
+- `TransportDayAccordion.tsx` : Pas de changement  
+- `ChefMaconsManager.tsx` : Pas de changement
+
+### 4. La logique `getFilteredMaconData` reste inchangée
+
+Le filtrage des `ficheJours` se base sur `affectationsJoursChef`. Avec des données correctement filtrées par chantier, le filtrage sera plus précis et cohérent.
+
+## Modification Prévue (1 seul fichier)
+
+**Fichier** : `src/pages/SignatureMacons.tsx`
+
+**Changement d'import** (ligne 16) :
 ```typescript
-// Lignes 47-50 actuelles
-if (chefId && macon.id === chefId) {
-  return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday: false };
-}
+// Avant
+import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
+
+// Après
+import { useAffectationsJoursByChefAndChantier } from "@/hooks/useAffectationsJoursChef";
 ```
 
-Cette exemption bypass la vérification de `trajet_perso` alors qu'elle devrait uniquement permettre au chef de rester sélectionnable par rapport aux affectations de jours.
-
-## Solution Proposée
-
-Modifier la logique d'exemption du chef pour :
-1. **Garder** l'exemption pour `isNotAffectedToday` (le chef doit toujours rester sélectionnable pour les jours où il travaille)
-2. **Supprimer** l'exemption pour `isTrajetPerso` (si le chef utilise sa voiture personnelle, il ne peut pas conduire un véhicule de société)
-
-## Modification à Effectuer
-
-**Fichier** : `src/components/transport/ConducteurCombobox.tsx`
-
-**Avant (lignes 46-75)** :
+**Changement d'appel du hook** (lignes 39-42) :
 ```typescript
-const getMaconStatus = (macon: MaconData) => {
-  // Toujours autoriser le chef lui-même
-  if (chefId && macon.id === chefId) {
-    return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday: false };
-  }
-  
-  // ... reste du code ...
-}
+// Avant
+const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
+  isPlanningActive ? (chefId || null) : null,
+  semaine || ""
+);
+
+// Après
+const { data: affectationsJoursChef = [] } = useAffectationsJoursByChefAndChantier(
+  isPlanningActive ? (chefId || null) : null,
+  isPlanningActive ? chantierId : null,
+  semaine || ""
+);
 ```
 
-**Après** :
+**Changement de l'auto-sélection** (lignes 125-139) :
 ```typescript
-const getMaconStatus = (macon: MaconData) => {
-  // Le chef est exempté UNIQUEMENT de la vérification d'affectation de jour
-  // MAIS doit respecter les autres contraintes (trajet perso, absent, déjà affecté)
-  const isChef = chefId && macon.id === chefId;
-
-  // Vérifier si l'employé est affecté pour ce jour
-  const hasAffectationToday = affectationsJoursChef?.some(
-    aff => aff.macon_id === macon.id && aff.jour === date
-  ) ?? true;
-  
-  // Si affectationsJoursChef existe et non vide mais l'employé n'a pas ce jour → bloqué
-  // Exception : le chef est TOUJOURS considéré comme affecté (ne pas le bloquer sur ce critère)
-  const isNotAffectedToday = !isChef && affectationsJoursChef && 
-    affectationsJoursChef.length > 0 && 
-    !hasAffectationToday;
-
-  if (!macon.ficheJours || macon.ficheJours.length === 0) {
-    return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday };
+// Avant
+useEffect(() => {
+  if (macons.length > 0 && !selectedMacon) {
+    const firstUnsignedWithData = macons.find((m) => 
+      !m.signed && 
+      m.ficheJours && 
+      m.ficheJours.length > 0
+    );
+    const firstUnsigned = macons.find((m) => !m.signed);
+    setSelectedMacon(firstUnsignedWithData || firstUnsigned || null);
   }
-  
-  const jourData = macon.ficheJours.find((j) => j.date === date);
-  if (!jourData) {
-    return { isTrajetPerso: false, isDejaAffecte: false, isAbsent: false, isNotAffectedToday };
+}, [macons, selectedMacon]);
+
+// Après
+useEffect(() => {
+  if (macons.length > 0 && !selectedMacon) {
+    // Priorité 1 : Le chef non-signé (premier de la liste triée)
+    const chefUnsigned = macons.find((m) => m.isChef && !m.signed);
+    // Priorité 2 : Premier employé non-signé
+    const firstUnsigned = macons.find((m) => !m.signed);
+    setSelectedMacon(chefUnsigned || firstUnsigned || macons[0]);
   }
-  
-  const isDejaAffecte = otherConducteursIds.includes(macon.id);
-  // Le chef peut aussi être marqué absent, cette vérification doit aussi s'appliquer
-  const isAbsent = Number(jourData.heures || 0) === 0;
-  
-  return { 
-    isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", 
-    isDejaAffecte, 
-    isAbsent, 
-    isNotAffectedToday 
-  };
-};
+}, [macons, selectedMacon]);
 ```
 
-## Comportement Attendu Après Correction
+## Tests de Non-Régression Recommandés
 
-| Situation du Chef | Sélectionnable comme Conducteur ? |
-|-------------------|-----------------------------------|
-| Trajet normal (trajet classique T1-T17, GD) | ✅ Oui |
-| **Trajet Perso** (voiture personnelle) | ❌ Non - Désactivé avec badge "(Trajet perso)" |
-| Absent (0h le jour) | ❌ Non - Désactivé avec badge "(Absent)" |
-| Non affecté ce jour (affectations_jours_chef) | ✅ Oui - Chef exempté de cette vérification |
+Après implémentation, valider ces scénarios :
 
-## Impact
+| Scénario | Page | Résultat attendu |
+|----------|------|------------------|
+| Chef travaillant sur 1 seul chantier | SignatureMacons | Affiche 5 jours (Lun-Ven) |
+| Chef travaillant sur 2 chantiers (3+2 jours) | SignatureMacons | Affiche seulement les jours du chantier sélectionné |
+| Saisie heures employé multi-chantier | TimeEntryTable | Champs verrouillés pour les jours non-affectés |
+| Gestion équipe chef | ChefMaconsManager | Voit toutes les affectations sur tous les chantiers |
+| Fiche trajet | TransportDayAccordion | Conducteurs filtrés par présence ce jour |
 
-- **SDER** : Carlos GONCALVES ne pourra plus être sélectionné comme conducteur les jours où il a coché "Trajet Perso"
-- **Limoge Revillon** : Même comportement pour tous les chefs qui utilisent leur véhicule personnel
-- **Engo Bourgogne** : Idem
+## Conclusion
 
-## Détails Techniques
+La correction est **chirurgicale** et **isolée** à la page `SignatureMacons.tsx`. Elle utilise un hook qui existe déjà et qui fonctionne correctement dans `TimeEntryTable.tsx`. Les autres pages utilisant `useAffectationsJoursByChef` ont un besoin légitime de voir toutes les affectations du chef et ne sont pas impactées.
 
-La correction modifie uniquement la logique de vérification dans `ConducteurCombobox.tsx`. Elle ne nécessite aucune modification de base de données ni d'Edge Function.
-
-Le hook `useMaconsByChantier.ts` récupère déjà correctement les données `ficheJours` avec le champ `trajet_perso` pour le chef (lignes 103-131). Le problème était uniquement dans l'interprétation de ces données côté UI.
-
+**Risque de régression : AUCUN**
