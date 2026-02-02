@@ -1,103 +1,169 @@
 
-
-# Plan : Bloquer les employés gérés par un chef dans le dialog conducteur
+# Plan : Grouper les finisseurs par chantier dans l'onglet "Mes heures" du conducteur
 
 ## Contexte
 
-Le composant `FinisseursDispatchWeekly.tsx` permet au conducteur d'ajouter des employés à son équipe de finisseurs. Actuellement, il utilise le hook legacy `useAffectations()` qui vérifie la table `affectations` avec la condition `date_fin === null`. Or, le système moderne utilise `affectations_jours_chef` pour gérer les affectations hebdomadaires des chefs.
+Le conducteur Jorge Goncalves gère deux équipes sans chef :
+- Équipe sur **Les Arcs** (ex: 2 finisseurs)
+- Équipe sur **Le Parc** (ex: 3 finisseurs)
 
-## Modification proposée
+Actuellement, tous les finisseurs apparaissent dans une liste unique sans distinction de chantier. Le conducteur ne peut pas facilement identifier qui travaille où.
 
-### Fichier unique : `src/components/conducteur/FinisseursDispatchWeekly.tsx`
+## Solution proposée
 
-**1. Ajouter l'import du hook existant (ligne 42)**
-
-```typescript
-import { useAffectationsJoursChef } from "@/hooks/useAffectationsJoursChef";
-```
-
-**2. Remplacer le hook legacy (ligne 81)**
-
-Avant :
-```typescript
-const { data: affectationsChefs } = useAffectations();
-```
-
-Après :
-```typescript
-const { data: affectationsChefSemaine = [] } = useAffectationsJoursChef(semaine);
-```
-
-**3. Réécrire `isFinisseurAffectedByChef` (lignes 206-212)**
-
-```typescript
-const isFinisseurAffectedByChef = (finisseurId: string): boolean => {
-  return affectationsChefSemaine.some(
-    (aff) => aff.macon_id === finisseurId
-  );
-};
-
-const getChefAffectedDaysCount = (finisseurId: string): number => {
-  return affectationsChefSemaine.filter(
-    (aff) => aff.macon_id === finisseurId
-  ).length;
-};
-```
-
-**4. Mettre à jour `getEmployeStatus` (lignes 271-275)**
-
-```typescript
-const getEmployeStatus = (employeId: string) => {
-  const chefDaysCount = getChefAffectedDaysCount(employeId);
-  if (chefDaysCount > 0) {
-    return { 
-      type: "chef", 
-      label: chefDaysCount === 5 ? "Géré par chef" : `${chefDaysCount}/5 jours chef`,
-      className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-      blocked: true
-    };
-  }
-  // ... reste inchangé ...
-};
-```
-
-**5. Mettre à jour `handleAddEmploye` (lignes 300-311)**
-
-Ajouter la vérification du flag `blocked` pour bloquer l'ajout.
-
-## Résumé technique
-
-| Élément | Changement |
-|---------|------------|
-| Import | Ajouter `useAffectationsJoursChef` |
-| Hook | Remplacer `useAffectations()` par `useAffectationsJoursChef(semaine)` |
-| `isFinisseurAffectedByChef` | Vérifier dans `affectationsChefSemaine` au lieu de `affectationsChefs` |
-| `getChefAffectedDaysCount` | Nouvelle fonction pour compter les jours |
-| `getEmployeStatus` | Retourner `blocked: true` si géré par chef |
-| Bouton "+" | Masquer/désactiver si `status.blocked === true` |
+Ajouter un **regroupement visuel par chantier** dans l'onglet "Mes heures" :
+- Afficher des sections distinctes pour chaque chantier
+- Chaque section affiche le nom du chantier en en-tête
+- Les finisseurs sont groupés sous leur chantier respectif
 
 ## Analyse d'impact - Aucune régression
 
-Cette modification est **totalement isolée** :
+### Pourquoi aucune régression ?
 
-- Le hook `useAffectationsJoursChef(semaine)` existe déjà et fonctionne
-- Aucun autre fichier n'est modifié
-- Le hook legacy `useAffectations()` reste disponible ailleurs
-- Les query keys sont différentes → pas de conflit de cache
+1. **Fichier unique modifié** : Seul `ValidationConducteur.tsx` est modifié
+2. **Données déjà disponibles** : `affectedDays` contient déjà le `chantier_id` par jour
+3. **Logique métier inchangée** : 
+   - `handleSaveAndSign` groupe déjà par chantier (lignes 341-367)
+   - `SignatureFinisseurs` utilise déjà `chantier_id` pour les signatures
+4. **Aucune modification de hooks** : Tous les hooks existants restent inchangés
+5. **Modification purement visuelle** : Seul l'affichage change, pas les données
+
+### Pages non impactées
+
+| Page | Raison |
+|------|--------|
+| Index (Saisie hebdo) | Utilise `useAffectationsJoursByChefAndChantier` - non modifié |
+| ChefMaconsManager | Utilise `useMaconsByChantier` - non modifié |
+| SignatureMacons | Utilise `useMaconsByChantier` - non modifié |
+| SignatureFinisseurs | Données déjà groupées par chantier - non modifié |
+| FinisseursDispatchWeekly | Logique d'affectation - non modifié |
+| PlanningMainOeuvre | Utilise ses propres hooks - non modifié |
+
+## Modifications techniques
+
+### Fichier : `src/pages/ValidationConducteur.tsx`
+
+**Modification 1 : Ajouter le hook useChantiers (déjà importé)**
+
+Vérification faite : `useChantiers` est déjà importé (ligne 27).
+
+**Modification 2 : Charger les informations des chantiers (après ligne 198)**
+
+```typescript
+// Charger les chantiers pour afficher les noms
+const { data: chantiers = [] } = useChantiers();
+const chantiersMap = useMemo(() => {
+  const map = new Map<string, { nom: string; code: string | null }>();
+  chantiers.forEach(ch => {
+    map.set(ch.id, { nom: ch.nom, code: ch.code_chantier });
+  });
+  return map;
+}, [chantiers]);
+```
+
+**Modification 3 : Grouper les finisseurs par chantier (après ligne 221)**
+
+```typescript
+// Grouper les finisseurs par chantier pour l'affichage
+const finisseursByChantier = useMemo(() => {
+  const grouped = new Map<string, typeof finisseurs>();
+  
+  finisseurs.forEach(f => {
+    // Déterminer le chantier principal (premier jour affecté)
+    const chantierId = f.affectedDays?.[0]?.chantier_id || "sans-chantier";
+    
+    if (!grouped.has(chantierId)) {
+      grouped.set(chantierId, []);
+    }
+    grouped.get(chantierId)!.push(f);
+  });
+  
+  return grouped;
+}, [finisseurs]);
+```
+
+**Modification 4 : Afficher par groupe de chantier (lignes 702-736)**
+
+Remplacer l'affichage unique de `TimeEntryTable` par une boucle sur les chantiers :
+
+```tsx
+{Array.from(finisseursByChantier.entries()).map(([chantierId, chantierFinisseurs]) => {
+  const chantierInfo = chantiersMap.get(chantierId);
+  const chantierLabel = chantierInfo 
+    ? `${chantierInfo.code || ""} - ${chantierInfo.nom}`.trim()
+    : "Équipe sans chantier";
+  
+  return (
+    <div key={chantierId} className="space-y-4">
+      {finisseursByChantier.size > 1 && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+          <Package className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-primary">{chantierLabel}</h3>
+          <span className="text-sm text-muted-foreground">
+            ({chantierFinisseurs.length} finisseur{chantierFinisseurs.length > 1 ? "s" : ""})
+          </span>
+        </div>
+      )}
+      <TimeEntryTable 
+        chantierId={chantierId !== "sans-chantier" ? chantierId : null}
+        weekId={selectedWeek}
+        chefId={effectiveConducteurId}
+        onEntriesChange={(entries) => {
+          // Fusionner les entrées de ce chantier avec les autres
+          setTimeEntries(prev => {
+            const otherEntries = prev.filter(e => 
+              !chantierFinisseurs.some(f => f.id === e.employeeId)
+            );
+            return [...otherEntries, ...entries];
+          });
+        }}
+        mode="conducteur"
+        affectationsJours={affectationsJours?.filter(a => 
+          chantierFinisseurs.some(f => f.id === a.finisseur_id)
+        )}
+        allAffectations={allAffectationsEnriched}
+      />
+    </div>
+  );
+})}
+```
 
 ## Résultat attendu
 
-| Employé | Avant | Après |
-|---------|-------|-------|
-| Slah BEYA (5/5 jours chef) | "Disponible" + bouton "+" actif | "Géré par chef" (cyan) + bouton masqué |
-| Employé avec 3/5 jours chef | "Disponible" + bouton "+" actif | "3/5 jours chef" (cyan) + bouton masqué |
-| Employé disponible | "Disponible" + bouton "+" actif | Inchangé |
+### Avant (actuel)
+```
+┌─────────────────────────────────────┐
+│ Mes heures - S07                    │
+├─────────────────────────────────────┤
+│ • Jean DUPONT      39h              │
+│ • Marie MARTIN     39h              │
+│ • Pierre DURAND    39h              │
+│ • Sophie BERNARD   39h              │
+│ • Lucas PETIT      39h              │
+└─────────────────────────────────────┘
+```
+
+### Après (avec regroupement)
+```
+┌─────────────────────────────────────┐
+│ Mes heures - S07                    │
+├─────────────────────────────────────┤
+│ 📦 ARCS - Les Arcs (2 finisseurs)   │
+│ ├─ Jean DUPONT      39h             │
+│ └─ Marie MARTIN     39h             │
+│                                     │
+│ 📦 PARC - Le Parc (3 finisseurs)    │
+│ ├─ Pierre DURAND    39h             │
+│ ├─ Sophie BERNARD   39h             │
+│ └─ Lucas PETIT      39h             │
+└─────────────────────────────────────┘
+```
 
 ## Tests à effectuer
 
-1. Vérifier que Slah BEYA affiche "5/5 jours chef" ou "Géré par chef" avec badge cyan
-2. Vérifier que le bouton "+" n'apparaît pas pour les employés gérés par chef
-3. Vérifier qu'un employé sans affectation chef reste "Disponible" et cliquable
-4. Vérifier que la page Index (Saisie hebdo) fonctionne toujours normalement
-5. Vérifier que ChefMaconsManager fonctionne toujours normalement
-
+1. **Conducteur avec 2+ chantiers** : Vérifier que les en-têtes de chantier apparaissent
+2. **Conducteur avec 1 seul chantier** : Vérifier que l'en-tête n'apparaît pas (inutile)
+3. **Sauvegarde multi-chantiers** : Vérifier que les heures sont correctement sauvegardées par chantier
+4. **Signature** : Vérifier que le processus de signature fonctionne toujours
+5. **Page Index (Saisie chef)** : Vérifier qu'elle fonctionne toujours normalement
+6. **ChefMaconsManager** : Vérifier qu'il fonctionne toujours normalement
