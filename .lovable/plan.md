@@ -1,161 +1,92 @@
 
+## Ce que j’ai compris (et confirmé en base)
+- Dans le planning **SDER / 2026‑S07**, **BABAY** est bien affecté :
+  - **Le Roseyran** : Lundi + Mardi (2 jours)
+  - **Les Terrasses de Romanches** : Mercredi + Jeudi + Vendredi (3 jours)
+- Pourtant, côté **Saisie hebdomadaire** sur **Le Roseyran**, BABAY affiche **39h**.
 
-# Plan : Bloquer les employés affectés 5/5 jours à un autre conducteur
+En base, on voit exactement pourquoi :
+- `affectations_jours_chef` pour BABAY sur **Le Roseyran** contient bien **2 lignes** (09/02 et 10/02).
+- Mais la fiche `fiches` de BABAY sur **Le Roseyran** a `total_heures = 39`.
+- Et `fiches_jours` pour cette fiche contient **5 jours** (L→V), avec des écritures supplémentaires apparues après la synchro (timestamps plus tardifs).
 
-## Contexte du bug
+Donc ce n’est pas un simple “affichage”: il y a eu **création de jours fantômes** dans `fiches_jours` pour ce chantier.
 
-**Domingos Fernandes DA SILVA** est affecté 5/5 jours à "LES TERRASSES DE ROMANCHES" (chantier sans chef) géré par **Romain DYE**.
+## Hypothèse racine (la vraie cause)
+Il y a un scénario où l’application retombe en “mode legacy / jours autorisés = tous les jours” alors que le planning est pourtant validé. Deux causes probables (compatibles avec ce qu’on voit) :
 
-Quand **Jorge GONCALVES** ouvre "Gérer mon équipe", Domingos apparaît comme "Disponible" car :
-- La table `affectations_jours_chef` est vide (pas de chef)
-- Le hook `useFinisseursPartiellementAffectes` filtre uniquement 1-4 jours, excluant les 5/5
+1) **Détection “planning actif” dépend trop de `localStorage.current_entreprise_id`**  
+   - `usePlanningMode` lit l’entreprise uniquement depuis `localStorage`.  
+   - Si ce storage est manquant/incohérent (session admin, changement d’entreprise, reload pas fait, etc.), `usePlanningMode` renvoie `false` → legacy → tous les jours autorisés → total 39.
 
-## Analyse technique
+2) **Auto-save qui “fallback” à 5 jours si les affectations jours ne sont pas lisibles**  
+   - `useAutoSaveFiche` (mutation) vérifie le planning actif via `planning_validations`, mais dépend aussi d’un `entrepriseId` local.
+   - Si la lecture des `affectations_jours_chef` échoue/retourne vide, le code peut garder `selectedDays = Lundi..Vendredi` (fallback) et **upsert 5 jours**, créant les jours fantômes.
 
-La faille se trouve dans le hook `useFinisseursPartiellementAffectes` :
+Objectif : rendre le système **impossible** à retomber en 5/5 jours quand le planning est validé.
 
-```typescript
-// src/hooks/useAffectationsFinisseursJours.ts (lignes 67-80)
-return Array.from(countMap.entries())
-  .filter(([_, count]) => count >= 1 && count <= 4) // ← Ne capture pas les 5/5 !
-  .map(([id, _]) => id);
-```
+---
 
-## Solution proposée
+## Changements prévus (code) — pour éliminer définitivement les “39h fantômes”
+### A) Fiabiliser la détection “planning actif”
+**Fichier : `src/hooks/usePlanningMode.ts`**
+- Remplacer l’usage direct de `localStorage.getItem("current_entreprise_id")` par une source fiable :
+  - utiliser `useCurrentEntrepriseId()` (déjà existant) pour récupérer l’entreprise via `localStorage` puis fallback `user_roles`.
+- Ainsi, même si le localStorage est vide, le planning sera détecté comme actif dès que l’ID entreprise est résolu.
 
-### Étape 1 : Créer un nouveau hook pour récupérer les employés complets d'autres conducteurs
+Résultat : `TimeEntryTable` n’affichera plus “legacy” à tort, donc les jours non affectés seront correctement exclus des totaux.
 
-Ajouter dans `src/hooks/useAffectationsFinisseursJours.ts` :
+### B) Empêcher `useAutoSaveFiche` de créer des jours non affectés (zéro tolérance)
+**Fichier : `src/hooks/useAutoSaveFiche.ts`**
+1. Rendre la récupération `entrepriseId` robuste (même fallback que `useCurrentEntrepriseId`) à l’intérieur de la mutation :
+   - Si `localStorage` est vide → requête `user_roles` pour récupérer `entreprise_id`.
+2. En mode planning actif (planning_validations existe) :
+   - Calculer `selectedDays` uniquement depuis `affectations_jours_chef` (maçons/grutiers/intérimaires) ou `affectations_finisseurs_jours` (finisseurs) selon le cas.
+   - **Si aucune affectation jour n’est trouvée** pour le couple (employé, chantier, semaine) :
+     - **ne pas fallback** à 5 jours,
+     - au contraire : `selectedDays = []` et **aucun upsert** de `fiches_jours`.
+3. Ajouter une étape “anti-jours fantômes” avant l’upsert (planning actif uniquement) :
+   - Pour la fiche ciblée : supprimer `fiches_jours` dont la date n’est pas dans les jours assignés (`selectedDatesISO`).
+   - Le trigger DB (déjà en place) recalculera automatiquement `fiches.total_heures`.
 
-```typescript
-// Récupérer les employés affectés à d'AUTRES conducteurs (toute durée)
-export const useEmployesAffectedByOtherConducteurs = (
-  currentConducteurId: string, 
-  semaine: string
-) => {
-  return useQuery({
-    queryKey: ["employes-autres-conducteurs", currentConducteurId, semaine],
-    queryFn: async () => {
-      if (!currentConducteurId || !semaine) return [];
-      
-      const { data, error } = await supabase
-        .from("affectations_finisseurs_jours")
-        .select("finisseur_id, conducteur_id, date")
-        .eq("semaine", semaine)
-        .neq("conducteur_id", currentConducteurId);
-      
-      if (error) throw error;
-      
-      // Compter les jours par finisseur et par conducteur
-      const countMap = new Map<string, { conducteurId: string; count: number }>();
-      (data || []).forEach(a => {
-        if (!countMap.has(a.finisseur_id)) {
-          countMap.set(a.finisseur_id, { conducteurId: a.conducteur_id, count: 0 });
-        }
-        countMap.get(a.finisseur_id)!.count++;
-      });
-      
-      return Array.from(countMap.entries()).map(([finisseurId, info]) => ({
-        finisseurId,
-        conducteurId: info.conducteurId,
-        daysCount: info.count
-      }));
-    },
-    enabled: !!currentConducteurId && !!semaine,
-  });
-};
-```
+Résultat : même si l’UI se trompe, l’auto-save ne pourra plus écrire 39h quand il n’y a que 2 jours.
 
-### Étape 2 : Mettre à jour `FinisseursDispatchWeekly.tsx`
+### C) Rendre la synchro Edge idempotente sur les jours (ceinture + bretelles)
+**Fichier : `supabase/functions/sync-planning-to-teams/index.ts`**
+Dans `createNewAffectation` :
+- Après avoir upsert les jours `joursPlanning`, supprimer pour la fiche tout `fiches_jours` hors `joursPlanning`.
+- Recalculer/mettre à jour le `total_heures` en se basant sur `joursPlanning` (ou laisser le trigger recalculer après suppressions).
 
-**Import du nouveau hook :**
+Résultat : si une fiche “polluée” existait déjà (ou si un ancien bug l’a salie), la synchro remettra un état propre.
 
-```typescript
-import {
-  // ... hooks existants ...
-  useEmployesAffectedByOtherConducteurs,
-} from "@/hooks/useAffectationsFinisseursJours";
-```
+---
 
-**Récupérer les données :**
+## Nettoyage des données existantes (pour tester “au propre” sans repurger toute la semaine)
+Comme on a déjà un cas concret “BABAY + ROSEYRAN + S07”, je vais ajouter une action de “nettoyage automatique” via les suppressions ci-dessus :
+- Dès que les correctifs sont en place, ouvrir la saisie hebdo / recharger déclenchera un auto-save qui peut corriger l’état (si on choisit d’exécuter le delete côté auto-save).
+- Sinon (plus propre), on ajoute une petite routine de nettoyage dans la synchro (C) et il suffira de relancer la synchro après avoir invalidé/validé.
 
-```typescript
-const { data: employesAutresConducteurs = [] } = useEmployesAffectedByOtherConducteurs(
-  conducteurId, 
-  semaine
-);
-```
+(Option si tu veux un bouton admin) : ajouter une action “Réparer la semaine (supprimer jours fantômes)” côté Admin, mais je ne le fais que si tu le souhaites.
 
-**Charger les noms des conducteurs :**
+---
 
-```typescript
-// Déjà disponible via useUtilisateursByRoles ou un hook dédié
-const conducteurNamesMap = useMemo(() => {
-  // Map conducteur_id → nom complet
-  // ...
-}, []);
-```
+## Tests à faire (checklist)
+1) **S07 / SDER / Roseyran** : BABAY n’affiche plus 39h mais seulement les heures des jours affectés (L+M).
+2) Vérifier que **les jours non affectés** apparaissent bien en “Jour non affecté” (gris/jaune selon UI) et non éditables.
+3) Vérifier que BABAY sur **Romanches** affiche bien uniquement M/J/V.
+4) Vérifier qu’un chef en mode normal (pas admin) peut toujours saisir, sauvegarder, signer.
+5) Vérifier qu’un “profil admin” qui regarde une saisie ne provoque pas d’écriture parasite (auto-save inoffensif).
 
-**Mettre à jour `getEmployeStatus` :**
+---
 
-```typescript
-const getEmployeStatus = (employeId: string) => {
-  // 1. Affecté par un chef cette semaine ?
-  const chefDaysCount = getChefAffectedDaysCount(employeId);
-  if (chefDaysCount > 0) {
-    return { 
-      type: "chef", 
-      label: chefDaysCount === 5 ? "Géré par chef" : `${chefDaysCount}/5 jours chef`,
-      className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-      blocked: true
-    };
-  }
-  
-  // 2. NOUVEAU: Affecté à un AUTRE conducteur ?
-  const autreConducteur = employesAutresConducteurs.find(e => e.finisseurId === employeId);
-  if (autreConducteur) {
-    const conducteurNom = conducteurNamesMap.get(autreConducteur.conducteurId) || "autre conducteur";
-    return { 
-      type: "autre-conducteur", 
-      label: autreConducteur.daysCount === 5 
-        ? `Géré par ${conducteurNom}` 
-        : `${autreConducteur.daysCount}/5 j. ${conducteurNom}`,
-      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      blocked: true // Bloqué si affecté à un autre conducteur (peu importe le nombre de jours)
-    };
-  }
-  
-  // ... reste inchangé ...
-};
-```
+## Fichiers qui seront modifiés
+- `src/hooks/usePlanningMode.ts` (fiabilisation entrepriseId)
+- `src/hooks/useAutoSaveFiche.ts` (pas de fallback 5 jours + suppression jours fantômes + entrepriseId robuste)
+- `supabase/functions/sync-planning-to-teams/index.ts` (nettoyage idempotent des jours hors planning)
 
-## Résumé technique
+---
 
-| Fichier | Modification |
-|---------|--------------|
-| `src/hooks/useAffectationsFinisseursJours.ts` | Ajouter `useEmployesAffectedByOtherConducteurs` |
-| `src/components/conducteur/FinisseursDispatchWeekly.tsx` | Importer le hook + mettre à jour `getEmployeStatus` |
-
-## Résultat attendu
-
-| Employé | Situation | Avant | Après |
-|---------|-----------|-------|-------|
-| Domingos Fernandes | 5/5 jours avec Romain DYE | "Disponible" ✅ | "Géré par Romain DYE" 🔒 |
-| Employé partiel | 3/5 jours avec autre conducteur | "Autre conducteur" | "3/5 j. [Nom]" 🔒 |
-| Employé dispo | Aucune affectation | "Disponible" | "Disponible" ✅ |
-
-## Analyse d'impact - Aucune régression
-
-1. **Nouveau hook isolé** : `useEmployesAffectedByOtherConducteurs` est une nouvelle query indépendante
-2. **Query key distincte** : Pas de conflit avec les hooks existants
-3. **Modification UI uniquement** : Seul le dialogue "Gérer mon équipe" est impacté
-4. **Aucun autre fichier modifié** : Pages chef, RH, planning restent inchangées
-
-## Tests à effectuer
-
-1. ✅ Domingos Fernandes affiche "Géré par Romain DYE" pour Jorge GONCALVES
-2. ✅ Le bouton "+" est masqué/désactivé pour les employés bloqués
-3. ✅ Un employé sans affectation reste "Disponible" et cliquable
-4. ✅ La page "Saisie chef" fonctionne normalement
-5. ✅ Le planning S+1 fonctionne normalement
+## Risques / points d’attention
+- Si une entreprise a des semaines “planning validé” mais **sans** `affectations_jours_chef`/`affectations_finisseurs_jours` générées (état incohérent), alors on choisit désormais de **ne rien écrire** plutôt que d’inventer 5 jours. C’est volontaire : ça évite les erreurs silencieuses.
+- On s’appuie sur le trigger DB de recalcul `total_heures` après suppression : à valider en test (mais il est déjà mentionné ailleurs dans le projet).
 
