@@ -35,6 +35,7 @@ interface SaveFicheParams {
   chantierId: string | null;
   chefId: string;
   forceNormalize?: boolean; // Si true, applique la normalisation 39h pour nouvelle semaine
+  mode?: "chef" | "conducteur"; // Distingue chef (affectations_jours_chef) vs conducteur (affectations_finisseurs_jours)
 }
 
 export const useAutoSaveFiche = () => {
@@ -260,83 +261,113 @@ export const useAutoSaveFiche = () => {
         let selectedDays: typeof workDays[number][] = [...workDays];
 
         if (chantierId !== null) {
-          // ✅ FIX: Récupérer l'entrepriseId de façon robuste
-          let entrepriseIdRobust: string | null = null;
-          try {
-            entrepriseIdRobust = await getCurrentEntrepriseId();
-          } catch (e) {
-            console.warn("[AutoSave] Impossible de récupérer entrepriseId, mode legacy activé:", e);
-          }
+          // Distinguer mode conducteur vs chef
+          const isConducteurMode = params.mode === "conducteur";
           
-          // Vérifier si le planning est actif pour cette semaine
-          let isPlanningActive = false;
-          if (entrepriseIdRobust) {
-            const { data: planningValidation } = await supabase
-              .from("planning_validations")
-              .select("id")
-              .eq("entreprise_id", entrepriseIdRobust)
-              .eq("semaine", weekId)
-              .maybeSingle();
-            
-            isPlanningActive = planningValidation !== null;
-          }
-          
-          // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
-          if (!isPlanningActive) {
-            selectedDays = [...workDays];
-          } else {
-            // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
-            const { data: affectationsJours } = await supabase
-              .from("affectations_jours_chef")
-              .select("jour")
-              .eq("macon_id", entry.employeeId)
-              .eq("chef_id", chefId)
+          if (isConducteurMode) {
+            // ✅ MODE CONDUCTEUR : utiliser affectations_finisseurs_jours
+            const { data: affectationsFinisseurs } = await supabase
+              .from("affectations_finisseurs_jours")
+              .select("date")
+              .eq("finisseur_id", entry.employeeId)
+              .eq("conducteur_id", chefId)
               .eq("chantier_id", chantierId)
               .eq("semaine", weekId);
-
-            if (affectationsJours && affectationsJours.length > 0) {
+            
+            if (affectationsFinisseurs && affectationsFinisseurs.length > 0) {
               // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
               const dayNameByDate = Object.fromEntries(
                 Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
               );
-              const assignedDayNames = affectationsJours
-                .map(a => dayNameByDate[a.jour])
+              const assignedDayNames = affectationsFinisseurs
+                .map(a => dayNameByDate[a.date])
                 .filter((name): name is typeof workDays[number] => !!name);
               
-              // ✅ FIX: PAS DE FALLBACK à 5 jours si aucune affectation trouvée en mode planning actif
-              // On garde uniquement les jours réellement assignés
               selectedDays = assignedDayNames;
-              
-              // Si aucun jour assigné pour ce couple (employé, chantier), ne rien écrire
-              if (selectedDays.length === 0) {
-                console.log(`[AutoSave] Planning actif mais aucun jour assigné pour ${entry.employeeName} sur ce chantier, skip fiches_jours`);
-              }
+              console.log(`[AutoSave Conducteur] ${entry.employeeName}: jours autorisés = [${selectedDays.join(", ")}]`);
             } else {
-              // ✅ FIX: ZÉRO TOLÉRANCE - Pas de fallback à 5 jours
-              // Si planning actif mais pas d'affectations, ne pas créer de jours fantômes
               selectedDays = [];
-              console.log(`[AutoSave] Planning actif, pas d'affectations pour ${entry.employeeName}, selectedDays = []`);
+              console.log(`[AutoSave Conducteur] Aucune affectation pour ${entry.employeeName}, skip`);
+            }
+          } else {
+            // ✅ MODE CHEF : utiliser affectations_jours_chef (code existant)
+            let entrepriseIdRobust: string | null = null;
+            try {
+              entrepriseIdRobust = await getCurrentEntrepriseId();
+            } catch (e) {
+              console.warn("[AutoSave] Impossible de récupérer entrepriseId, mode legacy activé:", e);
             }
             
-            // ✅ FIX: Nettoyer les jours fantômes existants (dates hors planning)
-            // Supprimer les fiches_jours dont la date n'est pas dans les jours assignés
-            const selectedDatesISO = selectedDays.map(d => dates[d]);
-            if (selectedDatesISO.length > 0 || selectedDays.length === 0) {
-              // Récupérer toutes les dates de la semaine pour ce fiche
-              const allWeekDatesISO = Object.values(dates);
-              const datesToDelete = allWeekDatesISO.filter(d => !selectedDatesISO.includes(d));
+            // Vérifier si le planning est actif pour cette semaine
+            let isPlanningActive = false;
+            if (entrepriseIdRobust) {
+              const { data: planningValidation } = await supabase
+                .from("planning_validations")
+                .select("id")
+                .eq("entreprise_id", entrepriseIdRobust)
+                .eq("semaine", weekId)
+                .maybeSingle();
               
-              if (datesToDelete.length > 0) {
-                const { error: deleteError } = await supabase
-                  .from("fiches_jours")
-                  .delete()
-                  .eq("fiche_id", ficheId)
-                  .in("date", datesToDelete);
+              isPlanningActive = planningValidation !== null;
+            }
+            
+            // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
+            if (!isPlanningActive) {
+              selectedDays = [...workDays];
+            } else {
+              // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
+              const { data: affectationsJours } = await supabase
+                .from("affectations_jours_chef")
+                .select("jour")
+                .eq("macon_id", entry.employeeId)
+                .eq("chef_id", chefId)
+                .eq("chantier_id", chantierId)
+                .eq("semaine", weekId);
+
+              if (affectationsJours && affectationsJours.length > 0) {
+                // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
+                const dayNameByDate = Object.fromEntries(
+                  Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
+                );
+                const assignedDayNames = affectationsJours
+                  .map(a => dayNameByDate[a.jour])
+                  .filter((name): name is typeof workDays[number] => !!name);
                 
-                if (deleteError) {
-                  console.error(`[AutoSave] Erreur suppression jours fantômes:`, deleteError);
-                } else {
-                  console.log(`[AutoSave] Supprimé ${datesToDelete.length} jour(s) fantôme(s) pour ${entry.employeeName}`);
+                // ✅ FIX: PAS DE FALLBACK à 5 jours si aucune affectation trouvée en mode planning actif
+                // On garde uniquement les jours réellement assignés
+                selectedDays = assignedDayNames;
+                
+                // Si aucun jour assigné pour ce couple (employé, chantier), ne rien écrire
+                if (selectedDays.length === 0) {
+                  console.log(`[AutoSave] Planning actif mais aucun jour assigné pour ${entry.employeeName} sur ce chantier, skip fiches_jours`);
+                }
+              } else {
+                // ✅ FIX: ZÉRO TOLÉRANCE - Pas de fallback à 5 jours
+                // Si planning actif mais pas d'affectations, ne pas créer de jours fantômes
+                selectedDays = [];
+                console.log(`[AutoSave] Planning actif, pas d'affectations pour ${entry.employeeName}, selectedDays = []`);
+              }
+              
+              // ✅ FIX: Nettoyer les jours fantômes existants (dates hors planning)
+              // Supprimer les fiches_jours dont la date n'est pas dans les jours assignés
+              const selectedDatesISO = selectedDays.map(d => dates[d]);
+              if (selectedDatesISO.length > 0 || selectedDays.length === 0) {
+                // Récupérer toutes les dates de la semaine pour ce fiche
+                const allWeekDatesISO = Object.values(dates);
+                const datesToDelete = allWeekDatesISO.filter(d => !selectedDatesISO.includes(d));
+                
+                if (datesToDelete.length > 0) {
+                  const { error: deleteError } = await supabase
+                    .from("fiches_jours")
+                    .delete()
+                    .eq("fiche_id", ficheId)
+                    .in("date", datesToDelete);
+                  
+                  if (deleteError) {
+                    console.error(`[AutoSave] Erreur suppression jours fantômes:`, deleteError);
+                  } else {
+                    console.log(`[AutoSave] Supprimé ${datesToDelete.length} jour(s) fantôme(s) pour ${entry.employeeName}`);
+                  }
                 }
               }
             }

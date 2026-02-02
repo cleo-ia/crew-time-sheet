@@ -881,7 +881,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           timeEntries: entries, 
           weekId, 
           chantierId, 
-          chefId 
+          chefId,
+          mode: isConducteurMode ? "conducteur" : "chef"
         },
         {
           onSuccess: () => {
@@ -903,7 +904,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           timeEntries: entries, 
           weekId, 
           chantierId, 
-          chefId 
+          chefId,
+          mode: isConducteurMode ? "conducteur" : "chef"
         });
         isDirty.current = false;
       }
