@@ -220,18 +220,35 @@ const PlanningMainOeuvre = () => {
         .maybeSingle();
 
       if (empData?.role_metier === "chef") {
-        // Définir ce chantier comme principal
+        // Définir ce chantier comme principal pour le chef
         await supabase
           .from("utilisateurs")
           .update({ chantier_principal_id: chantierId })
           .eq("id", employeId);
+
+        // Associer ce chef au chantier (si pas déjà un chef assigné)
+        const { data: chantierData } = await supabase
+          .from("chantiers")
+          .select("chef_id")
+          .eq("id", chantierId)
+          .single();
+
+        if (!chantierData?.chef_id) {
+          await supabase
+            .from("chantiers")
+            .update({ chef_id: employeId })
+            .eq("id", chantierId);
+          
+          // Invalider le cache des chantiers
+          queryClient.invalidateQueries({ queryKey: ["chantiers"] });
+        }
 
         // Rafraîchir le cache pour que l'UI se mette à jour
         queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
 
         toast({
           title: "Chantier principal défini",
-          description: "Ce chef est automatiquement rattaché à ce chantier comme site principal.",
+          description: "Ce chef est rattaché à ce chantier.",
         });
       }
     }
