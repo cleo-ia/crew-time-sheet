@@ -150,6 +150,33 @@ export const TransportFinisseurAccordion = ({
     });
   }, [weekDays, finisseurId]);
 
+  // 🆕 Synchroniser l'immatriculation avec trajetPersoByDate (changements depuis la saisie des heures)
+  useEffect(() => {
+    setDays((prevDays) => {
+      let hasChanges = false;
+      
+      const updatedDays = prevDays.map((day) => {
+        const isTrajetPerso = trajetPersoByDate.get(day.date) || false;
+        const currentIsTrajetPerso = day.immatriculation === "VEHICULE_PERSO";
+        
+        // Si trajet perso a changé : mettre à jour l'immatriculation
+        if (isTrajetPerso && !currentIsTrajetPerso) {
+          hasChanges = true;
+          return { ...day, immatriculation: "VEHICULE_PERSO", trajetPerso: true };
+        } else if (!isTrajetPerso && currentIsTrajetPerso) {
+          // Si trajet perso désactivé mais l'immat est VEHICULE_PERSO, vider
+          hasChanges = true;
+          return { ...day, immatriculation: "", trajetPerso: false };
+        }
+        
+        return day;
+      });
+      
+      // Ne mettre à jour que si des changements ont eu lieu
+      return hasChanges ? updatedDays : prevDays;
+    });
+  }, [trajetPersoByDate]);
+
   // Propager les changements au parent (avec comparaison profonde)
   const daysRef = useRef<TransportFinisseurDay[]>([]);
   
