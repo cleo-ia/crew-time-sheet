@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentEntrepriseId } from "@/hooks/useCurrentEntrepriseId";
 
 /**
  * Hook centralisé pour déterminer si le mode planning est actif pour une semaine donnée.
@@ -12,9 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
  * - Tous les jours sont éditables
  * - Les totaux incluent tous les jours travaillés
  * - Le chef compose son équipe manuellement via "Gérer mon équipe"
+ * 
+ * IMPORTANT: Ce hook utilise useCurrentEntrepriseId() pour récupérer l'entreprise
+ * de façon robuste (localStorage + fallback user_roles), évitant les faux négatifs
+ * quand localStorage est vide/incohérent.
  */
 export const usePlanningMode = (semaine: string) => {
-  const entrepriseId = localStorage.getItem("current_entreprise_id");
+  // ✅ FIX: Utiliser useCurrentEntrepriseId au lieu de localStorage direct
+  const { data: entrepriseId } = useCurrentEntrepriseId();
   
   const { data: isActive = false, isLoading } = useQuery({
     queryKey: ["planning-mode", entrepriseId, semaine],
