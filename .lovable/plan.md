@@ -1,97 +1,45 @@
 
-
-# Correction Simple : "VEHICULE_PERSO" comme Immatriculation
+# Correction : Persistance des données de saisie conducteur
 
 ## Problème
 
-Quand un finisseur utilise son véhicule personnel, l'immatriculation est laissée vide (`""`), ce qui fait échouer la validation car elle vérifie :
+Les heures saisies pour les finisseurs (ex: 40h au lieu de 39h) ne sont pas sauvegardées après un refresh de page.
+
+## Cause racine
+
+Le `chantierId` n'est pas correctement propagé dans les jours (`entry.days[].chantierId`), ce qui fait échouer silencieusement l'auto-save.
+
+Le bug se situe à la ligne 541 de `TimeEntryTable.tsx` :
 ```typescript
-const hasVehicle = !!jour.immatriculation && jour.immatriculation.trim() !== "";
+if (!currentDay.chantierCode) { // ❌ Vérifie le CODE, pas l'ID
 ```
+
+Si `code_chantier_du_jour` est enregistré en base mais que le chantier correspondant n'est pas trouvé, le `chantierCode` est présent mais le `chantierId` reste `null`. L'auto-save skip alors l'employé car il n'a pas de chantier.
 
 ## Solution
 
-Stocker `"VEHICULE_PERSO"` comme immatriculation quand l'employé utilise son véhicule personnel. Ainsi la validation passe sans modification de sa logique.
+Modifier la condition ligne 541 pour vérifier `chantierId` plutôt que `chantierCode` :
 
-## Modifications Techniques
-
-### 1. TransportFinisseurAccordion.tsx - Initialisation
-
-Quand `trajetPerso = true`, initialiser avec `"VEHICULE_PERSO"` au lieu de `""`.
-
-**Fichier** : `src/components/transport/TransportFinisseurAccordion.tsx`
-
-Lignes 100-109 - Modifier l'initialisation des jours :
 ```typescript
-weekDays.map((date) => {
-  const dateStr = format(date, "yyyy-MM-dd");
-  const isTrajetPerso = trajetPersoByDate.get(dateStr) || false;
-  return {
-    date: dateStr,
-    conducteurMatinId: finisseurId,
-    conducteurSoirId: finisseurId,
-    immatriculation: isTrajetPerso ? "VEHICULE_PERSO" : "",  // ✅ MODIFIÉ
-    trajetPerso: isTrajetPerso,
-  };
-});
+if (!currentDay.chantierId) { // ✅ Vérifie l'ID (nécessaire pour la sauvegarde)
 ```
 
-Ligne 135 - Modifier aussi la création de nouveaux jours dans l'effet :
-```typescript
-return {
-  date: dateStr,
-  conducteurMatinId: finisseurId,
-  conducteurSoirId: finisseurId,
-  immatriculation: trajetPersoByDate.get(dateStr) ? "VEHICULE_PERSO" : "",  // ✅ MODIFIÉ
-  trajetPerso: trajetPersoByDate.get(dateStr) || false,
-};
-```
+## Fichier modifié
 
-### 2. VehiculeCombobox.tsx - Affichage
+`src/components/timesheet/TimeEntryTable.tsx` - Ligne 541
 
-Le composant affiche déjà "Véhicule personnel" quand la valeur est vide. On doit aussi gérer le cas `"VEHICULE_PERSO"`.
+## Analyse de non-régression
 
-**Fichier** : `src/components/transport/VehiculeCombobox.tsx`
+| Page | Mode | Impact |
+|------|------|--------|
+| Index.tsx (Chef) | `chantierId` en prop | Aucun - le code modifié n'est exécuté qu'en mode conducteur |
+| ValidationConducteur.tsx | mode conducteur | Correction appliquée - le chantierId sera toujours synchronisé depuis les affectations |
+| FicheDetail.tsx (Lecture) | readOnly | Aucun - pas d'auto-save |
+| FicheDetail.tsx (Édition) | mode edit | Aucun - utilise initialData avec chantierId déjà résolu |
 
-Ajouter la détection de `"VEHICULE_PERSO"` dans l'affichage du bouton trigger.
+## Comportement attendu après correction
 
-### 3. TransportFinisseurAccordion.tsx - Synchronisation trajet perso
-
-Quand `trajetPerso` est coché dans les heures, s'assurer que l'immatriculation devient `"VEHICULE_PERSO"`.
-
-L'affichage conditionnel (lignes 284-297) montre déjà "Véhicule personnel" quand `isTrajetPerso = true`. On doit juste s'assurer que les données sauvegardées ont bien `immatriculation = "VEHICULE_PERSO"`.
-
-## Flux Simplifié
-
-```text
-Avant:
-┌─────────────────────────────────────────────────────┐
-│ Trajet Perso coché → immatriculation = ""          │
-│ Validation → hasVehicle = false → ❌ ERREUR        │
-└─────────────────────────────────────────────────────┘
-
-Après:
-┌─────────────────────────────────────────────────────┐
-│ Trajet Perso coché → immatriculation = "VEHICULE_PERSO" │
-│ Validation → hasVehicle = true → ✅ OK              │
-└─────────────────────────────────────────────────────┘
-```
-
-## Fichiers Modifiés
-
-1. `src/components/transport/TransportFinisseurAccordion.tsx` - Initialisation avec "VEHICULE_PERSO"
-2. `src/components/transport/VehiculeCombobox.tsx` - Affichage "Véhicule personnel" pour valeur "VEHICULE_PERSO"
-
-## Avantages
-
-- **Simple** : Pas de modification de la logique de validation
-- **Propre** : L'immatriculation a une vraie valeur explicite
-- **Cohérent** : Traitement uniforme de toutes les immatriculations
-- **Traçable** : On sait explicitement que c'est un véhicule perso en base
-
-## Pas de Régression
-
-- La validation reste identique
-- L'affichage UI reste le même ("Véhicule personnel")
-- Les autres cas (véhicule entreprise) ne sont pas impactés
-
+1. L'utilisateur modifie les heures (39h → 40h)
+2. Le `chantierId` est automatiquement rempli depuis les affectations
+3. L'auto-save trouve un `chantierId` valide et sauvegarde les données
+4. Après refresh, les données sont correctement restaurées (40h)
