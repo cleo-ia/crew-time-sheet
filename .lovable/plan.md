@@ -157,17 +157,23 @@ const isChefOnSecondary = selectedChef &&
 ## Résumé des changements
 
 ```text
-1. Migration SQL (Supabase Dashboard > SQL Editor)
+1. ✅ Migration SQL exécutée
    └─ DROP + ADD CONSTRAINT avec chantier_id inclus
 
-2. src/hooks/usePlanningAffectations.ts
+2. ✅ src/hooks/usePlanningAffectations.ts
    └─ Ligne 104 : onConflict avec chantier_id
 
-3. src/components/timesheet/ChantierSelector.tsx
+3. ✅ src/components/timesheet/ChantierSelector.tsx
    └─ Ajouter paramètre semaine
    └─ Fusionner chantiers chef_id + chantiers planning
 
-4. src/components/timesheet/TimeEntryTable.tsx
+4. ✅ src/components/timesheet/TimeEntryTable.tsx
    └─ Récupérer chantier_principal_id du chef
    └─ Bloquer saisie heures propres hors principal
+   └─ Message explicatif pour le chef sur chantier secondaire
+
+5. ✅ src/pages/Index.tsx
+   └─ Passer semaine={selectedWeek} au ChantierSelector
 ```
+
+## Statut : ✅ IMPLÉMENTÉ

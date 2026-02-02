@@ -101,7 +101,7 @@ export const useUpsertPlanningAffectation = () => {
           created_by: user?.user?.id || null,
           updated_at: new Date().toISOString(),
         }, {
-          onConflict: "employe_id,jour,entreprise_id",
+          onConflict: "employe_id,jour,chantier_id,entreprise_id",
         })
         .select()
         .single();

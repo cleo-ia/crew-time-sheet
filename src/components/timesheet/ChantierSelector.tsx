@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { parseISOWeek } from "@/lib/weekUtils";
+import { addDays, format } from "date-fns";
 
 interface ChantierSelectorProps {
   value?: string;
@@ -11,12 +13,14 @@ interface ChantierSelectorProps {
   compact?: boolean;
   allowAll?: boolean;
   disabled?: boolean;
+  semaine?: string; // Nouveau: pour récupérer les chantiers du planning
 }
 
-export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compact = false, allowAll = false, disabled = false }: ChantierSelectorProps) => {
+export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compact = false, allowAll = false, disabled = false, semaine }: ChantierSelectorProps) => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
   
-  const { data: chantiers, isLoading } = useQuery({
+  // Récupérer les chantiers de base (chef_id ou conducteur)
+  const { data: chantiersBase, isLoading: isLoadingBase } = useQuery({
     queryKey: ["chantiers", chefId, conducteurId, entrepriseId],
     queryFn: async () => {
       let query = supabase
@@ -56,6 +60,61 @@ export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compac
       return data;
     },
   });
+
+  // Récupérer les chantiers depuis le planning pour la semaine donnée (chefs multi-chantiers)
+  const { data: chantiersPlanning, isLoading: isLoadingPlanning } = useQuery({
+    queryKey: ["chantiers-planning", chefId, semaine, entrepriseId],
+    queryFn: async () => {
+      if (!chefId || !semaine || !entrepriseId) return [];
+      
+      // Récupérer les affectations planning du chef pour cette semaine
+      const { data: affectations, error } = await supabase
+        .from("planning_affectations")
+        .select("chantier_id")
+        .eq("employe_id", chefId)
+        .eq("semaine", semaine)
+        .eq("entreprise_id", entrepriseId);
+      
+      if (error) throw error;
+      if (!affectations || affectations.length === 0) return [];
+      
+      // Récupérer les chantiers uniques
+      const chantierIds = [...new Set(affectations.map(a => a.chantier_id))];
+      
+      const { data: chantiers, error: chantiersError } = await supabase
+        .from("chantiers")
+        .select("id, nom, code_chantier, ville, actif, chef_id, conducteur_id")
+        .in("id", chantierIds)
+        .eq("actif", true);
+      
+      if (chantiersError) throw chantiersError;
+      return chantiers || [];
+    },
+    enabled: !!chefId && !!semaine && !!entrepriseId,
+  });
+
+  // Fusionner les chantiers (base + planning) et dédupliquer
+  const chantiers = (() => {
+    const baseList = chantiersBase || [];
+    const planningList = chantiersPlanning || [];
+    
+    const merged = new Map<string, typeof baseList[0]>();
+    
+    // Ajouter d'abord les chantiers de base
+    baseList.forEach(c => merged.set(c.id, c));
+    
+    // Ajouter les chantiers du planning
+    planningList.forEach(c => {
+      if (!merged.has(c.id)) {
+        merged.set(c.id, c);
+      }
+    });
+    
+    // Trier par nom
+    return Array.from(merged.values()).sort((a, b) => a.nom.localeCompare(b.nom));
+  })();
+
+  const isLoading = isLoadingBase || isLoadingPlanning;
 
   // Sélection automatique si un seul chantier est disponible
   useEffect(() => {
