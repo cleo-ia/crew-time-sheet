@@ -664,9 +664,12 @@ async function syncEntreprise(
       const key = `${a.macon_id}|${a.chantier_id}`
       // Ne pas supprimer si dans le planning
       if (employeChantierInPlanning.has(key)) return false
-      // PROTECTION: Ne jamais supprimer le chef sur son chantier principal
+      // PROTECTION: Ne jamais supprimer le chef sur son chantier principal SI il est dans le planning
       const chefPrincipal = chefPrincipalMap.get(a.macon_id)
-      if (chefPrincipal && a.chantier_id === chefPrincipal) return false
+      // Vérifier si ce chef est réellement dans le planning de cette semaine
+      const chefDansPlanning = employeChantierInPlanning.has(`${a.macon_id}|${chefPrincipal}`) ||
+        [...employeChantierInPlanning.keys()].some(key => key.startsWith(`${a.macon_id}|`))
+      if (chefPrincipal && a.chantier_id === chefPrincipal && chefDansPlanning) return false
       return true
     })
     .map((a: any) => `${a.macon_id}|${a.chantier_id}` as string))] as string[]
