@@ -488,11 +488,45 @@ async function syncEntreprise(
         }
       }
       
+      // NOUVEAU: Nettoyer les heures existantes du chef sur ce chantier secondaire
+      // Pour éviter les doublons RH si une fiche a été créée avant
+      const { data: ficheSecondaire } = await supabase
+        .from('fiches')
+        .select('id')
+        .eq('salarie_id', employeId)
+        .eq('chantier_id', chantierId)
+        .eq('semaine', currentWeek)
+        .maybeSingle()
+
+      if (ficheSecondaire) {
+        // Supprimer les fiches_jours pour forcer 0h
+        const { error: deleteJoursError } = await supabase
+          .from('fiches_jours')
+          .delete()
+          .eq('fiche_id', ficheSecondaire.id)
+        
+        if (deleteJoursError) {
+          console.error(`[sync-planning-to-teams] Erreur suppression fiches_jours secondaire:`, deleteJoursError)
+        }
+        
+        // Mettre à jour total_heures à 0
+        const { error: updateFicheError } = await supabase
+          .from('fiches')
+          .update({ total_heures: 0 })
+          .eq('id', ficheSecondaire.id)
+        
+        if (updateFicheError) {
+          console.error(`[sync-planning-to-teams] Erreur update fiche secondaire:`, updateFicheError)
+        } else {
+          console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: heures forcées à 0`)
+        }
+      }
+      
       results.push({ 
         employe_id: employeId, 
         employe_nom: employeNom, 
         action: 'skipped', 
-        details: `Chef multi-chantiers - heures comptées sur chantier principal` 
+        details: `Chef multi-chantiers - heures nettoyées sur secondaire, comptées sur principal` 
       })
       continue
     }
