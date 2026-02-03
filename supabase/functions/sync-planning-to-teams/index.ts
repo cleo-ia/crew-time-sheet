@@ -468,28 +468,12 @@ async function syncEntreprise(
     const chantierPrincipal = chefPrincipalMap.get(employeId)
     if (chantierPrincipal && chantierId !== chantierPrincipal && employe?.role_metier === 'chef') {
       // C'est un chef sur un chantier secondaire → skip la création de SA fiche personnelle
-      // Mais on crée quand même les affectations_jours_chef pour router l'équipe vers ce chantier
-      console.log(`[sync-planning-to-teams] Chef ${employeNom} sur chantier secondaire ${chantierId} (principal: ${chantierPrincipal}), skip fiche personnelle`)
+      // ❌ NE PAS créer d'affectations_jours_chef pour le chef lui-même sur le secondaire
+      // (sinon l'upsert avec onConflict:'macon_id,jour' écrasera le chantier principal!)
+      console.log(`[sync-planning-to-teams] Chef ${employeNom} sur chantier secondaire ${chantierId} (principal: ${chantierPrincipal}), skip affectations + fiche personnelle`)
       
-      // Créer uniquement les affectations_jours_chef pour que l'équipe soit routée vers ce chef/chantier
-      // NE PAS créer de fiche/fiches_jours pour le chef lui-même
-      if (chantier?.chef_id) {
-        for (const jour of joursPlanning) {
-          await supabase
-            .from('affectations_jours_chef')
-            .upsert({
-              macon_id: employeId,
-              chef_id: chantier.chef_id,
-              chantier_id: chantierId,
-              jour,
-              semaine: currentWeek,
-              entreprise_id: entrepriseId
-            }, { onConflict: 'macon_id,jour' })
-        }
-      }
-      
-      // NOUVEAU: Supprimer complètement la fiche du chef sur le chantier secondaire
-      // Pour éviter que l'UI interprète 0h comme "absent" (le chef n'est PAS absent, il travaille sur son principal)
+      // Récupérer ou créer une fiche "0h" pour le chef sur le secondaire
+      // (pour que l'UI puisse afficher le chef correctement sans le marquer "absent")
       const { data: ficheSecondaire } = await supabase
         .from('fiches')
         .select('id')
@@ -499,44 +483,47 @@ async function syncEntreprise(
         .maybeSingle()
 
       if (ficheSecondaire) {
-        // 1. Supprimer d'abord les fiches_jours (clé étrangère)
-        const { error: deleteJoursError } = await supabase
+        // Supprimer les fiches_jours (le chef n'a pas d'heures sur le secondaire)
+        await supabase
           .from('fiches_jours')
           .delete()
           .eq('fiche_id', ficheSecondaire.id)
         
-        if (deleteJoursError) {
-          console.error(`[sync-planning-to-teams] Erreur suppression fiches_jours secondaire:`, deleteJoursError)
-        }
-        
-        // 2. Supprimer les signatures associées (clé étrangère)
-        const { error: deleteSignaturesError } = await supabase
+        // Supprimer les signatures associées (incohérentes avec 0h)
+        await supabase
           .from('signatures')
           .delete()
           .eq('fiche_id', ficheSecondaire.id)
         
-        if (deleteSignaturesError) {
-          console.error(`[sync-planning-to-teams] Erreur suppression signatures secondaire:`, deleteSignaturesError)
-        }
-        
-        // 3. Supprimer la fiche elle-même (pas juste reset à 0)
-        const { error: deleteFicheError } = await supabase
+        // Mettre la fiche à 0h (garder la fiche pour l'affichage UI)
+        await supabase
           .from('fiches')
-          .delete()
+          .update({ total_heures: 0, statut: 'BROUILLON' })
           .eq('id', ficheSecondaire.id)
         
-        if (deleteFicheError) {
-          console.error(`[sync-planning-to-teams] Erreur suppression fiche secondaire:`, deleteFicheError)
-        } else {
-          console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: fiche SUPPRIMÉE (pas juste 0h)`)
-        }
+        console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: fiche maintenue à 0h (sans fiches_jours)`)
+      } else {
+        // Créer une fiche 0h pour le secondaire
+        await supabase
+          .from('fiches')
+          .insert({
+            salarie_id: employeId,
+            chantier_id: chantierId,
+            semaine: currentWeek,
+            user_id: chantier?.chef_id || employeId,
+            statut: 'BROUILLON',
+            total_heures: 0,
+            entreprise_id: entrepriseId
+          })
+        
+        console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: fiche 0h créée`)
       }
       
       results.push({ 
         employe_id: employeId, 
         employe_nom: employeNom, 
         action: 'skipped', 
-        details: `Chef multi-chantiers - heures nettoyées sur secondaire, comptées sur principal` 
+        details: `Chef multi-chantiers - 0h sur secondaire, heures sur principal uniquement` 
       })
       continue
     }
@@ -586,6 +573,65 @@ async function syncEntreprise(
     }
   }
 
+  // ========================================================================
+  // GARDE-FOU: Garantir les affectations du chef sur son chantier principal
+  // + Supprimer toute affectation "polluée" du chef sur un chantier secondaire
+  // ========================================================================
+  const mondayOfWeek = parseISOWeek(currentWeek)
+  const weekDays: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(mondayOfWeek)
+    d.setDate(mondayOfWeek.getDate() + i)
+    weekDays.push(d.toISOString().split('T')[0])
+  }
+
+  for (const [chefId, chantierPrincipalId] of chefPrincipalMap) {
+    // Récupérer les infos du chantier principal
+    // deno-lint-ignore no-explicit-any
+    const chantierPrincipalInfo = chantiersMap.get(chantierPrincipalId) as any
+    if (!chantierPrincipalInfo) {
+      console.log(`[sync-planning-to-teams] Chef ${chefId}: chantier principal ${chantierPrincipalId} non trouvé, skip garde-fou`)
+      continue
+    }
+
+    // 1. Supprimer toutes les affectations du chef (macon_id = chefId) sur des chantiers != principal
+    const { data: pollutedAffectations } = await supabase
+      .from('affectations_jours_chef')
+      .select('id, chantier_id')
+      .eq('macon_id', chefId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .neq('chantier_id', chantierPrincipalId)
+
+    if (pollutedAffectations && pollutedAffectations.length > 0) {
+      console.log(`[sync-planning-to-teams] Chef ${chefId}: suppression de ${pollutedAffectations.length} affectation(s) polluée(s) sur chantiers secondaires`)
+      
+      await supabase
+        .from('affectations_jours_chef')
+        .delete()
+        .eq('macon_id', chefId)
+        .eq('semaine', currentWeek)
+        .eq('entreprise_id', entrepriseId)
+        .neq('chantier_id', chantierPrincipalId)
+    }
+
+    // 2. Forcer la création des 5 affectations sur le chantier principal
+    for (const jour of weekDays) {
+      await supabase
+        .from('affectations_jours_chef')
+        .upsert({
+          macon_id: chefId,
+          chef_id: chefId, // Le chef est son propre "chef" pour ses affectations
+          chantier_id: chantierPrincipalId,
+          jour,
+          semaine: currentWeek,
+          entreprise_id: entrepriseId
+        }, { onConflict: 'macon_id,jour' })
+    }
+
+    console.log(`[sync-planning-to-teams] Chef ${chefId}: 5 affectations forcées sur chantier principal ${chantierPrincipalId}`)
+  }
+
   // 5. PHASE NETTOYAGE: supprimer les affectations hors planning (SANS PROTECTION)
   const employeChantierInPlanning = new Set([...planningByEmployeChantier.keys()])
   
@@ -602,9 +648,18 @@ async function syncEntreprise(
     .eq('semaine', currentWeek)
 
   // Identifier les couples employé-chantier à supprimer (dans affectations mais pas dans planning)
+  // PROTECTION: Ne jamais supprimer les affectations d'un chef sur son chantier principal
   // deno-lint-ignore no-explicit-any
   const toDeleteChef: string[] = [...new Set((existingChefS || [])
-    .filter((a: any) => !employeChantierInPlanning.has(`${a.macon_id}|${a.chantier_id}`))
+    .filter((a: any) => {
+      const key = `${a.macon_id}|${a.chantier_id}`
+      // Ne pas supprimer si dans le planning
+      if (employeChantierInPlanning.has(key)) return false
+      // PROTECTION: Ne jamais supprimer le chef sur son chantier principal
+      const chefPrincipal = chefPrincipalMap.get(a.macon_id)
+      if (chefPrincipal && a.chantier_id === chefPrincipal) return false
+      return true
+    })
     .map((a: any) => `${a.macon_id}|${a.chantier_id}` as string))] as string[]
 
   // deno-lint-ignore no-explicit-any
