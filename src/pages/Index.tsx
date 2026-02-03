@@ -13,10 +13,8 @@ import { ChantierSelector } from "@/components/timesheet/ChantierSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
 import { AppNav } from "@/components/navigation/AppNav";
 import { UserSelector } from "@/components/timesheet/UserSelector";
-import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
-import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -87,7 +85,6 @@ const Index = () => {
   const [showConges, setShowConges] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [weekInitialized, setWeekInitialized] = useState(false);
-  const saveFiche = useSaveFiche();
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
   
@@ -296,13 +293,7 @@ const Index = () => {
   // Vérifier si le planning est actif (validé par un conducteur)
   const { isActive: isPlanningActive } = usePlanningMode(selectedWeek);
   
-  // CORRECTION BUG MULTI-CHANTIER: Charger les affectations jour pour ce chef/semaine
-  // afin de ne transmettre QUE les jours où l'employé est affecté à ce chantier
-  // 🔥 On ne charge QUE si le planning est actif, sinon mode legacy
-  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(
-    isPlanningActive ? (selectedChef || null) : null,
-    selectedWeek || ""
-  );
+  // La logique de filtrage par jours autorisés est maintenant centralisée dans useAutoSaveFiche
 
   // Validation des codes trajets
   
@@ -375,86 +366,13 @@ const Index = () => {
       }
     }
 
-    const monday = parseISOWeek(selectedWeek);
-    const days = [0,1,2,3,4].map((d) => format(addDays(monday, d), "yyyy-MM-dd"));
-    
-    // CORRECTION BUG MULTI-CHANTIER: Fonction pour obtenir les jours autorisés pour un employé
-    // selon ses affectations. Si pas d'affectations définies OU planning non validé, fallback sur tous les jours (legacy).
-    const getAuthorizedDaysForEmployee = (employeeId: string): string[] => {
-      // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours sont autorisés
-      if (!isPlanningActive) {
-        return days;
-      }
-      
-      // ✅ FIX: En planning actif, pas de fallback à 5 jours
-      // Si pas d'affectations configurées, aucun jour autorisé → empêche transmission fantôme
-      if (!affectationsJoursChef || affectationsJoursChef.length === 0) {
-        return []; // Aucun jour autorisé
-      }
-      
-      // Filtrer les affectations de cet employé spécifiquement
-      const employeeAffectations = affectationsJoursChef.filter(
-        aff => aff.macon_id === employeeId
-      );
-      
-      // ✅ FIX: Si cet employé n'a pas d'affectation spécifique, 0 jour (pas de fantômes)
-      if (employeeAffectations.length === 0) {
-        return [];
-      }
-      
-      // Retourner uniquement les dates ISO où l'employé est affecté à ce chef/chantier
-      return employeeAffectations.map(aff => aff.jour);
-    };
-
-    // Construire employeesData avec FILTRAGE par jours autorisés
-    const employeesData: EmployeeData[] = timeEntries.map((entry) => {
-      const authorizedDays = getAuthorizedDaysForEmployee(entry.employeeId);
-      
-      // Mapping des dates ISO vers les noms de jours
-      const dayMapping = [
-        { date: days[0], name: "Lundi", data: entry.days.Lundi },
-        { date: days[1], name: "Mardi", data: entry.days.Mardi },
-        { date: days[2], name: "Mercredi", data: entry.days.Mercredi },
-        { date: days[3], name: "Jeudi", data: entry.days.Jeudi },
-        { date: days[4], name: "Vendredi", data: entry.days.Vendredi },
-      ];
-      
-      // FILTRE: ne garder que les jours autorisés pour cet employé
-      const filteredDailyHours = dayMapping
-        .filter(d => authorizedDays.includes(d.date))
-        .map(d => ({
-          date: d.date,
-          heures: d.data.absent ? 0 : (d.data.hours ?? 0),
-          pause_minutes: 0,
-          HNORM: d.data.absent ? 0 : (d.data.hours ?? 0),
-          HI: d.data.heuresIntemperie ?? 0,
-          T: (d.data.codeTrajet === 'GD' || d.data.codeTrajet === 'T_PERSO') ? 0 : (d.data.trajet ? 1 : 0),
-          PA: d.data.panierRepas ?? false,
-          trajet_perso: d.data.trajetPerso ?? false,
-          code_chantier_du_jour: d.data.chantierCode,
-          ville_du_jour: d.data.chantierVille,
-          code_trajet: d.data.codeTrajet || null,
-          commentaire: d.data.commentaire || null,
-          repas_type: d.data.repasType ?? (d.data.panierRepas ? "PANIER" : null),
-        }));
-      
-      return {
-        employeeId: entry.employeeId,
-        employeeName: entry.employeeName,
-        dailyHours: filteredDailyHours,
-      };
-    });
-
-    if (employeesData.length === 0) return;
-
     try {
-      // 1. Attendre la sauvegarde complète
-      await saveFiche.mutateAsync({
-        semaine: selectedWeek,
+      // ✅ UNIFICATION: Utiliser autoSaveFiche (moteur unique avec nettoyage jours fantômes)
+      await autoSaveFiche.mutateAsync({
+        timeEntries,
+        weekId: selectedWeek,
         chantierId: selectedChantier,
-        employeesData,
-        statut: "BROUILLON",
-        userId: selectedChef,
+        chefId: selectedChef,
       });
 
       // 2. Invalider manuellement le cache React Query pour forcer le rechargement
@@ -468,7 +386,11 @@ const Index = () => {
       navigate(`/signature-macons?chantierId=${selectedChantier}&semaine=${selectedWeek}&chefId=${selectedChef}`);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
-      // Le toast d'erreur est déjà géré par useSaveFiche
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'enregistrement.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -763,7 +685,7 @@ const Index = () => {
                     size="lg"
                     className="bg-accent hover:bg-accent-hover text-accent-foreground shadow-primary w-full"
                     onClick={handleSaveAndSign}
-                    disabled={saveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable || !isOnline}
+                    disabled={autoSaveFiche.isPending || isSubmitting || !selectedChef || timeEntries.length === 0 || !isTransportComplete || !isFicheModifiable || !isOnline}
                   >
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                     Enregistrer et collecter les signatures
