@@ -473,8 +473,13 @@ const SignatureMacons = () => {
                                         {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
                                       </td>
                                       <td className="text-center py-2 px-3">
-                                        {jour.HNORM === 0 && jour.HI === 0 ? (
-                                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                                        {/* Chef sur chantier secondaire = 0h par design, pas "absent" */}
+                                        {selectedMacon.isChef && isChantierSecondaire && jour.HNORM === 0 && jour.HI === 0 ? (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                            Chantier principal
+                                          </Badge>
+                                        ) : jour.HNORM === 0 && jour.HI === 0 ? (
+                                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
                                             Absent
                                           </Badge>
                                         ) : (

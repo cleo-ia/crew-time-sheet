@@ -488,8 +488,8 @@ async function syncEntreprise(
         }
       }
       
-      // NOUVEAU: Nettoyer les heures existantes du chef sur ce chantier secondaire
-      // Pour éviter les doublons RH si une fiche a été créée avant
+      // NOUVEAU: Supprimer complètement la fiche du chef sur le chantier secondaire
+      // Pour éviter que l'UI interprète 0h comme "absent" (le chef n'est PAS absent, il travaille sur son principal)
       const { data: ficheSecondaire } = await supabase
         .from('fiches')
         .select('id')
@@ -499,7 +499,7 @@ async function syncEntreprise(
         .maybeSingle()
 
       if (ficheSecondaire) {
-        // Supprimer les fiches_jours pour forcer 0h
+        // 1. Supprimer d'abord les fiches_jours (clé étrangère)
         const { error: deleteJoursError } = await supabase
           .from('fiches_jours')
           .delete()
@@ -509,16 +509,26 @@ async function syncEntreprise(
           console.error(`[sync-planning-to-teams] Erreur suppression fiches_jours secondaire:`, deleteJoursError)
         }
         
-        // Mettre à jour total_heures à 0
-        const { error: updateFicheError } = await supabase
+        // 2. Supprimer les signatures associées (clé étrangère)
+        const { error: deleteSignaturesError } = await supabase
+          .from('signatures')
+          .delete()
+          .eq('fiche_id', ficheSecondaire.id)
+        
+        if (deleteSignaturesError) {
+          console.error(`[sync-planning-to-teams] Erreur suppression signatures secondaire:`, deleteSignaturesError)
+        }
+        
+        // 3. Supprimer la fiche elle-même (pas juste reset à 0)
+        const { error: deleteFicheError } = await supabase
           .from('fiches')
-          .update({ total_heures: 0 })
+          .delete()
           .eq('id', ficheSecondaire.id)
         
-        if (updateFicheError) {
-          console.error(`[sync-planning-to-teams] Erreur update fiche secondaire:`, updateFicheError)
+        if (deleteFicheError) {
+          console.error(`[sync-planning-to-teams] Erreur suppression fiche secondaire:`, deleteFicheError)
         } else {
-          console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: heures forcées à 0`)
+          console.log(`[sync-planning-to-teams] Chef ${employeNom} sur secondaire ${chantierId}: fiche SUPPRIMÉE (pas juste 0h)`)
         }
       }
       
