@@ -315,37 +315,59 @@ export const useAutoSaveFiche = () => {
             if (!isPlanningActive) {
               selectedDays = [...workDays];
             } else {
-              // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
-              const { data: affectationsJours } = await supabase
-                .from("affectations_jours_chef")
-                .select("jour")
-                .eq("macon_id", entry.employeeId)
-                .eq("chef_id", chefId)
-                .eq("chantier_id", chantierId)
-                .eq("semaine", weekId);
-
-              if (affectationsJours && affectationsJours.length > 0) {
-                // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
-                const dayNameByDate = Object.fromEntries(
-                  Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
-                );
-                const assignedDayNames = affectationsJours
-                  .map(a => dayNameByDate[a.jour])
-                  .filter((name): name is typeof workDays[number] => !!name);
+              // ✅ EXCEPTION CHEF PRINCIPAL : Si l'employé est le chef ET 
+              // le chantier courant est son chantier principal → tous les jours autorisés
+              // Cela garantit que les heures du chef sont toujours sauvegardées sur son chantier principal,
+              // indépendamment des affectations planning (le chef peut être planifié 5J sur plusieurs chantiers)
+              let isChefOnPrincipalChantier = false;
+              if (entry.employeeId === chefId) {
+                const { data: chefUserData } = await supabase
+                  .from("utilisateurs")
+                  .select("chantier_principal_id")
+                  .eq("id", chefId)
+                  .maybeSingle();
                 
-                // ✅ FIX: PAS DE FALLBACK à 5 jours si aucune affectation trouvée en mode planning actif
-                // On garde uniquement les jours réellement assignés
-                selectedDays = assignedDayNames;
-                
-                // Si aucun jour assigné pour ce couple (employé, chantier), ne rien écrire
-                if (selectedDays.length === 0) {
-                  console.log(`[AutoSave] Planning actif mais aucun jour assigné pour ${entry.employeeName} sur ce chantier, skip fiches_jours`);
+                if (chefUserData?.chantier_principal_id === chantierId) {
+                  isChefOnPrincipalChantier = true;
+                  selectedDays = [...workDays];
+                  console.log(`[AutoSave] Chef ${entry.employeeName} sur son chantier principal, 5 jours autorisés`);
                 }
-              } else {
-                // ✅ FIX: ZÉRO TOLÉRANCE - Pas de fallback à 5 jours
-                // Si planning actif mais pas d'affectations, ne pas créer de jours fantômes
-                selectedDays = [];
-                console.log(`[AutoSave] Planning actif, pas d'affectations pour ${entry.employeeName}, selectedDays = []`);
+              }
+              
+              // Si ce n'est pas le chef sur son chantier principal, vérifier les affectations
+              if (!isChefOnPrincipalChantier) {
+                // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
+                const { data: affectationsJours } = await supabase
+                  .from("affectations_jours_chef")
+                  .select("jour")
+                  .eq("macon_id", entry.employeeId)
+                  .eq("chef_id", chefId)
+                  .eq("chantier_id", chantierId)
+                  .eq("semaine", weekId);
+
+                if (affectationsJours && affectationsJours.length > 0) {
+                  // Convertir les dates ISO en noms de jours (Lundi, Mardi, etc.)
+                  const dayNameByDate = Object.fromEntries(
+                    Object.entries(dates).map(([name, dateISO]) => [dateISO, name])
+                  );
+                  const assignedDayNames = affectationsJours
+                    .map(a => dayNameByDate[a.jour])
+                    .filter((name): name is typeof workDays[number] => !!name);
+                  
+                  // ✅ FIX: PAS DE FALLBACK à 5 jours si aucune affectation trouvée en mode planning actif
+                  // On garde uniquement les jours réellement assignés
+                  selectedDays = assignedDayNames;
+                  
+                  // Si aucun jour assigné pour ce couple (employé, chantier), ne rien écrire
+                  if (selectedDays.length === 0) {
+                    console.log(`[AutoSave] Planning actif mais aucun jour assigné pour ${entry.employeeName} sur ce chantier, skip fiches_jours`);
+                  }
+                } else {
+                  // ✅ FIX: ZÉRO TOLÉRANCE - Pas de fallback à 5 jours
+                  // Si planning actif mais pas d'affectations, ne pas créer de jours fantômes
+                  selectedDays = [];
+                  console.log(`[AutoSave] Planning actif, pas d'affectations pour ${entry.employeeName}, selectedDays = []`);
+                }
               }
               
               // ✅ FIX: Nettoyer les jours fantômes existants (dates hors planning)
