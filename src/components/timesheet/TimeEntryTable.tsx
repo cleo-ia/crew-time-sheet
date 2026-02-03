@@ -577,13 +577,24 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           ? chantiers.find(c => c.id === chantierId) 
           : null;
         
-        // Valeurs par défaut (39h) - UNIQUEMENT Lundi à Vendredi
+        // 🔧 FIX: Chef sur chantier secondaire = 0h par défaut (pas 39h)
+        // Ses heures sont saisies sur son chantier principal uniquement
+        const isChefOnSecondary = macon.id === chefId && isChefOnSecondaryChantier;
+        const defaultHoursLundi = isChefOnSecondary ? 0 : 8;
+        const defaultHoursMardi = isChefOnSecondary ? 0 : 8;
+        const defaultHoursMercredi = isChefOnSecondary ? 0 : 8;
+        const defaultHoursJeudi = isChefOnSecondary ? 0 : 8;
+        const defaultHoursVendredi = isChefOnSecondary ? 0 : 7;
+        const defaultPanier = !isChefOnSecondary;
+        const defaultTrajet = !isChefOnSecondary;
+        
+        // Valeurs par défaut - UNIQUEMENT Lundi à Vendredi
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
+          Lundi: { hours: defaultHoursLundi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null },
+          Mardi: { hours: defaultHoursMardi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null },
+          Mercredi: { hours: defaultHoursMercredi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null },
+          Jeudi: { hours: defaultHoursJeudi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null },
+          Vendredi: { hours: defaultHoursVendredi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique
