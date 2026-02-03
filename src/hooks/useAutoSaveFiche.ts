@@ -367,6 +367,20 @@ export const useAutoSaveFiche = () => {
                     console.error(`[AutoSave] Erreur suppression jours fantômes:`, deleteError);
                   } else {
                     console.log(`[AutoSave] Supprimé ${datesToDelete.length} jour(s) fantôme(s) pour ${entry.employeeName}`);
+                    
+                    // ✅ Recalculer total_heures après suppression des jours fantômes
+                    const { data: remainingJours } = await supabase
+                      .from("fiches_jours")
+                      .select("heures")
+                      .eq("fiche_id", ficheId);
+                    
+                    const newTotal = remainingJours?.reduce((sum, j) => sum + (j.heures || 0), 0) || 0;
+                    await supabase
+                      .from("fiches")
+                      .update({ total_heures: newTotal })
+                      .eq("id", ficheId);
+                    
+                    console.log(`[AutoSave] Recalculé total_heures = ${newTotal}h pour ${entry.employeeName}`);
                   }
                 }
               }
