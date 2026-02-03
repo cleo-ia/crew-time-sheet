@@ -1,105 +1,99 @@
 
+# Plan : Ajouter l'exception "Chef sur chantier principal" dans useAutoSaveFiche
 
-# Plan : Nettoyage des assignations chef_id résiduelles pour SDER
+## Rappel de la règle métier
 
-## Contexte
+Le chef multi-chantiers est **volontairement** affecté 5 jours sur tous ses chantiers dans le planning (car imprévus possibles). Seules les heures saisies sur son **chantier principal** comptent pour la paie RH.
 
-Après la purge de la semaine S07, des assignations `chef_id` résiduelles persistent dans la table `chantiers` :
+Le problème actuel : `useAutoSaveFiche` filtre par `affectations_jours_chef` avec `chantier_id`, mais pour le chef lui-même, cette table peut ne pas contenir d'entrées pour son chantier principal (il est affecté via `planning_affectations`, pas `affectations_jours_chef`).
 
-| Chantier | Chef assigné |
-|----------|-------------|
-| CI229BALME | Philippe DURAND |
-| CI230ROSEYRAN | Philippe DURAND |
-| CI234OISANS | Carlos GONCALVES |
+## Cause racine identifiée
 
-Ces assignations ont été créées automatiquement par la fonction `sync-planning-to-teams` lors de la validation du planning S07. Elles persistent car la purge actuelle ne nettoie pas ce champ.
+Dans `src/hooks/useAutoSaveFiche.ts` (lignes 317-349), quand le planning est actif :
+- Le code cherche les jours assignés dans `affectations_jours_chef` 
+- Si aucune entrée n'est trouvée → `selectedDays = []` → aucune sauvegarde
+- **Il n'y a AUCUNE exception pour le chef sur son chantier principal**
 
-**Impact :** Ces `chef_id` vont router les équipes vers la "vue chef" au lieu de la "vue conducteur", perturbant le flux de test.
+## Solution
 
----
-
-## Solution proposée
-
-### Étape 1 : Modifier la fonction `purge-week`
-
-Ajouter une nouvelle étape à la fin de la purge pour nettoyer les `chef_id` des chantiers concernés.
-
-**Fichier :** `supabase/functions/purge-week/index.ts`
+Ajouter une condition **AVANT** la vérification des affectations :
 
 ```text
-// Après Step 12 (planning_validations)
+SI l'employé courant EST le chef (entry.employeeId === chefId)
+   ET le chantier courant EST son chantier principal (chantierId === chantier_principal_id)
+   ALORS selectedDays = [Lundi, Mardi, Mercredi, Jeudi, Vendredi]
+SINON
+   Logique normale (vérification affectations_jours_chef)
+```
 
-// Step 13: Reset chef_id on chantiers (optional, via clear_chef_assignments flag)
-if (clear_chef_assignments) {
-  console.log('Step 13: Resetting chef_id on chantiers...');
-  
-  let resetQuery = supabase
-    .from('chantiers')
-    .update({ chef_id: null })
-    .eq('entreprise_id', entreprise_id)
-    .not('chef_id', 'is', null);
-  
-  if (filterByChantier) {
-    resetQuery = resetQuery.eq('id', chantier_id);
-  }
-  
-  const { error: resetError, count: resetCount } = await resetQuery;
-  if (resetError) throw resetError;
-  results.chantiers_chef_reset = resetCount || 0;
-  console.log(`✅ Reset chef_id on ${resetCount} chantiers`);
+## Fichier à modifier
+
+`src/hooks/useAutoSaveFiche.ts`
+
+## Changements techniques
+
+### Étape 1 : Récupérer le chantier_principal_id du chef (1 requête)
+
+Au début du traitement, récupérer le `chantier_principal_id` de l'utilisateur `chefId` :
+
+```typescript
+// Avant la boucle sur les employés (vers ligne 95)
+let chefPrincipalChantierId: string | null = null;
+const { data: chefData } = await supabase
+  .from("utilisateurs")
+  .select("chantier_principal_id")
+  .eq("id", chefId)
+  .maybeSingle();
+if (chefData) {
+  chefPrincipalChantierId = chefData.chantier_principal_id;
 }
 ```
 
-**Modifications requises :**
-1. Extraire `clear_chef_assignments` du body de la requête (ligne 24)
-2. Ajouter l'étape 13 après la suppression des `planning_validations`
+### Étape 2 : Exception chef principal (dans la boucle)
 
-### Étape 2 : Déployer et exécuter
+Dans la logique de sélection des jours (ligne 317), ajouter :
 
-Après modification :
-1. Déployer la fonction mise à jour
-2. Appeler avec `clear_chef_assignments: true` pour nettoyer SDER
-
----
-
-## Détails techniques
-
-### Paramètres ajoutés
-
-| Paramètre | Type | Description |
-|-----------|------|-------------|
-| `clear_chef_assignments` | boolean (optionnel) | Si `true`, remet `chef_id = NULL` sur les chantiers de l'entreprise |
-
-### Sécurité
-
-- Cette option est optionnelle et désactivée par défaut
-- Seules les semaines autorisées peuvent être purgées (whitelist existante)
-- L'`entreprise_id` reste obligatoire pour l'isolation multi-tenant
-
-### Flux de données après nettoyage
-
-```text
-Chantiers SDER (après purge)
-┌───────────────────┬─────────────────┐
-│ Chantier          │ chef_id         │
-├───────────────────┼─────────────────┤
-│ CI229BALME        │ NULL            │
-│ CI230ROSEYRAN     │ NULL            │
-│ CI234OISANS       │ NULL            │
-└───────────────────┴─────────────────┘
-
-Conséquence :
-- Les équipes s'affichent dans "Validation Conducteur"
-- Le planning S+1 définira dynamiquement le chef responsable
-- La synchronisation assignera le chef_id automatiquement
+```typescript
+if (!isPlanningActive) {
+  selectedDays = [...workDays];
+} else {
+  // ✅ EXCEPTION CHEF PRINCIPAL : Si l'employé est le chef ET 
+  // le chantier courant est son chantier principal → tous les jours autorisés
+  const isChefOnPrincipalChantier = 
+    entry.employeeId === chefId && 
+    chantierId === chefPrincipalChantierId;
+  
+  if (isChefOnPrincipalChantier) {
+    selectedDays = [...workDays];
+    console.log(`[AutoSave] Chef ${entry.employeeName} sur son chantier principal, 5 jours autorisés`);
+  } else {
+    // Logique normale : vérifier affectations_jours_chef
+    // ... code existant lignes 319-349 ...
+  }
+}
 ```
 
----
+## Comportement après correction
 
-## Résultat attendu
+| Scénario | Avant | Après |
+|----------|-------|-------|
+| Chef saisit sur son chantier principal | `selectedDays = []` → rien sauvé | `selectedDays = [L,M,M,J,V]` → 5 jours sauvés |
+| Chef saisit sur chantier secondaire | Vérifie affectations → dépend du planning | Inchangé |
+| Maçon saisit (n'importe quel chantier) | Vérifie affectations normalement | Inchangé |
+| Chef sans chantier principal défini | Vérifie affectations normalement | Inchangé |
 
-Après exécution :
-1. **Aucun chef assigné** sur les chantiers SDER
-2. **Environnement vierge** pour tester le nouveau flux planning → saisie → transmission
-3. **Pas d'interférence** des données résiduelles sur le routage des fiches
+## Garanties
 
+1. **Aucune régression sur les maçons** : La condition `entry.employeeId === chefId` garantit que seul le chef est concerné
+2. **Aucune régression sur les chantiers secondaires** : La vérification `chantierId === chefPrincipalChantierId` garantit que l'exception ne s'applique qu'au chantier principal
+3. **Cohérence avec l'affichage** : Le badge "Mes heures" dans `ChantierSelector.tsx` utilise exactement la même logique
+4. **Performance** : Une seule requête supplémentaire par sauvegarde (pas dans la boucle)
+
+## Plan de test recommandé
+
+1. Purger SDER S07 une dernière fois
+2. Philippe DURAND saisit 40h sur CI229BALME (son chantier principal avec badge "Mes heures")
+3. Cliquer "Enregistrer maintenant"
+4. **Vérification 1** : Rafraîchir la page → les 40h du chef doivent persister
+5. **Vérification 2** : Vérifier que les autres membres de l'équipe sont aussi sauvegardés
+6. Tester "Enregistrer et signer" → vérifier cohérence récap signature / historique / conducteur
