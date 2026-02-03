@@ -45,81 +45,80 @@ Deno.serve(async (req) => {
     const allFicheIds = fichesChantier?.map((f) => f.id) || [];
     console.log(`Total: ${allFicheIds.length} fiches à supprimer`);
 
+    // IMPORTANT: on ne doit pas "return" si aucune fiche n'existe.
+    // Le planning et les affectations peuvent exister sans fiche (ex: phase de saisie / tests).
     if (allFicheIds.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, message: "Aucune fiche à supprimer", deleted: {} }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      console.log("Aucune fiche à supprimer pour ces semaines, on poursuit la purge du planning/affectations.");
+    } else {
+      // 3. Supprimer fiches_transport_finisseurs_jours
+      const { data: ftfIds } = await supabase
+        .from("fiches_transport_finisseurs")
+        .select("id")
+        .in("fiche_id", allFicheIds);
 
-    // 3. Supprimer fiches_transport_finisseurs_jours
-    const { data: ftfIds } = await supabase
-      .from("fiches_transport_finisseurs")
-      .select("id")
-      .in("fiche_id", allFicheIds);
+      if (ftfIds && ftfIds.length > 0) {
+        const ftfIdList = ftfIds.map((ftf) => ftf.id);
+        const { error: ftfjError } = await supabase
+          .from("fiches_transport_finisseurs_jours")
+          .delete()
+          .in("fiche_transport_finisseur_id", ftfIdList);
+        if (ftfjError) console.error("Erreur fiches_transport_finisseurs_jours:", ftfjError);
+        deleted.fiches_transport_finisseurs_jours = ftfIdList.length;
+      }
 
-    if (ftfIds && ftfIds.length > 0) {
-      const ftfIdList = ftfIds.map((ftf) => ftf.id);
-      const { error: ftfjError } = await supabase
-        .from("fiches_transport_finisseurs_jours")
+      // 4. Supprimer fiches_transport_finisseurs
+      const { error: ftfError } = await supabase
+        .from("fiches_transport_finisseurs")
         .delete()
-        .in("fiche_transport_finisseur_id", ftfIdList);
-      if (ftfjError) console.error("Erreur fiches_transport_finisseurs_jours:", ftfjError);
-      deleted.fiches_transport_finisseurs_jours = ftfIdList.length;
-    }
+        .in("fiche_id", allFicheIds);
+      if (ftfError) console.error("Erreur fiches_transport_finisseurs:", ftfError);
+      deleted.fiches_transport_finisseurs = ftfIds?.length || 0;
 
-    // 4. Supprimer fiches_transport_finisseurs
-    const { error: ftfError } = await supabase
-      .from("fiches_transport_finisseurs")
-      .delete()
-      .in("fiche_id", allFicheIds);
-    if (ftfError) console.error("Erreur fiches_transport_finisseurs:", ftfError);
-    deleted.fiches_transport_finisseurs = ftfIds?.length || 0;
+      // 5. Supprimer fiches_transport_jours (pour fiches chantier)
+      const { data: ftIds } = await supabase
+        .from("fiches_transport")
+        .select("id")
+        .in("fiche_id", allFicheIds);
 
-    // 5. Supprimer fiches_transport_jours (pour fiches chantier)
-    const { data: ftIds } = await supabase
-      .from("fiches_transport")
-      .select("id")
-      .in("fiche_id", allFicheIds);
+      if (ftIds && ftIds.length > 0) {
+        const ftIdList = ftIds.map((ft) => ft.id);
+        const { error: ftjError } = await supabase
+          .from("fiches_transport_jours")
+          .delete()
+          .in("fiche_transport_id", ftIdList);
+        if (ftjError) console.error("Erreur fiches_transport_jours:", ftjError);
+        deleted.fiches_transport_jours = ftIdList.length;
+      }
 
-    if (ftIds && ftIds.length > 0) {
-      const ftIdList = ftIds.map((ft) => ft.id);
-      const { error: ftjError } = await supabase
-        .from("fiches_transport_jours")
+      // 6. Supprimer fiches_transport
+      const { error: ftError } = await supabase
+        .from("fiches_transport")
         .delete()
-        .in("fiche_transport_id", ftIdList);
-      if (ftjError) console.error("Erreur fiches_transport_jours:", ftjError);
-      deleted.fiches_transport_jours = ftIdList.length;
+        .in("fiche_id", allFicheIds);
+      if (ftError) console.error("Erreur fiches_transport:", ftError);
+      deleted.fiches_transport = ftIds?.length || 0;
+
+      // 7. Supprimer signatures
+      const { error: sigError } = await supabase
+        .from("signatures")
+        .delete()
+        .in("fiche_id", allFicheIds);
+      if (sigError) console.error("Erreur signatures:", sigError);
+
+      // 8. Supprimer fiches_jours
+      const { error: fjError } = await supabase
+        .from("fiches_jours")
+        .delete()
+        .in("fiche_id", allFicheIds);
+      if (fjError) console.error("Erreur fiches_jours:", fjError);
+
+      // 9. Supprimer fiches
+      const { error: fError } = await supabase
+        .from("fiches")
+        .delete()
+        .in("id", allFicheIds);
+      if (fError) console.error("Erreur fiches:", fError);
     }
-
-    // 6. Supprimer fiches_transport
-    const { error: ftError } = await supabase
-      .from("fiches_transport")
-      .delete()
-      .in("fiche_id", allFicheIds);
-    if (ftError) console.error("Erreur fiches_transport:", ftError);
-    deleted.fiches_transport = ftIds?.length || 0;
-
-    // 7. Supprimer signatures
-    const { error: sigError } = await supabase
-      .from("signatures")
-      .delete()
-      .in("fiche_id", allFicheIds);
-    if (sigError) console.error("Erreur signatures:", sigError);
-
-    // 8. Supprimer fiches_jours
-    const { error: fjError } = await supabase
-      .from("fiches_jours")
-      .delete()
-      .in("fiche_id", allFicheIds);
-    if (fjError) console.error("Erreur fiches_jours:", fjError);
-
-    // 9. Supprimer fiches
-    const { error: fError } = await supabase
-      .from("fiches")
-      .delete()
-      .in("id", allFicheIds);
-    if (fError) console.error("Erreur fiches:", fError);
 
     // ✅ Plus de distinction chantier/finisseur - toutes les fiches ont un chantier_id
     deleted.fiches_total = allFicheIds.length;
@@ -133,6 +132,16 @@ Deno.serve(async (req) => {
       .select("id");
     if (ajcError) console.error("Erreur affectations_jours_chef:", ajcError);
     deleted.affectations_jours_chef = ajcData?.length || 0;
+
+    // 10bis. Supprimer affectations_finisseurs_jours (planning finisseurs)
+    const { data: afjData, error: afjError } = await supabase
+      .from("affectations_finisseurs_jours")
+      .delete()
+      .eq("entreprise_id", entreprise_id)
+      .in("semaine", semaines)
+      .select("id");
+    if (afjError) console.error("Erreur affectations_finisseurs_jours:", afjError);
+    deleted.affectations_finisseurs_jours = afjData?.length || 0;
 
     // 11. Supprimer planning_validations
     const { data: pvData, error: pvError } = await supabase
