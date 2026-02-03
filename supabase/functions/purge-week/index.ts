@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { semaine, chantier_id, entreprise_id } = await req.json();
+    const { semaine, chantier_id, entreprise_id, clear_chef_assignments } = await req.json();
 
     // Validate semaine parameter
     if (!semaine || typeof semaine !== 'string') {
@@ -332,6 +332,26 @@ Deno.serve(async (req) => {
     if (pvError) throw pvError;
     results.planning_validations = pvCount || 0;
     console.log(`✅ Deleted ${pvCount} planning_validations`);
+
+    // Step 13: Reset chef_id on chantiers (optional, via clear_chef_assignments flag)
+    if (clear_chef_assignments) {
+      console.log('Step 13: Resetting chef_id on chantiers...');
+      
+      let resetQuery = supabase
+        .from('chantiers')
+        .update({ chef_id: null })
+        .eq('entreprise_id', entreprise_id)
+        .not('chef_id', 'is', null);
+      
+      if (filterByChantier) {
+        resetQuery = resetQuery.eq('id', chantier_id);
+      }
+      
+      const { error: resetError, count: resetCount } = await resetQuery.select('id');
+      if (resetError) throw resetError;
+      results.chantiers_chef_reset = resetCount || 0;
+      console.log(`✅ Reset chef_id on ${resetCount} chantiers`);
+    }
 
     // Calculate total
     const total = Object.values(results).reduce((sum, count) => sum + count, 0);
