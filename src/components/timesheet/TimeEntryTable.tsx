@@ -101,6 +101,7 @@ interface TimeEntryTableProps {
   weekId: string;
   chefId?: string;
   onEntriesChange?: (entries: TimeEntry[]) => void;
+  onTransportDataChange?: (data: Record<string, { ficheId?: string; days: TransportFinisseurDay[] }>) => void;
   initialData?: TimeEntry[];
   mode?: "create" | "edit" | "conducteur";
   affectationsJours?: Array<{
@@ -150,7 +151,7 @@ interface TimeEntry {
   };
 }
 
-export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, initialData, mode = "create", affectationsJours, allAffectations, onAddEmployee, onDeleteEmployee, readOnly = false }: TimeEntryTableProps) => {
+export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, onTransportDataChange, initialData, mode = "create", affectationsJours, allAffectations, onAddEmployee, onDeleteEmployee, readOnly = false }: TimeEntryTableProps) => {
   const isReadOnly = readOnly;
   const weekDays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
   const isConducteurMode = mode === "conducteur";
@@ -867,11 +868,22 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     onEntriesChange?.(entries);
   }, [entries, onEntriesChange, mode, hasLoadedData]);
 
+  // Propager les données de transport au parent (mode conducteur uniquement)
+  useEffect(() => {
+    if (isConducteurMode && onTransportDataChange) {
+      onTransportDataChange(transportFinisseurData);
+    }
+  }, [transportFinisseurData, isConducteurMode, onTransportDataChange]);
+
   // Flag pour suivre les modifications en attente
   const isDirty = useRef<boolean>(false);
 
   // Auto-save avec debounce de 1 seconde (réduit pour plus de réactivité)
+  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle via bouton "Enregistrer")
   useEffect(() => {
+    // ✅ Désactiver l'auto-save pour les conducteurs (ils utilisent le bouton Enregistrer)
+    if (isConducteurMode) return;
+    
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
     
     const timer = setTimeout(() => {
@@ -882,7 +894,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           weekId, 
           chantierId, 
           chefId,
-          mode: isConducteurMode ? "conducteur" : "chef"
+          mode: "chef"
         },
         {
           onSuccess: () => {
@@ -893,10 +905,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
     }, 1000); // Réduit de 2s à 1s
     
     return () => clearTimeout(timer);
-  }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly]);
+  }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, isConducteurMode]);
 
   // Sauvegarder immédiatement quand la page est masquée (fermeture tablette)
+  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle)
   useEffect(() => {
+    // ✅ Désactiver pour les conducteurs
+    if (isConducteurMode) return;
+    
     const handleVisibilityChange = () => {
       if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly) {
         console.log("[TimeEntryTable] Page hidden, forcing immediate save");
@@ -905,7 +921,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
           weekId, 
           chantierId, 
           chefId,
-          mode: isConducteurMode ? "conducteur" : "chef"
+          mode: "chef"
         });
         isDirty.current = false;
       }
@@ -918,9 +934,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handleVisibilityChange);
     };
-  }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, autoSaveMutation]);
+  }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, autoSaveMutation, isConducteurMode]);
   
   // Handler pour mise à jour des fiches trajet finisseurs
+  // ⚠️ En mode conducteur, on stocke les données localement SANS auto-save
+  // La sauvegarde se fera via le bouton "Enregistrer"
   const handleTransportFinisseurUpdate = useCallback((finisseurId: string, data: { days: TransportFinisseurDay[] }) => {
     setTransportFinisseurData((prev) => ({
       ...prev, 
@@ -930,16 +948,22 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       }
     }));
     
+    // ✅ En mode conducteur, NE PAS auto-save (sauvegarde manuelle via bouton)
+    if (isConducteurMode) {
+      isDirty.current = true;
+      return;
+    }
+    
     // ✅ Récupérer le chantierId depuis les affectations du finisseur
     const finisseurAffectation = affectationsJours?.find(a => a.finisseur_id === finisseurId);
-    const chantierId = finisseurAffectation?.chantier_id;
+    const chantierIdForTransport = finisseurAffectation?.chantier_id;
     
-    if (!chantierId) {
+    if (!chantierIdForTransport) {
       console.warn(`⚠️ Pas de chantierId pour finisseur ${finisseurId}, skip auto-save transport`);
       return;
     }
     
-    // Auto-save systématique (même sans plaque renseignée)
+    // Auto-save systématique (même sans plaque renseignée) - mode chef uniquement
     const finisseurTransportData = transportFinisseurData[finisseurId];
     
     autoSaveTransportFinisseur.mutateAsync({
@@ -947,7 +971,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, in
       finisseurId,
       conducteurId: chefId || "",
       semaine: weekId,
-      chantierId, // ✅ Ajout du chantierId obligatoire
+      chantierId: chantierIdForTransport, // ✅ Ajout du chantierId obligatoire
       days: data.days.map((d) => ({
         date: d.date,
         immatriculation: d.immatriculation,
