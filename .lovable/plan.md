@@ -1,58 +1,105 @@
 
-# Correction : Auto-save conducteur utilisant la mauvaise table d'affectations
 
-## ✅ IMPLÉMENTÉ
+# Plan : Nettoyage des assignations chef_id résiduelles pour SDER
 
-### Modifications effectuées
+## Contexte
 
-#### 1. `src/hooks/useAutoSaveFiche.ts`
-- Ajout du paramètre `mode?: "chef" | "conducteur"` à l'interface `SaveFicheParams`
-- Nouvelle branche de logique pour le mode conducteur qui utilise `affectations_finisseurs_jours` au lieu de `affectations_jours_chef`
+Après la purge de la semaine S07, des assignations `chef_id` résiduelles persistent dans la table `chantiers` :
 
-#### 2. `src/components/timesheet/TimeEntryTable.tsx`
-- Passage du paramètre `mode: isConducteurMode ? "conducteur" : "chef"` dans les deux appels à `autoSaveMutation.mutate`:
-  - Ligne 879 (debounce auto-save)
-  - Ligne 902 (visibility change / pagehide)
+| Chantier | Chef assigné |
+|----------|-------------|
+| CI229BALME | Philippe DURAND |
+| CI230ROSEYRAN | Philippe DURAND |
+| CI234OISANS | Carlos GONCALVES |
 
-### Comportement après correction
+Ces assignations ont été créées automatiquement par la fonction `sync-planning-to-teams` lors de la validation du planning S07. Elles persistent car la purge actuelle ne nettoie pas ce champ.
+
+**Impact :** Ces `chef_id` vont router les équipes vers la "vue chef" au lieu de la "vue conducteur", perturbant le flux de test.
+
+---
+
+## Solution proposée
+
+### Étape 1 : Modifier la fonction `purge-week`
+
+Ajouter une nouvelle étape à la fin de la purge pour nettoyer les `chef_id` des chantiers concernés.
+
+**Fichier :** `supabase/functions/purge-week/index.ts`
 
 ```text
-Mode conducteur :
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. Conducteur modifie les heures (39h → 40h)                            │
-│ 2. Auto-save déclenché avec mode = "conducteur"                         │
-│ 3. Requête vers affectations_finisseurs_jours                           │
-│    → Retourne les jours affectés (Lundi-Vendredi)                       │
-│ 4. Upsert fiches_jours avec les nouvelles heures                        │
-│ 5. Refresh → données correctement restaurées (40h)                      │
-└──────────────────────────────────────────────────────────────────────────┘
+// Après Step 12 (planning_validations)
 
-Mode chef (inchangé) :
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. Chef modifie les heures d'un maçon                                   │
-│ 2. Auto-save déclenché avec mode = "chef" (ou undefined)                │
-│ 3. Requête vers affectations_jours_chef (comme avant)                   │
-│ 4. Upsert fiches_jours avec les nouvelles heures                        │
-│ 5. Refresh → données correctement restaurées                            │
-└──────────────────────────────────────────────────────────────────────────┘
+// Step 13: Reset chef_id on chantiers (optional, via clear_chef_assignments flag)
+if (clear_chef_assignments) {
+  console.log('Step 13: Resetting chef_id on chantiers...');
+  
+  let resetQuery = supabase
+    .from('chantiers')
+    .update({ chef_id: null })
+    .eq('entreprise_id', entreprise_id)
+    .not('chef_id', 'is', null);
+  
+  if (filterByChantier) {
+    resetQuery = resetQuery.eq('id', chantier_id);
+  }
+  
+  const { error: resetError, count: resetCount } = await resetQuery;
+  if (resetError) throw resetError;
+  results.chantiers_chef_reset = resetCount || 0;
+  console.log(`✅ Reset chef_id on ${resetCount} chantiers`);
+}
 ```
 
-## Tests à effectuer
+**Modifications requises :**
+1. Extraire `clear_chef_assignments` du body de la requête (ligne 24)
+2. Ajouter l'étape 13 après la suppression des `planning_validations`
 
-### Test principal (correction du bug)
+### Étape 2 : Déployer et exécuter
 
-1. Aller sur `/validation-conducteur?tab=mes-heures&semaine=2026-S07`
-2. Modifier les heures d'un finisseur (ex: José AMARAL, lundi 8h → 9h)
-3. Attendre 2 secondes (debounce auto-save)
-4. Vérifier dans le réseau une requête d'écriture vers `fiches_jours`
-5. Refresh (F5)
-6. Confirmer que le total reste à 40h et lundi est à 9h
+Après modification :
+1. Déployer la fonction mise à jour
+2. Appeler avec `clear_chef_assignments: true` pour nettoyer SDER
 
-### Test de non-régression (chef)
+---
 
-1. Aller sur `/` (page saisie chef)
-2. Sélectionner un chantier et une semaine
-3. Modifier les heures d'un maçon
-4. Attendre 2 secondes
-5. Refresh (F5)
-6. Confirmer que les heures sont bien sauvegardées
+## Détails techniques
+
+### Paramètres ajoutés
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `clear_chef_assignments` | boolean (optionnel) | Si `true`, remet `chef_id = NULL` sur les chantiers de l'entreprise |
+
+### Sécurité
+
+- Cette option est optionnelle et désactivée par défaut
+- Seules les semaines autorisées peuvent être purgées (whitelist existante)
+- L'`entreprise_id` reste obligatoire pour l'isolation multi-tenant
+
+### Flux de données après nettoyage
+
+```text
+Chantiers SDER (après purge)
+┌───────────────────┬─────────────────┐
+│ Chantier          │ chef_id         │
+├───────────────────┼─────────────────┤
+│ CI229BALME        │ NULL            │
+│ CI230ROSEYRAN     │ NULL            │
+│ CI234OISANS       │ NULL            │
+└───────────────────┴─────────────────┘
+
+Conséquence :
+- Les équipes s'affichent dans "Validation Conducteur"
+- Le planning S+1 définira dynamiquement le chef responsable
+- La synchronisation assignera le chef_id automatiquement
+```
+
+---
+
+## Résultat attendu
+
+Après exécution :
+1. **Aucun chef assigné** sur les chantiers SDER
+2. **Environnement vierge** pour tester le nouveau flux planning → saisie → transmission
+3. **Pas d'interférence** des données résiduelles sur le routage des fiches
+
