@@ -586,6 +586,15 @@ async function syncEntreprise(
   }
 
   for (const [chefId, chantierPrincipalId] of chefPrincipalMap) {
+    // CORRECTION: Vérifier si le chef est réellement présent dans le planning de cette semaine
+    // Si le chef n'est pas dans le planning, ne pas forcer ses affectations (ex: FAY Philippe absent volontairement)
+    const chefInPlanning = [...planningByEmployeChantier.keys()].some(key => key.startsWith(`${chefId}|`))
+    
+    if (!chefInPlanning) {
+      console.log(`[sync-planning-to-teams] Chef ${chefId}: absent du planning S, skip garde-fou (pas de forçage d'affectations)`)
+      continue
+    }
+
     // Récupérer les infos du chantier principal
     // deno-lint-ignore no-explicit-any
     const chantierPrincipalInfo = chantiersMap.get(chantierPrincipalId) as any
