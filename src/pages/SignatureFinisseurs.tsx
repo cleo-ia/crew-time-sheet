@@ -14,7 +14,7 @@ import { useFinisseursByConducteur, type FinisseurWithFiche } from "@/hooks/useF
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
-import { useCopyAllDataFinisseurs } from "@/hooks/useCopyAllDataFinisseurs";
+// La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -115,7 +115,7 @@ const SignatureFinisseurs = () => {
     loadChantiers();
   }, [finisseurs]);
   const saveSignature = useSaveSignature();
-  const copyAllDataFinisseurs = useCopyAllDataFinisseurs();
+  // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
   // Charger les données de transport pour chaque finisseur
   useEffect(() => {
@@ -330,15 +330,11 @@ const SignatureFinisseurs = () => {
         description: "Transmission automatique au service RH effectuée.",
       });
 
-      // 3. Copier TOUTES les données vers la semaine suivante
+      // 3. Préparer la redirection vers S+1
+      // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
+      // Le transport peut être copié manuellement via le bouton "Copier S-1"
       const nextWeek = getNextWeek(semaine);
       sessionStorage.setItem('conducteur_teamWeek', nextWeek);
-      
-      await copyAllDataFinisseurs.mutateAsync({ 
-        conducteurId, 
-        currentWeek: semaine, 
-        nextWeek 
-      });
 
       // 4. Définir le flag pour afficher le toast sur la page suivante
       sessionStorage.setItem('fromSignature', 'true');
