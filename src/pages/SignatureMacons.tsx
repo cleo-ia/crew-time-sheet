@@ -20,7 +20,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
-import { useInitializeNextWeekFromPrevious } from "@/hooks/useInitializeNextWeekFromPrevious";
+// La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 import { useQuery } from "@tanstack/react-query";
 
 const SignatureMacons = () => {
@@ -44,7 +44,7 @@ const SignatureMacons = () => {
   );
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
-  const initializeNextWeek = useInitializeNextWeekFromPrevious();
+  // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
   // Récupérer le chantier principal du chef pour afficher l'indicateur chantier secondaire
   const { data: chefChantierPrincipal } = useQuery({
@@ -213,21 +213,10 @@ const SignatureMacons = () => {
       // 2. Calculer la semaine suivante
       const nextWeek = getNextWeek(semaine);
 
-      // 3. Copier les données de S vers S+1 (heures réelles + transport)
-      try {
-        const result = await initializeNextWeek.mutateAsync({
-          currentWeek: semaine,
-          nextWeek,
-          chefId,
-          chantierId,
-        });
-        console.log(`✅ Semaine ${nextWeek} initialisée: ${result.copiedFiches} fiches copiées, transport: ${result.copiedTransport ? 'oui' : 'non'}`);
-      } catch (initError) {
-        console.error("Erreur copie vers semaine suivante:", initError);
-        // Ne pas bloquer la suite même en cas d'erreur
-      }
+      // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
+      // Le transport peut être copié manuellement via le bouton "Copier S-1" dans la fiche trajet
 
-      // 4. Notification au conducteur (APRÈS la copie S→S+1) - Mode ciblé
+      // 3. Notification au conducteur - Mode ciblé
       try {
         const { error: notifError } = await supabase.functions.invoke("notify-conducteur", {
           body: { chantierId, semaine }
