@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConducteurHistorique } from "@/components/conducteur/ConducteurHistorique";
-import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw, ShieldCheck, Package } from "lucide-react";
+import { Calendar, FileText, FileCheck, CheckCircle2, Clock, Cloud, AlertTriangle, RefreshCw, ShieldCheck, Package, Save, Loader2 } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { WeekSelector } from "@/components/timesheet/WeekSelector";
 import { TimeEntryTable } from "@/components/timesheet/TimeEntryTable";
@@ -17,6 +17,7 @@ import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
+import { useSaveChantierManuel } from "@/hooks/useSaveChantierManuel";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { parseISOWeek } from "@/lib/weekUtils";
@@ -41,6 +42,7 @@ import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
+import type { TransportFinisseurDay } from "@/types/transport";
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -75,6 +77,14 @@ const ValidationConducteur = () => {
   const [showWeatherDialog, setShowWeatherDialog] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
+  
+  // État pour les données de transport finisseur par chantier (sauvegarde manuelle)
+  const [transportDataByChantier, setTransportDataByChantier] = useState<
+    Record<string, Record<string, { ficheId?: string; days: TransportFinisseurDay[] }>>
+  >({});
+  
+  // Hook pour la sauvegarde manuelle par chantier
+  const { saveChantier, savingChantier } = useSaveChantierManuel();
   
   // ID effectif du conducteur (super admin peut sélectionner un autre conducteur)
   const effectiveConducteurId = isSuperAdmin ? selectedConducteurIdAdmin : conducteurId;
@@ -759,12 +769,44 @@ const ValidationConducteur = () => {
                                     return [...otherEntries, ...entries];
                                   });
                                 }}
+                                onTransportDataChange={(data) => {
+                                  setTransportDataByChantier(prev => ({
+                                    ...prev,
+                                    [chantierId]: data
+                                  }));
+                                }}
                                 mode="conducteur"
                                 affectationsJours={affectationsJours?.filter(a => 
                                   chantierFinisseurs.some(f => f.id === a.finisseur_id)
                                 )}
                                 allAffectations={allAffectationsEnriched}
                               />
+                              
+                              {/* ✅ Bouton Enregistrer par chantier */}
+                              <div className="flex justify-end px-2">
+                                <Button
+                                  onClick={() => saveChantier({
+                                    chantierId,
+                                    selectedWeek,
+                                    conducteurId: effectiveConducteurId!,
+                                    chantierFinisseurs,
+                                    timeEntries,
+                                    transportFinisseurData: transportDataByChantier[chantierId] || {},
+                                    affectationsJours: affectationsJours?.filter(a => 
+                                      chantierFinisseurs.some(f => f.id === a.finisseur_id)
+                                    ),
+                                  })}
+                                  disabled={savingChantier === chantierId || transmissionStatus?.isTransmitted}
+                                  className="bg-primary hover:bg-primary/90"
+                                >
+                                  {savingChantier === chantierId ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Save className="h-4 w-4 mr-2" />
+                                  )}
+                                  Enregistrer ce chantier
+                                </Button>
+                              </div>
                             </div>
                           );
                         })}
