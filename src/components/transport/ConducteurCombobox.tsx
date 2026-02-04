@@ -92,7 +92,7 @@ export const ConducteurCombobox = ({
   const isSelectedNotAffected = selectedStatus.isNotAffectedToday;
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
