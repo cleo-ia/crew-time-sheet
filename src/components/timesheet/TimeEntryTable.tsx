@@ -939,11 +939,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   const isDirty = useRef<boolean>(false);
 
   // Auto-save avec debounce de 1 seconde (réduit pour plus de réactivité)
-  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle via bouton "Enregistrer")
+  // ✅ Actif pour les chefs ET les conducteurs
   useEffect(() => {
-    // ✅ Désactiver l'auto-save pour les conducteurs (ils utilisent le bouton Enregistrer)
-    if (isConducteurMode) return;
-    
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
     
     const timer = setTimeout(() => {
@@ -954,7 +951,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           weekId, 
           chantierId, 
           chefId,
-          mode: "chef"
+          mode: isConducteurMode ? "conducteur" : "chef"
         },
         {
           onSuccess: () => {
@@ -962,17 +959,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           }
         }
       );
-    }, 1000); // Réduit de 2s à 1s
+    }, 1000);
     
     return () => clearTimeout(timer);
   }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, isConducteurMode]);
 
   // Sauvegarder immédiatement quand la page est masquée (fermeture tablette)
-  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle)
+  // ✅ Actif pour les chefs ET les conducteurs
   useEffect(() => {
-    // ✅ Désactiver pour les conducteurs
-    if (isConducteurMode) return;
-    
     const handleVisibilityChange = () => {
       if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly) {
         console.log("[TimeEntryTable] Page hidden, forcing immediate save");
@@ -981,7 +975,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           weekId, 
           chantierId, 
           chefId,
-          mode: "chef"
+          mode: isConducteurMode ? "conducteur" : "chef"
         });
         isDirty.current = false;
       }
