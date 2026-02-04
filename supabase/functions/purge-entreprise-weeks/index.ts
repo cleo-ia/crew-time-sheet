@@ -163,6 +163,17 @@ Deno.serve(async (req) => {
     if (paError) console.error("Erreur planning_affectations:", paError);
     deleted.planning_affectations = paData?.length || 0;
 
+    // 13. Réinitialiser chantier_principal_id des utilisateurs de l'entreprise
+    // Évite que les chefs gardent une affectation principale d'une session précédente
+    const { data: usersReset, error: usersResetError } = await supabase
+      .from("utilisateurs")
+      .update({ chantier_principal_id: null })
+      .eq("entreprise_id", entreprise_id)
+      .not("chantier_principal_id", "is", null)
+      .select("id");
+    if (usersResetError) console.error("Erreur reset chantier_principal_id:", usersResetError);
+    deleted.utilisateurs_chantier_principal_reset = usersReset?.length || 0;
+
     console.log("Purge terminée:", deleted);
 
     return new Response(
