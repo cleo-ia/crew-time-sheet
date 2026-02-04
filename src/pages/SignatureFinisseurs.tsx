@@ -117,46 +117,93 @@ const SignatureFinisseurs = () => {
   const saveSignature = useSaveSignature();
   // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
-  // Charger les données de transport pour chaque finisseur
+  // Charger les données de transport depuis le nouveau système unifié (fiches_transport)
   useEffect(() => {
     const loadTransportData = async () => {
       if (finisseurs.length === 0) return;
       
       const transportMap: Record<string, any> = {};
       
-      for (const finisseur of finisseurs) {
-        try {
-          // Récupérer directement la fiche de transport du finisseur
-          const { data: transport } = await supabase
-            .from("fiches_transport_finisseurs")
-            .select("id, fiche_id")
-            .eq("finisseur_id", finisseur.id)
-            .eq("semaine", semaine)
-            .maybeSingle();
-          
-          if (transport) {
-            const { data: jours } = await supabase
-              .from("fiches_transport_finisseurs_jours")
-              .select("*")
-              .eq("fiche_transport_finisseur_id", transport.id)
-              .order("date");
-            
-            // Enrichir avec l'info trajet_perso depuis ficheJours
-            const enrichedJours = jours?.map(jour => {
-              const ficheJour = finisseur.ficheJours?.find(fj => fj.date === jour.date);
-              return {
-                ...jour,
-                trajet_perso: ficheJour?.trajet_perso || false
-              };
-            }) || [];
-            
-            transportMap[finisseur.id] = {
-              days: enrichedJours
-            };
+      try {
+        // 1. Récupérer tous les chantier_ids uniques depuis les affectations
+        const chantierIds = new Set<string>();
+        finisseurs.forEach(f => {
+          f.affectedDays?.forEach(day => {
+            if (day.chantier_id) {
+              chantierIds.add(day.chantier_id);
+            }
+          });
+        });
+        
+        if (chantierIds.size === 0) return;
+        
+        // 2. Récupérer les fiches transport unifiées par chantier + semaine
+        const { data: fichesTransport, error: ftError } = await supabase
+          .from("fiches_transport")
+          .select("id, chantier_id")
+          .in("chantier_id", Array.from(chantierIds))
+          .eq("semaine", semaine);
+        
+        if (ftError) throw ftError;
+        if (!fichesTransport?.length) return;
+        
+        // 3. Récupérer tous les jours de transport pour ces fiches
+        const ficheTransportIds = fichesTransport.map(ft => ft.id);
+        const { data: joursTransport, error: jtError } = await supabase
+          .from("fiches_transport_jours")
+          .select(`
+            id, date, immatriculation, fiche_transport_id,
+            conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(id, nom, prenom),
+            conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(id, nom, prenom)
+          `)
+          .in("fiche_transport_id", ficheTransportIds)
+          .order("date");
+        
+        if (jtError) throw jtError;
+        
+        // 4. Créer une map chantier_id → jours de transport
+        const transportByChantier = new Map<string, any[]>();
+        fichesTransport.forEach(ft => {
+          transportByChantier.set(ft.chantier_id!, []);
+        });
+        
+        joursTransport?.forEach(jour => {
+          const ft = fichesTransport.find(f => f.id === jour.fiche_transport_id);
+          if (ft?.chantier_id) {
+            transportByChantier.get(ft.chantier_id)?.push(jour);
           }
-        } catch (error) {
-          console.error(`Erreur chargement transport pour ${finisseur.prenom}:`, error);
+        });
+        
+        // 5. Mapper les données pour chaque finisseur selon ses dates d'affectation
+        for (const finisseur of finisseurs) {
+          const affectedDays = finisseur.affectedDays || [];
+          const enrichedJours: any[] = [];
+          
+          for (const affectation of affectedDays) {
+            if (!affectation.chantier_id || !affectation.date) continue;
+            
+            // Trouver le jour de transport correspondant
+            const chantiersJours = transportByChantier.get(affectation.chantier_id) || [];
+            const jourTransport = chantiersJours.find(j => j.date === affectation.date);
+            
+            // Enrichir avec trajet_perso depuis ficheJours
+            const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectation.date);
+            
+            enrichedJours.push({
+              date: affectation.date,
+              immatriculation: jourTransport?.immatriculation || null,
+              conducteur_matin_id: jourTransport?.conducteur_aller?.id || null,
+              conducteur_soir_id: jourTransport?.conducteur_retour?.id || null,
+              trajet_perso: ficheJour?.trajet_perso || false
+            });
+          }
+          
+          transportMap[finisseur.id] = {
+            days: enrichedJours.sort((a, b) => a.date.localeCompare(b.date))
+          };
         }
+      } catch (error) {
+        console.error("Erreur chargement transport unifié:", error);
       }
       
       setTransportFinisseursData(transportMap);

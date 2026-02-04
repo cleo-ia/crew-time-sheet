@@ -51,108 +51,35 @@ export const VehiculeCombobox = ({
   const normalizedValue = value || "";
   const { data: vehicules = [], isLoading: isLoadingVehicules } = useActiveVehicules();
 
-  // Mode Finisseurs : récupérer les plaques déjà utilisées par d'autres finisseurs
-  const { data: usedVehicules, isLoading: isLoadingUsed } = useQuery({
-    queryKey: ["vehicules-finisseurs-used", semaine, date, excludeFinisseurId],
-    queryFn: async () => {
-      const { data: transportJours, error } = await supabase
-        .from("fiches_transport_finisseurs_jours")
-        .select(`
-          immatriculation,
-          fiche_transport_finisseur_id,
-          fiches_transport_finisseurs!inner(finisseur_id, utilisateurs!inner(prenom, nom))
-        `)
-        .eq("date", date!)
-        .eq("fiches_transport_finisseurs.semaine", semaine!);
-
-      if (error) throw error;
-
-      const usedMap = new Map<string, { nom: string; id: string }>();
-      
-      transportJours?.forEach((jour: any) => {
-        const finisseurId = jour.fiches_transport_finisseurs?.finisseur_id;
-        
-        if (jour.immatriculation && finisseurId !== excludeFinisseurId) {
-          const utilisateur = jour.fiches_transport_finisseurs?.utilisateurs;
-          usedMap.set(jour.immatriculation, {
-            nom: `${utilisateur?.prenom || ''} ${utilisateur?.nom || ''}`.trim(),
-            id: finisseurId
-          });
-        }
-      });
-
-      return usedMap;
-    },
-    enabled: !!date && !!semaine && !!excludeFinisseurId,
-  });
-
-  // Vérification croisée : véhicules utilisés par les DEUX équipes (Maçons ↔ Finisseurs)
+  // Vérification des véhicules utilisés - SYSTÈME UNIFIÉ (fiches_transport_jours uniquement)
   const { data: vehiculesUtilisesGlobal, isLoading: isLoadingGlobal } = useQuery({
-    queryKey: ["vehicules-all-teams-used", semaine, date, currentChantierId, excludeFinisseurId],
+    queryKey: ["vehicules-all-teams-used", semaine, date, currentChantierId],
     queryFn: async () => {
       const usedMap = new Map<string, { type: 'macon' | 'finisseur'; nom: string; chantierId?: string }>();
 
-      // 1. Véhicules utilisés par les MAÇONS
-      const { data: transportMacons } = await supabase
+      // Récupérer tous les véhicules utilisés depuis fiches_transport_jours (système unifié)
+      const { data: transportJours } = await supabase
         .from("fiches_transport_jours")
         .select(`
           immatriculation,
           fiche_transport:fiches_transport!inner(
             chantier_id,
-            fiche:fiches!inner(
-              semaine,
-              chantier_id,
-              chantier:chantiers(nom)
-            )
+            chantier:chantiers(nom)
           )
         `)
         .eq("date", date!)
-        .eq("fiche_transport.fiche.semaine", semaine!);
+        .not("immatriculation", "is", null);
 
-      transportMacons?.forEach((jour: any) => {
+      transportJours?.forEach((jour: any) => {
         if (jour.immatriculation) {
-          const chantierId = jour.fiche_transport?.chantier_id || jour.fiche_transport?.fiche?.chantier_id;
-          const chantierNom = jour.fiche_transport?.fiche?.chantier?.nom || 'Chantier inconnu';
+          const chantierId = jour.fiche_transport?.chantier_id;
+          const chantierNom = jour.fiche_transport?.chantier?.nom || 'Chantier inconnu';
           
           usedMap.set(jour.immatriculation, {
             type: 'macon',
-            nom: `Équipe maçons (${chantierNom})`,
+            nom: `Équipe (${chantierNom})`,
             chantierId: chantierId
           });
-        }
-      });
-
-      // 2. Véhicules utilisés par les FINISSEURS
-      const { data: transportFinisseurs } = await supabase
-        .from("fiches_transport_finisseurs_jours")
-        .select(`
-          immatriculation,
-          fiches_transport_finisseurs!inner(
-            finisseur_id,
-            semaine,
-            utilisateurs!inner(prenom, nom)
-          )
-        `)
-        .eq("date", date!)
-        .eq("fiches_transport_finisseurs.semaine", semaine!);
-
-      transportFinisseurs?.forEach((jour: any) => {
-        if (jour.immatriculation && jour.fiches_transport_finisseurs) {
-          const finisseurId = jour.fiches_transport_finisseurs.finisseur_id;
-          
-          // Ne pas écraser si déjà utilisé par maçons
-          if (!usedMap.has(jour.immatriculation)) {
-            const utilisateur = jour.fiches_transport_finisseurs.utilisateurs;
-            const nom = `${utilisateur?.prenom || ''} ${utilisateur?.nom || ''}`.trim();
-            
-            // Exclure le finisseur courant si on est en mode finisseur
-            if (finisseurId !== excludeFinisseurId) {
-              usedMap.set(jour.immatriculation, {
-                type: 'finisseur',
-                nom: `Finisseur ${nom}`
-              });
-            }
-          }
         }
       });
 
@@ -162,7 +89,6 @@ export const VehiculeCombobox = ({
   });
 
   const isLoading = isLoadingVehicules || 
-    (date && semaine && excludeFinisseurId ? isLoadingUsed : false) ||
     (date && semaine ? isLoadingGlobal : false);
 
   if (isLoading) {
@@ -199,7 +125,7 @@ export const VehiculeCombobox = ({
           <div className="flex items-center gap-2">
             <Truck className="h-4 w-4 shrink-0 opacity-50" />
             {value === VEHICULE_PERSO_VALUE ? (
-              <span className="text-blue-600 dark:text-blue-400">Véhicule perso</span>
+              <span className="text-primary">Véhicule perso</span>
             ) : selectedVehicule ? (
               <span>{selectedVehicule.immatriculation}</span>
             ) : (
@@ -221,7 +147,7 @@ export const VehiculeCombobox = ({
                 onChange(VEHICULE_PERSO_VALUE);
                 setTimeout(() => setOpen(false), 50);
               }}
-              className="font-normal text-blue-600 dark:text-blue-400"
+              className="font-normal text-primary"
             >
               <Check
                 className={cn(
@@ -240,30 +166,19 @@ export const VehiculeCombobox = ({
               // Mode Chefs/Maçons : vérification simple
               const isUsedSimple = otherVehiculesPlates?.includes(vehicule.immatriculation) ?? false;
               
-              // Mode Finisseurs : vérification DB + local
-              const isUsedInDB = usedVehicules?.has(vehicule.immatriculation);
-              const usedByDB = usedVehicules?.get(vehicule.immatriculation);
-              
               const dateUsage = localVehiculeUsage?.get(date || '');
               const localUserId = dateUsage?.get(vehicule.immatriculation);
               const isUsedLocally = localUserId && localUserId !== excludeFinisseurId;
               
-              // Vérification CROISÉE (Maçons ↔ Finisseurs)
+              // Vérification unifiée (tous véhicules utilisés)
               const globalUsage = vehiculesUtilisesGlobal?.get(vehicule.immatriculation);
               
-              // Si mode Finisseurs → vérifier si utilisé par maçons
-              const isUsedByMacons = excludeFinisseurId && globalUsage?.type === 'macon';
-              
-              // Si mode Maçons → vérifier si utilisé par finisseurs
-              const isUsedByFinisseurs = !excludeFinisseurId && globalUsage?.type === 'finisseur';
-              
-              // Mode Maçons → vérifier si utilisé par AUTRE équipe maçons sur AUTRE chantier
-              const isUsedByOtherMaconTeam = currentChantierId && 
-                globalUsage?.type === 'macon' && 
+              // Utilisé par une AUTRE équipe sur un AUTRE chantier
+              const isUsedByOtherTeam = currentChantierId && 
                 globalUsage?.chantierId && 
                 globalUsage.chantierId !== currentChantierId;
               
-              const isUsed = isUsedSimple || isUsedInDB || isUsedLocally || isUsedByMacons || isUsedByFinisseurs || isUsedByOtherMaconTeam;
+              const isUsed = isUsedSimple || isUsedLocally || isUsedByOtherTeam;
 
               return (
                 <CommandItem
@@ -290,27 +205,12 @@ export const VehiculeCombobox = ({
                       (Déjà utilisée)
                     </span>
                   )}
-                  {isUsedInDB && !isUsedSimple && (
-                    <span className="text-xs text-muted-foreground ml-2">
-                      (Utilisée par {usedByDB?.nom})
-                    </span>
-                  )}
-                  {isUsedByMacons && !isUsedSimple && !isUsedInDB && (
-                    <span className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                  {isUsedByOtherTeam && !isUsedSimple && (
+                    <span className="text-xs text-destructive ml-2">
                       (Utilisée par {globalUsage?.nom})
                     </span>
                   )}
-                  {isUsedByFinisseurs && !isUsedSimple && !isUsedInDB && !isUsedByOtherMaconTeam && (
-                    <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">
-                      (Utilisée par {globalUsage?.nom})
-                    </span>
-                  )}
-                  {isUsedByOtherMaconTeam && !isUsedSimple && !isUsedInDB && (
-                    <span className="text-xs text-red-600 dark:text-red-400 ml-2">
-                      (Utilisée par {globalUsage?.nom})
-                    </span>
-                  )}
-                  {isUsedLocally && !isUsedInDB && !isUsedSimple && !isUsedByMacons && !isUsedByFinisseurs && (
+                  {isUsedLocally && !isUsedSimple && !isUsedByOtherTeam && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (En cours d'attribution)
                     </span>
