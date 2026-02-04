@@ -200,64 +200,44 @@ export const generateRHExcel = async (
   sheet.addRow(Array(totalCols).fill(""));
 
   // Ligne 3 : En-têtes principaux des groupes
+  // Structure des colonnes :
+  // 1-15 : Données contractuelles (15 colonnes)
+  // 16-27 : ABSENCES EN HEURES (12 colonnes : DATE, CP, RTT, AM, MP, AT, Congé parental, Intempéries, CPSS, ABS INJ, ECOLE, EF)
+  // 28-29 : HEURES SUPP (2 colonnes : 25%, 50%)
+  // 30 : REPAS (1 colonne : NB PANIERS)
+  // 31-52 : TRAJETS (22 colonnes : TOTAL, T Perso, T1-T17, T31, T35, GD)
+  // 53-55 : Acomptes et prêts (3 colonnes)
+  // 56-58 : SAISIES (3 colonnes)
+  // 59-60 : Régularisation et Autres éléments
   const headerRow3 = [
-    "Matricule",
-    "Nom",
-    "Prénom",
-    "Echelon",
-    "Niveau",
-    "Degré",
-    "Statut",
-    "Libéllé emploi",
-    "Type\nde contrat",
-    "Base\nhoraire",
-    "Horaire\nmensuel",
-    "Heures suppl\nmensualisées",
-    "Forfait jours",
-    "Heures réelles\neffectuées", // NOUVELLE COLONNE
-    "Salaire de base\ny compris heures structurelles",
-    "ABSENCES EN HEURES",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "HEURES SUPP",
-    "",
-    "REPAS",
-    "TRAJETS",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "Acomptes et prêts",
-    "",
-    "",
-    "SAISIES SUR SALAIRES",
-    "",
-    "",
-    "Regularisation M-1",
-    "Autres éléments",
+    "Matricule",           // 1
+    "Nom",                 // 2
+    "Prénom",              // 3
+    "Echelon",             // 4
+    "Niveau",              // 5
+    "Degré",               // 6
+    "Statut",              // 7
+    "Libéllé emploi",      // 8
+    "Type\nde contrat",    // 9
+    "Base\nhoraire",       // 10
+    "Horaire\nmensuel",    // 11
+    "Heures suppl\nmensualisées", // 12
+    "Forfait jours",       // 13
+    "Heures réelles\neffectuées", // 14
+    "Salaire de base\ny compris heures structurelles", // 15
+    "ABSENCES EN HEURES",  // 16 (groupe fusionné 16-27)
+    "", "", "", "", "", "", "", "", "", "", "", // 17-27 (11 vides pour compléter les 12 colonnes absences)
+    "HEURES SUPP",         // 28 (groupe fusionné 28-29)
+    "",                    // 29
+    "REPAS",               // 30
+    "TRAJETS",             // 31 (groupe fusionné 31-52)
+    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", // 32-52 (21 vides)
+    "Acomptes et prêts",   // 53 (groupe fusionné 53-55)
+    "", "",                // 54-55
+    "SAISIES SUR SALAIRES", // 56 (groupe fusionné 56-58)
+    "", "",                // 57-58
+    "Regularisation M-1",  // 59
+    "Autres éléments",     // 60
   ];
   sheet.addRow(headerRow3);
 
@@ -481,21 +461,25 @@ export const generateRHExcel = async (
   sheet.mergeCells(`${colToLetter(15)}1:${colToLetter(57)}1`); // O1:BE1
 
   // Lignes 3-4: colonnes individuelles
-  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 29, 58, 59];
+  // Colonnes individuelles (fusionnées verticalement lignes 3-4)
+  const singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 30, 59, 60];
   singles.forEach((c) => sheet.mergeCells(3, c, 4, c));
 
-  // Groupes
-  sheet.mergeCells(3, 15, 3, 26); // ABSENCES EN HEURES (O3:Z3) - +1 pour ECOLE +1 pour EF
-  sheet.mergeCells(3, 27, 3, 28); // HEURES SUPP (AA3:AB3)
-  sheet.mergeCells(3, 30, 3, 51); // TRAJETS (AD3:AY3)
-  sheet.mergeCells(3, 52, 3, 54); // Acomptes et prêts (AZ3:BB3)
-  sheet.mergeCells(3, 55, 3, 57); // SAISIES (BC3:BE3)
+  // Groupes (fusionnés horizontalement sur ligne 3)
+  sheet.mergeCells(3, 16, 3, 27); // ABSENCES EN HEURES (12 colonnes : 16-27)
+  sheet.mergeCells(3, 28, 3, 29); // HEURES SUPP (2 colonnes : 28-29)
+  sheet.mergeCells(3, 31, 3, 52); // TRAJETS (22 colonnes : 31-52)
+  sheet.mergeCells(3, 53, 3, 55); // Acomptes et prêts (3 colonnes : 53-55)
+  sheet.mergeCells(3, 56, 3, 58); // SAISIES (3 colonnes : 56-58)
   
   // Forcer explicitement les valeurs des cellules après les merges
-  sheet.getCell(`${colToLetter(52)}3`).value = "ACOMPTES ET PRÊTS";
-  sheet.getCell(`${colToLetter(55)}3`).value = "SAISIES SUR SALAIRES";
-  sheet.getCell(`${colToLetter(58)}3`).value = "Regularisation M-1";
-  sheet.getCell(`${colToLetter(59)}3`).value = "Autres éléments";
+  sheet.getCell(`${colToLetter(16)}3`).value = "ABSENCES EN HEURES";
+  sheet.getCell(`${colToLetter(28)}3`).value = "HEURES SUPP";
+  sheet.getCell(`${colToLetter(31)}3`).value = "TRAJETS";
+  sheet.getCell(`${colToLetter(53)}3`).value = "ACOMPTES ET PRÊTS";
+  sheet.getCell(`${colToLetter(56)}3`).value = "SAISIES SUR SALAIRES";
+  sheet.getCell(`${colToLetter(59)}3`).value = "Regularisation M-1";
+  sheet.getCell(`${colToLetter(60)}3`).value = "Autres éléments";
 
   // Hauteurs de lignes
   sheet.getRow(1).height = 20;
@@ -504,22 +488,24 @@ export const generateRHExcel = async (
   sheet.getRow(4).height = 30;
 
   // Styles en-têtes
+  // Structure des colonnes :
+  // 1-15 : Données contractuelles | 16-27 : Absences | 28-29 : H.Supp | 30 : Repas | 31-52 : Trajets | 53-55 : Acomptes | 56-58 : Saisies | 59-60 : Autres
   const headerRows = [3, 4];
   headerRows.forEach((rIdx) => {
     const row = sheet.getRow(rIdx);
     for (let c = 1; c <= totalCols; c++) {
       const cell = row.getCell(c);
-      // Couleur par groupe
+      // Couleur par groupe (indices corrigés)
       let bg = "E0E0E0";
-      if (c >= 1 && c <= 14) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
-      else if (c >= 15 && c <= 26) bg = COLOR_SCHEME.ABSENCES_HEADER; // +1 pour ECOLE +1 pour EF
-      else if (c >= 27 && c <= 28) bg = COLOR_SCHEME.OVERTIME_HEADER;
-      else if (c === 29) bg = COLOR_SCHEME.MEALS_HEADER;
-      else if (c >= 30 && c <= 51) bg = COLOR_SCHEME.TRANSPORT_HEADER;
-      else if (c >= 52 && c <= 54) bg = "A9D08E"; // Vert pour Acomptes et prêts
-      else if (c >= 55 && c <= 57) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
-      else if (c === 58) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
-      else if (c === 59) bg = "E8DAEF"; // Mauve clair pour Autres éléments
+      if (c >= 1 && c <= 15) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
+      else if (c >= 16 && c <= 27) bg = COLOR_SCHEME.ABSENCES_HEADER; // 12 colonnes absences
+      else if (c >= 28 && c <= 29) bg = COLOR_SCHEME.OVERTIME_HEADER; // 2 colonnes h.supp
+      else if (c === 30) bg = COLOR_SCHEME.MEALS_HEADER; // 1 colonne repas
+      else if (c >= 31 && c <= 52) bg = COLOR_SCHEME.TRANSPORT_HEADER; // 22 colonnes trajets
+      else if (c >= 53 && c <= 55) bg = "A9D08E"; // Vert pour Acomptes et prêts
+      else if (c >= 56 && c <= 58) bg = "000000"; // Noir pour SAISIES SUR SALAIRES
+      else if (c === 59) bg = "C9A0DC"; // Violet pour REGULARISATION M-1
+      else if (c === 60) bg = "E8DAEF"; // Mauve clair pour Autres éléments
 
       setHeaderFill(cell, bg);
     }
@@ -544,28 +530,28 @@ export const generateRHExcel = async (
 
     for (let c = 1; c <= totalCols; c++) {
       let bg = isEven ? "FFFFFF" : "F9F9F9";
-      // Colonnes alignées avec les en-têtes (lignes 491-499)
-      if (c >= 1 && c <= 14) bg = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
-      else if (c >= 15 && c <= 26) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD; // Absences (15-26 inclut ECOLE + EF)
-      else if (c >= 27 && c <= 28) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD; // Heures supp
-      else if (c === 29) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD; // Paniers
-      else if (c >= 30 && c <= 51) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD; // Trajets
-      else if (c >= 52 && c <= 54) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
-      else if (c >= 55 && c <= 57) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
-      else if (c === 58) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
-      else if (c === 59) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
+      // Colonnes alignées avec les en-têtes (indices corrigés)
+      if (c >= 1 && c <= 15) bg = isEven ? COLOR_SCHEME.CONTRACTUAL_EVEN : COLOR_SCHEME.CONTRACTUAL_ODD;
+      else if (c >= 16 && c <= 27) bg = isEven ? COLOR_SCHEME.ABSENCES_EVEN : COLOR_SCHEME.ABSENCES_ODD; // 12 colonnes absences
+      else if (c >= 28 && c <= 29) bg = isEven ? COLOR_SCHEME.OVERTIME_EVEN : COLOR_SCHEME.OVERTIME_ODD; // 2 colonnes h.supp
+      else if (c === 30) bg = isEven ? COLOR_SCHEME.MEALS_EVEN : COLOR_SCHEME.MEALS_ODD; // 1 colonne repas
+      else if (c >= 31 && c <= 52) bg = isEven ? COLOR_SCHEME.TRANSPORT_EVEN : COLOR_SCHEME.TRANSPORT_ODD; // 22 colonnes trajets
+      else if (c >= 53 && c <= 55) bg = isEven ? "E2EFDA" : "D9E7CB"; // Vert clair pour Acomptes et prêts
+      else if (c >= 56 && c <= 58) bg = isEven ? "D9D9D9" : "BFBFBF"; // Gris pour SAISIES SUR SALAIRES
+      else if (c === 59) bg = isEven ? "E4DAEC" : "D5C4DF"; // Violet clair pour REGULARISATION M-1
+      else if (c === 60) bg = isEven ? "F4ECF7" : "E8DAEF"; // Mauve très clair pour Autres éléments
 
       const cell = sheet.getRow(r).getCell(c);
-      const align: "left" | "right" = c >= 15 ? "right" : "left";
+      const align: "left" | "right" = c >= 16 ? "right" : "left";
       setDataFill(cell, bg, align);
 
       // Formats
-      if (c === 13) {
+      if (c === 14) {
         cell.numFmt = "0"; // Heures réelles (nombre entier)
-      } else if (c === 14) {
+      } else if (c === 15) {
         cell.numFmt = "#,##0.00"; // Salaire
-      } else if ((c >= 16 && c <= 27) || c === 28 || (c >= 29 && c <= 50)) {
-        cell.numFmt = "0"; // Nombres entiers
+      } else if ((c >= 17 && c <= 27) || (c >= 28 && c <= 29) || (c >= 30 && c <= 52)) {
+        cell.numFmt = "0"; // Nombres entiers (absences, h.supp, repas, trajets)
       }
     }
   }
