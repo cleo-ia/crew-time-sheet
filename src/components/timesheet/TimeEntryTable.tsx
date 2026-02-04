@@ -416,6 +416,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   }, [isConducteurMode, finisseursData, weekId]);
 
   const [hasUserEdits, setHasUserEdits] = useState(false);
+  const hasSyncedAffectations = useRef(false);
 
   // Normalisation de initialData : résoudre chantierId depuis chantierCode (mode edit uniquement)
   useEffect(() => {
@@ -738,47 +739,62 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   // 🔄 Synchroniser les affectations de chantiers vers la saisie (ne pas écraser les saisies utilisateur)
   useEffect(() => {
     if (!isConducteurMode) return;
-    if (!affectationsJours?.length || !chantiers.length || !entries.length) return;
+    if (!affectationsJours?.length || !chantiers.length) return;
+    
+    // ✅ Éviter la re-sync si déjà synchronisé OU si l'utilisateur a modifié
+    if (hasSyncedAffectations.current || hasUserEdits) return;
 
-    console.log("🔄 Synchronisation affectations → saisie", {
+    console.log("🔄 Synchronisation affectations → saisie (unique)", {
       affectations: affectationsJours.length,
       chantiers: chantiers.length,
-      entries: entries.length,
       hasUserEdits
     });
 
-    setEntries(prev => prev.map(entry => {
-      const affs = affectationsJours.filter(a => a.finisseur_id === entry.employeeId);
-      if (!affs.length) return entry;
-
-      const updatedDays = { ...entry.days };
-      const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
+    setEntries(prev => {
+      if (prev.length === 0) return prev; // Attendre que les entries soient chargées
       
-      for (const aff of affs) {
-        const date = new Date(aff.date + "T00:00:00");
-        const dayLabel = dayNames[date.getDay()];
-        const dayData = updatedDays[dayLabel];
-        
-        if (!dayData) continue;
+      let hasChanges = false;
+      const updated = prev.map(entry => {
+        const affs = affectationsJours.filter(a => a.finisseur_id === entry.employeeId);
+        if (!affs.length) return entry;
 
-        const chantierInfo = chantiers.find(c => c.id === aff.chantier_id);
-        const shouldUpdate = !dayData.chantierId || (!hasUserEdits && dayData.chantierId !== aff.chantier_id);
+        const updatedDays = { ...entry.days };
+        const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
         
-        if (shouldUpdate) {
-          console.log(`  ✅ ${entry.employeeName} - ${dayLabel}: ${chantierInfo?.nom ?? aff.chantier_id}`);
-          updatedDays[dayLabel] = {
-            ...dayData,
-            chantierId: aff.chantier_id,
-            chantierCode: chantierInfo?.code_chantier ?? null,
-            chantierVille: chantierInfo?.ville ?? null,
-            chantierNom: chantierInfo?.nom ?? null,
-          };
+        for (const aff of affs) {
+          const date = new Date(aff.date + "T00:00:00");
+          const dayLabel = dayNames[date.getDay()];
+          const dayData = updatedDays[dayLabel];
+          
+          if (!dayData) continue;
+
+          // Vérifier si le chantier est déjà correct
+          if (dayData.chantierId === aff.chantier_id) continue;
+
+          const chantierInfo = chantiers.find(c => c.id === aff.chantier_id);
+          
+          // Mettre à jour seulement si pas de chantierId ou si différent
+          if (!dayData.chantierId) {
+            hasChanges = true;
+            updatedDays[dayLabel] = {
+              ...dayData,
+              chantierId: aff.chantier_id,
+              chantierCode: chantierInfo?.code_chantier ?? null,
+              chantierVille: chantierInfo?.ville ?? null,
+              chantierNom: chantierInfo?.nom ?? null,
+            };
+          }
         }
-      }
+        
+        return hasChanges ? { ...entry, days: updatedDays } : entry;
+      });
+
+      // ✅ Marquer comme synchronisé pour éviter les re-runs
+      hasSyncedAffectations.current = true;
       
-      return { ...entry, days: updatedDays };
-    }));
-  }, [isConducteurMode, affectationsJours, chantiers, entries.length, hasUserEdits]);
+      return hasChanges ? updated : prev;
+    });
+  }, [isConducteurMode, affectationsJours, chantiers, hasUserEdits]);
 
   // Détecter et ajouter dynamiquement les nouveaux maçons/intérimaires (mode chef)
   useEffect(() => {
@@ -872,6 +888,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     setHasLoadedData(false);
     setHasUserEdits(false);
     setEntries([]); // Vider les données pour éviter flash de données obsolètes
+    hasSyncedAffectations.current = false; // ✅ Reset le flag de sync
   }, [weekId, chantierId]);
 
   // Propager l'état au parent pour sauvegarde
