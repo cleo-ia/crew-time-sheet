@@ -43,6 +43,44 @@ import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
+import { useFicheId } from "@/hooks/useFicheId";
+
+// Wrapper pour appeler useFicheId dans une boucle (règle des hooks React)
+const TransportSheetWithFiche = ({ 
+  selectedWeek, 
+  selectedWeekString, 
+  chantierId, 
+  conducteurId,
+  isReadOnly,
+  finisseursEquipe
+}: {
+  selectedWeek: Date;
+  selectedWeekString: string;
+  chantierId: string | null;
+  conducteurId: string;
+  isReadOnly: boolean | undefined;
+  finisseursEquipe: { id: string; nom: string; prenom: string }[];
+}) => {
+  const { data: ficheId } = useFicheId(
+    selectedWeekString, 
+    conducteurId, 
+    chantierId
+  );
+
+  return (
+    <TransportSheetV2
+      selectedWeek={selectedWeek}
+      selectedWeekString={selectedWeekString}
+      chantierId={chantierId}
+      chefId={conducteurId}
+      conducteurId={conducteurId}
+      ficheId={ficheId}
+      isReadOnly={isReadOnly}
+      mode="conducteur"
+      finisseursEquipe={finisseursEquipe}
+    />
+  );
+};
 
 
 const ValidationConducteur = () => {
@@ -760,14 +798,12 @@ const ValidationConducteur = () => {
                               />
                               
                               {/* Fiche de trajet équipe (modèle chef unifié) */}
-                              <TransportSheetV2
+                              <TransportSheetWithFiche
                                 selectedWeek={parseISOWeek(selectedWeek)}
                                 selectedWeekString={selectedWeek}
                                 chantierId={chantierId !== "sans-chantier" ? chantierId : null}
-                                chefId={effectiveConducteurId}
-                                conducteurId={effectiveConducteurId}
+                                conducteurId={effectiveConducteurId!}
                                 isReadOnly={transmissionStatus?.isTransmitted}
-                                mode="conducteur"
                                 finisseursEquipe={chantierFinisseurs.map(f => ({
                                   id: f.id,
                                   nom: f.nom,
