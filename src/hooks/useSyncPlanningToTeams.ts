@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getCurrentEntrepriseId } from "@/lib/entreprise";
 
 export const useSyncPlanningToTeams = () => {
   const queryClient = useQueryClient();
@@ -9,12 +10,16 @@ export const useSyncPlanningToTeams = () => {
     mutationFn: async (semaine?: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // ✅ CORRECTIF: Récupérer l'entreprise courante pour cibler la sync
+      const entrepriseId = await getCurrentEntrepriseId();
+      
       const { data, error } = await supabase.functions.invoke("sync-planning-to-teams", {
         body: {
           execution_mode: 'manual',
           triggered_by: user?.id,
           force: true,
-          semaine: semaine || undefined
+          semaine: semaine || undefined,
+          entreprise_id: entrepriseId  // ✅ Cibler uniquement l'entreprise courante
         },
       });
 

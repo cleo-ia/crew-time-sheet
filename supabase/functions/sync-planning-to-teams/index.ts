@@ -60,17 +60,19 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     const supabase = createClient(supabaseUrl, supabaseServiceKey) as any
 
-    // Lire le body pour récupérer execution_mode, triggered_by, force et semaine_override
+    // Lire le body pour récupérer execution_mode, triggered_by, force, semaine_override et entreprise_id
     let execution_mode = 'cron'
     let triggered_by = null
     let force = false
     let semaine_override = null
+    let target_entreprise_id: string | null = null
     try {
       const body = await req.json()
       execution_mode = body.execution_mode || 'cron'
       triggered_by = body.triggered_by || null
       force = body.force || false
       semaine_override = body.semaine || null
+      target_entreprise_id = body.entreprise_id || null  // ✅ NOUVEAU: Paramètre entreprise ciblée
     } catch {
       // Body vide ou invalide, on garde les valeurs par défaut
     }
@@ -94,16 +96,25 @@ Deno.serve(async (req) => {
 
     console.log(`[sync-planning-to-teams] Semaine courante: ${currentWeek}, Semaine précédente: ${previousWeek}`)
 
-    // Récupérer toutes les entreprises avec planning
-    const { data: entreprises, error: entError } = await supabase
-      .from('planning_affectations')
-      .select('entreprise_id')
-      .eq('semaine', currentWeek)
+    // ✅ CORRECTIF MULTI-TENANT: Déterminer les entreprises à traiter
+    let uniqueEntreprises: string[]
     
-    if (entError) throw entError
+    if (target_entreprise_id) {
+      // Mode ciblé : traiter UNIQUEMENT l'entreprise spécifiée
+      uniqueEntreprises = [target_entreprise_id]
+      console.log(`[sync-planning-to-teams] Mode ciblé: entreprise ${target_entreprise_id} uniquement`)
+    } else {
+      // Mode CRON : récupérer toutes les entreprises avec planning
+      const { data: entreprises, error: entError } = await supabase
+        .from('planning_affectations')
+        .select('entreprise_id')
+        .eq('semaine', currentWeek)
+      
+      if (entError) throw entError
 
-    const uniqueEntreprises = [...new Set((entreprises || []).map((e: { entreprise_id: string }) => e.entreprise_id))]
-    console.log(`[sync-planning-to-teams] ${uniqueEntreprises.length} entreprise(s) avec planning pour ${currentWeek}`)
+      uniqueEntreprises = [...new Set((entreprises || []).map((e: { entreprise_id: string }) => e.entreprise_id))] as string[]
+      console.log(`[sync-planning-to-teams] Mode global: ${uniqueEntreprises.length} entreprise(s) avec planning pour ${currentWeek}`)
+    }
 
     const allResults: SyncResult[] = []
     let totalCopied = 0
@@ -164,6 +175,7 @@ Deno.serve(async (req) => {
         semaine: currentWeek,
         semaine_precedente: previousWeek,
         entreprises: uniqueEntreprises.length,
+        target_entreprise_id: target_entreprise_id || 'all',
         stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
         results: allResults.slice(0, 50) // Limiter pour éviter payload trop gros
       }
@@ -311,16 +323,19 @@ async function syncEntreprise(
   console.log(`[sync-planning-to-teams] ${planningByEmployeChantier.size} couple(s) employé-chantier dans le planning`)
 
   // 2. Récupérer les affectations existantes S-1 (pour comparaison)
+  // ✅ CORRECTIF: Ajouter filtre entreprise_id
   const { data: affectationsS1Chef } = await supabase
     .from('affectations_jours_chef')
     .select('*')
     .eq('semaine', previousWeek)
     .eq('entreprise_id', entrepriseId)
 
+  // ✅ CORRECTIF: Ajouter filtre entreprise_id
   const { data: affectationsS1Finisseurs } = await supabase
     .from('affectations_finisseurs_jours')
     .select('*')
     .eq('semaine', previousWeek)
+    .eq('entreprise_id', entrepriseId)
 
   // Grouper S-1 par couple (employé, chantier)
   const s1ByEmployeChantier = new Map<string, { jours: string[] }>()
@@ -542,7 +557,8 @@ async function syncEntreprise(
         chantierId, 
         previousWeek, 
         currentWeek,
-        chantier
+        chantier,
+        entrepriseId
       )
       
       if (copyResult.copied) {
@@ -645,16 +661,19 @@ async function syncEntreprise(
   const employeChantierInPlanning = new Set([...planningByEmployeChantier.keys()])
   
   // Récupérer les affectations S qui ne sont pas dans le planning
+  // ✅ CORRECTIF: Ajouter filtre entreprise_id
   const { data: existingChefS } = await supabase
     .from('affectations_jours_chef')
     .select('macon_id, chantier_id')
     .eq('semaine', currentWeek)
     .eq('entreprise_id', entrepriseId)
 
+  // ✅ CORRECTIF CRITIQUE: Ajouter filtre entreprise_id
   const { data: existingFinisseursS } = await supabase
     .from('affectations_finisseurs_jours')
     .select('finisseur_id, chantier_id')
     .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
 
   // Identifier les couples employé-chantier à supprimer (dans affectations mais pas dans planning)
   // PROTECTION: Ne jamais supprimer les affectations d'un chef sur son chantier principal
@@ -690,6 +709,7 @@ async function syncEntreprise(
       .eq('salarie_id', maconId)
       .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
       .maybeSingle()
 
     // Supprimer les affectations_jours_chef pour ce couple
@@ -707,11 +727,13 @@ async function syncEntreprise(
         .from('fiches_jours')
         .delete()
         .eq('fiche_id', fiche.id)
+        .eq('entreprise_id', entrepriseId)
       
       await supabase
         .from('fiches')
         .delete()
         .eq('id', fiche.id)
+        .eq('entreprise_id', entrepriseId)
       
       console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
@@ -723,6 +745,7 @@ async function syncEntreprise(
   for (const key of toDeleteFinisseur) {
     const [finisseurId, chantierId] = key.split('|')
     
+    // ✅ CORRECTIF: Ajouter filtre entreprise_id
     // Récupérer la fiche pour pouvoir la supprimer
     const { data: fiche } = await supabase
       .from('fiches')
@@ -730,8 +753,10 @@ async function syncEntreprise(
       .eq('salarie_id', finisseurId)
       .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
       .maybeSingle()
 
+    // ✅ CORRECTIF CRITIQUE: Ajouter filtre entreprise_id sur la suppression
     // Supprimer les affectations_finisseurs_jours pour ce couple
     await supabase
       .from('affectations_finisseurs_jours')
@@ -739,6 +764,7 @@ async function syncEntreprise(
       .eq('finisseur_id', finisseurId)
       .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées
     if (fiche) {
@@ -746,11 +772,13 @@ async function syncEntreprise(
         .from('fiches_jours')
         .delete()
         .eq('fiche_id', fiche.id)
+        .eq('entreprise_id', entrepriseId)
       
       await supabase
         .from('fiches')
         .delete()
         .eq('id', fiche.id)
+        .eq('entreprise_id', entrepriseId)
       
       console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
     }
@@ -770,7 +798,8 @@ async function copyFichesFromPreviousWeek(
   previousWeek: string,
   currentWeek: string,
   // deno-lint-ignore no-explicit-any
-  chantier: any
+  chantier: any,
+  entrepriseId: string
 ): Promise<{ copied: boolean; reason: string }> {
   
   // Vérifier si une fiche existe déjà pour S
@@ -824,7 +853,8 @@ async function copyFichesFromPreviousWeek(
         semaine: currentWeek,
         user_id: currentChefId, // ✅ Chef courant, pas celui de S-1
         statut: 'BROUILLON',
-        total_heures: 0
+        total_heures: 0,
+        entreprise_id: entrepriseId
       })
       .select('id')
       .single()
@@ -860,6 +890,7 @@ async function copyFichesFromPreviousWeek(
         T: jourS1.T,
         HP: jourS1.HP,
         PA: jourS1.PA,
+        entreprise_id: entrepriseId,
         // total_jour est une colonne générée, ne pas l'inclure
         // Ne pas copier: signature_data, commentaire
       }, { onConflict: 'fiche_id,date' })
@@ -902,6 +933,7 @@ async function copyFichesFromPreviousWeek(
     }
   } else if (chantier?.conducteur_id) {
     // Router vers affectations_finisseurs_jours
+    // ✅ CORRECTIF: Ajouter entreprise_id dans l'upsert
     for (const jour of jours) {
       await supabase
         .from('affectations_finisseurs_jours')
@@ -910,7 +942,8 @@ async function copyFichesFromPreviousWeek(
           conducteur_id: chantier.conducteur_id,
           chantier_id: chantierId,
           date: jour,
-          semaine: currentWeek
+          semaine: currentWeek,
+          entreprise_id: entrepriseId
         }, { onConflict: 'finisseur_id,date' })
     }
   }
@@ -965,7 +998,8 @@ async function createNewAffectation(
         semaine: currentWeek,
         user_id: chefId,
         statut: 'BROUILLON',
-        total_heures: totalHeures
+        total_heures: totalHeures,
+        entreprise_id: entrepriseId
       })
       .select('id')
       .single()
@@ -997,7 +1031,8 @@ async function createNewAffectation(
         code_trajet: "A_COMPLETER",
         code_chantier_du_jour: chantierCode,
         ville_du_jour: chantierVille,
-        repas_type: "PANIER"
+        repas_type: "PANIER",
+        entreprise_id: entrepriseId
       }, { onConflict: 'fiche_id,date' })
     
     if (jourError) {
@@ -1053,6 +1088,7 @@ async function createNewAffectation(
         }, { onConflict: 'macon_id,jour' })
     }
   } else if (chantier?.conducteur_id) {
+    // ✅ CORRECTIF CRITIQUE: Ajouter entreprise_id dans l'upsert finisseurs
     for (const jour of joursPlanning) {
       await supabase
         .from('affectations_finisseurs_jours')
@@ -1061,7 +1097,8 @@ async function createNewAffectation(
           conducteur_id: chantier.conducteur_id,
           chantier_id: chantierId,
           date: jour,
-          semaine: currentWeek
+          semaine: currentWeek,
+          entreprise_id: entrepriseId
         }, { onConflict: 'finisseur_id,date' })
     }
   }
