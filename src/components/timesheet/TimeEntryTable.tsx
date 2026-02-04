@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Loader2, Crown, ChevronDown, Users, Car, Truck, UserPlus } from "lucide-react";
+import { Trash2, Loader2, Crown, ChevronDown, Users, UserPlus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +21,9 @@ import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { useFicheId } from "@/hooks/useFicheId";
-import { useTransportDataFinisseur } from "@/hooks/useTransportDataFinisseur";
-import { useAutoSaveTransportFinisseur } from "@/hooks/useAutoSaveTransportFinisseur";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { TeamMemberCombobox } from "@/components/chef/TeamMemberCombobox";
-import { TransportFinisseurAccordion } from "@/components/transport/TransportFinisseurAccordion";
-import { TransportFinisseurDay, CodeTrajet } from "@/types/transport";
+import { CodeTrajet } from "@/types/transport";
 import { ChantierSelector } from "./ChantierSelector";
 import { useAffectationsJoursByChefAndChantier, getDayNamesFromDates } from "@/hooks/useAffectationsJoursChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
@@ -101,7 +98,7 @@ interface TimeEntryTableProps {
   weekId: string;
   chefId?: string;
   onEntriesChange?: (entries: TimeEntry[]) => void;
-  onTransportDataChange?: (data: Record<string, { ficheId?: string; days: TransportFinisseurDay[] }>) => void;
+  onTransportDataChange?: (data: Record<string, { ficheId?: string; days: Array<{ date: string; conducteurMatinId: string; conducteurSoirId: string; immatriculation: string }> }>) => void;
   initialData?: TimeEntry[];
   mode?: "create" | "edit" | "conducteur";
   affectationsJours?: Array<{
@@ -341,79 +338,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   // Hook pour l'auto-save
   const autoSaveMutation = useAutoSaveFiche();
   
-  // État pour les fiches trajet des finisseurs (mode conducteur uniquement)
-  const [transportFinisseurData, setTransportFinisseurData] = useState<
-    Record<string, { ficheId: string; days: TransportFinisseurDay[] }>
-  >({});
-  
-  // Calculer l'usage local des véhicules à partir de transportFinisseurData
-  // Structure: Map<date, Map<immatriculation, finisseurId>>
-  const localVehiculeUsage = useMemo(() => {
-    const usage = new Map<string, Map<string, string>>();
-    
-    Object.entries(transportFinisseurData).forEach(([finisseurId, transport]) => {
-      if (transport?.days) {
-        transport.days.forEach(day => {
-          if (day.immatriculation) {
-            if (!usage.has(day.date)) {
-              usage.set(day.date, new Map());
-            }
-            usage.get(day.date)!.set(day.immatriculation, finisseurId);
-          }
-        });
-      }
-    });
-    
-    return usage;
-  }, [transportFinisseurData]);
-  
-  // Hook pour l'auto-save des fiches trajet finisseurs
-  const autoSaveTransportFinisseur = useAutoSaveTransportFinisseur();
-
-  // Charger les données transport de tous les finisseurs depuis la DB
-  useEffect(() => {
-    if (!isConducteurMode || finisseursData.length === 0) return;
-    
-    const loadTransportData = async () => {
-      const transportData: Record<string, { ficheId: string; days: TransportFinisseurDay[] }> = {};
-      
-      for (const finisseur of finisseursData) {
-        // 1. Recherche directe de la fiche transport par finisseur + semaine
-        const { data: transport } = await supabase
-          .from("fiches_transport_finisseurs")
-          .select("id, fiche_id")
-          .eq("finisseur_id", finisseur.id)
-          .eq("semaine", weekId)
-          .maybeSingle();
-        
-        if (transport) {
-          // 2. Récupérer les jours
-          const { data: jours } = await supabase
-            .from("fiches_transport_finisseurs_jours")
-            .select("*")
-            .eq("fiche_transport_finisseur_id", transport.id)
-            .order("date");
-          
-          if (jours && jours.length > 0) {
-            const days: TransportFinisseurDay[] = jours.map((j: any) => ({
-              date: j.date,
-              conducteurMatinId: j.conducteur_matin_id || finisseur.id,
-              conducteurSoirId: j.conducteur_soir_id || finisseur.id,
-              immatriculation: j.immatriculation || "",
-            }));
-            
-            transportData[finisseur.id] = { ficheId: transport.fiche_id, days };
-          }
-        }
-      }
-      
-      if (Object.keys(transportData).length > 0) {
-        setTransportFinisseurData(transportData);
-      }
-    };
-    
-    loadTransportData();
-  }, [isConducteurMode, finisseursData, weekId]);
 
   const [hasUserEdits, setHasUserEdits] = useState(false);
   const hasSyncedAffectations = useRef(false);
@@ -878,16 +802,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     );
   }, [isConducteurMode, hasLoadedData, affectationsJours, finisseursData]);
 
-  // Nettoyer l'état transport des finisseurs supprimés
-  useEffect(() => {
-    if (!isConducteurMode) return;
-    setTransportFinisseurData(prev => {
-      const allowed = new Set(entries.map(e => e.employeeId));
-      return Object.fromEntries(
-        Object.entries(prev).filter(([id]) => allowed.has(id))
-      );
-    });
-  }, [isConducteurMode, entries]);
 
   // Réinitialiser hasLoadedData si la semaine OU le chantier change RÉELLEMENT
   // ✅ FIX: Ne pas reset au simple remontage du composant (retour d'onglet)
@@ -927,13 +841,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     }
     onEntriesChange?.(entries);
   }, [entries, onEntriesChange, mode, hasLoadedData]);
-
-  // Propager les données de transport au parent (mode conducteur uniquement)
-  useEffect(() => {
-    if (isConducteurMode && onTransportDataChange) {
-      onTransportDataChange(transportFinisseurData);
-    }
-  }, [transportFinisseurData, isConducteurMode, onTransportDataChange]);
 
   // Flag pour suivre les modifications en attente
   const isDirty = useRef<boolean>(false);
@@ -993,61 +900,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     };
   }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, autoSaveMutation, isConducteurMode]);
   
-  // Handler pour mise à jour des fiches trajet finisseurs
-  // ⚠️ En mode conducteur, on stocke les données localement SANS auto-save
-  // La sauvegarde se fera via le bouton "Enregistrer"
-  const handleTransportFinisseurUpdate = useCallback((finisseurId: string, data: { days: TransportFinisseurDay[] }) => {
-    setTransportFinisseurData((prev) => ({
-      ...prev, 
-      [finisseurId]: {
-        ficheId: prev[finisseurId]?.ficheId, // Préserver la ficheId existante
-        days: data.days
-      }
-    }));
-    
-    // ✅ En mode conducteur, NE PAS auto-save (sauvegarde manuelle via bouton)
-    if (isConducteurMode) {
-      isDirty.current = true;
-      return;
-    }
-    
-    // ✅ Récupérer le chantierId depuis les affectations du finisseur
-    const finisseurAffectation = affectationsJours?.find(a => a.finisseur_id === finisseurId);
-    const chantierIdForTransport = finisseurAffectation?.chantier_id;
-    
-    if (!chantierIdForTransport) {
-      console.warn(`⚠️ Pas de chantierId pour finisseur ${finisseurId}, skip auto-save transport`);
-      return;
-    }
-    
-    // Auto-save systématique (même sans plaque renseignée) - mode chef uniquement
-    const finisseurTransportData = transportFinisseurData[finisseurId];
-    
-    autoSaveTransportFinisseur.mutateAsync({
-      ficheId: finisseurTransportData?.ficheId,
-      finisseurId,
-      conducteurId: chefId || "",
-      semaine: weekId,
-      chantierId: chantierIdForTransport, // ✅ Ajout du chantierId obligatoire
-      days: data.days.map((d) => ({
-        date: d.date,
-        immatriculation: d.immatriculation,
-        conducteurMatinId: d.conducteurMatinId || finisseurId,
-        conducteurSoirId: d.conducteurSoirId || finisseurId,
-      })),
-    })
-    .then((res) => {
-      if (res?.ficheId && !finisseurTransportData?.ficheId) {
-        setTransportFinisseurData((prev2) => ({
-          ...prev2,
-          [finisseurId]: {
-            ...prev2[finisseurId],
-            ficheId: res.ficheId,
-          },
-        }));
-      }
-    });
-  }, [transportFinisseurData, weekId, chefId, autoSaveTransportFinisseur, affectationsJours]);
 
   const calculateTotalHours = (entry: TimeEntry) => {
     const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);
@@ -1143,74 +995,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   // Ne pas appliquer automatiquement 39h au chargement
   // L'utilisateur le fera manuellement avec le bouton si besoin
 
-  // Pré-calculer l'état de complétude des fiches trajet (AVANT le return pour respecter Rules of Hooks)
-  const transportCompletionMap = useMemo(() => {
-    if (!isConducteurMode || !affectationsJours) return {};
-    
-    const map: Record<string, boolean> = {};
-    
-    entries.forEach(entry => {
-      const transportData = transportFinisseurData[entry.employeeId];
-      
-      // Récupérer les dates ISO affectées pour ce finisseur
-      const affectedDates = affectationsJours
-        .filter(a => a.finisseur_id === entry.employeeId)
-        .map(a => a.date);
-      
-      // Si pas de jours affectés, considérer comme complet
-      if (affectedDates.length === 0) {
-        map[entry.employeeId] = true;
-        return;
-      }
-      
-      // Construire un Set des dates avec code trajet perso et des dates d'absence
-      const monday = parseISOWeek(weekId);
-      const trajetPersoDates = new Set<string>();
-      const absenceDates = new Set<string>();
-      
-      ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].forEach((dayName, idx) => {
-        const dayData = entry.days[dayName];
-        const dateStr = format(addDays(monday, idx), "yyyy-MM-dd");
-        
-        if (dayData?.codeTrajet === "T_PERSO") {
-          trajetPersoDates.add(dateStr);
-        }
-        if (dayData?.absent) {
-          absenceDates.add(dateStr);
-        }
-      });
-      
-      // Si pas de données transport, vérifier si tous les jours affectés sont absents ou trajet perso
-      if (!transportData?.days) {
-        const allOkWithoutTransport = affectedDates.every(d => 
-          absenceDates.has(d) || trajetPersoDates.has(d)
-        );
-        map[entry.employeeId] = allOkWithoutTransport;
-        return;
-      }
-
-      // Vérifier que tous les jours affectés ont une fiche complète
-      const isComplete = affectedDates.every(dateStr => {
-        // Si absent ou trajet perso : considérer comme complet (pas besoin de plaque)
-        if (absenceDates.has(dateStr) || trajetPersoDates.has(dateStr)) {
-          return true;
-        }
-        
-        // Sinon : exiger immatriculation + conducteurs
-        const jourData = transportData.days.find(d => d.date === dateStr);
-        if (!jourData) return false;
-        
-        const hasDrivers = !!jourData.conducteurMatinId && !!jourData.conducteurSoirId;
-        const hasVehicle = !!jourData.immatriculation && jourData.immatriculation.trim() !== "";
-        
-        return hasDrivers && hasVehicle;
-      });
-      
-      map[entry.employeeId] = isComplete;
-    });
-    
-    return map;
-  }, [isConducteurMode, entries, transportFinisseurData, affectationsJours, weekId]);
 
   // Handlers pour ajout/suppression
   const handleAddClick = async () => {
@@ -1313,21 +1097,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           const isFinisseur = macon?.role === "finisseur";
           const isMacon = macon && !isChef && !isInterimaire && !isGrutier && !isFinisseur;
           
-          // Récupérer l'état de complétude depuis la map pré-calculée
+          // Récupérer les jours visibles pour ce finisseur
           const visibleDays = getVisibleDaysForFinisseur(entry.employeeId);
-          const isTransportComplete = transportCompletionMap[entry.employeeId] ?? true;
           
           return (
             <AccordionItem 
               key={entry.employeeId} 
               value={entry.employeeId}
-              className={`border rounded-lg shadow-md overflow-hidden bg-card ${
-                isConducteurMode && visibleDays.length > 0
-                  ? isTransportComplete 
-                    ? "border-l-4 border-l-green-500" 
-                    : "border-l-4 border-l-orange-500"
-                  : ""
-              }`}
+              className="border rounded-lg shadow-md overflow-hidden bg-card"
             >
               <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div>svg]:rotate-180 [&>svg]:hidden">
                 <div className="flex items-center justify-between w-full bg-primary/5 border-b border-border/50 p-4 hover:bg-primary/10 transition-colors">
@@ -1385,16 +1162,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                       </Badge>
                     )}
                     
-                    {/* Indicateur fiche trajet (mode conducteur uniquement) */}
-                    {isConducteurMode && visibleDays.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        {isTransportComplete ? (
-                          <Truck className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Truck className="h-4 w-4 text-orange-600" />
-                        )}
-                      </div>
-                    )}
                   </div>
                   
                   {/* Partie droite : Total + Flèche */}
@@ -1740,52 +1507,6 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                   })()}
                 </div>
                 
-                {/* Fiche trajet pour les finisseurs (mode conducteur uniquement) */}
-                {isConducteurMode && chefId && (
-                  <div className="px-4 pb-4 mt-3">
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="trajet" className="border-0">
-                        <AccordionTrigger className="py-3 px-4 hover:no-underline bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-950/50 transition-colors shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-orange-500 rounded-lg shadow-sm">
-                              <Car className="h-4 w-4 text-white" strokeWidth={2.5} />
-                            </div>
-                            <span className="font-semibold text-base text-orange-700 dark:text-orange-300">Fiche trajet</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-4 pb-2 px-4">
-                    <TransportFinisseurAccordion
-                      finisseurId={entry.employeeId}
-                      finisseurNom={entry.employeeName}
-                      semaine={weekId}
-                      conducteurId={chefId}
-                      affectedDates={
-                        affectationsJours
-                          ?.filter(a => a.finisseur_id === entry.employeeId)
-                          .map(a => a.date) || []
-                      }
-                      allAffectations={allAffectations}
-                      trajetPersoByDate={
-                              // Créer un Map date → true si T_PERSO
-                              Object.entries(entry.days).reduce((map, [dayName, dayData]) => {
-                                const dayIndex = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].indexOf(dayName);
-                                if (dayIndex !== -1 && weekId) {
-                                  const monday = parseISOWeek(weekId);
-                                  const date = format(addDays(monday, dayIndex), "yyyy-MM-dd");
-                                  map.set(date, dayData.codeTrajet === "T_PERSO");
-                                }
-                                return map;
-                              }, new Map<string, boolean>())
-                            }
-                            initialData={transportFinisseurData[entry.employeeId] ? { days: transportFinisseurData[entry.employeeId].days } : null}
-                            onUpdate={(data) => handleTransportFinisseurUpdate(entry.employeeId, data)}
-                            localVehiculeUsage={localVehiculeUsage}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
-                )}
               </AccordionContent>
             </AccordionItem>
           );
