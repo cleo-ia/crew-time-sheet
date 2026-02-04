@@ -1,52 +1,55 @@
-# Migration terminée : Système de transport conducteur unifié
 
-## ✅ Modifications effectuées
+# Plan : Corriger les sélecteurs de véhicule et conducteur dans la fiche trajet conducteur
 
-### 1. SignatureFinisseurs.tsx ✅
-- Migré le chargement des données transport depuis `fiches_transport` + `fiches_transport_jours` (système unifié)
-- Supprimé les requêtes vers `fiches_transport_finisseurs` et `fiches_transport_finisseurs_jours`
+## Problème identifié
 
-### 2. useConducteurHistorique.ts ✅
-- Migré vers `fiches_transport` + `fiches_transport_jours` via `chantier_id`
-- Supprimé les requêtes vers `fiches_transport_finisseurs` et `fiches_transport_finisseurs_jours`
+Les comboboxes d'immatriculation et de conducteurs ne s'ouvrent pas ou ne montrent pas les options correctement dans la fiche trajet côté conducteur.
 
-### 3. VehiculeCombobox.tsx ✅
-- Supprimé la double vérification (ancienne query `usedVehicules` vers `fiches_transport_finisseurs_jours`)
-- Simplifié en une seule query vers `fiches_transport_jours`
+## Cause technique
 
-### 4. useTransportByChantierUnified.ts ✅
-- Supprimé le fallback `fetchFromFichesTransportFinisseurs`
-- Simplifié le hook pour lire uniquement depuis `fiches_transport`
+Le composant `VehiculeCombobox.tsx` n'utilise pas correctement le composant `CommandList` de la librairie `cmdk`, ce qui empêche le rendu correct de la liste déroulante.
 
----
+### Comparaison des patterns
 
-## Fichiers conservés pour la purge historique
+| Composant | Structure |
+|-----------|-----------|
+| ConducteurCombobox (correct) | Command → CommandInput → **CommandList** → CommandEmpty → CommandGroup |
+| VehiculeCombobox (problème) | Command → CommandInput → CommandEmpty → CommandGroup ❌ |
+| PlanningVehiculeCombobox (référence) | Command → CommandInput → **CommandList** → CommandEmpty → CommandGroup ✓ |
 
-Ces fichiers continuent de référencer les anciennes tables pour nettoyer les données existantes :
+## Correction requise
 
-| Fichier | Raison |
-|---------|--------|
-| `FinisseursDispatchWeekly.tsx` | Nettoie les anciennes données lors de la suppression d'un finisseur |
-| `usePurgeTestData.ts` | Purge de test |
-| `supabase/functions/purge-*` | Nettoyage des anciennes semaines |
+### Fichier : `src/components/transport/VehiculeCombobox.tsx`
 
----
+Ajouter le composant `CommandList` autour de `CommandEmpty` et `CommandGroup` :
 
-## Résultat final
+**Avant (lignes 138-142)** :
+```tsx
+<Command>
+  <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
+  <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
+  <CommandGroup className="max-h-64 overflow-auto">
+```
 
-| Fonctionnalité | Statut |
-|----------------|--------|
-| Récap transport avant signature | ✅ Données unifiées visibles |
-| Historique conducteur | ✅ Trajets affichés correctement |
-| Vérification véhicules disponibles | ✅ Vérification unique, plus rapide |
-| Vue RH transport | ✅ OK via système unifié |
+**Après** :
+```tsx
+<Command>
+  <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
+  <CommandList>
+    <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
+    <CommandGroup className="max-h-64 overflow-auto">
+    ...
+    </CommandGroup>
+  </CommandList>
+```
 
----
+### Imports requis
 
-## Aucune régression
+Ajouter `CommandList` aux imports depuis `@/components/ui/command` (ligne 7).
 
-- ✅ Les conducteurs voient le récap transport complet avant signature
-- ✅ L'historique affiche les trajets correctement
-- ✅ La vérification des véhicules est simplifiée
-- ✅ Les Edge Functions de purge nettoient les anciennes tables
-- ✅ Le flux de transmission RH fonctionne via `fiches_transport`
+## Résultat attendu
+
+Après cette correction :
+- ✅ Le sélecteur d'immatriculation s'ouvrira et affichera la liste des véhicules
+- ✅ Les conducteurs matin/soir seront sélectionnables (ils utilisent déjà le bon pattern)
+- ✅ La recherche fonctionnera correctement
