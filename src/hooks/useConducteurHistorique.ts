@@ -193,46 +193,34 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
 
         console.log(`[Historique] ${fiche.salarie_id}: ${totalHeures}h, ${paniers} paniers, ${trajets} trajets`);
 
-        // 🔥 RÉSOLUTION ROBUSTE DE LA FICHE TRANSPORT
+        // 🔥 NOUVEAU SYSTÈME UNIFIÉ: Charger depuis fiches_transport + fiches_transport_jours
         const datesSet = new Set(datesAffectees);
-        
-        // Tentative 1: chercher par fiche_id + finisseur_id
-        let { data: transportFiche } = await supabase
-          .from("fiches_transport_finisseurs")
-          .select("id")
-          .eq("fiche_id", fiche.id)
-          .eq("finisseur_id", fiche.salarie_id)
-          .maybeSingle();
-
-        // Fallback: chercher par finisseur_id + semaine si pas trouvé
-        if (!transportFiche) {
-          const { data: transportFicheFallback } = await supabase
-            .from("fiches_transport_finisseurs")
-            .select("id")
-            .eq("finisseur_id", fiche.salarie_id)
-            .eq("semaine", fiche.semaine)
-            .maybeSingle();
-          transportFiche = transportFicheFallback;
-        }
-
         let transportJours: TransportJourHistorique[] = [];
 
-        if (transportFiche) {
-          console.log(`[Historique] Transport fiche trouvée: ${transportFiche.id} pour finisseur ${fiche.salarie_id}`);
+        // Récupérer la fiche transport unifiée par chantier + semaine
+        const { data: transportFiche } = await supabase
+          .from("fiches_transport")
+          .select("id")
+          .eq("chantier_id", fiche.chantier_id)
+          .eq("semaine", fiche.semaine)
+          .maybeSingle();
 
-          // Récupérer TOUS les jours de transport (pas de filtre SQL sur dates)
+        if (transportFiche) {
+          console.log(`[Historique] Transport unifié trouvé: ${transportFiche.id} pour chantier ${fiche.chantier_id}`);
+
+          // Récupérer les jours de transport avec les conducteurs
           const { data: joursAll } = await supabase
-            .from("fiches_transport_finisseurs_jours")
+            .from("fiches_transport_jours")
             .select(`
               date,
               immatriculation,
-              conducteur_matin_id,
-              conducteur_soir_id
+              conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(id, nom, prenom),
+              conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(id, nom, prenom)
             `)
-            .eq("fiche_transport_finisseur_id", transportFiche.id)
+            .eq("fiche_transport_id", transportFiche.id)
             .order("date");
 
-          // Filtrer en mémoire par dates affectées
+          // Filtrer par dates affectées à ce finisseur
           const joursFiltres = (joursAll || []).filter(j => datesSet.has(j.date));
 
           console.log(`[Historique] Transport ${fiche.salarie_id}: ${joursFiltres.length}/${datesAffectees.length} jours trouvés`);
@@ -248,34 +236,14 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
           const placeholders = missingDates.map(d => ({
             date: d,
             immatriculation: null,
-            conducteur_matin_id: null,
-            conducteur_soir_id: null,
+            conducteur_aller: null,
+            conducteur_retour: null,
           }));
 
           // Combiner jours réels + placeholders et trier
           const joursAffectes = [...joursFiltres, ...placeholders].sort((a, b) => 
             a.date.localeCompare(b.date)
           );
-
-          // Récupérer les noms des conducteurs (uniquement pour ceux qui existent)
-          const conducteurIds = [
-            ...new Set([
-              ...joursFiltres.map((j: any) => j.conducteur_matin_id).filter(Boolean),
-              ...joursFiltres.map((j: any) => j.conducteur_soir_id).filter(Boolean),
-            ]),
-          ] as string[];
-
-          let conducteursMap = new Map();
-          if (conducteurIds.length > 0) {
-            const { data: conducteurs } = await supabase
-              .from("utilisateurs")
-              .select("id, nom, prenom")
-              .in("id", conducteurIds);
-
-            conducteursMap = new Map(
-              conducteurs?.map((c) => [c.id, `${c.prenom} ${c.nom}`]) || []
-            );
-          }
 
           // Trouver les jours avec trajet_perso
           const joursPersoSet = new Set(
@@ -285,16 +253,16 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
           transportJours = joursAffectes.map((j: any) => ({
             date: j.date,
             immatriculation: j.immatriculation || null,
-            conducteurMatinNom: j.conducteur_matin_id
-              ? conducteursMap.get(j.conducteur_matin_id) || null
+            conducteurMatinNom: j.conducteur_aller
+              ? `${j.conducteur_aller.prenom} ${j.conducteur_aller.nom}`
               : null,
-            conducteurSoirNom: j.conducteur_soir_id
-              ? conducteursMap.get(j.conducteur_soir_id) || null
+            conducteurSoirNom: j.conducteur_retour
+              ? `${j.conducteur_retour.prenom} ${j.conducteur_retour.nom}`
               : null,
             trajet_perso: joursPersoSet.has(j.date),
           }));
         } else {
-          console.log(`[Historique] Aucune fiche transport trouvée pour ${fiche.salarie_id} - création de placeholders`);
+          console.log(`[Historique] Aucune fiche transport unifiée pour chantier ${fiche.chantier_id} - création de placeholders`);
           
           // Si aucune fiche transport, créer des placeholders pour tous les jours affectés
           const joursPersoSet = new Set(
