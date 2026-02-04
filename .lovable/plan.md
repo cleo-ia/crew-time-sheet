@@ -1,90 +1,112 @@
 
+# Plan de correction : Décalage colonnes Excel et colonne "h supp à 50%" manquante
 
-# Correction : Conditionner la protection anti-suppression à la présence dans le planning
+## Diagnostic
 
-## Problème identifié
+Après analyse du fichier `src/lib/excelExport.ts`, j'ai identifié les problèmes suivants :
 
-Le code actuel protège les entrées `affectations_jours_chef` d'un chef sur son chantier principal **systématiquement**, même si le chef est absent du planning.
+### Problème 1 : Décalage entre en-têtes et données
 
-### Lignes problématiques (660-672)
+Dans **headerRow4** (lignes 265-326), l'ordre des colonnes pour les heures supplémentaires est :
+- Position 28 : "h supp à 25%"
+- Position 29 : "h supp à 50%"
+- Position 30 : "NB PANIERS"
 
-```typescript
-const toDeleteChef = [...new Set((existingChefS || [])
-  .filter((a) => {
-    const key = `${a.macon_id}|${a.chantier_id}`
-    if (employeChantierInPlanning.has(key)) return false
-    // ❌ PROBLÈME: Protection inconditionnelle
-    const chefPrincipal = chefPrincipalMap.get(a.macon_id)
-    if (chefPrincipal && a.chantier_id === chefPrincipal) return false
-    return true
-  })
-  ...
-)]
+Mais le groupe **HEURES SUPP** dans la ligne 3 (ligne 229-230) ne définit que 2 colonnes vides après l'en-tête du groupe, ce qui cause un décalage.
+
+### Problème 2 : Merge de cellules incorrect
+
+Le merge pour HEURES SUPP (ligne 489) :
+```javascript
+sheet.mergeCells(3, 27, 3, 28); // HEURES SUPP
 ```
 
-### Cas FAY Philippe
+Fusionne les colonnes 27-28, mais après l'ajout de la colonne EF, les vraies positions sont décalées.
 
-| Donnée | Valeur |
-|--------|--------|
-| `chantier_principal_id` | CI232ROMANCHE |
-| Présence dans planning S07 | **Non** |
-| Entrées dans `affectations_jours_chef` | **5** (protégées par erreur) |
-| Action attendue | **Suppression des 5 entrées** |
+### Problème 3 : Indices de couleurs décalés
 
-## Solution technique
+Les plages de couleurs (lignes 514-522 et 548-556) utilisent des indices fixes qui ne correspondent plus à la vraie structure après ajout des colonnes.
 
-Modifier la logique de protection pour qu'elle ne s'applique **que si le chef est dans le planning**.
+---
 
-### Modification (lignes 662-672)
+## Solution proposée
 
-```
-Avant (problématique):
-const chefPrincipal = chefPrincipalMap.get(a.macon_id)
-if (chefPrincipal && a.chantier_id === chefPrincipal) return false
+### Étape 1 : Corriger l'ordre des en-têtes dans headerRow3 (ligne 3)
 
-Après (corrigé):
-const chefPrincipal = chefPrincipalMap.get(a.macon_id)
-// CORRECTION: Protéger SEULEMENT si le chef est dans le planning de la semaine
-const chefDansPlanning = employeChantierInPlanning.has(`${a.macon_id}|${chefPrincipal}`) ||
-  [...employeChantierInPlanning.keys()].some(key => key.startsWith(`${a.macon_id}|`))
-if (chefPrincipal && a.chantier_id === chefPrincipal && chefDansPlanning) return false
-```
+Vérifier que le groupe HEURES SUPP a bien 2 colonnes vides correspondant à "h supp à 25%" et "h supp à 50%".
 
-### Impact sur les scénarios
+**Correction** : Dans headerRow3, s'assurer que :
+- Colonnes 27-28 = HEURES SUPP (2 colonnes pour 25% et 50%)
+- Colonne 29 = REPAS (NB PANIERS)
 
-| Scénario | Avant | Après |
-|----------|-------|-------|
-| Philippe DURAND (dans planning) sur BALME | ✅ Protégé | ✅ Protégé |
-| FAY Philippe (pas dans planning) sur ROMANCHE | ❌ Protégé à tort | ✅ Supprimé |
+### Étape 2 : Recalculer les positions des merges
 
-## Fichier à modifier
+Mettre à jour les indices des `mergeCells` pour correspondre à la vraie structure :
+- ABSENCES EN HEURES : colonnes 16-27 (DATE, CP, RTT, AM, MP, AT, Congé parental, Intempéries, CPSS, ABS INJ, ECOLE, EF) = 12 colonnes
+- HEURES SUPP : colonnes 28-29 (25%, 50%) = 2 colonnes  
+- REPAS : colonne 30 = 1 colonne
+- TRAJETS : colonnes 31-52 = 22 colonnes
 
-| Fichier | Lignes | Modification |
-|---------|--------|--------------|
-| `supabase/functions/sync-planning-to-teams/index.ts` | 667-669 | Ajouter condition `chefDansPlanning` |
+### Étape 3 : Ajuster les plages de couleurs
 
-## Tests de validation après déploiement
+Mettre à jour les conditions dans les boucles de style pour utiliser les bons indices :
+- Absences : 16-27
+- Heures supp : 28-29
+- Repas : 30
+- Trajets : 31-52
+- etc.
 
-### Test 1 : FAY Philippe
-```sql
-SELECT * FROM affectations_jours_chef 
-WHERE macon_id = 'bb2d0b6f-3365-4925-aeb7-80984d8633f8' 
-AND semaine = '2026-S07';
--- Attendu : 0 ligne (plus aucune entrée)
-```
+---
 
-### Test 2 : Philippe DURAND (non-régression)
-```sql
-SELECT COUNT(*) FROM affectations_jours_chef 
-WHERE macon_id = '8d750640-9b7e-45d1-8e2c-6c3b154fe35c' 
-AND chantier_id = 'd356d762-3535-47c6-88eb-061df36abb83'
-AND semaine = '2026-S07';
--- Attendu : 5 lignes (protection maintenue)
-```
+## Détails techniques
 
-## Actions post-déploiement
+### Fichier modifié
+`src/lib/excelExport.ts`
 
-1. Déployer l'Edge Function corrigée
-2. Relancer la synchronisation manuelle (Admin > Rappels > "Synchroniser maintenant")
-3. Vérifier la suppression des entrées de FAY Philippe
+### Modifications à effectuer
 
+1. **headerRow3 (ligne 203-261)** : Vérifier les positions vides pour chaque groupe
+
+2. **headerRow4 (ligne 265-326)** : Confirmer que l'ordre est :
+   - 15 vides (données contractuelles)
+   - DATE, CP, RTT, AM, MP, AT, Congé parental, Intempéries, CPSS, ABS INJ, ECOLE, EF (12 colonnes)
+   - h supp à 25%, h supp à 50% (2 colonnes)
+   - NB PANIERS (1 colonne)
+   - TOTAL, T Perso, T1-T17, T31, T35, GD (22 colonnes)
+   - Colonnes administratives
+
+3. **mergeCells (ligne 488-492)** : Corriger les indices
+   ```javascript
+   sheet.mergeCells(3, 16, 3, 27); // ABSENCES EN HEURES (12 colonnes)
+   sheet.mergeCells(3, 28, 3, 29); // HEURES SUPP (2 colonnes)
+   sheet.mergeCells(3, 31, 3, 52); // TRAJETS (22 colonnes)
+   ```
+
+4. **Plages de couleurs en-têtes (ligne 514-522)** : Ajuster les indices
+   ```javascript
+   if (c >= 1 && c <= 15) bg = COLOR_SCHEME.CONTRACTUAL_HEADER;
+   else if (c >= 16 && c <= 27) bg = COLOR_SCHEME.ABSENCES_HEADER;
+   else if (c >= 28 && c <= 29) bg = COLOR_SCHEME.OVERTIME_HEADER;
+   else if (c === 30) bg = COLOR_SCHEME.MEALS_HEADER;
+   else if (c >= 31 && c <= 52) bg = COLOR_SCHEME.TRANSPORT_HEADER;
+   // etc.
+   ```
+
+5. **Plages de couleurs données (ligne 548-556)** : Mêmes ajustements
+
+---
+
+## Impact
+
+- **Export RH complet** : Colonnes correctement alignées avec les données
+- **Export Chefs 2CB** : Même correction (utilise la même fonction `generateRHExcel`)
+- **Colonne "h supp à 50%"** : Visible et correctement positionnée
+
+---
+
+## Tests recommandés
+
+1. Générer un export Excel RH complet après la correction
+2. Vérifier visuellement que toutes les colonnes d'en-tête correspondent aux données
+3. Confirmer que "h supp à 25%" et "h supp à 50%" sont toutes deux visibles
+4. Tester l'export Chefs 2CB pour confirmer la même correction
