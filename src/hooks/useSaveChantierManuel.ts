@@ -4,6 +4,7 @@ import { useSaveTransportFinisseur } from "@/hooks/useSaveTransportFinisseur";
 import { useToast } from "@/hooks/use-toast";
 import { addDays, format } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
+import { useQueryClient } from "@tanstack/react-query";
 import type { TransportFinisseurDay } from "@/types/transport";
 
 interface TimeEntry {
@@ -45,6 +46,7 @@ export const useSaveChantierManuel = () => {
   const saveFiche = useSaveFiche();
   const saveTransportFinisseur = useSaveTransportFinisseur();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const saveChantier = async (params: UseSaveChantierManuelParams) => {
     const { 
@@ -80,11 +82,15 @@ export const useSaveChantierManuel = () => {
       }
 
       // 2. Préparer les données pour saveFiche
+      // ✅ CORRECTIF C: Filtrer les affectations par chantier_id en plus du finisseur
       const employeesData: EmployeeData[] = chantierEntries.map((entry) => {
-        // Récupérer les dates affectées pour cet employé
+        // Récupérer les dates affectées pour cet employé SUR CE CHANTIER
         const employeeAffectedDates = new Set(
           affectationsJours
-            ?.filter(aff => aff.finisseur_id === entry.employeeId)
+            ?.filter(aff => 
+              aff.finisseur_id === entry.employeeId && 
+              (chantierId === "sans-chantier" || aff.chantier_id === chantierId)
+            )
             ?.map(aff => aff.date) || []
         );
         
@@ -118,6 +124,12 @@ export const useSaveChantierManuel = () => {
             };
           })
           .filter((day): day is NonNullable<typeof day> => day !== null);
+        
+        // ✅ DIAGNOSTIC E: Logger les données envoyées
+        const totalHeuresSent = dailyHours.reduce((sum, d) => sum + d.HNORM, 0);
+        console.log(`[SaveChantierManuel] 📊 ${entry.employeeName}: ${totalHeuresSent}h sur ${dailyHours.length} jour(s)`, 
+          dailyHours.map(d => `${d.date}:${d.HNORM}h`).join(", ")
+        );
         
         return {
           employeeId: entry.employeeId,
@@ -164,6 +176,14 @@ export const useSaveChantierManuel = () => {
       }
 
       console.log(`[SaveChantierManuel] ✅ Saved ${employeesData.length} employees + ${transportSaved} transport fiches`);
+      
+      // ✅ CORRECTIF A: Invalider le cache finisseurs-conducteur pour forcer le refetch
+      console.log(`[SaveChantierManuel] 🔄 Invalidating cache for finisseurs-conducteur...`);
+      await queryClient.invalidateQueries({ 
+        queryKey: ["finisseurs-conducteur", conducteurId, selectedWeek] 
+      });
+      // Invalider aussi les fiches génériques
+      await queryClient.invalidateQueries({ queryKey: ["fiches"] });
       
       toast({
         title: "✅ Fiche enregistrée",

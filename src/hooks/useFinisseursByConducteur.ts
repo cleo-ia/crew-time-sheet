@@ -87,20 +87,40 @@ export const useFinisseursByConducteur = (
       }));
 
       // 5. Pour chaque finisseur, récupérer sa fiche SI elle existe
+      // ✅ CORRECTIF B: Sélectionner la fiche correspondant au chantier principal (affectedDays[0])
       for (const finisseur of finisseurs) {
+        // Déterminer le chantier attendu depuis les affectations
+        const preferredChantierId = finisseur.affectedDays?.[0]?.chantier_id || null;
+        
         // Chercher la fiche par salarie_id + semaine
-        // PRIORITÉ : Prioriser les fiches AVEC chantier_id (créées par sync-planning)
-        // pour éviter d'utiliser les fiches orphelines sans chantier
         const { data: fichesEmploye } = await supabase
           .from("fiches")
           .select("id, total_heures, chantier_id")
           .eq("semaine", semaine)
           .eq("salarie_id", finisseur.id)
-          .order("chantier_id", { ascending: false, nullsFirst: false }) // Chantier non-null en premier
           .order("created_at", { ascending: false });
 
-        // Utiliser la première fiche (avec chantier si elle existe)
-        const fiche = fichesEmploye?.[0] || null;
+        // ✅ Sélectionner la fiche selon le chantier attendu
+        let fiche = null;
+        if (fichesEmploye && fichesEmploye.length > 0) {
+          // Priorité 1: Fiche qui correspond au chantier d'affectation
+          if (preferredChantierId) {
+            fiche = fichesEmploye.find(f => f.chantier_id === preferredChantierId) || null;
+          }
+          // Priorité 2: Fiche avec un chantier_id (créée par sync-planning)
+          if (!fiche) {
+            fiche = fichesEmploye.find(f => f.chantier_id !== null) || null;
+          }
+          // Priorité 3: Première fiche disponible
+          if (!fiche) {
+            fiche = fichesEmploye[0];
+          }
+          
+          console.log(`[useFinisseursByConducteur] ${finisseur.prenom} ${finisseur.nom}: ` +
+            `preferredChantier=${preferredChantierId}, selectedFiche.chantier_id=${fiche?.chantier_id}, ` +
+            `total_heures=${fiche?.total_heures}`
+          );
+        }
 
         if (fiche) {
           // Fiche existante : charger les données
@@ -136,8 +156,8 @@ export const useFinisseursByConducteur = (
       return finisseurs;
     },
     enabled: !!conducteurId && !!semaine,
-    refetchOnMount: true,        // ✅ Utiliser le cache si disponible
-    staleTime: 30000,            // ✅ Données fraîches 30s (évite refetch au retour d'onglet)
+    refetchOnMount: "always",    // ✅ Toujours refetch au montage (après save + retour)
+    staleTime: 0,                // ✅ Données toujours considérées stale (force refetch)
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: false,

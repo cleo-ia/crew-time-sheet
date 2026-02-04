@@ -785,17 +785,30 @@ const ValidationConducteur = () => {
                               {/* ✅ Bouton Enregistrer par chantier */}
                               <div className="flex justify-end px-2">
                                 <Button
-                                  onClick={() => saveChantier({
-                                    chantierId,
-                                    selectedWeek,
-                                    conducteurId: effectiveConducteurId!,
-                                    chantierFinisseurs,
-                                    timeEntries,
-                                    transportFinisseurData: transportDataByChantier[chantierId] || {},
-                                    affectationsJours: affectationsJours?.filter(a => 
-                                      chantierFinisseurs.some(f => f.id === a.finisseur_id)
-                                    ),
-                                  })}
+                                  onClick={async () => {
+                                    // ✅ CORRECTIF D: Forcer le blur pour capturer la dernière modification
+                                    if (document.activeElement instanceof HTMLElement) {
+                                      document.activeElement.blur();
+                                    }
+                                    // Attendre que React ait mis à jour le state
+                                    await new Promise(resolve => requestAnimationFrame(resolve));
+                                    
+                                    // ✅ CORRECTIF C: Filtrer les affectations par chantier_id
+                                    const scopedAffectations = affectationsJours?.filter(a => 
+                                      chantierFinisseurs.some(f => f.id === a.finisseur_id) &&
+                                      (chantierId === "sans-chantier" || a.chantier_id === chantierId)
+                                    );
+                                    
+                                    saveChantier({
+                                      chantierId,
+                                      selectedWeek,
+                                      conducteurId: effectiveConducteurId!,
+                                      chantierFinisseurs,
+                                      timeEntries,
+                                      transportFinisseurData: transportDataByChantier[chantierId] || {},
+                                      affectationsJours: scopedAffectations,
+                                    });
+                                  }}
                                   disabled={savingChantier === chantierId || transmissionStatus?.isTransmitted}
                                   className="bg-primary hover:bg-primary/90"
                                 >
