@@ -939,8 +939,9 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   const isDirty = useRef<boolean>(false);
 
   // Auto-save avec debounce de 1 seconde (réduit pour plus de réactivité)
-  // ✅ Actif pour les chefs ET les conducteurs
+  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle via bouton "Enregistrer")
   useEffect(() => {
+    if (isConducteurMode) return;
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
     
     const timer = setTimeout(() => {
@@ -951,7 +952,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           weekId, 
           chantierId, 
           chefId,
-          mode: isConducteurMode ? "conducteur" : "chef"
+          mode: "chef"
         },
         {
           onSuccess: () => {
@@ -965,8 +966,10 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   }, [entries, hasLoadedData, weekId, chantierId, chefId, readOnly, isConducteurMode]);
 
   // Sauvegarder immédiatement quand la page est masquée (fermeture tablette)
-  // ✅ Actif pour les chefs ET les conducteurs
+  // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle)
   useEffect(() => {
+    if (isConducteurMode) return;
+    
     const handleVisibilityChange = () => {
       if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly) {
         console.log("[TimeEntryTable] Page hidden, forcing immediate save");
@@ -975,7 +978,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           weekId, 
           chantierId, 
           chefId,
-          mode: isConducteurMode ? "conducteur" : "chef"
+          mode: "chef"
         });
         isDirty.current = false;
       }
