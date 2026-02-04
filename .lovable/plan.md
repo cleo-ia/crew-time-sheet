@@ -1,55 +1,71 @@
 
+
 # Plan : Corriger les sélecteurs de véhicule et conducteur dans la fiche trajet conducteur
 
-## Problème identifié
+## Diagnostic confirmé
 
-Les comboboxes d'immatriculation et de conducteurs ne s'ouvrent pas ou ne montrent pas les options correctement dans la fiche trajet côté conducteur.
+Après analyse comparative entre le mode chef et le mode conducteur :
 
-## Cause technique
+### Ce qui fonctionne (chef)
+- Dans `TransportDayAccordion`, quand un `conducteurId` est passé ET `mode === "chef"`, les champs "Conducteur Matin/Soir" affichent un **texte statique** (lignes 287-305)
+- Les `ConducteurCombobox` ne sont **jamais rendus** côté chef
+- Seul le `VehiculeCombobox` est utilisé, et même s'il a `modal={true}`, il fonctionne car le contexte parent est un `Collapsible` simple
 
-Le composant `VehiculeCombobox.tsx` n'utilise pas correctement le composant `CommandList` de la librairie `cmdk`, ce qui empêche le rendu correct de la liste déroulante.
+### Ce qui ne fonctionne pas (conducteur)
+- En mode conducteur (`mode === "conducteur"`), les 3 combobox (`VehiculeCombobox`, 2x `ConducteurCombobox`) sont rendus **à l'intérieur d'un `AccordionContent`**
+- Ces combobox utilisent `<Popover modal={true}>` qui crée un overlay modal
+- Le focus management du `Popover` modal entre en **conflit** avec le `Accordion` de Radix
+- Résultat : le clic ouvre le popover puis le ferme instantanément (effet "flash")
 
-### Comparaison des patterns
+### Pattern qui fonctionne
+- `PlanningVehiculeCombobox` : utilise `<Popover open={open} onOpenChange={setOpen}>` **sans `modal`** → fonctionne parfaitement
 
-| Composant | Structure |
-|-----------|-----------|
-| ConducteurCombobox (correct) | Command → CommandInput → **CommandList** → CommandEmpty → CommandGroup |
-| VehiculeCombobox (problème) | Command → CommandInput → CommandEmpty → CommandGroup ❌ |
-| PlanningVehiculeCombobox (référence) | Command → CommandInput → **CommandList** → CommandEmpty → CommandGroup ✓ |
+---
 
-## Correction requise
+## Corrections à appliquer
 
-### Fichier : `src/components/transport/VehiculeCombobox.tsx`
+### 1. VehiculeCombobox.tsx
 
-Ajouter le composant `CommandList` autour de `CommandEmpty` et `CommandGroup` :
+**Ligne 117** : Retirer `modal={true}` du Popover
 
-**Avant (lignes 138-142)** :
-```tsx
-<Command>
-  <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
-  <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
-  <CommandGroup className="max-h-64 overflow-auto">
+```text
+Avant :
+<Popover open={open} onOpenChange={setOpen} modal={true}>
+
+Après :
+<Popover open={open} onOpenChange={setOpen}>
 ```
 
-**Après** :
-```tsx
-<Command>
-  <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
-  <CommandList>
-    <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
-    <CommandGroup className="max-h-64 overflow-auto">
-    ...
-    </CommandGroup>
-  </CommandList>
+### 2. ConducteurCombobox.tsx
+
+**Ligne 91** : Retirer `modal={true}` du Popover
+
+```text
+Avant :
+<Popover open={open} onOpenChange={setOpen} modal={true}>
+
+Après :
+<Popover open={open} onOpenChange={setOpen}>
 ```
 
-### Imports requis
+---
 
-Ajouter `CommandList` aux imports depuis `@/components/ui/command` (ligne 7).
+## Impact
 
-## Résultat attendu
+| Composant | Contexte d'usage | Avant | Après |
+|-----------|------------------|-------|-------|
+| VehiculeCombobox | Accordion (conducteur) | ❌ Flash/ferme | ✅ Fonctionne |
+| VehiculeCombobox | Collapsible (chef) | ✅ OK | ✅ OK |
+| ConducteurCombobox | Accordion (conducteur) | ❌ Flash/ferme | ✅ Fonctionne |
+| ConducteurCombobox | Table (chef/old) | ✅ OK | ✅ OK |
 
-Après cette correction :
-- ✅ Le sélecteur d'immatriculation s'ouvrira et affichera la liste des véhicules
-- ✅ Les conducteurs matin/soir seront sélectionnables (ils utilisent déjà le bon pattern)
-- ✅ La recherche fonctionnera correctement
+Cette correction aligne le comportement sur `PlanningVehiculeCombobox` qui fonctionne déjà.
+
+---
+
+## Garantie de non-régression
+
+- Le mode non-modal est le comportement par défaut de Radix Popover
+- Il n'y a aucune raison métier d'avoir un modal ici (pas besoin de bloquer les clics ailleurs)
+- Les autres combobox du projet (`PlanningVehiculeCombobox`, `AgenceInterimCombobox`, etc.) fonctionnent tous sans `modal`
+
