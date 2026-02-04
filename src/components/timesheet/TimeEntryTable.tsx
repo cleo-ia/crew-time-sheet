@@ -796,19 +796,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     });
   }, [isConducteurMode, affectationsJours, chantiers, hasUserEdits]);
 
-  // ✅ Re-trigger : forcer le chargement des entries après remontage (quand données du cache reviennent)
-  useEffect(() => {
-    if (!isConducteurMode || !chefId || !weekId) return;
-    if (hasLoadedData) return; // Déjà chargé
-    if (finisseursLoading) return; // Attendre la fin du chargement
-    
-    // Si les données sont revenues du cache et que les entries sont vides, le useEffect principal va se déclencher
-    if (finisseursData.length > 0 && chantiers.length > 0 && entries.length === 0) {
-      console.log("[TimeEntryTable] Re-trigger: finisseurs disponibles après remontage, forçage du chargement");
-      // Le useEffect principal de chargement (ligne ~469) va s'exécuter automatiquement
-      // car toutes ses conditions sont maintenant remplies (finisseursLoading = false)
-    }
-  }, [isConducteurMode, chefId, weekId, finisseursData, finisseursLoading, chantiers, hasLoadedData, entries.length]);
+  // ❌ SUPPRIMÉ : L'effet "Re-trigger" ne servait à rien (log seulement) et ajoutait du bruit
 
   useEffect(() => {
     if (isConducteurMode || !hasLoadedData || readOnly) return;
@@ -878,8 +866,13 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   }, [isConducteurMode, hasLoadedData, macons, readOnly]);
 
   // Supprimer les finisseurs qui n'ont plus de jours visibles (après désaffectation)
+  // ✅ FIX: Ne pas filtrer si affectationsJours est undefined ou vide (phase de chargement)
   useEffect(() => {
     if (!isConducteurMode || !hasLoadedData) return;
+    // ⚠️ GARDE: Ne pas filtrer si les affectations ne sont pas encore chargées
+    // Un tableau vide [] temporaire pendant le remontage/refetch ne doit PAS supprimer tout le monde
+    if (!affectationsJours || affectationsJours.length === 0) return;
+    
     setEntries(prev =>
       prev.filter(e => getVisibleDaysForFinisseur(e.employeeId).length > 0)
     );
@@ -896,12 +889,33 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     });
   }, [isConducteurMode, entries]);
 
-  // Réinitialiser hasLoadedData si la semaine OU le chantier change
+  // Réinitialiser hasLoadedData si la semaine OU le chantier change RÉELLEMENT
+  // ✅ FIX: Ne pas reset au simple remontage du composant (retour d'onglet)
+  const prevWeekId = useRef<string | null>(null);
+  const prevChantierId = useRef<string | null>(null);
+  
   useEffect(() => {
-    setHasLoadedData(false);
-    setHasUserEdits(false);
-    setEntries([]); // Vider les données pour éviter flash de données obsolètes
-    hasSyncedAffectations.current = false; // ✅ Reset le flag de sync
+    // Premier montage : stocker les valeurs sans reset
+    if (prevWeekId.current === null && prevChantierId.current === null) {
+      prevWeekId.current = weekId;
+      prevChantierId.current = chantierId;
+      return;
+    }
+    
+    // Reset UNIQUEMENT si la semaine ou le chantier a VRAIMENT changé
+    const weekChanged = weekId !== prevWeekId.current;
+    const chantierChanged = chantierId !== prevChantierId.current;
+    
+    if (weekChanged || chantierChanged) {
+      setHasLoadedData(false);
+      setHasUserEdits(false);
+      setEntries([]); // Vider les données pour éviter flash de données obsolètes
+      hasSyncedAffectations.current = false; // Reset le flag de sync
+      
+      // Mettre à jour les refs
+      prevWeekId.current = weekId;
+      prevChantierId.current = chantierId;
+    }
   }, [weekId, chantierId]);
 
   // Propager l'état au parent pour sauvegarde
