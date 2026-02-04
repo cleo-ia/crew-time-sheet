@@ -114,7 +114,7 @@ export const VehiculeCombobox = ({
   const selectedVehicule = vehicules.find((v) => v.immatriculation === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
