@@ -21,6 +21,12 @@ import { TransportVehicle, TransportDayV2 } from "@/types/transport";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface FinisseurEquipe {
+  id: string;
+  nom: string;
+  prenom: string;
+}
+
 interface TransportDayAccordionProps {
   day: TransportDayV2;
   chantierId: string | null;
@@ -33,6 +39,8 @@ interface TransportDayAccordionProps {
   isIntemperie?: boolean;
   isMonday?: boolean;
   onDuplicateToWeek?: () => void;
+  mode?: "chef" | "conducteur";
+  finisseursEquipe?: FinisseurEquipe[];
 }
 
 export const TransportDayAccordion = ({
@@ -47,9 +55,11 @@ export const TransportDayAccordion = ({
   isIntemperie = false,
   isMonday = false,
   onDuplicateToWeek,
+  mode = "chef",
+  finisseursEquipe = [],
 }: TransportDayAccordionProps) => {
   
-  // Récupérer le nom du conducteur connecté
+  // Récupérer le nom du conducteur connecté (seulement en mode chef pour affichage fixe)
   const { data: conducteurData } = useQuery({
     queryKey: ["conducteur-info", conducteurId],
     queryFn: async () => {
@@ -61,21 +71,41 @@ export const TransportDayAccordion = ({
         .single();
       return data;
     },
-    enabled: !!conducteurId,
+    enabled: !!conducteurId && mode === "chef",
   });
 
   const conducteurNom = conducteurData 
     ? `${conducteurData.prenom} ${conducteurData.nom}` 
     : "";
   
-  // Récupérer les maçons pour détecter les trajets perso
-  const { data: macons = [] } = useMaconsByChantier(chantierId, semaine, chefId);
+  // Récupérer les maçons pour détecter les trajets perso (seulement en mode chef)
+  const { data: macons = [] } = useMaconsByChantier(
+    mode === "chef" ? chantierId : null, 
+    semaine, 
+    chefId
+  );
   
-  // Récupérer tous les maçons de tous les chantiers si chef multi-chantier
-  const { isMultiChantier, allMacons } = useMaconsAllChantiersByChef(chefId, semaine);
+  // Récupérer tous les maçons de tous les chantiers si chef multi-chantier (seulement en mode chef)
+  const { isMultiChantier, allMacons } = useMaconsAllChantiersByChef(
+    mode === "chef" ? chefId : null, 
+    semaine
+  );
   
-  // Utiliser la liste multi-chantier si applicable, sinon la liste standard
-  const maconsForCombobox = isMultiChantier ? allMacons : macons;
+  // En mode conducteur: transformer les finisseurs en format macons pour le combobox
+  const finisseursAsMacons = useMemo(() => {
+    if (mode !== "conducteur") return [];
+    return finisseursEquipe.map(f => ({
+      id: f.id,
+      nom: f.nom,
+      prenom: f.prenom,
+      ficheJours: [] as any[],
+    }));
+  }, [mode, finisseursEquipe]);
+  
+  // Utiliser finisseursEquipe en mode conducteur, sinon la logique chef classique
+  const maconsForCombobox = mode === "conducteur" 
+    ? finisseursAsMacons 
+    : (isMultiChantier ? allMacons : macons);
   
   // Vérifier si le planning est actif (validé par un conducteur)
   const { isActive: isPlanningActive } = usePlanningMode(semaine);
@@ -254,7 +284,8 @@ export const TransportDayAccordion = ({
                     />
                   </div>
                   
-                  {conducteurId ? (
+                  {/* Mode chef avec conducteurId fixe : affichage en lecture seule */}
+                  {conducteurId && mode === "chef" ? (
                     <>
                       <div>
                         <Label className="text-xs">Conducteur Matin *</Label>
@@ -288,7 +319,7 @@ export const TransportDayAccordion = ({
                               .map(v => v.conducteurMatinId)
                               .filter(Boolean)
                           }
-                          affectationsJoursChef={affectationsJoursChef}
+                          affectationsJoursChef={mode === "chef" ? affectationsJoursChef : []}
                           chefId={chefId}
                           currentChantierId={chantierId || undefined}
                         />
@@ -308,7 +339,7 @@ export const TransportDayAccordion = ({
                               .map(v => v.conducteurSoirId)
                               .filter(Boolean)
                           }
-                          affectationsJoursChef={affectationsJoursChef}
+                          affectationsJoursChef={mode === "chef" ? affectationsJoursChef : []}
                           chefId={chefId}
                           currentChantierId={chantierId || undefined}
                         />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
@@ -16,9 +16,10 @@ import { FinisseursDispatchWeekly } from "@/components/conducteur/FinisseursDisp
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { TransportSheetV2 } from "@/components/transport/TransportSheetV2";
 import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
 import { useSaveChantierManuel } from "@/hooks/useSaveChantierManuel";
-import { addDays, format, startOfWeek, addWeeks } from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +43,7 @@ import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
-import type { TransportFinisseurDay } from "@/types/transport";
+
 
 const ValidationConducteur = () => {
   const navigate = useNavigate();
@@ -77,11 +78,6 @@ const ValidationConducteur = () => {
   const [showWeatherDialog, setShowWeatherDialog] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
-  
-  // État pour les données de transport finisseur par chantier (sauvegarde manuelle)
-  const [transportDataByChantier, setTransportDataByChantier] = useState<
-    Record<string, Record<string, { ficheId?: string; days: TransportFinisseurDay[] }>>
-  >({});
   
   // Hook pour la sauvegarde manuelle par chantier
   const { saveChantier, savingChantier } = useSaveChantierManuel();
@@ -415,131 +411,118 @@ const ValidationConducteur = () => {
     }
   };
   
-  // Vérifier que tous les finisseurs ont une fiche trajet complète
+  // Vérifier que la fiche de trajet équipe est complète (au moins 1 véhicule par jour travaillé)
   const checkAllFinisseursTransportComplete = async (): Promise<{ ok: boolean; errors: string[] }> => {
     if (!effectiveConducteurId || !selectedWeek || finisseurs.length === 0) return { ok: false, errors: ["Données manquantes"] };
     
     const errors: string[] = [];
     
-    for (const finisseur of finisseurs) {
-      // ✅ CORRECTION: Récupérer les chantier_ids depuis les affectations de ce finisseur
-      const finisseurAffectations = affectationsJours?.filter(
-        aff => aff.finisseur_id === finisseur.id
-      ) || [];
+    // Grouper les finisseurs par chantier
+    const chantierIds = [...new Set(
+      affectationsJours?.map(a => a.chantier_id).filter(Boolean) || []
+    )];
+    
+    if (chantierIds.length === 0) {
+      errors.push("Aucune affectation trouvée pour cette semaine");
+      return { ok: false, errors };
+    }
+    
+    // Calculer les 5 dates de la semaine
+    const monday = parseISOWeek(selectedWeek);
+    const weekDates = [0, 1, 2, 3, 4].map(d => format(addDays(monday, d), "yyyy-MM-dd"));
+    
+    // Pour chaque chantier, vérifier la fiche de trajet équipe
+    for (const chantierId of chantierIds) {
+      const chantierInfo = chantiersMap.get(chantierId);
+      const chantierLabel = chantierInfo 
+        ? `${chantierInfo.code || ""} ${chantierInfo.nom}`.trim()
+        : chantierId;
       
-      // Regrouper par chantier pour chercher les fiches
-      const chantierIds = [...new Set(finisseurAffectations.map(a => a.chantier_id).filter(Boolean))];
+      // Récupérer les finisseurs affectés à ce chantier
+      const chantierFinisseursIds = new Set(
+        affectationsJours
+          ?.filter(a => a.chantier_id === chantierId)
+          ?.map(a => a.finisseur_id) || []
+      );
       
-      if (chantierIds.length === 0) {
-        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune affectation trouvée pour ${selectedWeek}`);
+      // Calculer les jours travaillés (au moins 1 finisseur non absent)
+      const workedDays: string[] = [];
+      
+      for (const date of weekDates) {
+        // Vérifier si au moins un finisseur travaille ce jour (pas absent, pas trajet perso)
+        let hasWorker = false;
+        
+        for (const finisseur of finisseurs) {
+          if (!chantierFinisseursIds.has(finisseur.id)) continue;
+          
+          const ficheJour = finisseur.ficheJours?.find(j => j.date === date);
+          // Si pas de fiche ou heures > 0, on considère que c'est un jour travaillé
+          const isAbsent = ficheJour && (ficheJour.HNORM || 0) === 0 && (ficheJour.HI || 0) === 0;
+          
+          if (!isAbsent) {
+            hasWorker = true;
+            break;
+          }
+        }
+        
+        if (hasWorker) {
+          workedDays.push(date);
+        }
+      }
+      
+      if (workedDays.length === 0) {
+        // Tous absents ce chantier, pas besoin de fiche trajet
         continue;
       }
-
-      // Charger la fiche pour le premier chantier affecté (la fiche est par chantier maintenant)
-      const { data: ficheWeek } = await supabase
-        .from("fiches")
+      
+      // Chercher la fiche transport du chantier (modèle chef unifié)
+      const { data: ficheTransport } = await supabase
+        .from("fiches_transport")
         .select("id")
-        .eq("salarie_id", finisseur.id)
-        .eq("semaine", selectedWeek)
-        .in("chantier_id", chantierIds)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Si pas de fiche trouvée, impossible de valider les trajets
-      if (!ficheWeek) {
-        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune fiche trouvée pour ${selectedWeek}`);
-        continue;
-      }
-
-      // Charger les données FRAÎCHES des fiches_jours (pas de cache)
-      const { data: ficheJoursFresh } = await supabase
-        .from("fiches_jours")
-        .select("date, HNORM, HI, trajet_perso")
-        .eq("fiche_id", ficheWeek.id);
-
-      // Construire les sets à partir des données fraîches
-      const absenceDates = new Set(
-        (ficheJoursFresh || [])
-          .filter(fj => (fj.HNORM || 0) === 0 && (fj.HI || 0) === 0)
-          .map(fj => fj.date)
-      );
-      
-      const trajetPersoDates = new Set(
-        (ficheJoursFresh || [])
-          .filter(j => j.trajet_perso === true)
-          .map(j => j.date)
-      );
-      
-      // Étape A : Recherche robuste de la fiche de transport par finisseur_id + semaine
-      const { data: transportByWeek } = await supabase
-        .from("fiches_transport_finisseurs")
-        .select("id, finisseur_id, fiche_id, semaine")
-        .eq("finisseur_id", finisseur.id)
+        .eq("chantier_id", chantierId)
         .eq("semaine", selectedWeek)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      let transport = transportByWeek;
-
-      // Étape B : Fallback par fiche_id si pas trouvé (données legacy sans "semaine")
-      if (!transport && ficheWeek) {
-        const { data: transportByFiche } = await supabase
-          .from("fiches_transport_finisseurs")
-          .select("id, finisseur_id, fiche_id, semaine")
-          .eq("fiche_id", ficheWeek.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        transport = transportByFiche;
-      }
-
-      // Si toujours pas trouvé, enregistrer l'erreur et continuer
-      if (!transport) {
-        errors.push(`${finisseur.prenom} ${finisseur.nom}: aucune fiche de trajet trouvée pour ${selectedWeek}`);
+      
+      if (!ficheTransport) {
+        errors.push(`${chantierLabel}: aucune fiche de trajet trouvée`);
         continue;
       }
       
-      // Récupérer explicitement les jours de transport
-      const { data: jours } = await supabase
-        .from("fiches_transport_finisseurs_jours")
-        .select("date, conducteur_matin_id, conducteur_soir_id, immatriculation")
-        .eq("fiche_transport_finisseur_id", transport.id);
+      // Récupérer les jours de transport
+      const { data: transportJours } = await supabase
+        .from("fiches_transport_jours")
+        .select("date, conducteur_aller_id, conducteur_retour_id, immatriculation, periode")
+        .eq("fiche_transport_id", ficheTransport.id);
       
-      // Construire un index par date pour accès O(1)
-      const joursByDate = new Map<string, any>();
-      (jours || []).forEach((j: any) => joursByDate.set(j.date, j));
+      // Grouper par date et vérifier qu'il y a au moins 1 véhicule complet par jour travaillé
+      const joursByDate = new Map<string, any[]>();
+      (transportJours || []).forEach((j: any) => {
+        if (!joursByDate.has(j.date)) {
+          joursByDate.set(j.date, []);
+        }
+        joursByDate.get(j.date)!.push(j);
+      });
       
-      
-      // Vérifier chaque jour affecté avec accumulation d'erreurs
-      const expected = finisseur.affectedDays || [];
-      for (const { date } of expected) {
-        // Jour d'absence : ignorer
-        if (absenceDates.has(date)) {
-          console.log(`✅ ${finisseur.prenom} ${finisseur.nom} - ${date} : Absent (ignoré)`);
+      for (const date of workedDays) {
+        const dayEntries = joursByDate.get(date) || [];
+        
+        if (dayEntries.length === 0) {
+          errors.push(`${chantierLabel} – ${date}: aucun véhicule renseigné`);
           continue;
         }
         
-        // Trajet perso : OK
-        if (trajetPersoDates.has(date)) continue;
+        // Vérifier qu'il y a au moins une paire MATIN + SOIR avec immatriculation
+        const hasCompleteMatin = dayEntries.some(e => 
+          e.periode === "MATIN" && e.immatriculation && e.conducteur_aller_id
+        );
+        const hasCompleteSoir = dayEntries.some(e => 
+          e.periode === "SOIR" && e.immatriculation && e.conducteur_retour_id
+        );
         
-        // Vérifier la ligne de transport
-        const jour = joursByDate.get(date);
-        if (!jour) {
-          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: aucune ligne de trajet`);
-          continue;
-        }
-        
-        const hasDrivers = !!jour.conducteur_matin_id && !!jour.conducteur_soir_id;
-        const hasVehicle = !!jour.immatriculation && jour.immatriculation.trim() !== "";
-        
-        if (!hasDrivers) {
-          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: conducteurs manquants`);
-        }
-        if (!hasVehicle) {
-          errors.push(`${finisseur.prenom} ${finisseur.nom} – ${date}: véhicule manquant`);
+        if (!hasCompleteMatin || !hasCompleteSoir) {
+          errors.push(`${chantierLabel} – ${date}: véhicule ou conducteur manquant`);
         }
       }
     }
@@ -726,7 +709,7 @@ const ValidationConducteur = () => {
                             <br />
                             1. Saisissez les heures de votre équipe de finisseurs
                             <br />
-                            2. Remplissez la fiche de trajet de chaque finisseur (dans leur accordéon)
+                            2. Remplissez la fiche de trajet équipe (véhicules + conducteurs)
                             <br />
                             3. Collectez les signatures (finisseurs + vous)
                             <br />
@@ -769,12 +752,6 @@ const ValidationConducteur = () => {
                                     return [...otherEntries, ...entries];
                                   });
                                 }}
-                                onTransportDataChange={(data) => {
-                                  setTransportDataByChantier(prev => ({
-                                    ...prev,
-                                    [chantierId]: data
-                                  }));
-                                }}
                                 mode="conducteur"
                                 affectationsJours={affectationsJours?.filter(a => 
                                   chantierFinisseurs.some(f => f.id === a.finisseur_id)
@@ -782,18 +759,34 @@ const ValidationConducteur = () => {
                                 allAffectations={allAffectationsEnriched}
                               />
                               
+                              {/* Fiche de trajet équipe (modèle chef unifié) */}
+                              <TransportSheetV2
+                                selectedWeek={parseISOWeek(selectedWeek)}
+                                selectedWeekString={selectedWeek}
+                                chantierId={chantierId !== "sans-chantier" ? chantierId : null}
+                                chefId={effectiveConducteurId}
+                                conducteurId={effectiveConducteurId}
+                                isReadOnly={transmissionStatus?.isTransmitted}
+                                mode="conducteur"
+                                finisseursEquipe={chantierFinisseurs.map(f => ({
+                                  id: f.id,
+                                  nom: f.nom,
+                                  prenom: f.prenom
+                                }))}
+                              />
+                              
                               {/* ✅ Bouton Enregistrer par chantier */}
                               <div className="flex justify-end px-2">
                                 <Button
                                   onClick={async () => {
-                                    // ✅ CORRECTIF D: Forcer le blur pour capturer la dernière modification
+                                    // Forcer le blur pour capturer la dernière modification
                                     if (document.activeElement instanceof HTMLElement) {
                                       document.activeElement.blur();
                                     }
                                     // Attendre que React ait mis à jour le state
                                     await new Promise(resolve => requestAnimationFrame(resolve));
                                     
-                                    // ✅ CORRECTIF C: Filtrer les affectations par chantier_id
+                                    // Filtrer les affectations par chantier_id
                                     const scopedAffectations = affectationsJours?.filter(a => 
                                       chantierFinisseurs.some(f => f.id === a.finisseur_id) &&
                                       (chantierId === "sans-chantier" || a.chantier_id === chantierId)
@@ -805,7 +798,6 @@ const ValidationConducteur = () => {
                                       conducteurId: effectiveConducteurId!,
                                       chantierFinisseurs,
                                       timeEntries,
-                                      transportFinisseurData: transportDataByChantier[chantierId] || {},
                                       affectationsJours: scopedAffectations,
                                     });
                                   }}
@@ -840,7 +832,7 @@ const ValidationConducteur = () => {
                             </p>
                             <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
                               <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
-                                ℹ️ Vérifiez que chaque finisseur a rempli sa fiche trajet dans son accordéon avant de collecter les signatures
+                                ℹ️ Vérifiez que la fiche de trajet équipe est complète avant de collecter les signatures
                               </p>
                             </div>
                           </div>
