@@ -15,7 +15,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { formatTimestampParis } from "@/lib/date";
-import { getCurrentWeek, getNextWeek } from "@/lib/weekUtils";
+import { getCurrentWeek, getNextWeek, calculatePreviousWeek } from "@/lib/weekUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const RappelsManager = () => {
   const {
@@ -37,8 +38,25 @@ export const RappelsManager = () => {
   const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
-  // Calculer la semaine S+1 (celle du planning)
-  const targetWeek = useMemo(() => getNextWeek(getCurrentWeek()), []);
+  // Générer les options de semaines (S-2 à S+2)
+  const weekOptions = useMemo(() => {
+    const current = getCurrentWeek();
+    const sMinus2 = calculatePreviousWeek(calculatePreviousWeek(current));
+    const sMinus1 = calculatePreviousWeek(current);
+    const sPlus1 = getNextWeek(current);
+    const sPlus2 = getNextWeek(sPlus1);
+    
+    return [
+      { value: sMinus2, label: `${sMinus2} (S-2)` },
+      { value: sMinus1, label: `${sMinus1} (S-1)` },
+      { value: current, label: `${current} (S)` },
+      { value: sPlus1, label: `${sPlus1} (S+1)` },
+      { value: sPlus2, label: `${sPlus2} (S+2)` },
+    ];
+  }, []);
+
+  // Semaine sélectionnée pour la sync (défaut: S+1)
+  const [selectedSyncWeek, setSelectedSyncWeek] = useState(() => getNextWeek(getCurrentWeek()));
 
   useEffect(() => {
     getCounts();
@@ -145,26 +163,36 @@ export const RappelsManager = () => {
               <span className="text-xs">{syncPlanningConfig.scheduleDetails}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                Cible : {targetWeek}
-              </Badge>
+              <Label className="text-sm text-muted-foreground">Semaine cible :</Label>
+              <Select value={selectedSyncWeek} onValueChange={setSelectedSyncWeek}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {weekOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <Button
-            onClick={() => syncPlanningToTeams(targetWeek)}
+            onClick={() => syncPlanningToTeams(selectedSyncWeek)}
             disabled={isSyncing}
             className="w-full"
           >
             {isSyncing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Synchronisation {targetWeek}...
+                Synchronisation {selectedSyncWeek}...
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Synchroniser {targetWeek}
+                Synchroniser {selectedSyncWeek}
               </>
             )}
           </Button>
