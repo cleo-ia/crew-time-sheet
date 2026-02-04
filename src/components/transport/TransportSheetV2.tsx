@@ -14,6 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 
+interface FinisseurEquipe {
+  id: string;
+  nom: string;
+  prenom: string;
+}
+
 interface TransportSheetV2Props {
   selectedWeek: Date;
   selectedWeekString: string;
@@ -24,6 +30,8 @@ interface TransportSheetV2Props {
   isReadOnly?: boolean;
   allAbsentDays?: string[];
   allIntempDays?: string[];
+  mode?: "chef" | "conducteur";
+  finisseursEquipe?: FinisseurEquipe[];
 }
 
 export interface TransportSheetV2Ref {
@@ -40,6 +48,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   isReadOnly = false,
   allAbsentDays = [],
   allIntempDays = [],
+  mode = "chef",
+  finisseursEquipe = [],
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -488,6 +498,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
             isIntemperie={allIntempDays.includes(day.date)}
             isMonday={index === 0}
             onDuplicateToWeek={duplicateMondayToWeek}
+            mode={mode}
+            finisseursEquipe={finisseursEquipe}
           />
         ))}
       </Accordion>

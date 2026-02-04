@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useSaveFiche, type EmployeeData } from "@/hooks/useSaveFiche";
-import { useSaveTransportFinisseur } from "@/hooks/useSaveTransportFinisseur";
 import { useToast } from "@/hooks/use-toast";
 import { addDays, format } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { useQueryClient } from "@tanstack/react-query";
-import type { TransportFinisseurDay } from "@/types/transport";
 
 interface TimeEntry {
   employeeId: string;
@@ -37,14 +35,12 @@ interface UseSaveChantierManuelParams {
   conducteurId: string;
   chantierFinisseurs: Array<{ id: string; nom: string; prenom: string }>;
   timeEntries: TimeEntry[];
-  transportFinisseurData: Record<string, { ficheId?: string; days: TransportFinisseurDay[] }>;
   affectationsJours?: Affectation[];
 }
 
 export const useSaveChantierManuel = () => {
   const [savingChantier, setSavingChantier] = useState<string | null>(null);
   const saveFiche = useSaveFiche();
-  const saveTransportFinisseur = useSaveTransportFinisseur();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,7 +51,6 @@ export const useSaveChantierManuel = () => {
       conducteurId, 
       chantierFinisseurs, 
       timeEntries,
-      transportFinisseurData,
       affectationsJours
     } = params;
 
@@ -149,35 +144,12 @@ export const useSaveChantierManuel = () => {
         userId: conducteurId,
       });
 
-      // 4. Sauvegarder les fiches trajet finisseurs
-      let transportSaved = 0;
-      for (const finisseur of chantierFinisseurs) {
-        const transportData = transportFinisseurData[finisseur.id];
-        if (transportData?.days && transportData.days.length > 0) {
-          try {
-            await saveTransportFinisseur.mutateAsync({
-              ficheId: transportData.ficheId,
-              finisseurId: finisseur.id,
-              conducteurId,
-              semaine: selectedWeek,
-              chantierId: chantierId !== "sans-chantier" ? chantierId : null,
-              days: transportData.days.map((d) => ({
-                date: d.date,
-                immatriculation: d.immatriculation || null,
-                conducteurMatinId: d.conducteurMatinId || finisseur.id,
-                conducteurSoirId: d.conducteurSoirId || finisseur.id,
-              })),
-            });
-            transportSaved++;
-          } catch (err) {
-            console.warn(`[SaveChantierManuel] Erreur trajet finisseur ${finisseur.id}:`, err);
-          }
-        }
-      }
+      // Note: Les données de transport sont maintenant gérées par TransportSheetV2 (modèle chef unifié)
+      // qui auto-sauvegarde via useAutoSaveTransportV2 - pas besoin de les sauvegarder ici
 
-      console.log(`[SaveChantierManuel] ✅ Saved ${employeesData.length} employees + ${transportSaved} transport fiches`);
+      console.log(`[SaveChantierManuel] ✅ Saved ${employeesData.length} employees`);
       
-      // ✅ CORRECTIF A: Invalider le cache finisseurs-conducteur pour forcer le refetch
+      // Invalider le cache finisseurs-conducteur pour forcer le refetch
       console.log(`[SaveChantierManuel] 🔄 Invalidating cache for finisseurs-conducteur...`);
       await queryClient.invalidateQueries({ 
         queryKey: ["finisseurs-conducteur", conducteurId, selectedWeek] 
@@ -187,7 +159,7 @@ export const useSaveChantierManuel = () => {
       
       toast({
         title: "✅ Fiche enregistrée",
-        description: `Heures et trajets sauvegardés pour ${employeesData.length} finisseur(s).`,
+        description: `Heures sauvegardées pour ${employeesData.length} finisseur(s).`,
       });
 
       setSavingChantier(null);
