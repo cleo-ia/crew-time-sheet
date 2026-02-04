@@ -8,6 +8,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -138,8 +139,9 @@ export const VehiculeCombobox = ({
       <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput placeholder="Rechercher une plaque..." className="font-mono" />
-          <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
+          <CommandList>
+            <CommandEmpty>Aucune plaque trouvée.</CommandEmpty>
+            <CommandGroup className="max-h-64 overflow-auto">
             {/* Option Véhicule perso - toujours disponible, sélectionnable plusieurs fois */}
             <CommandItem
               value={VEHICULE_PERSO_VALUE}
@@ -218,7 +220,8 @@ export const VehiculeCombobox = ({
                 </CommandItem>
               );
             })}
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
