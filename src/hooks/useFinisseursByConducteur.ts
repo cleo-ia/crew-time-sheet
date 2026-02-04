@@ -136,8 +136,8 @@ export const useFinisseursByConducteur = (
       return finisseurs;
     },
     enabled: !!conducteurId && !!semaine,
-    refetchOnMount: "always",
-    staleTime: 0,
+    refetchOnMount: true,        // ✅ Utiliser le cache si disponible
+    staleTime: 30000,            // ✅ Données fraîches 30s (évite refetch au retour d'onglet)
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: false,

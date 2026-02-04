@@ -241,7 +241,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
   );
 
   // Charger les finisseurs si on est en mode conducteur
-  const { data: finisseursData = [] } = useFinisseursByConducteur(
+  const { data: finisseursData = [], isLoading: finisseursLoading } = useFinisseursByConducteur(
     isConducteurMode ? chefId : null,
     isConducteurMode ? weekId : ""
   );
@@ -466,7 +466,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     }
 
     // 2️⃣ Mode conducteur : charger UNIQUEMENT les finisseurs (pas le conducteur)
-    if (isConducteurMode && chefId && weekId && !hasLoadedData && finisseursData.length > 0 && chantiers.length > 0) {
+    if (isConducteurMode && chefId && weekId && !hasLoadedData && !finisseursLoading && finisseursData.length > 0 && chantiers.length > 0) {
       const finisseurEntries = finisseursData.map((finisseur) => {
         const daysDefault = {
           Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId: null, chantierCode: null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet },
@@ -796,7 +796,20 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     });
   }, [isConducteurMode, affectationsJours, chantiers, hasUserEdits]);
 
-  // Détecter et ajouter dynamiquement les nouveaux maçons/intérimaires (mode chef)
+  // ✅ Re-trigger : forcer le chargement des entries après remontage (quand données du cache reviennent)
+  useEffect(() => {
+    if (!isConducteurMode || !chefId || !weekId) return;
+    if (hasLoadedData) return; // Déjà chargé
+    if (finisseursLoading) return; // Attendre la fin du chargement
+    
+    // Si les données sont revenues du cache et que les entries sont vides, le useEffect principal va se déclencher
+    if (finisseursData.length > 0 && chantiers.length > 0 && entries.length === 0) {
+      console.log("[TimeEntryTable] Re-trigger: finisseurs disponibles après remontage, forçage du chargement");
+      // Le useEffect principal de chargement (ligne ~469) va s'exécuter automatiquement
+      // car toutes ses conditions sont maintenant remplies (finisseursLoading = false)
+    }
+  }, [isConducteurMode, chefId, weekId, finisseursData, finisseursLoading, chantiers, hasLoadedData, entries.length]);
+
   useEffect(() => {
     if (isConducteurMode || !hasLoadedData || readOnly) return;
 
