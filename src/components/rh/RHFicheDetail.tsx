@@ -8,7 +8,7 @@ import { Accordion } from "@/components/ui/accordion";
 import { ArrowLeft, Calendar, Users, Clock, Package, Truck, CloudRain } from "lucide-react";
 import { useRHFicheDetail } from "@/hooks/useRHData";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTransportByChantier } from "@/hooks/useTransportByChantier";
+import { useTransportByChantierUnified } from "@/hooks/useTransportByChantierUnified";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { RHEmployeeAccordion } from "./RHEmployeeAccordion";
 import { useUpdateFicheJour } from "@/hooks/useUpdateFicheJour";
@@ -29,8 +29,8 @@ export const RHFicheDetail = ({ ficheId, onBack }: RHFicheDetailProps) => {
       ? ficheId.split("_")
       : [null, null];
   
-  // Fetch transport data
-  const { data: transportData } = useTransportByChantier(chantierId, semaine);
+  // Fetch transport data (unified: chef workflow + finisseurs fallback)
+  const { data: transportData } = useTransportByChantierUnified(chantierId, semaine);
   console.log("[RHFicheDetail]", { ficheId, chantierId, semaine, transportDays: transportData?.days?.length });
 
   // Grouper les jours par salarié
