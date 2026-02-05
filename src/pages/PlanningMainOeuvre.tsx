@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
@@ -36,6 +36,7 @@ import { PlanningChantierAccordion } from "@/components/planning/PlanningChantie
 import { generatePlanningExcel, preparePlanningData } from "@/lib/planningExcelExport";
 import { useToast } from "@/hooks/use-toast";
 import { usePlanningValidation } from "@/hooks/usePlanningValidation";
+import { useSyncPlanningToTeams } from "@/hooks/useSyncPlanningToTeams";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
@@ -92,6 +93,9 @@ const PlanningMainOeuvre = () => {
     isValidating,
     isInvalidating
   } = usePlanningValidation(semaine);
+
+  // Hook de synchronisation manuelle
+  const { syncPlanningToTeams, isSyncing } = useSyncPlanningToTeams();
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
@@ -387,19 +391,34 @@ const PlanningMainOeuvre = () => {
             </div>
             
             {isValidated ? (
-              <Button
-                variant="outline"
-                onClick={() => invalidatePlanning()}
-                disabled={isInvalidating}
-                className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
-              >
-                {isInvalidating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Edit className="h-4 w-4 mr-2" />
-                )}
-                Modifier
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => syncPlanningToTeams(semaine)}
+                  disabled={isSyncing}
+                  className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+                >
+                  {isSyncing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Synchroniser maintenant
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => invalidatePlanning()}
+                  disabled={isInvalidating}
+                  className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+                >
+                  {isInvalidating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Edit className="h-4 w-4 mr-2" />
+                  )}
+                  Modifier
+                </Button>
+              </div>
             ) : (
               <Button 
                 onClick={() => setValidateDialogOpen(true)}
