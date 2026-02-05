@@ -25,6 +25,12 @@ interface FinisseurEquipe {
   id: string;
   nom: string;
   prenom: string;
+  ficheJours?: Array<{
+    date: string;
+    heures?: number;
+    trajet_perso?: boolean;
+    code_trajet?: string | null;
+  }>;
 }
 
 interface TransportDayAccordionProps {
@@ -98,7 +104,7 @@ export const TransportDayAccordion = ({
       id: f.id,
       nom: f.nom,
       prenom: f.prenom,
-      ficheJours: [] as any[],
+      ficheJours: f.ficheJours || [],
     }));
   }, [mode, finisseursEquipe]);
   

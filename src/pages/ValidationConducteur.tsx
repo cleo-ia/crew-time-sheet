@@ -59,13 +59,27 @@ const TransportSheetWithFiche = ({
   chantierId: string | null;
   conducteurId: string;
   isReadOnly: boolean | undefined;
-  finisseursEquipe: { id: string; nom: string; prenom: string }[];
+  finisseursEquipe: { id: string; nom: string; prenom: string; ficheJours?: Array<{ date: string; heures?: number; trajet_perso?: boolean; code_trajet?: string | null }> }[];
 }) => {
-  const { data: ficheId } = useFicheId(
+  const { data: ficheId, isLoading } = useFicheId(
     selectedWeekString, 
     conducteurId, 
     chantierId
   );
+
+  // Guard de chargement pour éviter les re-renders instables qui ferment les Popovers
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">
+            Chargement de la fiche de trajet...
+          </span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <TransportSheetV2
@@ -807,7 +821,8 @@ const ValidationConducteur = () => {
                                 finisseursEquipe={chantierFinisseurs.map(f => ({
                                   id: f.id,
                                   nom: f.nom,
-                                  prenom: f.prenom
+                                  prenom: f.prenom,
+                                  ficheJours: f.ficheJours || []
                                 }))}
                               />
                               
