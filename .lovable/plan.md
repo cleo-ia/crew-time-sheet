@@ -1,133 +1,130 @@
 
-# Plan : Corriger le récapitulatif trajet côté Conducteur
+# Plan corrigé : Ajouter le Code Chantier côté Conducteur
 
-## Résumé du problème
+## Fonctionnement à reproduire (côté Chef)
 
-Deux problèmes identifiés :
-1. **Section "Détail des trajets"** par employé toujours présente alors que le récap global existe maintenant
-2. **Données incomplètes** dans le récap global : véhicules manquants et noms de conducteurs non affichés
+Le hook `useTransportByChantier` utilise une logique à 2 niveaux :
 
-## Cause racine
-
-La source de données côté Conducteur est différente de celle côté Chef :
-- **Chef** : utilise `useTransportByChantier` qui charge TOUS les jours transport du chantier avec les noms de conducteurs via JOIN SQL
-- **Conducteur** : utilise `transportFinisseursData` qui filtre par finisseur et ne récupère pas les noms complets
-
-De plus, le code de consolidation ne mappe pas les IDs conducteur aux noms.
-
----
+```text
+Source 1 : fiches_jours.code_chantier_du_jour (par date)
+     ↓ fallback
+Source 2 : chantiers.code_chantier (code par défaut du chantier)
+```
 
 ## Modifications prévues
 
 ### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-### Étape 1 : Supprimer la section "Détail des trajets" (lignes 616-691)
+### Étape 1 : Récupérer les codes chantier par date
 
-Supprimer le bloc de code conditionnel `{isExpanded && (...)}` qui affiche le détail dépliable par finisseur. Cette section est désormais redondante avec le récap global.
-
-On garde toujours la ligne cliquable/expandable (avec le chevron) si on veut afficher autre chose à l'avenir, ou on peut aussi retirer l'interactivité de toggle.
-
-### Étape 2 : Charger les données transport depuis la bonne source
-
-Actuellement le code charge les données transport via un useEffect personnalisé (lignes 122-215) qui ne récupère qu'un seul jour par date.
-
-Le problème : la table `fiches_transport_jours` stocke les données avec une logique **1 ligne par véhicule par période (MATIN/SOIR)**, comme vu dans la base de données.
-
-Modification nécessaire :
-- Récupérer TOUTES les lignes de `fiches_transport_jours` pour les chantiers concernés
-- Grouper par date + immatriculation 
-- Fusionner les lignes MATIN et SOIR pour obtenir les noms des deux conducteurs
-
-### Étape 3 : Corriger la consolidation des données
-
-Remplacer la fonction `consolidatedTransportData` (lignes 458-506) pour :
-
-1. Utiliser directement les données chargées depuis `fiches_transport_jours`
-2. Grouper par date puis par immatriculation
-3. Fusionner les lignes MATIN et SOIR
-4. Inclure les noms de conducteurs (déjà fournis par les JOINs SQL)
-
----
-
-## Détail technique de la correction
-
-### Structure des données dans la BDD
-
-La table `fiches_transport_jours` a ce format :
-
-```text
-┌──────────────┬──────────────────┬─────────┬─────────────────────┬─────────────────────┐
-│ date         │ immatriculation  │ periode │ conducteur_aller_id │ conducteur_retour_id│
-├──────────────┼──────────────────┼─────────┼─────────────────────┼─────────────────────┤
-│ 2026-02-02   │ ET-029-BX        │ MATIN   │ GRIBI               │ NULL                │
-│ 2026-02-02   │ ET-029-BX        │ SOIR    │ NULL                │ GRIBI               │
-│ 2026-02-02   │ FR-263-PN        │ MATIN   │ FERNANDES           │ NULL                │
-│ 2026-02-02   │ FR-263-PN        │ SOIR    │ NULL                │ CENTRALISTE         │
-└──────────────┴──────────────────┴─────────┴─────────────────────┴─────────────────────┘
-```
-
-### Format attendu pour `TransportSummaryV2`
+Après le chargement des jours transport, ajouter une requête pour obtenir les `code_chantier_du_jour` depuis `fiches_jours` :
 
 ```typescript
-{
-  days: [
-    {
-      date: "2026-02-02",
-      vehicules: [
-        { 
-          immatriculation: "ET-029-BX",
-          conducteurMatinNom: "Hadj Mohamed GRIBI",
-          conducteurSoirNom: "Hadj Mohamed GRIBI"
-        },
-        { 
-          immatriculation: "FR-263-PN",
-          conducteurMatinNom: "Flavio FERNANDES",
-          conducteurSoirNom: "CENTRALISTE CENTRALISTE"
-        }
-      ]
-    }
-  ]
-}
+// Récupérer les fiche_id uniques
+const ficheTransportIds = [...new Set(joursTransport.map(j => j.fiche_transport_id))];
+
+// Pour chaque fiche_transport, récupérer la fiche parente
+const { data: fichesTransport } = await supabase
+  .from("fiches_transport")
+  .select("id, fiche_id, chantier_id")
+  .in("id", ficheTransportIds);
+
+// Récupérer les codes chantier du jour depuis fiches_jours
+const ficheIds = [...new Set((fichesTransport || []).map(ft => ft.fiche_id).filter(Boolean))];
+
+const { data: fichesJours } = await supabase
+  .from("fiches_jours")
+  .select("fiche_id, date, code_chantier_du_jour")
+  .in("fiche_id", ficheIds);
+
+// Créer la map date → code_chantier_du_jour
+const codeChantierByDate = new Map(
+  (fichesJours || []).map(fj => [fj.date, fj.code_chantier_du_jour])
+);
 ```
 
-### Algorithme de consolidation corrigé
+### Étape 2 : Récupérer les codes chantier par défaut (fallback)
 
 ```typescript
-// 1. Charger TOUTES les lignes transport avec les JOINs conducteur
-// (déjà fait dans le useEffect, mais en gardant toutes les lignes)
+// Fallback : codes chantier par défaut
+const chantierIds = [...new Set((fichesTransport || []).map(ft => ft.chantier_id).filter(Boolean))];
 
-// 2. Grouper par date → immatriculation
-const groupedByDate = new Map<string, Map<string, VehiculeData>>();
+const { data: chantiers } = await supabase
+  .from("chantiers")
+  .select("id, code_chantier")
+  .in("id", chantierIds);
 
-joursTransport.forEach(jour => {
-  const date = jour.date;
-  const immat = jour.immatriculation;
+const defaultCodeByChantier = new Map(
+  (chantiers || []).map(c => [c.id, c.code_chantier])
+);
+```
+
+### Étape 3 : Enrichir les données brutes
+
+Stocker les métadonnées nécessaires avec chaque jour transport :
+
+```typescript
+// Enrichir chaque jour avec le code chantier
+const enrichedJours = joursTransport.map(jour => {
+  const ft = fichesTransport?.find(f => f.id === jour.fiche_transport_id);
+  const codeFromFiche = codeChantierByDate.get(jour.date);
+  const codeDefault = ft?.chantier_id ? defaultCodeByChantier.get(ft.chantier_id) : null;
   
-  if (!groupedByDate.has(date)) {
-    groupedByDate.set(date, new Map());
-  }
-  
-  const vehiculesMap = groupedByDate.get(date)!;
-  
-  if (!vehiculesMap.has(immat)) {
-    vehiculesMap.set(immat, {
-      immatriculation: immat,
-      conducteurMatinNom: null,
-      conducteurSoirNom: null
-    });
-  }
-  
-  const vehicule = vehiculesMap.get(immat)!;
-  
-  // Fusionner selon la période
-  if (jour.periode === "MATIN" && jour.conducteur_aller) {
-    vehicule.conducteurMatinNom = 
-      `${jour.conducteur_aller.prenom} ${jour.conducteur_aller.nom}`;
-  } else if (jour.periode === "SOIR" && jour.conducteur_retour) {
-    vehicule.conducteurSoirNom = 
-      `${jour.conducteur_retour.prenom} ${jour.conducteur_retour.nom}`;
-  }
+  return {
+    ...jour,
+    codeChantier: codeFromFiche || codeDefault || "-"
+  };
 });
+```
+
+### Étape 4 : Mettre à jour la consolidation
+
+```typescript
+const consolidatedTransportData = useMemo(() => {
+  const groupedByDate = new Map<string, {
+    codeChantier: string;
+    vehiculesMap: Map<string, VehiculeData>;
+  }>();
+
+  allTransportJoursRaw.forEach((jour: any) => {
+    if (!jour.immatriculation) return;
+    
+    if (!groupedByDate.has(jour.date)) {
+      groupedByDate.set(jour.date, {
+        codeChantier: jour.codeChantier || "-",  // ← Utiliser le code enrichi
+        vehiculesMap: new Map()
+      });
+    }
+    
+    // ... reste de la logique véhicules inchangée
+  });
+
+  // Générer le format pour TransportSummaryV2
+  const days = Array.from(groupedByDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, data]) => ({
+      date,
+      codeChantier: data.codeChantier,  // ← Inclure le code
+      vehicules: Array.from(data.vehiculesMap.values())
+    }));
+
+  return { days };
+}, [allTransportJoursRaw]);
+```
+
+### Fichier : `src/components/transport/TransportSummaryV2.tsx`
+
+Adapter le parsing du format V2 pour utiliser le `codeChantier` transmis :
+
+```typescript
+if (isV2Format) {
+  transportData.days.forEach((day: any) => {
+    groupedByDate.set(day.date, {
+      codeChantier: day.codeChantier || "-",  // ← Lire depuis les données
+      vehicules: day.vehicules || []
+    });
+  });
+}
 ```
 
 ---
@@ -136,19 +133,17 @@ joursTransport.forEach(jour => {
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/SignatureFinisseurs.tsx` | Supprimer section "Détail des trajets" + corriger consolidation transport |
+| `src/pages/SignatureFinisseurs.tsx` | Ajouter requêtes fiches_jours + chantiers + enrichir consolidation |
+| `src/components/transport/TransportSummaryV2.tsx` | Lire `codeChantier` du format V2 |
 
 ---
 
 ## Résultat attendu
 
-Après correction :
-
 | Date | Code Chantier | Véhicule | Conducteur Matin | Conducteur Soir |
 |------|--------------|----------|------------------|-----------------|
-| Lun. 02/02 | - | ET-029-BX | Hadj Mohamed GRIBI | Hadj Mohamed GRIBI |
-| Lun. 02/02 | - | FR-263-PN | Flavio FERNANDES | CENTRALISTE |
-| Mar. 03/02 | - | DL-898-FB | ... | ... |
-| ... | ... | ... | ... | ... |
+| Lun. 02/02 | **SEAUVE** | ET-029-BX | Hadj Mohamed GRIBI | Hadj Mohamed GRIBI |
+| Lun. 02/02 | **SEAUVE** | FR-263-PN | Flavio FERNANDES | CENTRALISTE |
+| Mar. 03/02 | **SEAUVE** | DL-898-FB | Flavio FERNANDES | Dariusz ROMANOWSKI |
 
-L'affichage sera identique à la vue Chef avec tous les véhicules et conducteurs visibles.
+Identique à l'affichage côté Chef avec la même logique de récupération des codes chantier.
