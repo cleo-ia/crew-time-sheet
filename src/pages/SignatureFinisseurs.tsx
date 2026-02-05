@@ -1,9 +1,8 @@
-import { useState, useEffect, Fragment, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, Truck, ChevronDown, ArrowLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, Clock, Truck, ArrowLeft } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -20,6 +19,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { TransportDayV2 } from "@/types/transport";
 
 const SignatureFinisseurs = () => {
   const navigate = useNavigate();
@@ -33,20 +33,9 @@ const SignatureFinisseurs = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conducteurData, setConducteurData] = useState<FinisseurWithFiche | null>(null);
   const [transportFinisseursData, setTransportFinisseursData] = useState<Record<string, any>>({});
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [chantiersMap, setChantiersMap] = useState<Map<string, string>>(new Map());
-
-  const toggleRow = (finisseurId: string) => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(finisseurId)) {
-        newSet.delete(finisseurId);
-      } else {
-        newSet.add(finisseurId);
-      }
-      return newSet;
-    });
-  };
+  // Données de transport consolidées pour le récap global (tous les jours/véhicules avec noms conducteurs)
+  const [allTransportJoursRaw, setAllTransportJoursRaw] = useState<any[]>([]);
 
   // Récupérer les données du conducteur
   useEffect(() => {
@@ -154,14 +143,18 @@ const SignatureFinisseurs = () => {
         const { data: joursTransport, error: jtError } = await supabase
           .from("fiches_transport_jours")
           .select(`
-            id, date, immatriculation, fiche_transport_id,
+            id, date, immatriculation, fiche_transport_id, periode,
             conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(id, nom, prenom),
             conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(id, nom, prenom)
           `)
           .in("fiche_transport_id", ficheTransportIds)
-          .order("date");
+          .order("date")
+          .order("periode");
         
         if (jtError) throw jtError;
+        
+        // Stocker les données brutes pour le récap global avec JOINs
+        setAllTransportJoursRaw(joursTransport || []);
         
         // 4. Créer une map chantier_id → jours de transport
         const transportByChantier = new Map<string, any[]>();
@@ -456,50 +449,62 @@ const SignatureFinisseurs = () => {
   };
 
   // Consolider les données de transport pour TransportSummaryV2
+  // Utilise les données brutes avec JOINs SQL pour les noms de conducteurs
   const consolidatedTransportData = (() => {
-    const groupedByDate = new Map<string, { vehicules: Map<string, { immatriculation: string; conducteurMatinNom: string | null; conducteurSoirNom: string | null }> }>();
+    // Grouper par date puis par immatriculation
+    const groupedByDate = new Map<string, Map<string, { 
+      immatriculation: string; 
+      conducteurMatinNom: string | null; 
+      conducteurSoirNom: string | null 
+    }>>();
     
-    // Parcourir tous les finisseurs et leurs données transport
-    Object.values(transportFinisseursData).forEach((finisseurTransport: any) => {
-      finisseurTransport?.days?.forEach((day: any) => {
-        if (!groupedByDate.has(day.date)) {
-          groupedByDate.set(day.date, { vehicules: new Map() });
-        }
-        
-        // Ignorer les trajets perso et les absences
-        if (day.trajet_perso || !day.immatriculation) return;
-        
-        const dateEntry = groupedByDate.get(day.date)!;
-        const immat = day.immatriculation;
-        
-        // Dédupliquer par immatriculation
-        if (!dateEntry.vehicules.has(immat)) {
-          dateEntry.vehicules.set(immat, {
-            immatriculation: immat,
-            conducteurMatinNom: null,
-            conducteurSoirNom: null
-          });
-        }
-      });
+    allTransportJoursRaw.forEach((jour: any) => {
+      const date = jour.date;
+      const immat = jour.immatriculation;
+      
+      // Ignorer les entrées sans immatriculation
+      if (!immat) return;
+      
+      if (!groupedByDate.has(date)) {
+        groupedByDate.set(date, new Map());
+      }
+      
+      const vehiculesMap = groupedByDate.get(date)!;
+      
+      if (!vehiculesMap.has(immat)) {
+        vehiculesMap.set(immat, {
+          immatriculation: immat,
+          conducteurMatinNom: null,
+          conducteurSoirNom: null
+        });
+      }
+      
+      const vehicule = vehiculesMap.get(immat)!;
+      
+      // Fusionner les lignes MATIN et SOIR
+      if (jour.periode === "MATIN" && jour.conducteur_aller) {
+        vehicule.conducteurMatinNom = 
+          `${jour.conducteur_aller.prenom} ${jour.conducteur_aller.nom}`;
+      }
+      if (jour.periode === "SOIR" && jour.conducteur_retour) {
+        vehicule.conducteurSoirNom = 
+          `${jour.conducteur_retour.prenom} ${jour.conducteur_retour.nom}`;
+      }
     });
     
-    // Pour enrichir avec les noms de conducteurs, on doit faire une autre requête
-    // Utilisons les données déjà disponibles dans finisseurs pour trouver les noms
-    const conducteurNamesMap = new Map<string, string>();
-    finisseurs.forEach(f => {
-      conducteurNamesMap.set(f.id, `${f.prenom} ${f.nom}`);
-    });
-    // Ajouter le conducteur courant
-    if (conducteurData) {
-      conducteurNamesMap.set(conducteurData.id, `${conducteurData.prenom} ${conducteurData.nom}`);
-    }
-    
-    // Convertir en format pour TransportSummaryV2
-    const days = Array.from(groupedByDate.entries())
+    // Convertir en format pour TransportSummaryV2 
+    const days: TransportDayV2[] = Array.from(groupedByDate.entries())
       .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([date, { vehicules }]) => ({
+      .map(([date, vehiculesMap]) => ({
         date,
-        vehicules: Array.from(vehicules.values())
+        vehicules: Array.from(vehiculesMap.values()).map((v) => ({
+          id: crypto.randomUUID(),
+          immatriculation: v.immatriculation,
+          conducteurMatinId: "",
+          conducteurMatinNom: v.conducteurMatinNom || "",
+          conducteurSoirId: "",
+          conducteurSoirNom: v.conducteurSoirNom || ""
+        }))
       }));
     
     return { days };
@@ -555,8 +560,6 @@ const SignatureFinisseurs = () => {
                   <TableBody>
                     {finisseurs.map((finisseur) => {
                       const transportData = transportFinisseursData[finisseur.id];
-                      const hasTransportData = transportData?.days && transportData.days.length > 0;
-                      const isExpanded = expandedRows.has(finisseur.id);
                       const stats = calculateAffectedStats(finisseur);
                       
                       // Filtrer les jours de transport pour ne garder QUE ceux affectés au conducteur actuel
@@ -576,121 +579,32 @@ const SignatureFinisseurs = () => {
                       }).length || 0;
                       
                       return (
-                        <Fragment key={finisseur.id}>
-                          {/* Ligne principale avec les totaux */}
-                          <TableRow 
-                            className="border-b border-border/30 hover:bg-muted/50 cursor-pointer"
-                            onClick={() => toggleRow(finisseur.id)}
-                          >
-                            <TableCell className="py-2 px-3 font-medium">
-                              <div className="flex items-center gap-2">
-                                <ChevronDown 
-                                  className={cn(
-                                    "h-4 w-4 shrink-0 transition-transform duration-200",
-                                    isExpanded && "rotate-180"
-                                  )}
-                                />
-                                {finisseur.prenom} {finisseur.nom}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3 font-bold text-primary">
-                              {stats.heures}h
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3">
-                              {stats.paniers}
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3">
-                              {countTrajetsEntreprise > 0 ? countTrajetsEntreprise : "-"}
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3">
-                              {countTrajetPerso > 0 ? countTrajetPerso : "-"}
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3">
-                              {countAbsences > 0 ? countAbsences : "-"}
-                            </TableCell>
-                            <TableCell className="text-center py-2 px-3">
-                              {stats.intemperie}h
-                            </TableCell>
-                          </TableRow>
-                          
-                          {/* Ligne dépliable : détail des trajets */}
-                          {isExpanded && (
-                            <TableRow className="border-b border-border/30">
-                              <TableCell colSpan={7} className="py-3 px-6 bg-muted/30">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-2">
-                                    <Truck className="h-4 w-4" />
-                                    Détail des trajets
-                                  </div>
-                                  
-                                  {hasTransportData || finisseur.ficheJours ? (
-                                     <div className="grid grid-cols-1 gap-1.5 text-sm">
-                                      {finisseur.affectedDays?.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((affectedDay) => {
-                                        const ficheJour = finisseur.ficheJours?.find(fj => fj.date === affectedDay.date);
-                                        const transportDay = transportData?.days?.find((d: any) => d.date === affectedDay.date);
-                                        
-                                        // Récupérer le code chantier et code trajet
-                                        const codeChantier = ficheJour?.code_chantier_du_jour || chantiersMap.get(affectedDay.chantier_id) || null;
-                                        const codeTrajet = ficheJour?.code_trajet || null;
-                                        
-                                        const isAbsent = ficheJour && ficheJour.HNORM === 0 && !ficheJour.trajet_perso;
-                                        const isTrajetPerso = ficheJour?.trajet_perso === true;
-                                        const hasImmat = transportDay?.immatriculation && transportDay.immatriculation.trim() !== "";
-                                        
-                                        return (
-                                          <div 
-                                            key={affectedDay.date}
-                                            className="flex items-center gap-3 py-1.5 px-3 bg-background rounded border border-border/30"
-                                          >
-                                            <span className="font-medium capitalize min-w-[100px]">
-                                              {format(new Date(affectedDay.date), "EEE dd/MM", { locale: fr })}
-                                            </span>
-                                            
-                                            {/* Badge code chantier */}
-                                            {codeChantier && (
-                                              <span className="font-mono text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-medium">
-                                                {codeChantier}
-                                              </span>
-                                            )}
-                                            
-                                            {/* Badge code trajet */}
-                                            {codeTrajet && (
-                                              <span className="font-mono text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-medium">
-                                                {codeTrajet}
-                                              </span>
-                                            )}
-                                            
-                                            {isAbsent ? (
-                                              <span className="flex items-center gap-1.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-medium">
-                                                🚫 ABSENT
-                                              </span>
-                                            ) : isTrajetPerso ? (
-                                              <span className="flex items-center gap-1.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-medium">
-                                                🚗 Véhicule personnel
-                                              </span>
-                                            ) : hasImmat ? (
-                                              <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
-                                                {transportDay.immatriculation}
-                                              </span>
-                                            ) : (
-                                              <span className="text-xs text-muted-foreground italic px-2 py-0.5">
-                                                Non renseigné
-                                              </span>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground italic py-2">
-                                      Aucune donnée disponible
-                                    </p>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </Fragment>
+                        <TableRow 
+                          key={finisseur.id}
+                          className="border-b border-border/30"
+                        >
+                          <TableCell className="py-2 px-3 font-medium">
+                            {finisseur.prenom} {finisseur.nom}
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3 font-bold text-primary">
+                            {stats.heures}h
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3">
+                            {stats.paniers}
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3">
+                            {countTrajetsEntreprise > 0 ? countTrajetsEntreprise : "-"}
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3">
+                            {countTrajetPerso > 0 ? countTrajetPerso : "-"}
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3">
+                            {countAbsences > 0 ? countAbsences : "-"}
+                          </TableCell>
+                          <TableCell className="text-center py-2 px-3">
+                            {stats.intemperie}h
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
                   </TableBody>
