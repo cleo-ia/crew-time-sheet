@@ -787,6 +787,83 @@ async function syncEntreprise(
     stats.deleted++
   }
 
+  // ========================================================================
+  // NOUVELLE PHASE: Nettoyage direct des fiches orphelines (hors planning)
+  // Cette phase supprime les fiches créées par useAutoSaveFiche pour des
+  // couples (salarie_id, chantier_id) qui ne sont pas dans le planning validé
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase nettoyage fiches orphelines...`)
+
+  // 1. Construire l'ensemble des couples valides depuis le planning
+  const validEmployeChantierFromPlanning = new Set(
+    // deno-lint-ignore no-explicit-any
+    (planningData || []).map((p: any) => `${p.employe_id}|${p.chantier_id}`)
+  )
+  
+  console.log(`[sync-planning-to-teams] ${validEmployeChantierFromPlanning.size} couple(s) employé-chantier valides dans le planning`)
+
+  // 2. Récupérer toutes les fiches existantes pour cette semaine/entreprise
+  const { data: allFichesS, error: fichesError } = await supabase
+    .from('fiches')
+    .select('id, salarie_id, chantier_id, total_heures')
+    .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  if (fichesError) {
+    console.error(`[sync-planning-to-teams] Erreur récupération fiches:`, fichesError)
+  }
+
+  // 3. Identifier les fiches orphelines (pas dans le planning)
+  // deno-lint-ignore no-explicit-any
+  const orphanFiches = (allFichesS || []).filter((f: any) => {
+    const key = `${f.salarie_id}|${f.chantier_id}`
+    return !validEmployeChantierFromPlanning.has(key)
+  })
+
+  console.log(`[sync-planning-to-teams] ${orphanFiches.length} fiche(s) orpheline(s) détectée(s)`)
+
+  // 4. Supprimer les fiches orphelines
+  let orphanDeletedCount = 0
+  // deno-lint-ignore no-explicit-any
+  for (const fiche of orphanFiches as any[]) {
+    // Supprimer fiches_jours d'abord (contrainte FK)
+    const { error: deleteJoursError } = await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', fiche.id)
+      .eq('entreprise_id', entrepriseId)
+    
+    if (deleteJoursError) {
+      console.error(`[sync-planning-to-teams] Erreur suppression fiches_jours orpheline:`, deleteJoursError)
+      continue
+    }
+    
+    // Supprimer la fiche
+    const { error: deleteFicheError } = await supabase
+      .from('fiches')
+      .delete()
+      .eq('id', fiche.id)
+      .eq('entreprise_id', entrepriseId)
+    
+    if (deleteFicheError) {
+      console.error(`[sync-planning-to-teams] Erreur suppression fiche orpheline:`, deleteFicheError)
+      continue
+    }
+    
+    console.log(`[sync-planning-to-teams] Fiche orpheline supprimée: salarie=${fiche.salarie_id}, chantier=${fiche.chantier_id} (${fiche.total_heures || 0}h)`)
+    
+    results.push({
+      employe_id: fiche.salarie_id,
+      employe_nom: fiche.salarie_id,
+      action: 'deleted',
+      details: `Fiche orpheline (hors planning) - ${fiche.total_heures || 0}h supprimées`
+    })
+    orphanDeletedCount++
+    stats.deleted++
+  }
+
+  console.log(`[sync-planning-to-teams] ${orphanDeletedCount} fiche(s) orpheline(s) supprimée(s)`)
+
   return { results, stats }
 }
 
