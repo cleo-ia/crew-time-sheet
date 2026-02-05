@@ -72,6 +72,7 @@ export interface TransportVehicle {
 export interface TransportDayV2 {
   date: string; // format "yyyy-MM-dd"
   vehicules: TransportVehicle[];
+  codeChantier?: string; // Code chantier pour le récap groupé
 }
 
 export interface TransportSheetV2 {

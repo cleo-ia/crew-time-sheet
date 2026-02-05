@@ -6,9 +6,10 @@ import { fr } from "date-fns/locale";
 
 interface TransportSummaryV2Props {
   transportData: any;
+  hideCodeColumn?: boolean; // Masquer la colonne Code Chantier (quand déjà affiché en titre de section)
 }
 
-export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) => {
+export const TransportSummaryV2 = ({ transportData, hideCodeColumn = false }: TransportSummaryV2Props) => {
   if (!transportData?.days || transportData.days.length === 0) {
     return (
       <Card className="border-primary/20">
@@ -69,7 +70,7 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
           <TableHeader>
             <TableRow>
               <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead>Code Chantier</TableHead>
+              {!hideCodeColumn && <TableHead>Code Chantier</TableHead>}
               <TableHead>Véhicule</TableHead>
               <TableHead>Conducteur Matin</TableHead>
               <TableHead>Conducteur Soir</TableHead>
@@ -83,9 +84,11 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
                     <TableCell className="font-medium capitalize">
                       {format(new Date(date), "EEE dd/MM", { locale: fr })}
                     </TableCell>
-                    <TableCell className="font-medium text-sm">
-                      {dayData.codeChantier}
-                    </TableCell>
+                    {!hideCodeColumn && (
+                      <TableCell className="font-medium text-sm">
+                        {dayData.codeChantier}
+                      </TableCell>
+                    )}
                     <TableCell colSpan={3} className="text-muted-foreground italic">
                       Aucun véhicule
                     </TableCell>
@@ -120,12 +123,14 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
                       >
                         {format(new Date(date), "EEE dd/MM", { locale: fr })}
                       </TableCell>
-                      <TableCell
-                        className="font-medium text-sm"
-                        rowSpan={consolidatedVehicules.length}
-                      >
-                        {dayData.codeChantier}
-                      </TableCell>
+                      {!hideCodeColumn && (
+                        <TableCell
+                          className="font-medium text-sm"
+                          rowSpan={consolidatedVehicules.length}
+                        >
+                          {dayData.codeChantier}
+                        </TableCell>
+                      )}
                     </>
                   )}
                   <TableCell className="font-mono text-sm">
