@@ -18,36 +18,27 @@ export const useSaveTransportV2 = () => {
 
       console.log("[useSaveTransportV2] Starting save", { providedFicheId, semaine, chantierId });
 
-      // Gérer ficheId
+      // Gérer ficheId - chercher une fiche existante AVEC salarié (pas de création orpheline)
       let ficheId = providedFicheId;
       if (!ficheId) {
-        const { data: existingFiche } = await supabase
+        // Chercher n'importe quelle fiche du chantier/semaine qui a un salarié
+        const { data: existingFiche, error: findError } = await supabase
           .from("fiches")
           .select("id")
           .eq("semaine", semaine)
-          .eq("user_id", chefId)
           .eq("chantier_id", chantierId)
+          .not("salarie_id", "is", null)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
+        if (findError) throw findError;
+
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
-          const { data: newFiche, error } = await supabase
-            .from("fiches")
-            .insert({
-              semaine,
-              chantier_id: chantierId,
-              user_id: chefId,
-              statut: "BROUILLON",
-              total_heures: 0,
-            } as any)
-            .select()
-            .single();
-
-          if (error) throw error;
-          ficheId = newFiche.id;
+          // Pas de fiche salarié existante → erreur explicite
+          throw new Error("Aucune fiche salarié trouvée pour ce chantier/semaine. Saisissez d'abord les heures d'un employé.");
         }
       }
 
