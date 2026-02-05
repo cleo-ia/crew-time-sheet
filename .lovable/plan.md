@@ -1,121 +1,113 @@
 
-# Plan de Correction : Fiche de Trajet Conducteur - Menus Non Interactifs
 
-## Problème Identifié
+# Plan : Ajouter le Récapitulatif Trajet séparé côté Conducteur
 
-Après analyse du code, le problème est lié à **l'instabilité des références d'objets passées en props** qui provoque des re-renders excessifs et empêche les Popovers de s'ouvrir.
+## Résumé
 
----
+Actuellement, le récapitulatif des trajets côté **Conducteur** (`SignatureFinisseurs.tsx`) est intégré dans chaque ligne de finisseur via un système "expand/collapse" par employé. Cela rend difficile la lecture globale des informations de transport.
 
-## Diagnostic Technique
-
-### Cause Racine : Re-renders en Cascade
-
-Dans `ValidationConducteur.tsx`, la ligne 815-827 :
-
-```typescript
-<TransportSheetWithFiche
-  selectedWeek={parseISOWeek(selectedWeek)}  // ← PROBLÈME 1: Nouvel objet Date à chaque render
-  finisseursEquipe={chantierFinisseurs.map(f => ({  // ← PROBLÈME 2: Nouveau tableau à chaque render
-    id: f.id,
-    nom: f.nom,
-    prenom: f.prenom,
-    ficheJours: f.ficheJours || []
-  }))}
-/>
-```
-
-**Problème 1** : `parseISOWeek(selectedWeek)` retourne un **nouvel objet Date** à chaque render. React considère que la prop a changé → re-render complet du composant.
-
-**Problème 2** : `.map(f => ({...}))` crée un **nouveau tableau** à chaque render → même effet.
-
-### Pourquoi ça fonctionne côté Chef ?
-
-Côté chef (`Index.tsx`), le `TransportSheetV2` est placé **dans un Collapsible fermé par défaut** et le `ficheId` est récupéré au niveau du parent. Le composant ne se re-render pas à chaque changement de `timeEntries`.
-
-Côté conducteur, le `TransportSheetWithFiche` est dans une **boucle `.map()`** qui s'exécute à chaque render du parent. Chaque appel à `setTimeEntries` (depuis `TimeEntryTable`) déclenche :
-1. Re-render de `ValidationConducteur`
-2. Re-exécution de la boucle `.map()`
-3. Nouvelles références d'objets pour toutes les props
-4. React démonte et remonte les composants enfants
-5. Les Popovers perdent leur état `open`
+L'objectif est d'ajouter une **section dédiée** "Récapitulatif Trajet" identique à celle affichée côté **Chef** (`SignatureMacons.tsx`), qui utilise le composant `TransportSummaryV2` dans un accordéon séparé.
 
 ---
 
-## Solution Proposée
+## Analyse Comparative
 
-### Modification 1 : Mémoïser la Date
+### Côté Chef (actuel)
+- Un **accordéon dédié** "Récapitulatif Trajet" s'affiche avant la liste des employés
+- Utilise le hook `useTransportByChantier` pour récupérer les données transport
+- Affiche un tableau global : Date | Code Chantier | Véhicule | Conducteur Matin | Conducteur Soir
 
-Utiliser `useMemo` pour stabiliser l'objet Date :
+### Côté Conducteur (actuel)
+- Les données transport sont **imbriquées** dans chaque ligne d'employé
+- Chargement manuel via `useEffect` → `transportFinisseursData`
+- Pas de vue globale consolidée
 
-```typescript
-// Dans ValidationConducteur.tsx
-const selectedWeekDate = useMemo(() => parseISOWeek(selectedWeek), [selectedWeek]);
-```
+---
 
-Puis passer `selectedWeekDate` au lieu de `parseISOWeek(selectedWeek)`.
+## Modifications Prévues
 
-### Modification 2 : Mémoïser les finisseursEquipe par chantier
+### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-Créer une Map mémoïsée pour les finisseurs formatés :
+1. **Ajouter l'import** du composant `TransportSummaryV2` et du hook de données transport
+   ```typescript
+   import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
+   import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+   ```
 
-```typescript
-const finisseursEquipeByChantier = useMemo(() => {
-  const map = new Map<string, Array<{ id: string; nom: string; prenom: string; ficheJours: any[] }>>();
-  
-  finisseursByChantier.forEach((chantierFinisseurs, chantierId) => {
-    map.set(chantierId, chantierFinisseurs.map(f => ({
-      id: f.id,
-      nom: f.nom,
-      prenom: f.prenom,
-      ficheJours: f.ficheJours || []
-    })));
-  });
-  
-  return map;
-}, [finisseursByChantier]);
-```
+2. **Agréger les données de transport** pour tous les chantiers concernés
+   - Créer une structure `days` compatible avec `TransportSummaryV2`
+   - Consolider les jours depuis `transportFinisseursData` (déjà chargé)
 
-Puis utiliser `finisseursEquipeByChantier.get(chantierId)` dans le render.
+3. **Ajouter la section Récapitulatif Trajet**
+   - Positionnée **entre** le récap heures équipe et la zone de signature
+   - Format identique au côté Chef : accordéon avec icône camion
 
-### Modification 3 : Mémoïser le wrapper TransportSheetWithFiche
+### Structure du code à ajouter
 
-Transformer le composant en `React.memo` avec une comparaison personnalisée :
-
-```typescript
-const TransportSheetWithFiche = React.memo(({ ... }) => {
-  // ... code existant
-}, (prevProps, nextProps) => {
-  // Comparer uniquement les valeurs importantes
-  return prevProps.selectedWeekString === nextProps.selectedWeekString &&
-         prevProps.chantierId === nextProps.chantierId &&
-         prevProps.conducteurId === nextProps.conducteurId &&
-         prevProps.isReadOnly === nextProps.isReadOnly;
-});
+```text
+┌─────────────────────────────────────────────────────┐
+│   Récapitulatif heures équipe (existant)            │
+└─────────────────────────────────────────────────────┘
+                        ▼
+┌─────────────────────────────────────────────────────┐
+│   🆕 Accordéon "Récapitulatif Trajet"               │
+│   ┌─────────────────────────────────────────────┐   │
+│   │  TransportSummaryV2 (tableau global)        │   │
+│   │  Date | Code Chantier | Véhicule | AM | PM  │   │
+│   └─────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+                        ▼
+┌─────────────────────────────────────────────────────┐
+│   Zone de signature conducteur (existant)           │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Fichiers à Modifier
+## Détails Techniques
+
+### Transformation des données
+
+Les données actuelles dans `transportFinisseursData` sont structurées par finisseur :
+```typescript
+{
+  [finisseurId]: {
+    days: [{ date, immatriculation, conducteur_matin_id, conducteur_soir_id }]
+  }
+}
+```
+
+Pour `TransportSummaryV2`, il faut un format consolidé :
+```typescript
+{
+  days: [
+    { date: "2025-02-03", vehicules: [{ immatriculation, conducteurMatinNom, conducteurSoirNom }] }
+  ]
+}
+```
+
+### Logique de consolidation
+
+1. Parcourir tous les finisseurs et leurs jours de transport
+2. Grouper par date
+3. Dédupliquer les véhicules par immatriculation
+4. Enrichir avec les noms de conducteurs (déjà disponibles via la requête existante)
+
+---
+
+## Avantages
+
+| Aspect | Avant | Après |
+|--------|-------|-------|
+| Vue transport | Fragmentée par employé | Globale + détail par employé |
+| Cohérence UX | Différente du Chef | Identique au Chef |
+| Lisibilité | Cliquer sur chaque employé | Tableau récap visible d'un coup |
+
+---
+
+## Fichiers impactés
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/ValidationConducteur.tsx` | Ajouter useMemo pour Date + finisseursEquipe + React.memo sur le wrapper |
+| `src/pages/SignatureFinisseurs.tsx` | Ajout section TransportSummaryV2 + agrégation données |
 
----
-
-## Résultat Attendu
-
-1. Les menus Immatriculation s'ouvriront au clic
-2. Les menus Conducteur Matin/Soir s'ouvriront au clic  
-3. L'effet hover orange sera visible
-4. Aucun impact sur le fonctionnement côté chef
-
----
-
-## Risque de Régression
-
-**Très faible** :
-- Les modifications sont uniquement des optimisations de performance
-- Aucune logique métier n'est modifiée
-- Le mode chef n'est pas impacté
