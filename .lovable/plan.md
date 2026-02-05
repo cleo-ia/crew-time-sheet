@@ -1,107 +1,134 @@
 
+# Plan : Corriger le récapitulatif trajet côté Conducteur
 
-# Plan : Ajouter le Récapitulatif Trajet séparé côté Conducteur
+## Résumé du problème
 
-## Résumé
+Deux problèmes identifiés :
+1. **Section "Détail des trajets"** par employé toujours présente alors que le récap global existe maintenant
+2. **Données incomplètes** dans le récap global : véhicules manquants et noms de conducteurs non affichés
 
-Actuellement, le récapitulatif des trajets côté **Conducteur** (`SignatureFinisseurs.tsx`) est intégré dans chaque ligne de finisseur via un système "expand/collapse" par employé. Cela rend difficile la lecture globale des informations de transport.
+## Cause racine
 
-L'objectif est d'ajouter une **section dédiée** "Récapitulatif Trajet" identique à celle affichée côté **Chef** (`SignatureMacons.tsx`), qui utilise le composant `TransportSummaryV2` dans un accordéon séparé.
+La source de données côté Conducteur est différente de celle côté Chef :
+- **Chef** : utilise `useTransportByChantier` qui charge TOUS les jours transport du chantier avec les noms de conducteurs via JOIN SQL
+- **Conducteur** : utilise `transportFinisseursData` qui filtre par finisseur et ne récupère pas les noms complets
 
----
-
-## Analyse Comparative
-
-### Côté Chef (actuel)
-- Un **accordéon dédié** "Récapitulatif Trajet" s'affiche avant la liste des employés
-- Utilise le hook `useTransportByChantier` pour récupérer les données transport
-- Affiche un tableau global : Date | Code Chantier | Véhicule | Conducteur Matin | Conducteur Soir
-
-### Côté Conducteur (actuel)
-- Les données transport sont **imbriquées** dans chaque ligne d'employé
-- Chargement manuel via `useEffect` → `transportFinisseursData`
-- Pas de vue globale consolidée
+De plus, le code de consolidation ne mappe pas les IDs conducteur aux noms.
 
 ---
 
-## Modifications Prévues
+## Modifications prévues
 
 ### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-1. **Ajouter l'import** du composant `TransportSummaryV2` et du hook de données transport
-   ```typescript
-   import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
-   import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-   ```
+### Étape 1 : Supprimer la section "Détail des trajets" (lignes 616-691)
 
-2. **Agréger les données de transport** pour tous les chantiers concernés
-   - Créer une structure `days` compatible avec `TransportSummaryV2`
-   - Consolider les jours depuis `transportFinisseursData` (déjà chargé)
+Supprimer le bloc de code conditionnel `{isExpanded && (...)}` qui affiche le détail dépliable par finisseur. Cette section est désormais redondante avec le récap global.
 
-3. **Ajouter la section Récapitulatif Trajet**
-   - Positionnée **entre** le récap heures équipe et la zone de signature
-   - Format identique au côté Chef : accordéon avec icône camion
+On garde toujours la ligne cliquable/expandable (avec le chevron) si on veut afficher autre chose à l'avenir, ou on peut aussi retirer l'interactivité de toggle.
 
-### Structure du code à ajouter
+### Étape 2 : Charger les données transport depuis la bonne source
 
-```text
-┌─────────────────────────────────────────────────────┐
-│   Récapitulatif heures équipe (existant)            │
-└─────────────────────────────────────────────────────┘
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│   🆕 Accordéon "Récapitulatif Trajet"               │
-│   ┌─────────────────────────────────────────────┐   │
-│   │  TransportSummaryV2 (tableau global)        │   │
-│   │  Date | Code Chantier | Véhicule | AM | PM  │   │
-│   └─────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│   Zone de signature conducteur (existant)           │
-└─────────────────────────────────────────────────────┘
-```
+Actuellement le code charge les données transport via un useEffect personnalisé (lignes 122-215) qui ne récupère qu'un seul jour par date.
+
+Le problème : la table `fiches_transport_jours` stocke les données avec une logique **1 ligne par véhicule par période (MATIN/SOIR)**, comme vu dans la base de données.
+
+Modification nécessaire :
+- Récupérer TOUTES les lignes de `fiches_transport_jours` pour les chantiers concernés
+- Grouper par date + immatriculation 
+- Fusionner les lignes MATIN et SOIR pour obtenir les noms des deux conducteurs
+
+### Étape 3 : Corriger la consolidation des données
+
+Remplacer la fonction `consolidatedTransportData` (lignes 458-506) pour :
+
+1. Utiliser directement les données chargées depuis `fiches_transport_jours`
+2. Grouper par date puis par immatriculation
+3. Fusionner les lignes MATIN et SOIR
+4. Inclure les noms de conducteurs (déjà fournis par les JOINs SQL)
 
 ---
 
-## Détails Techniques
+## Détail technique de la correction
 
-### Transformation des données
+### Structure des données dans la BDD
 
-Les données actuelles dans `transportFinisseursData` sont structurées par finisseur :
-```typescript
-{
-  [finisseurId]: {
-    days: [{ date, immatriculation, conducteur_matin_id, conducteur_soir_id }]
-  }
-}
+La table `fiches_transport_jours` a ce format :
+
+```text
+┌──────────────┬──────────────────┬─────────┬─────────────────────┬─────────────────────┐
+│ date         │ immatriculation  │ periode │ conducteur_aller_id │ conducteur_retour_id│
+├──────────────┼──────────────────┼─────────┼─────────────────────┼─────────────────────┤
+│ 2026-02-02   │ ET-029-BX        │ MATIN   │ GRIBI               │ NULL                │
+│ 2026-02-02   │ ET-029-BX        │ SOIR    │ NULL                │ GRIBI               │
+│ 2026-02-02   │ FR-263-PN        │ MATIN   │ FERNANDES           │ NULL                │
+│ 2026-02-02   │ FR-263-PN        │ SOIR    │ NULL                │ CENTRALISTE         │
+└──────────────┴──────────────────┴─────────┴─────────────────────┴─────────────────────┘
 ```
 
-Pour `TransportSummaryV2`, il faut un format consolidé :
+### Format attendu pour `TransportSummaryV2`
+
 ```typescript
 {
   days: [
-    { date: "2025-02-03", vehicules: [{ immatriculation, conducteurMatinNom, conducteurSoirNom }] }
+    {
+      date: "2026-02-02",
+      vehicules: [
+        { 
+          immatriculation: "ET-029-BX",
+          conducteurMatinNom: "Hadj Mohamed GRIBI",
+          conducteurSoirNom: "Hadj Mohamed GRIBI"
+        },
+        { 
+          immatriculation: "FR-263-PN",
+          conducteurMatinNom: "Flavio FERNANDES",
+          conducteurSoirNom: "CENTRALISTE CENTRALISTE"
+        }
+      ]
+    }
   ]
 }
 ```
 
-### Logique de consolidation
+### Algorithme de consolidation corrigé
 
-1. Parcourir tous les finisseurs et leurs jours de transport
-2. Grouper par date
-3. Dédupliquer les véhicules par immatriculation
-4. Enrichir avec les noms de conducteurs (déjà disponibles via la requête existante)
+```typescript
+// 1. Charger TOUTES les lignes transport avec les JOINs conducteur
+// (déjà fait dans le useEffect, mais en gardant toutes les lignes)
 
----
+// 2. Grouper par date → immatriculation
+const groupedByDate = new Map<string, Map<string, VehiculeData>>();
 
-## Avantages
-
-| Aspect | Avant | Après |
-|--------|-------|-------|
-| Vue transport | Fragmentée par employé | Globale + détail par employé |
-| Cohérence UX | Différente du Chef | Identique au Chef |
-| Lisibilité | Cliquer sur chaque employé | Tableau récap visible d'un coup |
+joursTransport.forEach(jour => {
+  const date = jour.date;
+  const immat = jour.immatriculation;
+  
+  if (!groupedByDate.has(date)) {
+    groupedByDate.set(date, new Map());
+  }
+  
+  const vehiculesMap = groupedByDate.get(date)!;
+  
+  if (!vehiculesMap.has(immat)) {
+    vehiculesMap.set(immat, {
+      immatriculation: immat,
+      conducteurMatinNom: null,
+      conducteurSoirNom: null
+    });
+  }
+  
+  const vehicule = vehiculesMap.get(immat)!;
+  
+  // Fusionner selon la période
+  if (jour.periode === "MATIN" && jour.conducteur_aller) {
+    vehicule.conducteurMatinNom = 
+      `${jour.conducteur_aller.prenom} ${jour.conducteur_aller.nom}`;
+  } else if (jour.periode === "SOIR" && jour.conducteur_retour) {
+    vehicule.conducteurSoirNom = 
+      `${jour.conducteur_retour.prenom} ${jour.conducteur_retour.nom}`;
+  }
+});
+```
 
 ---
 
@@ -109,5 +136,19 @@ Pour `TransportSummaryV2`, il faut un format consolidé :
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/SignatureFinisseurs.tsx` | Ajout section TransportSummaryV2 + agrégation données |
+| `src/pages/SignatureFinisseurs.tsx` | Supprimer section "Détail des trajets" + corriger consolidation transport |
 
+---
+
+## Résultat attendu
+
+Après correction :
+
+| Date | Code Chantier | Véhicule | Conducteur Matin | Conducteur Soir |
+|------|--------------|----------|------------------|-----------------|
+| Lun. 02/02 | - | ET-029-BX | Hadj Mohamed GRIBI | Hadj Mohamed GRIBI |
+| Lun. 02/02 | - | FR-263-PN | Flavio FERNANDES | CENTRALISTE |
+| Mar. 03/02 | - | DL-898-FB | ... | ... |
+| ... | ... | ... | ... | ... |
+
+L'affichage sera identique à la vue Chef avec tous les véhicules et conducteurs visibles.
