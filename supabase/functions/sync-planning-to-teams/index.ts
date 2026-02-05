@@ -811,8 +811,48 @@ async function copyFichesFromPreviousWeek(
     .eq('semaine', currentWeek)
     .maybeSingle()
 
+  // Si fiche existe avec heures, on ne copie pas les heures
+  // MAIS on crée quand même les affectations_jours_chef pour que l'équipe soit visible
   if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-    return { copied: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
+    // Créer les affectations malgré tout
+    if (chantier?.chef_id) {
+      const mondayS = parseISOWeek(currentWeek)
+      for (let i = 0; i < 5; i++) {
+        const d = new Date(mondayS)
+        d.setDate(mondayS.getDate() + i)
+        const jour = d.toISOString().split('T')[0]
+        await supabase
+          .from('affectations_jours_chef')
+          .upsert({
+            macon_id: employeId,
+            chef_id: chantier.chef_id,
+            chantier_id: chantierId,
+            jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'macon_id,jour' })
+      }
+      console.log(`[sync] Affectations créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
+    } else if (chantier?.conducteur_id) {
+      const mondayS = parseISOWeek(currentWeek)
+      for (let i = 0; i < 5; i++) {
+        const d = new Date(mondayS)
+        d.setDate(mondayS.getDate() + i)
+        const jour = d.toISOString().split('T')[0]
+        await supabase
+          .from('affectations_finisseurs_jours')
+          .upsert({
+            finisseur_id: employeId,
+            conducteur_id: chantier.conducteur_id,
+            chantier_id: chantierId,
+            date: jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'finisseur_id,date' })
+      }
+      console.log(`[sync] Affectations finisseurs créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
+    }
+    return { copied: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
   }
 
   // Récupérer la fiche S-1
@@ -972,8 +1012,40 @@ async function createNewAffectation(
     .eq('semaine', currentWeek)
     .maybeSingle()
 
+  // Si fiche existe avec heures, on ne crée pas de nouvelles heures
+  // MAIS on crée quand même les affectations pour que l'équipe soit visible
   if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-    return { created: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
+    // Créer les affectations sur les jours planifiés malgré tout
+    if (chantier?.chef_id) {
+      for (const jour of joursPlanning) {
+        await supabase
+          .from('affectations_jours_chef')
+          .upsert({
+            macon_id: employeId,
+            chef_id: chantier.chef_id,
+            chantier_id: chantierId,
+            jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'macon_id,jour' })
+      }
+      console.log(`[sync] Affectations créées pour ${employeId} sur ${joursPlanning.length} jours (fiche protégée ${existingFiche.total_heures}h)`)
+    } else if (chantier?.conducteur_id) {
+      for (const jour of joursPlanning) {
+        await supabase
+          .from('affectations_finisseurs_jours')
+          .upsert({
+            finisseur_id: employeId,
+            conducteur_id: chantier.conducteur_id,
+            chantier_id: chantierId,
+            date: jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'finisseur_id,date' })
+      }
+      console.log(`[sync] Affectations finisseurs créées pour ${employeId} sur ${joursPlanning.length} jours (fiche protégée ${existingFiche.total_heures}h)`)
+    }
+    return { created: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
   }
 
   // Calculer les heures par jour spécifiques (L-J: 8h, V: 7h)
