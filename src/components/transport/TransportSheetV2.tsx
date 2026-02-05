@@ -18,6 +18,12 @@ interface FinisseurEquipe {
   id: string;
   nom: string;
   prenom: string;
+  ficheJours?: Array<{
+    date: string;
+    heures?: number;
+    trajet_perso?: boolean;
+    code_trajet?: string | null;
+  }>;
 }
 
 interface TransportSheetV2Props {
