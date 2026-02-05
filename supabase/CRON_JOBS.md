@@ -41,10 +41,14 @@ Ce document décrit la configuration des tâches planifiées (cron jobs) pour le
 - **Fréquence** : Lundi à 5h Paris
 - **Cron** : `0 4 * * 1` (4h UTC = 5h Paris heure d'hiver)
 - **Edge Function** : `sync-planning-to-teams`
-- **Description** : Synchronise automatiquement le planning de la semaine vers les équipes (affectations_jours_chef / affectations_finisseurs_jours). Compare avec S-1 : si affectation identique, copie les heures ; sinon crée avec heures par défaut (39h). Protège les fiches avec heures déjà saisies.
+- **Description** : Synchronise automatiquement le planning de la semaine vers les équipes (affectations_jours_chef / affectations_finisseurs_jours). Compare avec S-1 : si affectation identique, copie les heures ; sinon crée avec heures par défaut (39h). Protège les fiches avec heures déjà saisies. Le paramètre `force: true` permet d'exécuter la sync quel que soit le changement d'heure (été/hiver).
 
-**Configuration SQL à exécuter dans le SQL Editor Supabase :**
+**Configuration SQL à exécuter dans le SQL Editor Supabase (avec force: true pour ignorer le check horaire) :**
 ```sql
+-- D'abord supprimer l'ancien CRON s'il existe
+SELECT cron.unschedule('sync-planning-to-teams-weekly');
+
+-- Puis recréer avec force: true
 SELECT cron.schedule(
   'sync-planning-to-teams-weekly',
   '0 4 * * 1',
@@ -52,7 +56,7 @@ SELECT cron.schedule(
   SELECT net.http_post(
     url:='https://rxkhtqezcyaqvjlbzzpu.supabase.co/functions/v1/sync-planning-to-teams',
     headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4a2h0cWV6Y3lhcXZqbGJ6enB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzY0MzYsImV4cCI6MjA3NTkxMjQzNn0.FKTd_iSQHWaiQDIEuX9fD-tt7cdzyhAeWmIjC6v8v-M"}'::jsonb,
-    body:='{"execution_mode": "cron"}'::jsonb
+      body:='{"execution_mode": "cron", "force": true}'::jsonb
   ) as request_id;
   $$
 );
