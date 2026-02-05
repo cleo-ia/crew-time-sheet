@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface FicheJour {
   date: string;
+  heures?: number;
   HNORM: number;
   HI: number;
   T: number;
@@ -129,7 +130,7 @@ export const useFinisseursByConducteur = (
           // Récupérer les jours
           const { data: jours } = await supabase
             .from("fiches_jours")
-            .select("date, HNORM, HI, T, PA, trajet_perso, code_trajet, code_chantier_du_jour, ville_du_jour, commentaire, repas_type")
+          .select("date, heures, HNORM, HI, T, PA, trajet_perso, code_trajet, code_chantier_du_jour, ville_du_jour, commentaire, repas_type")
             .eq("fiche_id", fiche.id)
             .order("date");
 
