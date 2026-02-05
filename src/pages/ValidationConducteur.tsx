@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { useInitialWeek } from "@/hooks/useInitialWeek";
@@ -46,7 +46,7 @@ import { TransportMateriauxButton } from "@/components/conducteur/TransportMater
 import { useFicheId } from "@/hooks/useFicheId";
 
 // Wrapper pour appeler useFicheId dans une boucle (règle des hooks React)
-const TransportSheetWithFiche = ({ 
+const TransportSheetWithFicheInner = ({ 
   selectedWeek, 
   selectedWeekString, 
   chantierId, 
@@ -95,6 +95,20 @@ const TransportSheetWithFiche = ({
     />
   );
 };
+
+// Wrapper mémoïsé pour éviter les re-renders qui ferment les Popovers
+const TransportSheetWithFiche = memo(TransportSheetWithFicheInner, (prevProps, nextProps) => {
+  // Comparer uniquement les valeurs importantes (pas les références d'objets)
+  return (
+    prevProps.selectedWeekString === nextProps.selectedWeekString &&
+    prevProps.chantierId === nextProps.chantierId &&
+    prevProps.conducteurId === nextProps.conducteurId &&
+    prevProps.isReadOnly === nextProps.isReadOnly &&
+    // Comparer les finisseurs par leurs IDs
+    prevProps.finisseursEquipe.length === nextProps.finisseursEquipe.length &&
+    prevProps.finisseursEquipe.every((f, i) => f.id === nextProps.finisseursEquipe[i]?.id)
+  );
+});
 
 
 const ValidationConducteur = () => {
@@ -264,6 +278,25 @@ const ValidationConducteur = () => {
     
     return grouped;
   }, [finisseurs]);
+
+  // ★ Mémoïser la Date de la semaine sélectionnée pour éviter les re-renders
+  const selectedWeekDate = useMemo(() => parseISOWeek(selectedWeek), [selectedWeek]);
+
+  // ★ Mémoïser les finisseursEquipe formatés par chantier pour TransportSheetWithFiche
+  const finisseursEquipeByChantier = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; nom: string; prenom: string; ficheJours: Array<{ date: string; heures?: number; trajet_perso?: boolean; code_trajet?: string | null }> }>>();
+    
+    finisseursByChantier.forEach((chantierFinisseurs, chantierId) => {
+      map.set(chantierId, chantierFinisseurs.map(f => ({
+        id: f.id,
+        nom: f.nom,
+        prenom: f.prenom,
+        ficheJours: f.ficheJours || []
+      })));
+    });
+    
+    return map;
+  }, [finisseursByChantier]);
 
   // Calculer les IDs gérés par ce conducteur (pour les notifications de congés)
   const allManagedIds = useMemo(() => {
@@ -813,17 +846,12 @@ const ValidationConducteur = () => {
                               
                               {/* Fiche de trajet équipe (modèle chef unifié) */}
                               <TransportSheetWithFiche
-                                selectedWeek={parseISOWeek(selectedWeek)}
+                                selectedWeek={selectedWeekDate}
                                 selectedWeekString={selectedWeek}
                                 chantierId={chantierId !== "sans-chantier" ? chantierId : null}
                                 conducteurId={effectiveConducteurId!}
                                 isReadOnly={transmissionStatus?.isTransmitted}
-                                finisseursEquipe={chantierFinisseurs.map(f => ({
-                                  id: f.id,
-                                  nom: f.nom,
-                                  prenom: f.prenom,
-                                  ficheJours: f.ficheJours || []
-                                }))}
+                                finisseursEquipe={finisseursEquipeByChantier.get(chantierId) || []}
                               />
                               
                               {/* ✅ Bouton Enregistrer par chantier */}
