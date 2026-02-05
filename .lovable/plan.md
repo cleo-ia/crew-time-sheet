@@ -1,127 +1,150 @@
 
-# Plan de correction : Bug `sync-planning-to-teams`
+# Plan de Correction : Fiche de Trajet Conducteur SDER
 
-## Problème identifié
+## Diagnostic confirmé
 
-Les fonctions `copyFichesFromPreviousWeek` et `createNewAffectation` **sortent prématurément** lorsqu'une fiche existe déjà avec des heures (`total_heures > 0`).
-
-```
-AVANT (bug) :
-1. Vérifie si fiche existe avec heures
-2. Si oui → RETURN (sort de la fonction) ❌
-3. Crée/copie fiches_jours (jamais atteint)
-4. Crée affectations_jours_chef (jamais atteint) ❌
-```
-
-La création des `affectations_jours_chef` se trouve **après** ce `return` prématuré, donc elle n'est jamais exécutée pour les employés ayant déjà des heures.
-
-## Solution
-
-Restructurer les deux fonctions pour **toujours créer les `affectations_jours_chef`**, même si la fiche existe déjà avec des heures. La protection des heures reste active (on ne modifie pas les fiches_jours existantes), mais les affectations de présence doivent être créées.
+Après analyse du code, j'ai identifié **deux problèmes distincts** qui se combinent :
 
 ---
 
-## Modifications techniques
+## Problème 1 : Les menus ne s'ouvrent pas (UI bloquée)
 
-### Fichier : `supabase/functions/sync-planning-to-teams/index.ts`
+**Fichier** : `src/pages/ValidationConducteur.tsx` (lignes 64-68)
 
-### 1. Fonction `copyFichesFromPreviousWeek` (ligne ~794)
+**Cause** : Le wrapper `TransportSheetWithFiche` appelle `useFicheId()` à l'intérieur. Pendant le chargement :
+1. `ficheId` = `undefined`
+2. Puis `ficheId` = la vraie valeur
 
-**Avant** (lignes 814-816) :
+Ce changement provoque un **re-render complet** de `TransportSheetV2`, ce qui ferme instantanément tout Popover qui vient de s'ouvrir.
+
+**Pourquoi ça fonctionne côté Chef** : Dans `Index.tsx`, `useFicheId()` est appelé au niveau du composant parent (ligne 234), donc `ficheId` est déjà stable quand `TransportSheetV2` se monte.
+
+**Solution** : Ajouter un guard de chargement dans `TransportSheetWithFiche`
+
 ```typescript
-if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-  return { copied: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
-}
-```
+// AVANT (ligne 49-82)
+const TransportSheetWithFiche = ({ ... }) => {
+  const { data: ficheId } = useFicheId(...);
+  return <TransportSheetV2 ficheId={ficheId} ... />;
+};
 
-**Après** :
-```typescript
-// Si fiche existe avec heures, on ne copie pas les heures
-// MAIS on crée quand même les affectations_jours_chef
-if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-  // Créer les affectations malgré tout
-  if (chantier?.chef_id) {
-    const mondayS = parseISOWeek(currentWeek)
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(mondayS)
-      d.setDate(mondayS.getDate() + i)
-      const jour = d.toISOString().split('T')[0]
-      await supabase
-        .from('affectations_jours_chef')
-        .upsert({
-          macon_id: employeId,
-          chef_id: chantier.chef_id,
-          chantier_id: chantierId,
-          jour,
-          semaine: currentWeek,
-          entreprise_id: entrepriseId
-        }, { onConflict: 'macon_id,jour' })
-    }
+// APRÈS
+const TransportSheetWithFiche = ({ ... }) => {
+  const { data: ficheId, isLoading } = useFicheId(...);
+  
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">
+            Chargement de la fiche de trajet...
+          </span>
+        </div>
+      </Card>
+    );
   }
-  return { copied: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
-}
-```
-
-### 2. Fonction `createNewAffectation` (ligne ~955)
-
-**Avant** (lignes 975-977) :
-```typescript
-if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-  return { created: false, reason: `Fiche existante avec ${existingFiche.total_heures}h` }
-}
-```
-
-**Après** :
-```typescript
-// Si fiche existe avec heures, on ne crée pas de nouvelles heures
-// MAIS on crée quand même les affectations_jours_chef pour les jours planifiés
-if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-  // Créer les affectations sur les jours planifiés
-  if (chantier?.chef_id) {
-    for (const jour of joursPlanning) {
-      await supabase
-        .from('affectations_jours_chef')
-        .upsert({
-          macon_id: employeId,
-          chef_id: chantier.chef_id,
-          chantier_id: chantierId,
-          jour,
-          semaine: currentWeek,
-          entreprise_id: entrepriseId
-        }, { onConflict: 'macon_id,jour' })
-    }
-  } else if (chantier?.conducteur_id) {
-    for (const jour of joursPlanning) {
-      await supabase
-        .from('affectations_finisseurs_jours')
-        .upsert({
-          finisseur_id: employeId,
-          conducteur_id: chantier.conducteur_id,
-          chantier_id: chantierId,
-          date: jour,
-          semaine: currentWeek,
-          entreprise_id: entrepriseId
-        }, { onConflict: 'finisseur_id,date' })
-    }
-  }
-  return { created: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
-}
+  
+  return <TransportSheetV2 ficheId={ficheId} ... />;
+};
 ```
 
 ---
 
-## Résumé du comportement après correction
+## Problème 2 : Liste des conducteurs vide (données manquantes)
 
-| Scénario | Fiche/heures | Affectations |
-|----------|--------------|--------------|
-| Nouvelle affectation | ✅ Créées | ✅ Créées |
-| Fiche existante SANS heures | ✅ Mises à jour | ✅ Créées |
-| Fiche existante AVEC heures | ⛔ Protégées | ✅ Créées ✔️ |
+**Fichier** : `src/components/transport/TransportDayAccordion.tsx` (ligne 101)
+
+**Cause** : Les données `ficheJours` ne sont pas passées aux finisseurs
+
+```typescript
+// PROBLÈME (ligne 95-103)
+const finisseursAsMacons = useMemo(() => {
+  if (mode !== "conducteur") return [];
+  return finisseursEquipe.map(f => ({
+    id: f.id,
+    nom: f.nom,
+    prenom: f.prenom,
+    ficheJours: [] as any[],  // ← VIDE - le ConducteurCombobox ne peut pas vérifier les statuts
+  }));
+}, [mode, finisseursEquipe]);
+```
+
+**Solution en 2 parties** :
+
+### Partie A : Enrichir les données dans ValidationConducteur.tsx
+
+```typescript
+// AVANT (ligne 807-811)
+finisseursEquipe={chantierFinisseurs.map(f => ({
+  id: f.id,
+  nom: f.nom,
+  prenom: f.prenom
+}))}
+
+// APRÈS
+finisseursEquipe={chantierFinisseurs.map(f => ({
+  id: f.id,
+  nom: f.nom,
+  prenom: f.prenom,
+  ficheJours: f.ficheJours || []
+}))}
+```
+
+### Partie B : Mettre à jour l'interface et utiliser les données
+
+**Fichiers** : `TransportSheetV2.tsx`, `TransportDayAccordion.tsx`, `ValidationConducteur.tsx`
+
+```typescript
+// Nouvelle interface FinisseurEquipe
+interface FinisseurEquipe {
+  id: string;
+  nom: string;
+  prenom: string;
+  ficheJours?: Array<{
+    date: string;
+    heures?: number;
+    trajet_perso?: boolean;
+    code_trajet?: string | null;
+  }>;
+}
+```
+
+### Partie C : Utiliser les vraies données dans TransportDayAccordion
+
+```typescript
+// AVANT (ligne 101)
+ficheJours: [] as any[],
+
+// APRÈS
+ficheJours: f.ficheJours || [],
+```
 
 ---
 
-## Test post-déploiement
+## Fichiers à modifier
 
-1. Relancer la synchronisation manuelle pour Limoge Revillon S06
-2. Vérifier que Jérôme DEPART voit son équipe de 12 personnes
-3. Confirmer que les heures déjà saisies n'ont pas été modifiées
+| Fichier | Modification |
+|---------|-------------|
+| `src/pages/ValidationConducteur.tsx` | Guard de chargement + enrichir `finisseursEquipe` |
+| `src/components/transport/TransportSheetV2.tsx` | Mettre à jour interface `FinisseurEquipe` |
+| `src/components/transport/TransportDayAccordion.tsx` | Mettre à jour interface + utiliser `f.ficheJours` |
+
+---
+
+## Risque de régression
+
+**Très faible** car :
+- Le mode Chef n'est pas impacté (n'utilise pas `TransportSheetWithFiche`)
+- Les modifications sont additives (ajout de données, pas de suppression)
+- Le guard de chargement n'affecte que l'affichage initial
+
+---
+
+## Résultat attendu
+
+Après correction :
+1. Les menus Immatriculation s'ouvriront au clic
+2. Les menus Conducteur Matin/Soir s'ouvriront au clic
+3. Les 14 employés de l'équipe seront visibles dans les listes
+4. Les règles de validation (trajet perso, absent, etc.) fonctionneront
