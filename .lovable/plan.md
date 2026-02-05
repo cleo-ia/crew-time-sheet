@@ -1,150 +1,121 @@
 
-# Plan de Correction : Fiche de Trajet Conducteur SDER
+# Plan de Correction : Fiche de Trajet Conducteur - Menus Non Interactifs
 
-## Diagnostic confirmé
+## Problème Identifié
 
-Après analyse du code, j'ai identifié **deux problèmes distincts** qui se combinent :
-
----
-
-## Problème 1 : Les menus ne s'ouvrent pas (UI bloquée)
-
-**Fichier** : `src/pages/ValidationConducteur.tsx` (lignes 64-68)
-
-**Cause** : Le wrapper `TransportSheetWithFiche` appelle `useFicheId()` à l'intérieur. Pendant le chargement :
-1. `ficheId` = `undefined`
-2. Puis `ficheId` = la vraie valeur
-
-Ce changement provoque un **re-render complet** de `TransportSheetV2`, ce qui ferme instantanément tout Popover qui vient de s'ouvrir.
-
-**Pourquoi ça fonctionne côté Chef** : Dans `Index.tsx`, `useFicheId()` est appelé au niveau du composant parent (ligne 234), donc `ficheId` est déjà stable quand `TransportSheetV2` se monte.
-
-**Solution** : Ajouter un guard de chargement dans `TransportSheetWithFiche`
-
-```typescript
-// AVANT (ligne 49-82)
-const TransportSheetWithFiche = ({ ... }) => {
-  const { data: ficheId } = useFicheId(...);
-  return <TransportSheetV2 ficheId={ficheId} ... />;
-};
-
-// APRÈS
-const TransportSheetWithFiche = ({ ... }) => {
-  const { data: ficheId, isLoading } = useFicheId(...);
-  
-  if (isLoading) {
-    return (
-      <Card className="p-6">
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">
-            Chargement de la fiche de trajet...
-          </span>
-        </div>
-      </Card>
-    );
-  }
-  
-  return <TransportSheetV2 ficheId={ficheId} ... />;
-};
-```
+Après analyse du code, le problème est lié à **l'instabilité des références d'objets passées en props** qui provoque des re-renders excessifs et empêche les Popovers de s'ouvrir.
 
 ---
 
-## Problème 2 : Liste des conducteurs vide (données manquantes)
+## Diagnostic Technique
 
-**Fichier** : `src/components/transport/TransportDayAccordion.tsx` (ligne 101)
+### Cause Racine : Re-renders en Cascade
 
-**Cause** : Les données `ficheJours` ne sont pas passées aux finisseurs
+Dans `ValidationConducteur.tsx`, la ligne 815-827 :
 
 ```typescript
-// PROBLÈME (ligne 95-103)
-const finisseursAsMacons = useMemo(() => {
-  if (mode !== "conducteur") return [];
-  return finisseursEquipe.map(f => ({
+<TransportSheetWithFiche
+  selectedWeek={parseISOWeek(selectedWeek)}  // ← PROBLÈME 1: Nouvel objet Date à chaque render
+  finisseursEquipe={chantierFinisseurs.map(f => ({  // ← PROBLÈME 2: Nouveau tableau à chaque render
     id: f.id,
     nom: f.nom,
     prenom: f.prenom,
-    ficheJours: [] as any[],  // ← VIDE - le ConducteurCombobox ne peut pas vérifier les statuts
-  }));
-}, [mode, finisseursEquipe]);
+    ficheJours: f.ficheJours || []
+  }))}
+/>
 ```
 
-**Solution en 2 parties** :
+**Problème 1** : `parseISOWeek(selectedWeek)` retourne un **nouvel objet Date** à chaque render. React considère que la prop a changé → re-render complet du composant.
 
-### Partie A : Enrichir les données dans ValidationConducteur.tsx
+**Problème 2** : `.map(f => ({...}))` crée un **nouveau tableau** à chaque render → même effet.
+
+### Pourquoi ça fonctionne côté Chef ?
+
+Côté chef (`Index.tsx`), le `TransportSheetV2` est placé **dans un Collapsible fermé par défaut** et le `ficheId` est récupéré au niveau du parent. Le composant ne se re-render pas à chaque changement de `timeEntries`.
+
+Côté conducteur, le `TransportSheetWithFiche` est dans une **boucle `.map()`** qui s'exécute à chaque render du parent. Chaque appel à `setTimeEntries` (depuis `TimeEntryTable`) déclenche :
+1. Re-render de `ValidationConducteur`
+2. Re-exécution de la boucle `.map()`
+3. Nouvelles références d'objets pour toutes les props
+4. React démonte et remonte les composants enfants
+5. Les Popovers perdent leur état `open`
+
+---
+
+## Solution Proposée
+
+### Modification 1 : Mémoïser la Date
+
+Utiliser `useMemo` pour stabiliser l'objet Date :
 
 ```typescript
-// AVANT (ligne 807-811)
-finisseursEquipe={chantierFinisseurs.map(f => ({
-  id: f.id,
-  nom: f.nom,
-  prenom: f.prenom
-}))}
-
-// APRÈS
-finisseursEquipe={chantierFinisseurs.map(f => ({
-  id: f.id,
-  nom: f.nom,
-  prenom: f.prenom,
-  ficheJours: f.ficheJours || []
-}))}
+// Dans ValidationConducteur.tsx
+const selectedWeekDate = useMemo(() => parseISOWeek(selectedWeek), [selectedWeek]);
 ```
 
-### Partie B : Mettre à jour l'interface et utiliser les données
+Puis passer `selectedWeekDate` au lieu de `parseISOWeek(selectedWeek)`.
 
-**Fichiers** : `TransportSheetV2.tsx`, `TransportDayAccordion.tsx`, `ValidationConducteur.tsx`
+### Modification 2 : Mémoïser les finisseursEquipe par chantier
+
+Créer une Map mémoïsée pour les finisseurs formatés :
 
 ```typescript
-// Nouvelle interface FinisseurEquipe
-interface FinisseurEquipe {
-  id: string;
-  nom: string;
-  prenom: string;
-  ficheJours?: Array<{
-    date: string;
-    heures?: number;
-    trajet_perso?: boolean;
-    code_trajet?: string | null;
-  }>;
-}
+const finisseursEquipeByChantier = useMemo(() => {
+  const map = new Map<string, Array<{ id: string; nom: string; prenom: string; ficheJours: any[] }>>();
+  
+  finisseursByChantier.forEach((chantierFinisseurs, chantierId) => {
+    map.set(chantierId, chantierFinisseurs.map(f => ({
+      id: f.id,
+      nom: f.nom,
+      prenom: f.prenom,
+      ficheJours: f.ficheJours || []
+    })));
+  });
+  
+  return map;
+}, [finisseursByChantier]);
 ```
 
-### Partie C : Utiliser les vraies données dans TransportDayAccordion
+Puis utiliser `finisseursEquipeByChantier.get(chantierId)` dans le render.
+
+### Modification 3 : Mémoïser le wrapper TransportSheetWithFiche
+
+Transformer le composant en `React.memo` avec une comparaison personnalisée :
 
 ```typescript
-// AVANT (ligne 101)
-ficheJours: [] as any[],
-
-// APRÈS
-ficheJours: f.ficheJours || [],
+const TransportSheetWithFiche = React.memo(({ ... }) => {
+  // ... code existant
+}, (prevProps, nextProps) => {
+  // Comparer uniquement les valeurs importantes
+  return prevProps.selectedWeekString === nextProps.selectedWeekString &&
+         prevProps.chantierId === nextProps.chantierId &&
+         prevProps.conducteurId === nextProps.conducteurId &&
+         prevProps.isReadOnly === nextProps.isReadOnly;
+});
 ```
 
 ---
 
-## Fichiers à modifier
+## Fichiers à Modifier
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/ValidationConducteur.tsx` | Guard de chargement + enrichir `finisseursEquipe` |
-| `src/components/transport/TransportSheetV2.tsx` | Mettre à jour interface `FinisseurEquipe` |
-| `src/components/transport/TransportDayAccordion.tsx` | Mettre à jour interface + utiliser `f.ficheJours` |
+| `src/pages/ValidationConducteur.tsx` | Ajouter useMemo pour Date + finisseursEquipe + React.memo sur le wrapper |
 
 ---
 
-## Risque de régression
+## Résultat Attendu
 
-**Très faible** car :
-- Le mode Chef n'est pas impacté (n'utilise pas `TransportSheetWithFiche`)
-- Les modifications sont additives (ajout de données, pas de suppression)
-- Le guard de chargement n'affecte que l'affichage initial
-
----
-
-## Résultat attendu
-
-Après correction :
 1. Les menus Immatriculation s'ouvriront au clic
-2. Les menus Conducteur Matin/Soir s'ouvriront au clic
-3. Les 14 employés de l'équipe seront visibles dans les listes
-4. Les règles de validation (trajet perso, absent, etc.) fonctionneront
+2. Les menus Conducteur Matin/Soir s'ouvriront au clic  
+3. L'effet hover orange sera visible
+4. Aucun impact sur le fonctionnement côté chef
+
+---
+
+## Risque de Régression
+
+**Très faible** :
+- Les modifications sont uniquement des optimisations de performance
+- Aucune logique métier n'est modifiée
+- Le mode chef n'est pas impacté
