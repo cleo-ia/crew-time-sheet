@@ -1,149 +1,141 @@
 
-# Plan corrigé : Ajouter le Code Chantier côté Conducteur
+# Plan : Empêcher la sauvegarde des véhicules incomplets
 
-## Fonctionnement à reproduire (côté Chef)
+## Analyse de régression complète
 
-Le hook `useTransportByChantier` utilise une logique à 2 niveaux :
+J'ai analysé exhaustivement tous les composants et hooks qui utilisent les fiches de trajet. Voici la garantie :
 
-```text
-Source 1 : fiches_jours.code_chantier_du_jour (par date)
-     ↓ fallback
-Source 2 : chantiers.code_chantier (code par défaut du chantier)
-```
+### Aucune régression sur :
 
-## Modifications prévues
+| Fonctionnalité | Raison |
+|----------------|--------|
+| **Affichage UI** | `TransportSheetV2` et `TransportDayAccordion` comptent déjà uniquement les véhicules complets (3 champs remplis) pour afficher "X véhicules complets" |
+| **Validation signature** | `useTransportValidation` vérifie déjà que chaque jour a au moins 1 véhicule avec `immatriculation && conducteurMatinId && conducteurSoirId` |
+| **Vues RH** | `useTransportByChantierUnified` et `useConducteurHistorique` lisent simplement toutes les entrées existantes - les données complètes seront toujours là |
+| **Validation conducteur** | `ValidationConducteur` vérifie la présence de paires MATIN+SOIR avec immat ET conducteur - notre logique génère toujours ces paires pour les véhicules complets |
+| **Copie semaine précédente** | `useCopyPreviousWeekTransport` copie les véhicules existants - seuls les complets seront en base, donc seuls les complets seront copiés |
 
-### Fichier : `src/pages/SignatureFinisseurs.tsx`
+### Ce qui change :
 
-### Étape 1 : Récupérer les codes chantier par date
+1. **Plus d'entrées fantômes** : Un véhicule partiellement rempli (ex: juste l'immatriculation) reste dans l'interface locale mais n'est PAS sauvegardé en base
+2. **Blocage cross-chantier corrigé** : `VehiculeCombobox` ne bloquera plus un véhicule qui n'a jamais été réellement assigné
 
-Après le chargement des jours transport, ajouter une requête pour obtenir les `code_chantier_du_jour` depuis `fiches_jours` :
+---
 
+## Modifications techniques
+
+### 1. `src/hooks/useAutoSaveTransportV2.ts`
+
+**Modification de `hasValidData` (lignes 19-28)**
 ```typescript
-// Récupérer les fiche_id uniques
-const ficheTransportIds = [...new Set(joursTransport.map(j => j.fiche_transport_id))];
+// AVANT : sauvegarde dès qu'un seul champ est rempli
+const hasValidData = days.some(day => 
+  day.vehicules.some(v => 
+    v.immatriculation || 
+    v.conducteurMatinId || 
+    v.conducteurSoirId ||
+    v.conducteurMatinNom ||
+    v.conducteurSoirNom
+  )
+);
 
-// Pour chaque fiche_transport, récupérer la fiche parente
-const { data: fichesTransport } = await supabase
-  .from("fiches_transport")
-  .select("id, fiche_id, chantier_id")
-  .in("id", ficheTransportIds);
-
-// Récupérer les codes chantier du jour depuis fiches_jours
-const ficheIds = [...new Set((fichesTransport || []).map(ft => ft.fiche_id).filter(Boolean))];
-
-const { data: fichesJours } = await supabase
-  .from("fiches_jours")
-  .select("fiche_id, date, code_chantier_du_jour")
-  .in("fiche_id", ficheIds);
-
-// Créer la map date → code_chantier_du_jour
-const codeChantierByDate = new Map(
-  (fichesJours || []).map(fj => [fj.date, fj.code_chantier_du_jour])
+// APRÈS : sauvegarde uniquement si véhicule complet
+const hasValidData = days.some(day => 
+  day.vehicules.some(v => 
+    v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
+  )
 );
 ```
 
-### Étape 2 : Récupérer les codes chantier par défaut (fallback)
-
+**Modification de l'insertion (lignes 113-136)**
 ```typescript
-// Fallback : codes chantier par défaut
-const chantierIds = [...new Set((fichesTransport || []).map(ft => ft.chantier_id).filter(Boolean))];
+// AVANT : insertion si conducteur OU immat
+if (vehicule.conducteurMatinId || vehicule.immatriculation) {
+  jourEntries.push({ ... MATIN ... });
+}
+if (vehicule.conducteurSoirId || vehicule.immatriculation) {
+  jourEntries.push({ ... SOIR ... });
+}
 
-const { data: chantiers } = await supabase
-  .from("chantiers")
-  .select("id, code_chantier")
-  .in("id", chantierIds);
-
-const defaultCodeByChantier = new Map(
-  (chantiers || []).map(c => [c.id, c.code_chantier])
-);
-```
-
-### Étape 3 : Enrichir les données brutes
-
-Stocker les métadonnées nécessaires avec chaque jour transport :
-
-```typescript
-// Enrichir chaque jour avec le code chantier
-const enrichedJours = joursTransport.map(jour => {
-  const ft = fichesTransport?.find(f => f.id === jour.fiche_transport_id);
-  const codeFromFiche = codeChantierByDate.get(jour.date);
-  const codeDefault = ft?.chantier_id ? defaultCodeByChantier.get(ft.chantier_id) : null;
-  
-  return {
-    ...jour,
-    codeChantier: codeFromFiche || codeDefault || "-"
-  };
-});
-```
-
-### Étape 4 : Mettre à jour la consolidation
-
-```typescript
-const consolidatedTransportData = useMemo(() => {
-  const groupedByDate = new Map<string, {
-    codeChantier: string;
-    vehiculesMap: Map<string, VehiculeData>;
-  }>();
-
-  allTransportJoursRaw.forEach((jour: any) => {
-    if (!jour.immatriculation) return;
-    
-    if (!groupedByDate.has(jour.date)) {
-      groupedByDate.set(jour.date, {
-        codeChantier: jour.codeChantier || "-",  // ← Utiliser le code enrichi
-        vehiculesMap: new Map()
-      });
-    }
-    
-    // ... reste de la logique véhicules inchangée
+// APRÈS : insertion uniquement si véhicule complet (3 champs)
+if (vehicule.immatriculation && vehicule.conducteurMatinId && vehicule.conducteurSoirId) {
+  jourEntries.push({
+    fiche_transport_id: transportId,
+    date: day.date,
+    periode: "MATIN",
+    conducteur_aller_id: vehicule.conducteurMatinId,
+    conducteur_retour_id: null,
+    immatriculation: vehicule.immatriculation,
   });
-
-  // Générer le format pour TransportSummaryV2
-  const days = Array.from(groupedByDate.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, data]) => ({
-      date,
-      codeChantier: data.codeChantier,  // ← Inclure le code
-      vehicules: Array.from(data.vehiculesMap.values())
-    }));
-
-  return { days };
-}, [allTransportJoursRaw]);
+  jourEntries.push({
+    fiche_transport_id: transportId,
+    date: day.date,
+    periode: "SOIR",
+    conducteur_aller_id: null,
+    conducteur_retour_id: vehicule.conducteurSoirId,
+    immatriculation: vehicule.immatriculation,
+  });
+}
 ```
 
-### Fichier : `src/components/transport/TransportSummaryV2.tsx`
+### 2. `src/hooks/useSaveTransportV2.ts`
 
-Adapter le parsing du format V2 pour utiliser le `codeChantier` transmis :
-
+**Même modification pour le save manuel (lignes 95-120)**
 ```typescript
-if (isV2Format) {
-  transportData.days.forEach((day: any) => {
-    groupedByDate.set(day.date, {
-      codeChantier: day.codeChantier || "-",  // ← Lire depuis les données
-      vehicules: day.vehicules || []
-    });
-  });
+// APRÈS : insertion uniquement si véhicule complet
+if (vehicule.immatriculation && vehicule.conducteurMatinId && vehicule.conducteurSoirId) {
+  jourEntries.push({ ... MATIN ... });
+  jourEntries.push({ ... SOIR ... });
 }
 ```
 
 ---
 
-## Fichiers impactés
+## Comportement attendu après correction
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/SignatureFinisseurs.tsx` | Ajouter requêtes fiches_jours + chantiers + enrichir consolidation |
-| `src/components/transport/TransportSummaryV2.tsx` | Lire `codeChantier` du format V2 |
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ÉTAT LOCAL (UI)                                   │
+│                                                                     │
+│  Lundi:                                                             │
+│    Véhicule 1: [AD-630-SY] [Philippe] [Philippe]  ← Complet ✅      │
+│    Véhicule 2: [AB-123-CD] [        ] [        ]  ← Incomplet ⚠️    │
+│                                                                     │
+│  Mardi:                                                             │
+│    Véhicule 1: [        ] [        ] [        ]  ← Vide ⚠️          │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ Auto-save
+┌─────────────────────────────────────────────────────────────────────┐
+│                    BASE DE DONNÉES                                   │
+│                                                                     │
+│  Lundi MATIN:   AD-630-SY | conducteur_aller = Philippe             │
+│  Lundi SOIR:    AD-630-SY | conducteur_retour = Philippe            │
+│                                                                     │
+│  (rien pour Véhicule 2 de Lundi - pas sauvegardé car incomplet)     │
+│  (rien pour Mardi - pas sauvegardé car vide)                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Résultat attendu
+## Nettoyage des données fantômes existantes
 
-| Date | Code Chantier | Véhicule | Conducteur Matin | Conducteur Soir |
-|------|--------------|----------|------------------|-----------------|
-| Lun. 02/02 | **SEAUVE** | ET-029-BX | Hadj Mohamed GRIBI | Hadj Mohamed GRIBI |
-| Lun. 02/02 | **SEAUVE** | FR-263-PN | Flavio FERNANDES | CENTRALISTE |
-| Mar. 03/02 | **SEAUVE** | DL-898-FB | Flavio FERNANDES | Dariusz ROMANOWSKI |
+Après implémentation, je proposerai une requête SQL pour supprimer les entrées existantes qui ont une immatriculation mais aucun conducteur.
 
-Identique à l'affichage côté Chef avec la même logique de récupération des codes chantier.
+---
+
+## Résumé des garanties
+
+| Aspect | Garanti |
+|--------|---------|
+| Affichage des véhicules existants | ✅ Inchangé |
+| Comptage "X véhicules complets" | ✅ Inchangé (même logique) |
+| Validation avant signature | ✅ Inchangé (même critère) |
+| Blocage double-booking même jour | ✅ Inchangé |
+| Blocage cross-chantier | ✅ Corrigé (plus de faux positifs) |
+| Copie S-1 | ✅ Seuls les véhicules complets sont copiés |
+| Vues RH | ✅ Lecture seule, données existantes intactes |
+| Historique conducteur | ✅ Lecture seule, données existantes intactes |
+| Multi-véhicules par jour | ✅ Inchangé |
+| Duplication Lundi → Semaine | ✅ Inchangé |
