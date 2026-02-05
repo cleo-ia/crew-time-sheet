@@ -138,6 +138,47 @@ const SignatureFinisseurs = () => {
         if (ftError) throw ftError;
         if (!fichesTransport?.length) return;
         
+      // 2b. Récupérer fiche_id et chantier_id pour les codes chantier
+      const { data: fichesTransportMeta } = await supabase
+        .from("fiches_transport")
+        .select("id, fiche_id, chantier_id")
+        .in("id", fichesTransport.map(ft => ft.id));
+      
+      // 2c. Récupérer les codes chantier du jour depuis fiches_jours (source prioritaire)
+      const ficheIds = [...new Set((fichesTransportMeta || []).map(ft => ft.fiche_id).filter(Boolean))];
+      let codeChantierByDate = new Map<string, string>();
+      
+      if (ficheIds.length > 0) {
+        const { data: fichesJours } = await supabase
+          .from("fiches_jours")
+          .select("fiche_id, date, code_chantier_du_jour")
+          .in("fiche_id", ficheIds);
+        
+        // Map date → code_chantier_du_jour
+        (fichesJours || []).forEach(fj => {
+          if (fj.code_chantier_du_jour) {
+            codeChantierByDate.set(fj.date, fj.code_chantier_du_jour);
+          }
+        });
+      }
+      
+      // 2d. Fallback : codes chantier par défaut depuis chantiers
+      const chantierIdsForCodes = [...new Set((fichesTransportMeta || []).map(ft => ft.chantier_id).filter(Boolean))];
+      let defaultCodeByChantier = new Map<string, string>();
+      
+      if (chantierIdsForCodes.length > 0) {
+        const { data: chantiersData } = await supabase
+          .from("chantiers")
+          .select("id, code_chantier")
+          .in("id", chantierIdsForCodes);
+        
+        (chantiersData || []).map(c => {
+          if (c.code_chantier) {
+            defaultCodeByChantier.set(c.id, c.code_chantier);
+          }
+        });
+      }
+      
         // 3. Récupérer tous les jours de transport pour ces fiches
         const ficheTransportIds = fichesTransport.map(ft => ft.id);
         const { data: joursTransport, error: jtError } = await supabase
@@ -153,8 +194,22 @@ const SignatureFinisseurs = () => {
         
         if (jtError) throw jtError;
         
-        // Stocker les données brutes pour le récap global avec JOINs
-        setAllTransportJoursRaw(joursTransport || []);
+      // Enrichir chaque jour avec le code chantier (2 niveaux de fallback)
+      const enrichedJoursRaw = (joursTransport || []).map(jour => {
+        const ft = fichesTransportMeta?.find(f => f.id === jour.fiche_transport_id);
+        // Source 1 : code_chantier_du_jour depuis fiches_jours
+        const codeFromFiche = codeChantierByDate.get(jour.date);
+        // Source 2 : code_chantier par défaut du chantier
+        const codeDefault = ft?.chantier_id ? defaultCodeByChantier.get(ft.chantier_id) : null;
+        
+        return {
+          ...jour,
+          codeChantier: codeFromFiche || codeDefault || "-"
+        };
+      });
+      
+      // Stocker les données brutes enrichies pour le récap global
+      setAllTransportJoursRaw(enrichedJoursRaw);
         
         // 4. Créer une map chantier_id → jours de transport
         const transportByChantier = new Map<string, any[]>();
@@ -452,11 +507,14 @@ const SignatureFinisseurs = () => {
   // Utilise les données brutes avec JOINs SQL pour les noms de conducteurs
   const consolidatedTransportData = (() => {
     // Grouper par date puis par immatriculation
-    const groupedByDate = new Map<string, Map<string, { 
-      immatriculation: string; 
-      conducteurMatinNom: string | null; 
-      conducteurSoirNom: string | null 
-    }>>();
+    const groupedByDate = new Map<string, {
+      codeChantier: string;
+      vehiculesMap: Map<string, { 
+        immatriculation: string; 
+        conducteurMatinNom: string | null; 
+        conducteurSoirNom: string | null 
+      }>;
+    }>();
     
     allTransportJoursRaw.forEach((jour: any) => {
       const date = jour.date;
@@ -466,20 +524,23 @@ const SignatureFinisseurs = () => {
       if (!immat) return;
       
       if (!groupedByDate.has(date)) {
-        groupedByDate.set(date, new Map());
+        groupedByDate.set(date, {
+          codeChantier: jour.codeChantier || "-",
+          vehiculesMap: new Map()
+        });
       }
       
-      const vehiculesMap = groupedByDate.get(date)!;
+      const dayData = groupedByDate.get(date)!;
       
-      if (!vehiculesMap.has(immat)) {
-        vehiculesMap.set(immat, {
+      if (!dayData.vehiculesMap.has(immat)) {
+        dayData.vehiculesMap.set(immat, {
           immatriculation: immat,
           conducteurMatinNom: null,
           conducteurSoirNom: null
         });
       }
       
-      const vehicule = vehiculesMap.get(immat)!;
+      const vehicule = dayData.vehiculesMap.get(immat)!;
       
       // Fusionner les lignes MATIN et SOIR
       if (jour.periode === "MATIN" && jour.conducteur_aller) {
@@ -495,9 +556,10 @@ const SignatureFinisseurs = () => {
     // Convertir en format pour TransportSummaryV2 
     const days: TransportDayV2[] = Array.from(groupedByDate.entries())
       .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([date, vehiculesMap]) => ({
+      .map(([date, dayData]) => ({
         date,
-        vehicules: Array.from(vehiculesMap.values()).map((v) => ({
+        codeChantier: dayData.codeChantier,
+        vehicules: Array.from(dayData.vehiculesMap.values()).map((v) => ({
           id: crypto.randomUUID(),
           immatriculation: v.immatriculation,
           conducteurMatinId: "",

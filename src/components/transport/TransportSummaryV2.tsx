@@ -35,7 +35,7 @@ export const TransportSummaryV2 = ({ transportData }: TransportSummaryV2Props) =
     // Format V2 : { days: [{date, vehicules: []}] }
     transportData.days.forEach((day: any) => {
       groupedByDate.set(day.date, {
-        codeChantier: "-",
+        codeChantier: day.codeChantier || "-",
         vehicules: day.vehicules || []
       });
     });
