@@ -18,6 +18,8 @@ import { getNextWeek } from "@/lib/weekUtils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const SignatureFinisseurs = () => {
   const navigate = useNavigate();
@@ -453,6 +455,56 @@ const SignatureFinisseurs = () => {
     };
   };
 
+  // Consolider les données de transport pour TransportSummaryV2
+  const consolidatedTransportData = (() => {
+    const groupedByDate = new Map<string, { vehicules: Map<string, { immatriculation: string; conducteurMatinNom: string | null; conducteurSoirNom: string | null }> }>();
+    
+    // Parcourir tous les finisseurs et leurs données transport
+    Object.values(transportFinisseursData).forEach((finisseurTransport: any) => {
+      finisseurTransport?.days?.forEach((day: any) => {
+        if (!groupedByDate.has(day.date)) {
+          groupedByDate.set(day.date, { vehicules: new Map() });
+        }
+        
+        // Ignorer les trajets perso et les absences
+        if (day.trajet_perso || !day.immatriculation) return;
+        
+        const dateEntry = groupedByDate.get(day.date)!;
+        const immat = day.immatriculation;
+        
+        // Dédupliquer par immatriculation
+        if (!dateEntry.vehicules.has(immat)) {
+          dateEntry.vehicules.set(immat, {
+            immatriculation: immat,
+            conducteurMatinNom: null,
+            conducteurSoirNom: null
+          });
+        }
+      });
+    });
+    
+    // Pour enrichir avec les noms de conducteurs, on doit faire une autre requête
+    // Utilisons les données déjà disponibles dans finisseurs pour trouver les noms
+    const conducteurNamesMap = new Map<string, string>();
+    finisseurs.forEach(f => {
+      conducteurNamesMap.set(f.id, `${f.prenom} ${f.nom}`);
+    });
+    // Ajouter le conducteur courant
+    if (conducteurData) {
+      conducteurNamesMap.set(conducteurData.id, `${conducteurData.prenom} ${conducteurData.nom}`);
+    }
+    
+    // Convertir en format pour TransportSummaryV2
+    const days = Array.from(groupedByDate.entries())
+      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+      .map(([date, { vehicules }]) => ({
+        date,
+        vehicules: Array.from(vehicules.values())
+      }));
+    
+    return { days };
+  })();
+
   return (
     <PageLayout>
       <AppNav />
@@ -648,6 +700,22 @@ const SignatureFinisseurs = () => {
           </Card>
         )}
 
+        {/* Récapitulatif Trajet unifié - identique au côté Chef */}
+        {consolidatedTransportData.days.length > 0 && (
+          <Accordion type="single" collapsible defaultValue="transport-recap" className="mb-6">
+            <AccordionItem value="transport-recap" className="border rounded-lg shadow-md">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Récapitulatif Trajet</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-4">
+                <TransportSummaryV2 transportData={consolidatedTransportData} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
 
         <Card className="p-6">
           <div className="mb-6">
