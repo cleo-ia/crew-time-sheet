@@ -16,14 +16,10 @@ export const useAutoSaveTransportV2 = () => {
         return { saved: false };
       }
 
-      // Ne pas sauvegarder si aucune donnée valide (accepter aussi véhicules partiellement remplis)
+      // Ne sauvegarder que si au moins un véhicule est COMPLET (3 champs obligatoires)
       const hasValidData = days.some(day => 
         day.vehicules.some(v => 
-          v.immatriculation || 
-          v.conducteurMatinId || 
-          v.conducteurSoirId ||
-          v.conducteurMatinNom ||
-          v.conducteurSoirNom
+          v.immatriculation && v.conducteurMatinId && v.conducteurSoirId
         )
       );
       
@@ -112,25 +108,23 @@ export const useAutoSaveTransportV2 = () => {
 
       days.forEach((day) => {
         day.vehicules.forEach((vehicule) => {
-          if (vehicule.conducteurMatinId || vehicule.immatriculation) {
+          // Ne sauvegarder que les véhicules COMPLETS (immat + conducteur matin + conducteur soir)
+          if (vehicule.immatriculation && vehicule.conducteurMatinId && vehicule.conducteurSoirId) {
             jourEntries.push({
               fiche_transport_id: transportId,
               date: day.date,
               periode: "MATIN",
-              conducteur_aller_id: vehicule.conducteurMatinId || null,
+              conducteur_aller_id: vehicule.conducteurMatinId,
               conducteur_retour_id: null,
-              immatriculation: vehicule.immatriculation || null,
+              immatriculation: vehicule.immatriculation,
             });
-          }
-
-          if (vehicule.conducteurSoirId || vehicule.immatriculation) {
             jourEntries.push({
               fiche_transport_id: transportId,
               date: day.date,
               periode: "SOIR",
               conducteur_aller_id: null,
-              conducteur_retour_id: vehicule.conducteurSoirId || null,
-              immatriculation: vehicule.immatriculation || null,
+              conducteur_retour_id: vehicule.conducteurSoirId,
+              immatriculation: vehicule.immatriculation,
             });
           }
         });
