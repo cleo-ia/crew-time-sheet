@@ -15,15 +15,16 @@ export const useAutoSaveTransport = () => {
         return null;
       }
 
-      // 0. Si pas de ficheId, chercher d'abord une fiche existante ou en créer une
+      // 0. Si pas de ficheId, chercher une fiche existante AVEC salarié (pas de création orpheline)
       let ficheId = providedFicheId;
       if (!ficheId) {
+        // Chercher n'importe quelle fiche du chantier/semaine qui a un salarié
         const { data: existingFiche, error: findFicheError } = await supabase
           .from("fiches")
-          .select("id, created_at")
+          .select("id")
           .eq("semaine", semaine)
           .eq("chantier_id", chantierId)
-          .eq("user_id", chefId)
+          .not("salarie_id", "is", null)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -33,21 +34,9 @@ export const useAutoSaveTransport = () => {
         if (existingFiche) {
           ficheId = existingFiche.id;
         } else {
-          // entreprise_id auto-filled by trigger set_fiche_entreprise_id
-          const { data: newFiche, error: ficheError } = await supabase
-            .from("fiches")
-            .insert({
-              semaine,
-              chantier_id: chantierId,
-              user_id: chefId,
-              statut: "BROUILLON",
-              total_heures: 0,
-            } as any)
-            .select()
-            .single();
-
-          if (ficheError) throw ficheError;
-          ficheId = newFiche.id;
+          // Pas de fiche salarié existante → skip silencieux (pas de création orpheline)
+          console.log("[useAutoSaveTransport] Aucune fiche salarié trouvée, skip");
+          return null;
         }
       }
 
