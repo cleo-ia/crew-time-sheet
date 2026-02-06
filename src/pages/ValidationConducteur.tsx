@@ -392,18 +392,21 @@ const ValidationConducteur = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Vérifier que tous les finisseurs ont une fiche trajet complète
-    const { ok, errors } = await checkAllFinisseursTransportComplete();
-    
-    if (!ok) {
-      setIsSubmitting(false);
-      toast({
-        variant: "destructive",
-        title: "❌ Fiches de trajet incomplètes",
-        description: errors.slice(0, 5).join(" • "),
-        duration: 6000,
-      });
-      return;
+    // Vérifier que tous les finisseurs ont une fiche trajet complète (sauf SDER)
+    const entrepriseSlug = localStorage.getItem("entreprise_slug");
+    if (entrepriseSlug !== "sder") {
+      const { ok, errors } = await checkAllFinisseursTransportComplete();
+      
+      if (!ok) {
+        setIsSubmitting(false);
+        toast({
+          variant: "destructive",
+          title: "❌ Fiches de trajet incomplètes",
+          description: errors.slice(0, 5).join(" • "),
+          duration: 6000,
+        });
+        return;
+      }
     }
 
     const monday = parseISOWeek(selectedWeek);
