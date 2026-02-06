@@ -99,7 +99,9 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
     shouldCheckTransport ? conducteurId : null
   );
   // If we don't need to check transport, consider it as valid for signature
-  const isTransportValidForSignature = shouldCheckTransport ? isTransportComplete : true;
+  // SDER: transport sheets are optional, never block signature
+  const entrepriseSlug = localStorage.getItem("entreprise_slug");
+  const isTransportValidForSignature = entrepriseSlug === "sder" ? true : (shouldCheckTransport ? isTransportComplete : true);
   
   // ⚠️ IMPORTANT: Récupérer les salarieIds AVANT tout early return
   // Utiliser un tableau vide si ficheData n'est pas encore chargé
