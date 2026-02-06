@@ -350,6 +350,7 @@ export const MaconsManager = () => {
                   </SelectTrigger>
                   <SelectContent modal={false}>
                     <SelectItem value="35h">35h</SelectItem>
+                    <SelectItem value="38h">38h</SelectItem>
                     <SelectItem value="39h">39h</SelectItem>
                   </SelectContent>
                 </Select>

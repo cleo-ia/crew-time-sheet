@@ -349,6 +349,7 @@ export const GrutiersManager = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="35h">35h</SelectItem>
+                    <SelectItem value="38h">38h</SelectItem>
                     <SelectItem value="39h">39h</SelectItem>
                   </SelectContent>
                 </Select>
