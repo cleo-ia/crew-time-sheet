@@ -1,38 +1,33 @@
 
-# Correction : les overrides d'absences ne sont pas transmis au pre-export
+# Adapter le bandeau multi-chantier au texte de reference
 
-## Le probleme
+## Modification
 
-La correction precedente a ajoute la lecture de `savedAbsOverride` dans `getCellValue`, mais cette valeur est toujours `undefined` car `fetchRHExportData` ne transmet pas `absences_export_override` dans l'objet `RHExportEmployee` retourne.
+**Fichier** : `src/pages/Index.tsx` (lignes 535-540)
 
-Le flux actuel :
-1. `buildRHConsolidation` recupere correctement `absences_export_override` depuis la base
-2. `fetchRHExportData` le lit via `(emp as any).absences_export_override` mais ne le place PAS dans l'objet retourne
-3. Dans `RHPreExport`, `(row.original as any).absences_export_override` est donc toujours `undefined`
-4. L'affichage retombe sur la valeur calculee (28h)
+Remplacer le message actuel (un seul paragraphe condense) par un texte structure qui reprend fidelement le contenu du screen 2 :
 
-## La solution
+```
+Chef multi-chantier : nouveau fonctionnement de la saisie
 
-Ajouter `absences_export_override` et `trajets_export_override` dans l'objet retourne par `fetchRHExportData`.
+Vous etes affecte sur plusieurs chantiers. Vos heures sur le chantier secondaire
+sont desormais initialisees a 0h par defaut (panier et trajet decoches).
+Vous pouvez les modifier librement.
 
-## Detail technique
+Attention a ne pas compter vos heures en double !
 
-### Fichier : `src/hooks/useRHExport.ts`
+Si vous saisissez des heures sur votre chantier secondaire un jour donne,
+pensez a ajuster le meme jour sur votre chantier principal :
 
-Ajouter 2 champs dans l'interface `RHExportEmployee` :
+- Exemple : Vous travaillez 4h sur le chantier A (principal) et 4h sur le
+  chantier B (secondaire) le lundi -> saisissez bien 4h sur A et 4h sur B,
+  pas 8h sur les deux.
 
-```typescript
-absences_export_override?: Record<string, number> | null;
-trajets_export_override?: Record<string, number> | null;
+- Meme principe pour les paniers et trajets : ne cochez le panier ou le trajet
+  que sur un seul des deux chantiers pour ce jour-la.
+
+En resume : le total de vos heures par jour, tous chantiers confondus,
+doit correspondre a votre journee reelle de travail.
 ```
 
-Puis dans le mapping (apres la ligne `autresElements`), ajouter :
-
-```typescript
-absences_export_override: (emp as any).absences_export_override || null,
-trajets_export_override: (emp as any).trajets_export_override || null,
-```
-
-Cela permettra a `getCellValue` dans `RHPreExport.tsx` de lire correctement les overrides sauvegardes en base via `(row.original as any).absences_export_override`.
-
-Aucune autre modification necessaire -- le code dans `RHPreExport.tsx` est deja correct, il lui manque juste la donnee.
+Le bandeau conserve le style bleu actuel (`Alert` avec `border-blue-500/50 bg-blue-500/10`) et l'icone `Info`. Le texte sera structure avec des balises HTML (`<strong>`, `<p>`, `<ul>`, `<li>`) pour une meilleure lisibilite.
