@@ -504,20 +504,20 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       intemperies += intemperie;
       totalHeures += heuresDuJour;
       
-      if (heuresDuJour === 0 && intemperie === 0) {
+      const isAbsent = heuresDuJour === 0 && intemperie === 0;
+
+      if (isAbsent) {
         absences++;
       }
       
-      if (panier) paniers++;
+      // Ne compter panier et trajet QUE si le jour n'est pas une absence
+      if (!isAbsent && panier) paniers++;
       
       // Compteur par code trajet
-      if ((jourRef as any).code_trajet) {
+      if (!isAbsent && (jourRef as any).code_trajet) {
         trajetsParCode[(jourRef as any).code_trajet] = (trajetsParCode[(jourRef as any).code_trajet] || 0) + 1;
         totalJoursTrajets++;
       }
-
-      // Déterminer si c'est une absence (employé pas présent)
-      const isAbsent = heuresDuJour === 0 && intemperie === 0;
 
       // Pour les chefs multi-chantier, combiner les codes chantier
       const chantierCode = isChef && entries.length > 1
