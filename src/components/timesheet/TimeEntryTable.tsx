@@ -137,7 +137,7 @@ type DayData = {
   chantierVille?: string | null;
   chantierNom?: string | null;
   commentaire?: string;
-  isSecondaryChefDay?: boolean; // Chef sur chantier secondaire = 0h par design (pas absent)
+  
 };
 
 interface TimeEntry {
@@ -255,29 +255,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     weekId
   );
 
-  // Récupérer le chantier principal du chef pour bloquer la saisie de ses heures sur les chantiers secondaires
-  const { data: chefChantierPrincipal } = useQuery({
-    queryKey: ["chef-chantier-principal", chefId],
-    queryFn: async () => {
-      if (!chefId) return null;
-      
-      const { data, error } = await supabase
-        .from("utilisateurs")
-        .select("chantier_principal_id")
-        .eq("id", chefId)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data?.chantier_principal_id || null;
-    },
-    enabled: !!chefId && !isConducteurMode,
-  });
-
-  // Vérifie si le chef est sur un chantier secondaire (pas son principal)
-  const isChefOnSecondaryChantier = useMemo(() => {
-    if (!chefId || !chantierId || !chefChantierPrincipal) return false;
-    return chantierId !== chefChantierPrincipal;
-  }, [chefId, chantierId, chefChantierPrincipal]);
+  // ✅ Chef multi-chantier : plus de blocage sur les chantiers secondaires
+  // Le chef peut saisir ses heures sur tous ses chantiers
 
   // Helper pour vérifier si un employé est autorisé à travailler un jour donné
   const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
@@ -503,26 +482,14 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           ? chantiers.find(c => c.id === chantierId) 
           : null;
         
-        // 🔧 FIX: Chef sur chantier secondaire = 0h par défaut (pas 39h)
-        // Ses heures sont saisies sur son chantier principal uniquement
-        // On marque ces jours avec isSecondaryChefDay pour éviter l'affichage "Absent"
-        const isChefOnSecondary = macon.id === chefId && isChefOnSecondaryChantier;
-        const defaultHoursLundi = isChefOnSecondary ? 0 : 8;
-        const defaultHoursMardi = isChefOnSecondary ? 0 : 8;
-        const defaultHoursMercredi = isChefOnSecondary ? 0 : 8;
-        const defaultHoursJeudi = isChefOnSecondary ? 0 : 8;
-        const defaultHoursVendredi = isChefOnSecondary ? 0 : 7;
-        const defaultPanier = !isChefOnSecondary;
-        const defaultTrajet = !isChefOnSecondary;
-        
         // Valeurs par défaut - UNIQUEMENT Lundi à Vendredi
-        // isSecondaryChefDay = true pour le chef sur chantier secondaire → pas de badge "Absent"
+        // ✅ Chef multi-chantier : mêmes heures par défaut que les autres (8/8/8/8/7)
         const daysDefault = {
-          Lundi: { hours: defaultHoursLundi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null, isSecondaryChefDay: isChefOnSecondary },
-          Mardi: { hours: defaultHoursMardi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null, isSecondaryChefDay: isChefOnSecondary },
-          Mercredi: { hours: defaultHoursMercredi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null, isSecondaryChefDay: isChefOnSecondary },
-          Jeudi: { hours: defaultHoursJeudi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null, isSecondaryChefDay: isChefOnSecondary },
-          Vendredi: { hours: defaultHoursVendredi, overtime: 0, absent: false, panierRepas: defaultPanier, repasType: (defaultPanier ? "PANIER" : null) as RepasType, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: (defaultTrajet ? "A_COMPLETER" : null) as CodeTrajet | null, isSecondaryChefDay: isChefOnSecondary },
+          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
+          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
+          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
+          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
+          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique
@@ -563,9 +530,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                 trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
                 grandDeplacement: (j as any).code_trajet === "GD",
                 heuresIntemperie: HI,
-                // Chef sur chantier secondaire : marquer le jour avec isSecondaryChefDay pour éviter "Absent"
-                absent: isChefOnSecondary ? false : (hours === 0 && !PA && HI === 0),
-                isSecondaryChefDay: isChefOnSecondary && hours === 0 && HI === 0,
+                // ✅ Chef multi-chantier : plus de marquage spécial secondaire
+                absent: (hours === 0 && !PA && HI === 0),
                 chantierId: chantierDuJour?.id || chantierId,
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
@@ -1175,15 +1141,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
               </AccordionTrigger>
 
               <AccordionContent className="p-0">
-                {/* Message d'info pour le chef sur un chantier secondaire */}
-                {isChef && isChefOnSecondaryChantier && (
-                  <div className="mx-4 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      <span className="font-medium">ℹ️ Chantier secondaire :</span>{" "}
-                      Vous pouvez consulter et gérer votre équipe ici, mais vos propres heures doivent être saisies sur votre chantier principal pour éviter les doublons.
-                    </p>
-                  </div>
-                )}
+                
+
                 
                 {/* Days Grid */}
                 <div className="p-4 space-y-3">
@@ -1231,18 +1190,15 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                         // Vérifier si ce jour est autorisé pour ce chef (mode chef uniquement)
                         const isBlockedByChefAffectation = !isConducteurMode && mode !== "edit" && !isDayAuthorizedForEmployee(entry.employeeId, day);
                         
-                        // Vérifier si c'est le chef lui-même et qu'il est sur un chantier secondaire
-                        // Dans ce cas, ses heures sont en lecture seule pour éviter les doublons
-                        const isChefBlockedOnSecondary = isChef && isChefOnSecondaryChantier;
+                        // ✅ Chef multi-chantier : plus de blocage sur les chantiers secondaires
                         
-                        const isDayBlocked = isBlockedByConducteur || isBlockedByChefAffectation || isChefBlockedOnSecondary;
+                        const isDayBlocked = isBlockedByConducteur || isBlockedByChefAffectation;
                         
                         return (
                       <div
                         key={day}
                         className={`rounded-lg border p-3 ${
                           dayData.absent ? "bg-destructive/5 border-destructive/20" : 
-                          isChefBlockedOnSecondary ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700" :
                           isDayBlocked ? "bg-amber-50/50 border-amber-200" :
                           "bg-muted/30 border-border/30"
                         }`}
@@ -1251,12 +1207,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{day}</span>
-                            {isChefBlockedOnSecondary && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600">
-                                🔒 Saisie sur votre chantier principal uniquement
-                              </span>
-                            )}
-                            {isDayBlocked && !isChefBlockedOnSecondary && (
+                            {isDayBlocked && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">
                                 {isBlockedByConducteur ? "🔒 Autre conducteur" : "🔒 Jour non affecté"}
                               </span>

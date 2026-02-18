@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, Circle, FileText, ArrowLeft, Loader2, Clock, Truck, AlertTriangle } from "lucide-react";
+import { CheckCircle, Circle, FileText, ArrowLeft, Loader2, Clock, Truck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SignaturePad } from "@/components/signature/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
 // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
-import { useQuery } from "@tanstack/react-query";
 
 const SignatureMacons = () => {
   const { toast } = useToast();
@@ -46,26 +45,7 @@ const SignatureMacons = () => {
   const updateStatus = useUpdateFicheStatus();
   // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
-  // Récupérer le chantier principal du chef pour afficher l'indicateur chantier secondaire
-  const { data: chefChantierPrincipal } = useQuery({
-    queryKey: ["chef-chantier-principal-signature", chefId],
-    queryFn: async () => {
-      if (!chefId) return null;
-      
-      const { data, error } = await supabase
-        .from("utilisateurs")
-        .select("chantier_principal_id")
-        .eq("id", chefId)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data?.chantier_principal_id || null;
-    },
-    enabled: !!chefId,
-  });
-
-  // Calculer si on est sur un chantier secondaire (chef présent mais pas son chantier principal)
-  const isChantierSecondaire = !!(chefChantierPrincipal && chantierId && chefChantierPrincipal !== chantierId);
+  // ✅ Chef multi-chantier : plus d'indicateur chantier secondaire
 
   const [macons, setMacons] = useState<MaconWithFiche[]>([]);
   const [selectedMacon, setSelectedMacon] = useState<MaconWithFiche | null>(null);
@@ -425,35 +405,11 @@ const SignatureMacons = () => {
                               {selectedMacon.isChef && (
                                 <RoleBadge role="chef" size="sm" />
                               )}
-                              {selectedMacon.isChef && isChantierSecondaire && (
-                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700">
-                                  Indicatif
-                                </Badge>
-                              )}
                             </CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {selectedMacon.isChef && isChantierSecondaire 
-                                ? "Heures de ce chantier secondaire (non comptabilisées)"
-                                : "Vérifiez vos heures avant de signer"
-                              }
+                              Vérifiez vos heures avant de signer
                             </p>
                           </CardHeader>
-                          
-                          {/* Bandeau d'avertissement pour chef sur chantier secondaire */}
-                          {selectedMacon.isChef && isChantierSecondaire && (
-                            <div className="mx-6 mb-4 flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                                  Chantier secondaire - Heures indicatives
-                                </p>
-                                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                                  Vos heures réelles sont saisies sur votre chantier principal. 
-                                  Les heures affichées ici sont à titre indicatif uniquement et ne seront pas comptabilisées pour la paie.
-                                </p>
-                              </div>
-                            </div>
-                          )}
                           <CardContent>
                             <div className="overflow-x-auto">
                               <table className="w-full text-sm">
@@ -473,12 +429,7 @@ const SignatureMacons = () => {
                                         {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
                                       </td>
                                       <td className="text-center py-2 px-3">
-                                        {/* Chef sur chantier secondaire = 0h par design, pas "absent" */}
-                                        {selectedMacon.isChef && isChantierSecondaire && jour.HNORM === 0 && jour.HI === 0 ? (
-                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
-                                            Chantier principal
-                                          </Badge>
-                                        ) : jour.HNORM === 0 && jour.HI === 0 ? (
+                                        {jour.HNORM === 0 && jour.HI === 0 ? (
                                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
                                             Absent
                                           </Badge>
