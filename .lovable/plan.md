@@ -1,93 +1,18 @@
 
 
-# Solution avec valeur de reference pour les overrides du pre-export
+# Correction : reporter le delta des overrides au lieu de les ignorer
 
-## Le probleme fondamental
+## Le probleme
 
-On a deux sources de modifications concurrentes :
-1. **Tanguy dans le pre-export** : change manuellement ABS_INJ de 28 a 29 -> doit persister
-2. **Tanguy dans la vue consolidee** : ajoute une absence INJ -> le calcul passe de 28 a 35 -> doit apparaitre
+La logique actuelle dans `resolveOverride` est binaire :
+- baseline = calcule -> garder l'override
+- baseline != calcule -> ignorer l'override et afficher le calcule
 
-Ni `Math.max` ni "ignorer les overrides" ne couvre les deux cas correctement.
+Mais quand Tanguy ajoute +1h manuellement (28 -> 29), puis qu'une absence est ajoutee (calcule passe a 35), on veut **35 + 1 = 36**, pas 35.
 
-## La solution : sauvegarder la valeur de reference ("baseline")
+## La solution : appliquer le delta
 
-Quand Tanguy enregistre un override dans le pre-export, on sauvegarde aussi la valeur calculee a ce moment-la. Au rechargement, on compare :
-
-- Si la valeur calculee actuelle = baseline sauvegardee -> rien n'a change ailleurs -> **afficher l'override**
-- Si la valeur calculee actuelle != baseline -> quelque chose a change depuis la vue consolidee -> **afficher la nouvelle valeur calculee** (l'override est obsolete)
-
-```text
-Exemple 1 : Tanguy change 28 -> 29 dans le pre-export
-  Sauvegarde : override=29, baseline=28
-  Rechargement : calcule=28, baseline=28 -> identique -> affiche 29 (OK)
-
-Exemple 2 : Ensuite, ajout absence depuis vue consolidee
-  Sauvegarde en base : override=29, baseline=28
-  Rechargement : calcule=35, baseline=28 -> different -> affiche 35 (OK)
-
-Exemple 3 : Tanguy diminue 28 -> 20 dans le pre-export
-  Sauvegarde : override=20, baseline=28
-  Rechargement : calcule=28, baseline=28 -> identique -> affiche 20 (OK)
-```
-
-## Detail technique
-
-### 1. Migration SQL : ajouter les colonnes baseline
-
-Ajouter 2 colonnes JSONB a la table `fiches` :
-
-```sql
-ALTER TABLE fiches ADD COLUMN absences_baseline jsonb DEFAULT NULL;
-ALTER TABLE fiches ADD COLUMN trajets_baseline jsonb DEFAULT NULL;
-```
-
-Ces colonnes stockent la valeur calculee au moment ou l'override a ete sauvegarde.
-
-### 2. Fichier : `src/hooks/usePreExportSave.ts`
-
-Modifier l'interface `ModifiedRow` pour accepter les baselines :
-
-```typescript
-interface ModifiedRow {
-  ficheId: string;
-  absencesOverride?: Record<string, number>;
-  trajetsOverride?: Record<string, number>;
-  absencesBaseline?: Record<string, number>;  // NOUVEAU
-  trajetsBaseline?: Record<string, number>;   // NOUVEAU
-  // ... reste inchange
-}
-```
-
-Dans `mutationFn`, sauvegarder les baselines :
-
-```typescript
-if (row.absencesOverride) {
-  updatePayload.absences_export_override = row.absencesOverride;
-  updatePayload.absences_baseline = row.absencesBaseline;
-}
-if (row.trajetsOverride) {
-  updatePayload.trajets_export_override = row.trajetsOverride;
-  updatePayload.trajets_baseline = row.trajetsBaseline;
-}
-```
-
-### 3. Fichier : `src/hooks/useRHExport.ts`
-
-Ajouter `absences_baseline` et `trajets_baseline` au type `RHExportEmployee` et les transmettre dans `fetchRHExportData`.
-
-### 4. Fichier : `src/components/rh/RHPreExport.tsx`
-
-**4a. Dans `getCellValue`**, lire les overrides ET les baselines :
-
-```typescript
-const savedAbsOverride = row.original.absences_export_override as Record<string, number> | null;
-const savedAbsBaseline = row.original.absences_baseline as Record<string, number> | null;
-const savedTrajOverride = row.original.trajets_export_override as Record<string, number> | null;
-const savedTrajBaseline = row.original.trajets_baseline as Record<string, number> | null;
-```
-
-**4b. Creer une fonction helper** pour la logique de priorite :
+Modifier `resolveOverride` pour calculer et reporter l'ecart :
 
 ```typescript
 const resolveOverride = (
@@ -98,68 +23,36 @@ const resolveOverride = (
 ): number => {
   // 1. Modification locale en session -> prioritaire
   if (localEdit !== undefined) return localEdit;
-  // 2. Override sauvegarde : valide seulement si les donnees source n'ont pas change
-  if (savedOverride !== undefined && savedBaseline !== undefined && savedBaseline === calculated) {
-    return savedOverride;
+  // 2. Override sauvegarde avec baseline
+  if (savedOverride !== undefined && savedBaseline !== undefined) {
+    if (savedBaseline === calculated) {
+      // Donnees source inchangees -> garder l'override tel quel
+      return savedOverride;
+    } else {
+      // Donnees source modifiees -> reporter le delta
+      const delta = savedOverride - savedBaseline;
+      if (delta === 0) return calculated; // pas de modif manuelle reelle
+      return calculated + delta;
+    }
   }
-  // 3. Valeur calculee (donnees source)
+  // 3. Valeur calculee (pas d'override)
   return calculated;
 };
 ```
 
-**4c. Appliquer pour chaque champ** (absences et trajets) :
+## Verification des scenarios
 
-```typescript
-case "absenceAbsInj": return resolveOverride(
-  row.modified.absenceAbsInj,
-  savedAbsOverride?.ABS_INJ,
-  savedAbsBaseline?.ABS_INJ,
-  absencesByType.ABS_INJ ?? 0
-);
-```
+| Scenario | baseline | override | calcul actuel | delta | Resultat |
+|----------|----------|----------|---------------|-------|----------|
+| Tanguy +1h, pas de changement | 28 | 29 | 28 | +1 | **29** |
+| Tanguy +1h, absence ajoutee | 28 | 29 | 35 | +1 | **36** |
+| Tanguy -8h, pas de changement | 28 | 20 | 28 | -8 | **20** |
+| Tanguy -8h, absence ajoutee | 28 | 20 | 35 | -8 | **27** |
+| Tanguy pas de modif, absence ajoutee | 28 | 28 | 35 | 0 | **35** |
 
-Meme pattern pour les 10 absences et 21 trajets.
+Tous les cas sont couverts : le delta manuel est toujours preserve.
 
-**4d. Dans `handleSaveModifications`**, calculer et transmettre les baselines :
+## Fichier a modifier
 
-```typescript
-// Calculer absences depuis les jours (baseline actuelle)
-const absencesBaseline: Record<string, number> = {};
-row.original.detailJours?.forEach(jour => {
-  if (jour.isAbsent && jour.typeAbsence) {
-    absencesBaseline[jour.typeAbsence] = (absencesBaseline[jour.typeAbsence] || 0) + 7;
-  }
-});
-
-// Calculer trajets baseline
-const trajetsBaseline: Record<string, number> = {};
-// T1..T17, T31, T35, GD, T_PERSO depuis row.original
-
-return {
-  ficheId: row.original.ficheId!,
-  absencesOverride: ...,
-  trajetsOverride: ...,
-  absencesBaseline: Object.keys(absencesOverride).length > 0 ? absencesBaseline : undefined,
-  trajetsBaseline: Object.keys(trajetsOverride).length > 0 ? trajetsBaseline : undefined,
-  // ...
-};
-```
-
-## Verification des 4 scenarios
-
-| Scenario | baseline | override | calcul actuel | Resultat |
-|----------|----------|----------|---------------|----------|
-| Tanguy augmente 28->29 | 28 | 29 | 28 (= baseline) | **29** |
-| Tanguy diminue 28->20 | 28 | 20 | 28 (= baseline) | **20** |
-| Absence ajoutee ailleurs (28->35) | 28 | 29 | 35 (!= baseline) | **35** |
-| Absence retiree ailleurs (28->21) | 28 | 29 | 21 (!= baseline) | **21** |
-
-Tous les cas sont couverts correctement.
-
-## Fichiers modifies
-
-1. **Migration SQL** : ajout colonnes `absences_baseline` et `trajets_baseline` sur `fiches`
-2. **`src/hooks/usePreExportSave.ts`** : sauvegarder les baselines avec les overrides
-3. **`src/hooks/useRHExport.ts`** : transmettre les baselines dans `RHExportEmployee`
-4. **`src/components/rh/RHPreExport.tsx`** : logique `resolveOverride` avec comparaison baseline/calcul
+**`src/components/rh/RHPreExport.tsx`** : modifier uniquement la fonction `resolveOverride` (environ 10 lignes). Aucun autre fichier ne change.
 
