@@ -829,6 +829,7 @@ export type Database = {
       }
       fiches: {
         Row: {
+          absences_baseline: Json | null
           absences_export_override: Json | null
           acomptes: string | null
           autres_elements_export: string | null
@@ -849,11 +850,13 @@ export type Database = {
           statut: Database["public"]["Enums"]["statut_fiche"]
           total_heures: number
           total_saisie: string | null
+          trajets_baseline: Json | null
           trajets_export_override: Json | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          absences_baseline?: Json | null
           absences_export_override?: Json | null
           acomptes?: string | null
           autres_elements_export?: string | null
@@ -874,11 +877,13 @@ export type Database = {
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
           total_saisie?: string | null
+          trajets_baseline?: Json | null
           trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          absences_baseline?: Json | null
           absences_export_override?: Json | null
           acomptes?: string | null
           autres_elements_export?: string | null
@@ -899,6 +904,7 @@ export type Database = {
           statut?: Database["public"]["Enums"]["statut_fiche"]
           total_heures?: number
           total_saisie?: string | null
+          trajets_baseline?: Json | null
           trajets_export_override?: Json | null
           updated_at?: string
           user_id?: string | null

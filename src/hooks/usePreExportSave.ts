@@ -6,6 +6,8 @@ interface ModifiedRow {
   ficheId: string;
   absencesOverride?: Record<string, number>;
   trajetsOverride?: Record<string, number>;
+  absencesBaseline?: Record<string, number>;
+  trajetsBaseline?: Record<string, number>;
   acomptes?: string;
   prets?: string;
   commentaireRH?: string;
@@ -27,8 +29,14 @@ export const usePreExportSave = () => {
           updated_at: new Date().toISOString(),
         };
 
-        if (row.absencesOverride) updatePayload.absences_export_override = row.absencesOverride;
-        if (row.trajetsOverride) updatePayload.trajets_export_override = row.trajetsOverride;
+        if (row.absencesOverride) {
+          updatePayload.absences_export_override = row.absencesOverride;
+          if (row.absencesBaseline) updatePayload.absences_baseline = row.absencesBaseline;
+        }
+        if (row.trajetsOverride) {
+          updatePayload.trajets_export_override = row.trajetsOverride;
+          if (row.trajetsBaseline) updatePayload.trajets_baseline = row.trajetsBaseline;
+        }
         if (row.acomptes !== undefined) updatePayload.acomptes = row.acomptes;
         if (row.prets !== undefined) updatePayload.prets = row.prets;
         if (row.commentaireRH !== undefined) updatePayload.commentaire_rh = row.commentaireRH;

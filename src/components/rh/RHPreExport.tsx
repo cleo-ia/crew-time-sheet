@@ -268,10 +268,47 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       if (row.modified.trajetGD !== undefined) trajetsOverride.GD = row.modified.trajetGD;
       if (row.modified.trajetTPerso !== undefined) trajetsOverride.T_PERSO = row.modified.trajetTPerso;
 
+      // Calculer les baselines (valeurs calculées actuelles au moment de la sauvegarde)
+      const absencesBaseline: Record<string, number> = {};
+      if (Object.keys(absencesOverride).length > 0) {
+        row.original.detailJours?.forEach(jour => {
+          if (jour.isAbsent && jour.typeAbsence) {
+            absencesBaseline[jour.typeAbsence] = (absencesBaseline[jour.typeAbsence] || 0) + 7;
+          }
+        });
+      }
+
+      const trajetsBaseline: Record<string, number> = {};
+      if (Object.keys(trajetsOverride).length > 0) {
+        trajetsBaseline.T_PERSO = row.original.trajetTPerso ?? 0;
+        trajetsBaseline.T1 = row.original.trajetT1 ?? 0;
+        trajetsBaseline.T2 = row.original.trajetT2 ?? 0;
+        trajetsBaseline.T3 = row.original.trajetT3 ?? 0;
+        trajetsBaseline.T4 = row.original.trajetT4 ?? 0;
+        trajetsBaseline.T5 = row.original.trajetT5 ?? 0;
+        trajetsBaseline.T6 = row.original.trajetT6 ?? 0;
+        trajetsBaseline.T7 = row.original.trajetT7 ?? 0;
+        trajetsBaseline.T8 = row.original.trajetT8 ?? 0;
+        trajetsBaseline.T9 = row.original.trajetT9 ?? 0;
+        trajetsBaseline.T10 = row.original.trajetT10 ?? 0;
+        trajetsBaseline.T11 = row.original.trajetT11 ?? 0;
+        trajetsBaseline.T12 = row.original.trajetT12 ?? 0;
+        trajetsBaseline.T13 = row.original.trajetT13 ?? 0;
+        trajetsBaseline.T14 = row.original.trajetT14 ?? 0;
+        trajetsBaseline.T15 = row.original.trajetT15 ?? 0;
+        trajetsBaseline.T16 = row.original.trajetT16 ?? 0;
+        trajetsBaseline.T17 = row.original.trajetT17 ?? 0;
+        trajetsBaseline.T31 = row.original.trajetT31 ?? 0;
+        trajetsBaseline.T35 = row.original.trajetT35 ?? 0;
+        trajetsBaseline.GD = row.original.trajetGD ?? 0;
+      }
+
       return {
         ficheId: row.original.ficheId!,
         absencesOverride: Object.keys(absencesOverride).length > 0 ? absencesOverride : undefined,
         trajetsOverride: Object.keys(trajetsOverride).length > 0 ? trajetsOverride : undefined,
+        absencesBaseline: Object.keys(absencesBaseline).length > 0 ? absencesBaseline : undefined,
+        trajetsBaseline: Object.keys(trajetsBaseline).length > 0 ? trajetsBaseline : undefined,
         acomptes: row.modified.acomptes,
         prets: row.modified.prets,
         commentaireRH: row.modified.commentaires || row.modified.commentairesAdmin,
@@ -352,6 +389,20 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     return rows.filter(row => row.original.metier === filterMetier);
   }, [rows, filterMetier]);
 
+  // Helper : résoudre override vs baseline vs calculé
+  const resolveOverride = (
+    localEdit: number | undefined,
+    savedOverride: number | undefined,
+    savedBaseline: number | undefined,
+    calculated: number
+  ): number => {
+    if (localEdit !== undefined) return localEdit;
+    if (savedOverride !== undefined && savedBaseline !== undefined && savedBaseline === calculated) {
+      return savedOverride;
+    }
+    return calculated;
+  };
+
   // Fonction pour obtenir la valeur d'une cellule
   const getCellValue = (row: EditableRow, colKey: string) => {
     const data = { ...row.original, ...row.modified };
@@ -363,6 +414,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + 7;
       }
     });
+
+    // Lire les overrides et baselines sauvegardés
+    const savedAbsOverride = row.original.absences_export_override as Record<string, number> | null | undefined;
+    const savedAbsBaseline = row.original.absences_baseline as Record<string, number> | null | undefined;
+    const savedTrajOverride = row.original.trajets_export_override as Record<string, number> | null | undefined;
+    const savedTrajBaseline = row.original.trajets_baseline as Record<string, number> | null | undefined;
 
     
     // Calculer les dates d'absence (pour colonne DATE)
@@ -390,18 +447,18 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       case "forfaitJours": return data.forfait_jours ? "Oui" : "-";
       case "heuresReelles": return data.heuresNormales;
       case "salaire": return data.salaire;
-      // Absences
+      // Absences avec logique baseline
       case "absenceDate": return row.modified.absenceDate ?? datesAbsenceFormatted;
-      case "absenceCP": return row.modified.absenceCP ?? absencesByType.CP ?? 0;
-      case "absenceRTT": return row.modified.absenceRTT ?? absencesByType.RTT ?? 0;
-      case "absenceAM": return row.modified.absenceAM ?? absencesByType.AM ?? 0;
-      case "absenceMP": return row.modified.absenceMP ?? absencesByType.MP ?? 0;
-      case "absenceAT": return row.modified.absenceAT ?? absencesByType.AT ?? 0;
-      case "absenceCongeParental": return row.modified.absenceCongeParental ?? absencesByType.CONGE_PARENTAL ?? 0;
-      case "absenceIntemperies": return row.modified.absenceIntemperies ?? absencesByType.HI ?? 0;
-      case "absenceCPSS": return row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0;
-      case "absenceAbsInj": return row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0;
-      case "absenceEcole": return row.modified.absenceEcole ?? absencesByType.ECOLE ?? 0;
+      case "absenceCP": return resolveOverride(row.modified.absenceCP, savedAbsOverride?.CP, savedAbsBaseline?.CP, absencesByType.CP ?? 0);
+      case "absenceRTT": return resolveOverride(row.modified.absenceRTT, savedAbsOverride?.RTT, savedAbsBaseline?.RTT, absencesByType.RTT ?? 0);
+      case "absenceAM": return resolveOverride(row.modified.absenceAM, savedAbsOverride?.AM, savedAbsBaseline?.AM, absencesByType.AM ?? 0);
+      case "absenceMP": return resolveOverride(row.modified.absenceMP, savedAbsOverride?.MP, savedAbsBaseline?.MP, absencesByType.MP ?? 0);
+      case "absenceAT": return resolveOverride(row.modified.absenceAT, savedAbsOverride?.AT, savedAbsBaseline?.AT, absencesByType.AT ?? 0);
+      case "absenceCongeParental": return resolveOverride(row.modified.absenceCongeParental, savedAbsOverride?.CONGE_PARENTAL, savedAbsBaseline?.CONGE_PARENTAL, absencesByType.CONGE_PARENTAL ?? 0);
+      case "absenceIntemperies": return resolveOverride(row.modified.absenceIntemperies, savedAbsOverride?.HI, savedAbsBaseline?.HI, absencesByType.HI ?? 0);
+      case "absenceCPSS": return resolveOverride(row.modified.absenceCPSS, savedAbsOverride?.CPSS, savedAbsBaseline?.CPSS, absencesByType.CPSS ?? 0);
+      case "absenceAbsInj": return resolveOverride(row.modified.absenceAbsInj, savedAbsOverride?.ABS_INJ, savedAbsBaseline?.ABS_INJ, absencesByType.ABS_INJ ?? 0);
+      case "absenceEcole": return resolveOverride(row.modified.absenceEcole, savedAbsOverride?.ECOLE, savedAbsBaseline?.ECOLE, absencesByType.ECOLE ?? 0);
       // Heures supp
       case "heuresSupp25": return row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0;
       case "heuresSupp50": return row.modified.heuresSupp50 ?? data.heuresSupp50 ?? 0;
@@ -409,27 +466,27 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       case "indemnitesRepas": return row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0;
       // Trajets
       case "trajetTotal": return row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0));
-      case "trajetTPerso": return row.modified.trajetTPerso ?? data.trajetTPerso ?? 0;
-      case "trajetT1": return row.modified.trajetT1 ?? data.trajetT1 ?? 0;
-      case "trajetT2": return row.modified.trajetT2 ?? data.trajetT2 ?? 0;
-      case "trajetT3": return row.modified.trajetT3 ?? data.trajetT3 ?? 0;
-      case "trajetT4": return row.modified.trajetT4 ?? data.trajetT4 ?? 0;
-      case "trajetT5": return row.modified.trajetT5 ?? data.trajetT5 ?? 0;
-      case "trajetT6": return row.modified.trajetT6 ?? data.trajetT6 ?? 0;
-      case "trajetT7": return row.modified.trajetT7 ?? data.trajetT7 ?? 0;
-      case "trajetT8": return row.modified.trajetT8 ?? data.trajetT8 ?? 0;
-      case "trajetT9": return row.modified.trajetT9 ?? data.trajetT9 ?? 0;
-      case "trajetT10": return row.modified.trajetT10 ?? data.trajetT10 ?? 0;
-      case "trajetT11": return row.modified.trajetT11 ?? data.trajetT11 ?? 0;
-      case "trajetT12": return row.modified.trajetT12 ?? data.trajetT12 ?? 0;
-      case "trajetT13": return row.modified.trajetT13 ?? data.trajetT13 ?? 0;
-      case "trajetT14": return row.modified.trajetT14 ?? data.trajetT14 ?? 0;
-      case "trajetT15": return row.modified.trajetT15 ?? data.trajetT15 ?? 0;
-      case "trajetT16": return row.modified.trajetT16 ?? data.trajetT16 ?? 0;
-      case "trajetT17": return row.modified.trajetT17 ?? data.trajetT17 ?? 0;
-      case "trajetT31": return row.modified.trajetT31 ?? data.trajetT31 ?? 0;
-      case "trajetT35": return row.modified.trajetT35 ?? data.trajetT35 ?? 0;
-      case "trajetGD": return row.modified.trajetGD ?? data.trajetGD ?? 0;
+      case "trajetTPerso": return resolveOverride(row.modified.trajetTPerso, savedTrajOverride?.T_PERSO, savedTrajBaseline?.T_PERSO, row.original.trajetTPerso ?? 0);
+      case "trajetT1": return resolveOverride(row.modified.trajetT1, savedTrajOverride?.T1, savedTrajBaseline?.T1, row.original.trajetT1 ?? 0);
+      case "trajetT2": return resolveOverride(row.modified.trajetT2, savedTrajOverride?.T2, savedTrajBaseline?.T2, row.original.trajetT2 ?? 0);
+      case "trajetT3": return resolveOverride(row.modified.trajetT3, savedTrajOverride?.T3, savedTrajBaseline?.T3, row.original.trajetT3 ?? 0);
+      case "trajetT4": return resolveOverride(row.modified.trajetT4, savedTrajOverride?.T4, savedTrajBaseline?.T4, row.original.trajetT4 ?? 0);
+      case "trajetT5": return resolveOverride(row.modified.trajetT5, savedTrajOverride?.T5, savedTrajBaseline?.T5, row.original.trajetT5 ?? 0);
+      case "trajetT6": return resolveOverride(row.modified.trajetT6, savedTrajOverride?.T6, savedTrajBaseline?.T6, row.original.trajetT6 ?? 0);
+      case "trajetT7": return resolveOverride(row.modified.trajetT7, savedTrajOverride?.T7, savedTrajBaseline?.T7, row.original.trajetT7 ?? 0);
+      case "trajetT8": return resolveOverride(row.modified.trajetT8, savedTrajOverride?.T8, savedTrajBaseline?.T8, row.original.trajetT8 ?? 0);
+      case "trajetT9": return resolveOverride(row.modified.trajetT9, savedTrajOverride?.T9, savedTrajBaseline?.T9, row.original.trajetT9 ?? 0);
+      case "trajetT10": return resolveOverride(row.modified.trajetT10, savedTrajOverride?.T10, savedTrajBaseline?.T10, row.original.trajetT10 ?? 0);
+      case "trajetT11": return resolveOverride(row.modified.trajetT11, savedTrajOverride?.T11, savedTrajBaseline?.T11, row.original.trajetT11 ?? 0);
+      case "trajetT12": return resolveOverride(row.modified.trajetT12, savedTrajOverride?.T12, savedTrajBaseline?.T12, row.original.trajetT12 ?? 0);
+      case "trajetT13": return resolveOverride(row.modified.trajetT13, savedTrajOverride?.T13, savedTrajBaseline?.T13, row.original.trajetT13 ?? 0);
+      case "trajetT14": return resolveOverride(row.modified.trajetT14, savedTrajOverride?.T14, savedTrajBaseline?.T14, row.original.trajetT14 ?? 0);
+      case "trajetT15": return resolveOverride(row.modified.trajetT15, savedTrajOverride?.T15, savedTrajBaseline?.T15, row.original.trajetT15 ?? 0);
+      case "trajetT16": return resolveOverride(row.modified.trajetT16, savedTrajOverride?.T16, savedTrajBaseline?.T16, row.original.trajetT16 ?? 0);
+      case "trajetT17": return resolveOverride(row.modified.trajetT17, savedTrajOverride?.T17, savedTrajBaseline?.T17, row.original.trajetT17 ?? 0);
+      case "trajetT31": return resolveOverride(row.modified.trajetT31, savedTrajOverride?.T31, savedTrajBaseline?.T31, row.original.trajetT31 ?? 0);
+      case "trajetT35": return resolveOverride(row.modified.trajetT35, savedTrajOverride?.T35, savedTrajBaseline?.T35, row.original.trajetT35 ?? 0);
+      case "trajetGD": return resolveOverride(row.modified.trajetGD, savedTrajOverride?.GD, savedTrajBaseline?.GD, row.original.trajetGD ?? 0);
       // Administratif
       case "acomptes": return row.modified.acomptes ?? data.acomptes ?? "-";
       case "prets": return row.modified.prets ?? data.prets ?? "-";
