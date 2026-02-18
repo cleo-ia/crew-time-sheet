@@ -534,8 +534,33 @@ const Index = () => {
           {isChefMultiChantier && selectedChef && selectedChantier && (
             <Alert className="border-blue-500/50 bg-blue-500/10">
               <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-700 dark:text-blue-300">
-                <strong>Chef multi-chantier</strong> — Vos heures sont à 0 par défaut sur le chantier secondaire. Si vous saisissez des heures sur un chantier, pensez à ajuster l'autre en conséquence. Exemple : 4h ici = réduisez à 4h sur l'autre chantier. Même principe pour les paniers et trajets : ne les cochez que sur un seul chantier par jour.
+              <AlertDescription className="text-blue-700 dark:text-blue-300 space-y-2">
+                <p><strong>Chef multi-chantier : nouveau fonctionnement de la saisie</strong></p>
+                <p>
+                  Vous êtes affecté sur plusieurs chantiers. Vos heures sur le chantier secondaire
+                  sont désormais initialisées à 0h par défaut (panier et trajet décochés).
+                  Vous pouvez les modifier librement.
+                </p>
+                <p><strong>⚠️ Attention à ne pas compter vos heures en double !</strong></p>
+                <p>
+                  Si vous saisissez des heures sur votre chantier secondaire un jour donné,
+                  pensez à ajuster le même jour sur votre chantier principal :
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    <strong>Exemple :</strong> Vous travaillez 4h sur le chantier A (principal) et 4h sur le
+                    chantier B (secondaire) le lundi → saisissez bien 4h sur A et 4h sur B,
+                    pas 8h sur les deux.
+                  </li>
+                  <li>
+                    <strong>Même principe pour les paniers et trajets :</strong> ne cochez le panier ou le trajet
+                    que sur un seul des deux chantiers pour ce jour-là.
+                  </li>
+                </ul>
+                <p>
+                  <strong>En résumé :</strong> le total de vos heures par jour, tous chantiers confondus,
+                  doit correspondre à votre journée réelle de travail.
+                </p>
               </AlertDescription>
             </Alert>
           )}
