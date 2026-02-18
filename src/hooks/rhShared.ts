@@ -133,23 +133,26 @@ export const calculateHeuresSuppBTP = (
       return; // Ignorer cette semaine (son lundi n'est pas dans le mois demandé)
     }
     
+    // Filtrer les jours lundi-vendredi non absents
+    const joursTravailles = joursDeUneSemaine.filter(j => {
+      const d = parseISO(j.date);
+      const dayOfWeek = d.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi, 6=Samedi
+      const isLundiVendredi = dayOfWeek >= 1 && dayOfWeek <= 5;
+      return isLundiVendredi && !j.isAbsent;
+    });
+
     // Total heures TRAVAILLÉES dans la semaine (lundi-vendredi uniquement)
-    // ❌ Exclure : absences (isAbsent=true) et intempéries
-    const heuresSemaine = joursDeUneSemaine
-      .filter(j => {
-        const d = parseISO(j.date);
-        const dayOfWeek = d.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi, 6=Samedi
-        const isLundiVendredi = dayOfWeek >= 1 && dayOfWeek <= 5;
-        const estTravail = !j.isAbsent; // On exclut les absences
-        return isLundiVendredi && estTravail;
-      })
-      .reduce((sum, j) => sum + j.heures, 0);
+    const heuresSemaine = joursTravailles.reduce((sum, j) => sum + j.heures, 0);
     
     // Logique BTP : seuil dynamique basé sur les heures supp mensualisées
-    // Si heuresSuppMensualisees > 0, on relève le seuil hebdo
-    // Formule exacte : mensuel * 12 / 52 = hebdomadaire
-    // Exemple : 17.33h mensualisées → seuil = 35 + (17.33 * 12 / 52) = 35 + 4 = 39h/semaine exactement
-    const seuilHebdo = 35 + (heuresSuppMensualisees * 12 / 52);
+    const seuilHebdoBase = 35 + (heuresSuppMensualisees * 12 / 52);
+    
+    // Prorata du seuil en fonction des jours effectivement travaillés
+    // Ex: 3 jours travaillés sur 5 → seuil = 35h * 3/5 = 21h
+    const nbJoursTravailles = joursTravailles.length;
+    const seuilHebdo = nbJoursTravailles < 5 && nbJoursTravailles > 0
+      ? seuilHebdoBase * (nbJoursTravailles / 5)
+      : seuilHebdoBase;
     
     if (heuresSemaine > seuilHebdo) {
       const heuresAuDelaDuSeuil = heuresSemaine - seuilHebdo;
