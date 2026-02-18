@@ -363,6 +363,10 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         absencesByType[jour.typeAbsence] = (absencesByType[jour.typeAbsence] || 0) + 7;
       }
     });
+
+    // Lire les overrides sauvegardés en base (absences_export_override / trajets_export_override)
+    const savedAbsOverride = (row.original as any).absences_export_override as Record<string, number> | null;
+    const savedTrajOverride = (row.original as any).trajets_export_override as Record<string, number> | null;
     
     // Calculer les dates d'absence (pour colonne DATE)
     const datesAbsence: string[] = [];
@@ -391,16 +395,16 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       case "salaire": return data.salaire;
       // Absences
       case "absenceDate": return row.modified.absenceDate ?? datesAbsenceFormatted;
-      case "absenceCP": return row.modified.absenceCP ?? absencesByType.CP ?? 0;
-      case "absenceRTT": return row.modified.absenceRTT ?? absencesByType.RTT ?? 0;
-      case "absenceAM": return row.modified.absenceAM ?? absencesByType.AM ?? 0;
-      case "absenceMP": return row.modified.absenceMP ?? absencesByType.MP ?? 0;
-      case "absenceAT": return row.modified.absenceAT ?? absencesByType.AT ?? 0;
-      case "absenceCongeParental": return row.modified.absenceCongeParental ?? absencesByType.CONGE_PARENTAL ?? 0;
-      case "absenceIntemperies": return row.modified.absenceIntemperies ?? absencesByType.HI ?? 0;
-      case "absenceCPSS": return row.modified.absenceCPSS ?? absencesByType.CPSS ?? 0;
-      case "absenceAbsInj": return row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0;
-      case "absenceEcole": return row.modified.absenceEcole ?? absencesByType.ECOLE ?? 0;
+      case "absenceCP": return row.modified.absenceCP ?? savedAbsOverride?.CP ?? absencesByType.CP ?? 0;
+      case "absenceRTT": return row.modified.absenceRTT ?? savedAbsOverride?.RTT ?? absencesByType.RTT ?? 0;
+      case "absenceAM": return row.modified.absenceAM ?? savedAbsOverride?.AM ?? absencesByType.AM ?? 0;
+      case "absenceMP": return row.modified.absenceMP ?? savedAbsOverride?.MP ?? absencesByType.MP ?? 0;
+      case "absenceAT": return row.modified.absenceAT ?? savedAbsOverride?.AT ?? absencesByType.AT ?? 0;
+      case "absenceCongeParental": return row.modified.absenceCongeParental ?? savedAbsOverride?.CONGE_PARENTAL ?? absencesByType.CONGE_PARENTAL ?? 0;
+      case "absenceIntemperies": return row.modified.absenceIntemperies ?? savedAbsOverride?.HI ?? absencesByType.HI ?? 0;
+      case "absenceCPSS": return row.modified.absenceCPSS ?? savedAbsOverride?.CPSS ?? absencesByType.CPSS ?? 0;
+      case "absenceAbsInj": return row.modified.absenceAbsInj ?? savedAbsOverride?.ABS_INJ ?? absencesByType.ABS_INJ ?? 0;
+      case "absenceEcole": return row.modified.absenceEcole ?? savedAbsOverride?.ECOLE ?? absencesByType.ECOLE ?? 0;
       // Heures supp
       case "heuresSupp25": return row.modified.heuresSupp25 ?? data.heuresSupp25 ?? 0;
       case "heuresSupp50": return row.modified.heuresSupp50 ?? data.heuresSupp50 ?? 0;
@@ -408,27 +412,27 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       case "indemnitesRepas": return row.modified.indemnitesRepas ?? data.indemnitesRepas ?? 0;
       // Trajets
       case "trajetTotal": return row.modified.trajetTotal ?? ((data.indemnitesTrajet || 0) + (data.indemnitesTrajetPerso || 0));
-      case "trajetTPerso": return row.modified.trajetTPerso ?? data.trajetTPerso ?? 0;
-      case "trajetT1": return row.modified.trajetT1 ?? data.trajetT1 ?? 0;
-      case "trajetT2": return row.modified.trajetT2 ?? data.trajetT2 ?? 0;
-      case "trajetT3": return row.modified.trajetT3 ?? data.trajetT3 ?? 0;
-      case "trajetT4": return row.modified.trajetT4 ?? data.trajetT4 ?? 0;
-      case "trajetT5": return row.modified.trajetT5 ?? data.trajetT5 ?? 0;
-      case "trajetT6": return row.modified.trajetT6 ?? data.trajetT6 ?? 0;
-      case "trajetT7": return row.modified.trajetT7 ?? data.trajetT7 ?? 0;
-      case "trajetT8": return row.modified.trajetT8 ?? data.trajetT8 ?? 0;
-      case "trajetT9": return row.modified.trajetT9 ?? data.trajetT9 ?? 0;
-      case "trajetT10": return row.modified.trajetT10 ?? data.trajetT10 ?? 0;
-      case "trajetT11": return row.modified.trajetT11 ?? data.trajetT11 ?? 0;
-      case "trajetT12": return row.modified.trajetT12 ?? data.trajetT12 ?? 0;
-      case "trajetT13": return row.modified.trajetT13 ?? data.trajetT13 ?? 0;
-      case "trajetT14": return row.modified.trajetT14 ?? data.trajetT14 ?? 0;
-      case "trajetT15": return row.modified.trajetT15 ?? data.trajetT15 ?? 0;
-      case "trajetT16": return row.modified.trajetT16 ?? data.trajetT16 ?? 0;
-      case "trajetT17": return row.modified.trajetT17 ?? data.trajetT17 ?? 0;
-      case "trajetT31": return row.modified.trajetT31 ?? data.trajetT31 ?? 0;
-      case "trajetT35": return row.modified.trajetT35 ?? data.trajetT35 ?? 0;
-      case "trajetGD": return row.modified.trajetGD ?? data.trajetGD ?? 0;
+      case "trajetTPerso": return row.modified.trajetTPerso ?? savedTrajOverride?.T_PERSO ?? data.trajetTPerso ?? 0;
+      case "trajetT1": return row.modified.trajetT1 ?? savedTrajOverride?.T1 ?? data.trajetT1 ?? 0;
+      case "trajetT2": return row.modified.trajetT2 ?? savedTrajOverride?.T2 ?? data.trajetT2 ?? 0;
+      case "trajetT3": return row.modified.trajetT3 ?? savedTrajOverride?.T3 ?? data.trajetT3 ?? 0;
+      case "trajetT4": return row.modified.trajetT4 ?? savedTrajOverride?.T4 ?? data.trajetT4 ?? 0;
+      case "trajetT5": return row.modified.trajetT5 ?? savedTrajOverride?.T5 ?? data.trajetT5 ?? 0;
+      case "trajetT6": return row.modified.trajetT6 ?? savedTrajOverride?.T6 ?? data.trajetT6 ?? 0;
+      case "trajetT7": return row.modified.trajetT7 ?? savedTrajOverride?.T7 ?? data.trajetT7 ?? 0;
+      case "trajetT8": return row.modified.trajetT8 ?? savedTrajOverride?.T8 ?? data.trajetT8 ?? 0;
+      case "trajetT9": return row.modified.trajetT9 ?? savedTrajOverride?.T9 ?? data.trajetT9 ?? 0;
+      case "trajetT10": return row.modified.trajetT10 ?? savedTrajOverride?.T10 ?? data.trajetT10 ?? 0;
+      case "trajetT11": return row.modified.trajetT11 ?? savedTrajOverride?.T11 ?? data.trajetT11 ?? 0;
+      case "trajetT12": return row.modified.trajetT12 ?? savedTrajOverride?.T12 ?? data.trajetT12 ?? 0;
+      case "trajetT13": return row.modified.trajetT13 ?? savedTrajOverride?.T13 ?? data.trajetT13 ?? 0;
+      case "trajetT14": return row.modified.trajetT14 ?? savedTrajOverride?.T14 ?? data.trajetT14 ?? 0;
+      case "trajetT15": return row.modified.trajetT15 ?? savedTrajOverride?.T15 ?? data.trajetT15 ?? 0;
+      case "trajetT16": return row.modified.trajetT16 ?? savedTrajOverride?.T16 ?? data.trajetT16 ?? 0;
+      case "trajetT17": return row.modified.trajetT17 ?? savedTrajOverride?.T17 ?? data.trajetT17 ?? 0;
+      case "trajetT31": return row.modified.trajetT31 ?? savedTrajOverride?.T31 ?? data.trajetT31 ?? 0;
+      case "trajetT35": return row.modified.trajetT35 ?? savedTrajOverride?.T35 ?? data.trajetT35 ?? 0;
+      case "trajetGD": return row.modified.trajetGD ?? savedTrajOverride?.GD ?? data.trajetGD ?? 0;
       // Administratif
       case "acomptes": return row.modified.acomptes ?? data.acomptes ?? "-";
       case "prets": return row.modified.prets ?? data.prets ?? "-";
