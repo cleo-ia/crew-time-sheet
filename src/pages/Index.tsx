@@ -4,7 +4,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw, CalendarDays } from "lucide-react";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw, CalendarDays, Info } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +15,7 @@ import { AppNav } from "@/components/navigation/AppNav";
 import { UserSelector } from "@/components/timesheet/UserSelector";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
+import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
 import { usePlanningMode } from "@/hooks/usePlanningMode";
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -177,6 +178,12 @@ const Index = () => {
     selectedChantier,
     selectedWeek,
     selectedChef
+  );
+
+  // Détecter si le chef est multi-chantier pour afficher le bandeau info
+  const { isMultiChantier: isChefMultiChantier } = useMaconsAllChantiersByChef(
+    selectedChef || undefined,
+    selectedWeek
   );
 
   // Récupérer la ville et le nom du chantier sélectionné + conducteur
@@ -522,6 +529,16 @@ const Index = () => {
               </div>
             )}
           </Card>
+
+          {/* Bandeau info chef multi-chantier */}
+          {isChefMultiChantier && selectedChef && selectedChantier && (
+            <Alert className="border-blue-500/50 bg-blue-500/10">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-700 dark:text-blue-300">
+                <strong>Chef multi-chantier</strong> — Vos heures sont à 0 par défaut sur le chantier secondaire. Si vous saisissez des heures sur un chantier, pensez à ajuster l'autre en conséquence. Exemple : 4h ici = réduisez à 4h sur l'autre chantier. Même principe pour les paniers et trajets : ne les cochez que sur un seul chantier par jour.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Avertissement contrainte vendredi 12h */}
           {isContrainteVendredi12h && 
