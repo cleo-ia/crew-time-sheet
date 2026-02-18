@@ -1,42 +1,44 @@
 
 
-# Chef multi-chantier : valeurs par defaut a 0h sur chantier secondaire
+# Bandeau d'information chef multi-chantier (toujours visible)
 
 ## Objectif
 
-Sur le chantier secondaire du chef, initialiser ses heures par defaut a **0h** avec panier et trajet **decoches** (au lieu de 8/8/8/8/7 avec panier + trajet). Le chef peut toujours modifier ces valeurs librement -- c'est juste un defaut plus safe pour eviter les erreurs.
+Afficher un bandeau informatif bleu sur la page de saisie hebdomadaire **des qu'un chef est affecte a plusieurs chantiers**, quel que soit le chantier actuellement selectionne (principal ou secondaire). Le bandeau rappelle les regles de repartition des heures, paniers et trajets entre chantiers.
 
-**Important** : 0h sur un chantier secondaire ne doit PAS etre compte comme "absent" cote RH (deja gere par la correction rhShared.ts qui somme les heures multi-chantier).
+## Emplacement
 
-## Modification unique : TimeEntryTable.tsx
+Juste apres la Card de selection (chef/semaine/chantier) et avant l'alerte "vendredi 12h", au meme niveau que les autres alertes existantes (ligne 526 environ).
 
-### Ce qu'on fait
+## Condition d'affichage
 
-1. **Re-ajouter une query legere** pour recuperer le `chantier_principal_id` du chef (la meme qui existait avant, mais on ne l'utilise QUE pour les defauts, pas pour bloquer)
+Le bandeau s'affiche si et seulement si :
+- Un chef et un chantier sont selectionnes
+- Le chef a **plusieurs chantiers** affectes pour la semaine en cours (multi-chantier)
 
-2. **Calculer `isChefOnSecondaryChantier`** : `true` si le chef a un chantier principal et que le chantier actuel n'est PAS le principal
+Pour les chefs mono-chantier, aucun bandeau ne s'affiche (pas de surcharge inutile).
 
-3. **Modifier les valeurs par defaut** du chef sur le chantier secondaire dans le bloc `daysDefault` (lignes 487-493) :
-   - Si c'est le chef ET c'est un chantier secondaire :
-     - `hours: 0` (au lieu de 8/7)
-     - `panierRepas: false` (au lieu de true)
-     - `repasType: null` (au lieu de "PANIER")
-     - `trajet: false` (au lieu de true)
-     - `codeTrajet: null` (au lieu de "A_COMPLETER")
-   - Sinon : comportement inchange (8/8/8/8/7 avec panier + trajet)
+## Design
 
-4. **Aucun blocage UI** : les champs restent editables. Le chef peut passer de 0 a 4h, cocher panier, etc.
+- Composant `Alert` existant avec style bleu : `border-blue-500/50 bg-blue-500/10`
+- Icone `Info` de lucide-react
+- Texte concis en 3-4 lignes
 
-## Ce qui ne change PAS
+## Texte du bandeau
 
-- Aucun blocage de saisie (les champs restent editables)
-- Aucun message "lecture seule"
-- Aucun style special bleu
-- La consolidation RH (rhShared.ts) : deja corrigee pour sommer
-- useAutoSaveFiche : deja corrige pour autoriser 5 jours partout
-- SignatureMacons : deja nettoyee
-- Chefs mono-chantier : pas affectes (la query retournera le meme chantierId)
+> **Chef multi-chantier** -- Vos heures sont a 0 par defaut sur le chantier secondaire. Si vous saisissez des heures sur un chantier, pensez a ajuster l'autre en consequence. Exemple : 4h ici = reduisez a 4h sur l'autre chantier. Meme principe pour les paniers et trajets : ne les cochez que sur un seul chantier par jour.
 
-## Technique
+## Modification technique : src/pages/Index.tsx
 
-La query ajoutee est identique a celle qui existait avant (3 lignes Supabase), mais son resultat est utilise UNIQUEMENT dans le calcul des valeurs par defaut, jamais pour bloquer l'UI.
+1. **Ajouter une query** pour recuperer le nombre de chantiers du chef sur la semaine (via `ChantierSelector` ou une query directe sur les chantiers affectes). On peut reutiliser la logique existante du `ChantierSelector` qui liste deja les chantiers du chef, ou ajouter une petite query qui compte les chantiers.
+
+2. **Calculer `isChefMultiChantier`** : `true` si le chef a 2+ chantiers pour cette semaine.
+
+3. **Ajouter le bandeau** conditionnel entre la Card de selection (ligne 524) et l'alerte vendredi (ligne 526).
+
+## Zero impact
+
+- Purement informatif, aucun blocage
+- Aucun changement de logique metier
+- Ne s'affiche pas pour les chefs mono-chantier
+
