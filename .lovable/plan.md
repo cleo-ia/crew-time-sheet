@@ -1,49 +1,59 @@
 
 
-# Correction des paniers/trajets sur jours d'absence -- 2 endroits restants
+# Correction : les modifications d'absences dans le pre-export ne persistent pas a l'affichage
 
 ## Le probleme
 
-La correction precedente dans `rhShared.ts` fonctionne pour la vue consolidee (liste des employes), mais **deux autres endroits** calculent les paniers et trajets sans verifier si le jour est une absence :
+Quand vous modifiez "ABS INJ" de 28 a 29 et enregistrez :
+1. La valeur est bien sauvegardee en base (dans `fiches.absences_export_override`)
+2. Mais apres la sauvegarde, les donnees sont rechargees depuis zero
+3. L'affichage recalcule les absences depuis les jours bruts (4 jours x 7h = 28h)
+4. La valeur sauvegardee (29) n'est jamais relue pour l'affichage
 
-1. **"Resume global de la periode"** (en haut de la fiche employe) -- fichier `src/hooks/useRHData.ts`, ligne 806
-2. **"Recapitulatif par semaine"** (paniers par semaine) -- fichier `src/components/rh/RHEmployeeDetail.tsx`, ligne 103
+Le meme probleme existe pour les trajets : les overrides sauvegardes ne sont pas utilises dans `getCellValue`.
 
-Ces deux endroits comptent le panier des que `day.panier === true`, meme si l'employe a 0h travaillees et 0h intemperies.
+## La cause technique
+
+Dans `RHPreExport.tsx`, la fonction `getCellValue` (ligne 402) fait :
+```
+absenceAbsInj: row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0
+```
+
+Apres le rechargement, `row.modified` est vide (reset a `{}`), et `absencesByType` est recalcule depuis `detailJours` (donnees brutes). L'override sauvegarde en base (`absences_export_override`) existe dans `row.original` mais n'est jamais consulte.
 
 ## La solution
 
-Ajouter la meme condition d'absence dans ces 2 fichiers.
+Modifier `getCellValue` pour lire les overrides sauvegardes **entre** les modifications locales et les valeurs calculees. L'ordre de priorite devient :
+
+1. Modification locale en cours (`row.modified.absenceAbsInj`) -- edition non encore sauvegardee
+2. Override sauvegarde en base (`row.original.absences_export_override?.ABS_INJ`) -- deja enregistre
+3. Valeur calculee depuis les jours bruts (`absencesByType.ABS_INJ`) -- valeur par defaut
 
 ## Detail technique
 
-### Fichier 1 : `src/hooks/useRHData.ts` (ligne ~806)
+**Fichier modifie** : `src/components/rh/RHPreExport.tsx`
 
-Remplacer :
+Dans `getCellValue`, apres le calcul de `absencesByType` (ligne 365), ajouter la lecture des overrides depuis `row.original` :
+
 ```typescript
-totalPaniers: dailyDetails.filter(d => d.panier).length,
-totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet).length,
+// Lire les overrides sauvegardes en base (absences_export_override / trajets_export_override)
+const savedAbsOverride = (row.original as any).absences_export_override as Record<string, number> | null;
+const savedTrajOverride = (row.original as any).trajets_export_override as Record<string, number> | null;
 ```
 
-Par :
+Puis modifier chaque ligne d'absence pour intercaler l'override sauvegarde :
+
 ```typescript
-totalPaniers: dailyDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
-totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+// Avant (ne persiste pas) :
+case "absenceAbsInj": return row.modified.absenceAbsInj ?? absencesByType.ABS_INJ ?? 0;
+
+// Apres (persiste correctement) :
+case "absenceAbsInj": return row.modified.absenceAbsInj ?? savedAbsOverride?.ABS_INJ ?? absencesByType.ABS_INJ ?? 0;
 ```
 
-### Fichier 2 : `src/components/rh/RHEmployeeDetail.tsx` (lignes ~103-104)
+Meme correction pour toutes les colonnes d'absences (CP, RTT, AM, MP, AT, CONGE_PARENTAL, HI, CPSS, ABS_INJ, ECOLE) et pour les colonnes de trajets (T1-T17, T31, T35, GD, T_PERSO).
 
-Remplacer :
-```typescript
-weekData.paniers += day.panier ? 1 : 0;
-weekData.trajets += (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER' ? 1 : 0;
-```
+Il faut aussi s'assurer que `fetchRHExportData` dans `useRHExport.ts` transmet bien `absences_export_override` dans l'objet retourne (actuellement il le fait via `(emp as any).absences_export_override` mais ne le place pas explicitement dans `RHExportEmployee`). Le champ existe deja grace au spread dans `buildRHConsolidation`, donc il suffit de le lire correctement dans `getCellValue`.
 
-Par :
-```typescript
-const isAbsentDay = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0;
-weekData.paniers += (!isAbsentDay && day.panier) ? 1 : 0;
-weekData.trajets += (!isAbsentDay && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
-```
+Cela corrigera le probleme : apres sauvegarde et rechargement, la valeur modifiee (29) sera correctement affichee car elle sera lue depuis `absences_export_override` en base.
 
-Cela garantit que les 3 niveaux d'affichage (global, par semaine, et par jour) appliquent tous la meme regle : pas de panier ni trajet sur un jour d'absence.
