@@ -2762,6 +2762,8 @@ export type Database = {
         | "ABS_INJ"
         | "ECOLE"
         | "EF"
+        | "CONTRAT_ARRETE"
+        | "CONTRAT_NON_DEBUTE"
       type_conge: "CP" | "RTT" | "MALADIE" | "AUTRE"
     }
     CompositeTypes: {
@@ -2935,6 +2937,8 @@ export const Constants = {
         "ABS_INJ",
         "ECOLE",
         "EF",
+        "CONTRAT_ARRETE",
+        "CONTRAT_NON_DEBUTE",
       ],
       type_conge: ["CP", "RTT", "MALADIE", "AUTRE"],
     },
