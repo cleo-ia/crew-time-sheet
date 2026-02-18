@@ -1,23 +1,27 @@
 
 
-# Purge de Branislav BENCUN - Semaine S02
+# Ajout des types d'absence manquants dans la base de donnees
 
-## Action
+## Le probleme en simple
 
-Supprimer la fiche fantome de Branislav BENCUN (grutier) pour la semaine 2026-S02 afin qu'il n'apparaisse plus dans la vue RH consolidee de Tanguy.
+Quand vous selectionnez "Contrat non debute" dans le menu deroulant des absences, l'application envoie la valeur `CONTRAT_NON_DEBUTE` a la base de donnees. Mais cette valeur n'existe pas dans la liste autorisee par la base -- d'ou l'erreur "invalid input value".
 
-## Donnees identifiees
+C'est comme essayer de mettre une couleur qui n'existe pas dans une palette predéfinie.
 
-- **Fiche ID** : `7f72b30b-1a2d-4789-9dbb-d93bb57ccb2a`
-- **Semaine** : 2026-S02
-- **Chantier** : CI893OLYMPIA
-- **5 fiches_jours** associees (05/01 au 09/01, toutes a 0h)
+## La solution
 
-## Etapes techniques
+Ajouter les 2 valeurs manquantes (`CONTRAT_ARRETE` et `CONTRAT_NON_DEBUTE`) a l'enum `type_absence` dans la base de donnees via une migration SQL.
 
-1. Supprimer les `signatures` liees a cette fiche (s'il y en a)
-2. Supprimer les 5 `fiches_jours` liees a cette fiche
-3. Supprimer la `fiche` elle-meme
+## Detail technique
 
-Cela sera execute via des requetes SQL directes sur la base de donnees Test.
+**Fichier** : nouvelle migration SQL
+
+```sql
+ALTER TYPE public.type_absence ADD VALUE IF NOT EXISTS 'CONTRAT_ARRETE';
+ALTER TYPE public.type_absence ADD VALUE IF NOT EXISTS 'CONTRAT_NON_DEBUTE';
+```
+
+Aucune modification de code n'est necessaire -- le menu deroulant dans `EditableAbsenceTypeCell.tsx` propose deja ces valeurs. Seule la base de donnees doit etre mise a jour.
+
+**Apres la migration** : il faudra **publier** le projet pour que le changement s'applique aussi en production.
 
