@@ -84,8 +84,10 @@ export interface RHExportEmployee {
     trajetPerso: boolean;
     typeAbsence?: string;
     isAbsent: boolean; // true si heures=0 ET intemperie=0
-    regularisationM1?: string;
-    autresElements?: string;
+  regularisationM1?: string;
+  autresElements?: string;
+  absences_export_override?: Record<string, number> | null;
+  trajets_export_override?: Record<string, number> | null;
   }>;
 }
 
@@ -185,6 +187,8 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       commentaireSaisie: (emp as any).commentaire_saisie || "",
       regularisationM1: (emp as any).regularisation_m1_export || "",
       autresElements: (emp as any).autres_elements_export || "",
+      absences_export_override: (emp as any).absences_export_override || null,
+      trajets_export_override: (emp as any).trajets_export_override || null,
       
       detailJours: emp.detailJours.map(jour => ({
         date: jour.date,
