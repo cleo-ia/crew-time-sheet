@@ -396,10 +396,21 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     savedBaseline: number | undefined,
     calculated: number
   ): number => {
+    // 1. Modification locale en session -> prioritaire
     if (localEdit !== undefined) return localEdit;
-    if (savedOverride !== undefined && savedBaseline !== undefined && savedBaseline === calculated) {
-      return savedOverride;
+    // 2. Override sauvegardé avec baseline
+    if (savedOverride !== undefined && savedBaseline !== undefined) {
+      if (savedBaseline === calculated) {
+        // Données source inchangées -> garder l'override tel quel
+        return savedOverride;
+      } else {
+        // Données source modifiées -> reporter le delta
+        const delta = savedOverride - savedBaseline;
+        if (delta === 0) return calculated; // pas de modif manuelle réelle
+        return calculated + delta;
+      }
     }
+    // 3. Valeur calculée (pas d'override)
     return calculated;
   };
 
