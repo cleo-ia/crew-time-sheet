@@ -1,58 +1,24 @@
 
 
-# Correction : reporter le delta des overrides au lieu de les ignorer
+# Ajouter un bouton "Exporter Excel" dans la barre du Pré-export
 
-## Le probleme
+## Objectif
 
-La logique actuelle dans `resolveOverride` est binaire :
-- baseline = calcule -> garder l'override
-- baseline != calcule -> ignorer l'override et afficher le calcule
+Ajouter un bouton d'export Excel a cote du filtre "Tous les metiers" (ligne 576-593 du fichier), qui exporte uniquement les salaries filtres avec leurs modifications manuelles prises en compte.
 
-Mais quand Tanguy ajoute +1h manuellement (28 -> 29), puis qu'une absence est ajoutee (calcule passe a 35), on veut **35 + 1 = 36**, pas 35.
+## Modifications
 
-## La solution : appliquer le delta
+**Fichier : `src/components/rh/RHPreExport.tsx`**
 
-Modifier `resolveOverride` pour calculer et reporter l'ecart :
+1. **Ajouter l'icone `Download`** dans les imports Lucide (ligne d'import existante).
 
-```typescript
-const resolveOverride = (
-  localEdit: number | undefined,
-  savedOverride: number | undefined,
-  savedBaseline: number | undefined,
-  calculated: number
-): number => {
-  // 1. Modification locale en session -> prioritaire
-  if (localEdit !== undefined) return localEdit;
-  // 2. Override sauvegarde avec baseline
-  if (savedOverride !== undefined && savedBaseline !== undefined) {
-    if (savedBaseline === calculated) {
-      // Donnees source inchangees -> garder l'override tel quel
-      return savedOverride;
-    } else {
-      // Donnees source modifiees -> reporter le delta
-      const delta = savedOverride - savedBaseline;
-      if (delta === 0) return calculated; // pas de modif manuelle reelle
-      return calculated + delta;
-    }
-  }
-  // 3. Valeur calculee (pas d'override)
-  return calculated;
-};
-```
+2. **Modifier `handleExport`** pour utiliser `filteredRows` au lieu de `rows`, afin de respecter le filtre metier actif.
 
-## Verification des scenarios
+3. **Ajouter le bouton** dans la zone droite de la barre d'actions (entre le Select "Tous les metiers" et le compteur de salaries) :
+   - Icone `Download` + texte "Exporter Excel"
+   - Desactive pendant le chargement ou si aucune donnee filtree
 
-| Scenario | baseline | override | calcul actuel | delta | Resultat |
-|----------|----------|----------|---------------|-------|----------|
-| Tanguy +1h, pas de changement | 28 | 29 | 28 | +1 | **29** |
-| Tanguy +1h, absence ajoutee | 28 | 29 | 35 | +1 | **36** |
-| Tanguy -8h, pas de changement | 28 | 20 | 28 | -8 | **20** |
-| Tanguy -8h, absence ajoutee | 28 | 20 | 35 | -8 | **27** |
-| Tanguy pas de modif, absence ajoutee | 28 | 28 | 35 | 0 | **35** |
+## Resultat
 
-Tous les cas sont couverts : le delta manuel est toujours preserve.
-
-## Fichier a modifier
-
-**`src/components/rh/RHPreExport.tsx`** : modifier uniquement la fonction `resolveOverride` (environ 10 lignes). Aucun autre fichier ne change.
+Le bouton apparaitra sur la meme ligne que "Tous les metiers" et le compteur "52 / 52 salaries". Il generera un fichier Excel identique a l'export definitif, mais uniquement avec les salaries visibles apres application des filtres RH et du filtre metier.
 
