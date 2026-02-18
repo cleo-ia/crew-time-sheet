@@ -803,8 +803,8 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       const summary = {
         totalHeures: dailyDetails.reduce((sum, d) => sum + d.heuresNormales, 0),
         totalIntemperies: dailyDetails.reduce((sum, d) => sum + d.heuresIntemperies, 0),
-        totalPaniers: dailyDetails.filter(d => d.panier).length,
-        totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet).length,
+        totalPaniers: dailyDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+        totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
       };
 
       // Récupérer isChef et role pour le salarié
