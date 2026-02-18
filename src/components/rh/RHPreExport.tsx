@@ -355,7 +355,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   };
 
   const handleExport = async () => {
-    if (rows.length === 0) {
+    if (filteredRows.length === 0) {
       toast.error("Aucune donnée à exporter");
       return;
     }
@@ -363,7 +363,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     setIsLoading(true);
     try {
       // Merge original + modified data
-      const mergedData: RHExportEmployee[] = rows.map(row => ({
+      const mergedData: RHExportEmployee[] = filteredRows.map(row => ({
         ...row.original,
         ...row.modified
       }));
@@ -587,6 +587,10 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
               <SelectItem value="Intérimaire">Intérimaires</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={handleExport} variant="outline" size="sm" disabled={isLoading || filteredRows.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter Excel
+          </Button>
           <p className="text-sm text-muted-foreground">
             {filteredRows.length} / {rows.length} salarié{rows.length > 1 ? 's' : ''}
           </p>
