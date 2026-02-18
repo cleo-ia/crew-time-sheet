@@ -315,27 +315,16 @@ export const useAutoSaveFiche = () => {
             if (!isPlanningActive) {
               selectedDays = [...workDays];
             } else {
-              // ✅ EXCEPTION CHEF PRINCIPAL : Si l'employé est le chef ET 
-              // le chantier courant est son chantier principal → tous les jours autorisés
-              // Cela garantit que les heures du chef sont toujours sauvegardées sur son chantier principal,
-              // indépendamment des affectations planning (le chef peut être planifié 5J sur plusieurs chantiers)
-              let isChefOnPrincipalChantier = false;
-              if (entry.employeeId === chefId) {
-                const { data: chefUserData } = await supabase
-                  .from("utilisateurs")
-                  .select("chantier_principal_id")
-                  .eq("id", chefId)
-                  .maybeSingle();
-                
-                if (chefUserData?.chantier_principal_id === chantierId) {
-                  isChefOnPrincipalChantier = true;
-                  selectedDays = [...workDays];
-                  console.log(`[AutoSave] Chef ${entry.employeeName} sur son chantier principal, 5 jours autorisés`);
-                }
+              // ✅ CHEF MULTI-CHANTIER : Si l'employé est le chef lui-même,
+              // toujours autoriser les 5 jours, quel que soit le chantier (principal ou secondaire)
+              let isChefHimself = entry.employeeId === chefId;
+              if (isChefHimself) {
+                selectedDays = [...workDays];
+                console.log(`[AutoSave] Chef ${entry.employeeName} sur chantier ${chantierId}, 5 jours autorisés (multi-chantier)`);
               }
               
-              // Si ce n'est pas le chef sur son chantier principal, vérifier les affectations
-              if (!isChefOnPrincipalChantier) {
+              // Si ce n'est pas le chef, vérifier les affectations
+              if (!isChefHimself) {
                 // Mode planning actif : vérifier les jours spécifiques assignés à ce chef
                 const { data: affectationsJours } = await supabase
                   .from("affectations_jours_chef")
