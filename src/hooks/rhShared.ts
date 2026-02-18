@@ -74,6 +74,8 @@ export interface EmployeeWithDetails {
   ficheId?: string | null;
   absences_export_override?: Record<string, number> | null;
   trajets_export_override?: Record<string, number> | null;
+  absences_baseline?: Record<string, number> | null;
+  trajets_baseline?: Record<string, number> | null;
   acomptes?: string | null;
   prets?: string | null;
   commentaire_rh?: string | null;
@@ -210,6 +212,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       entreprise_id,
       absences_export_override,
       trajets_export_override,
+      absences_baseline,
+      trajets_baseline,
       acomptes,
       prets,
       commentaire_rh,
@@ -612,6 +616,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         ficheId: fiches[0]?.id || null,
         absences_export_override: (fiches[0] as any)?.absences_export_override || null,
         trajets_export_override: (fiches[0] as any)?.trajets_export_override || null,
+        absences_baseline: (fiches[0] as any)?.absences_baseline || null,
+        trajets_baseline: (fiches[0] as any)?.trajets_baseline || null,
         acomptes: (fiches[0] as any)?.acomptes || null,
         prets: (fiches[0] as any)?.prets || null,
         commentaire_rh: (fiches[0] as any)?.commentaire_rh || null,

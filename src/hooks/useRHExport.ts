@@ -71,6 +71,10 @@ export interface RHExportEmployee {
   commentaireSaisie?: string;
   regularisationM1?: string;
   autresElements?: string;
+  absences_export_override?: Record<string, number> | null;
+  trajets_export_override?: Record<string, number> | null;
+  absences_baseline?: Record<string, number> | null;
+  trajets_baseline?: Record<string, number> | null;
   
   detailJours?: Array<{
     date: string;
@@ -84,11 +88,13 @@ export interface RHExportEmployee {
     trajetPerso: boolean;
     typeAbsence?: string;
     isAbsent: boolean; // true si heures=0 ET intemperie=0
-  regularisationM1?: string;
-  autresElements?: string;
-  absences_export_override?: Record<string, number> | null;
-  trajets_export_override?: Record<string, number> | null;
-  }>;
+   regularisationM1?: string;
+   autresElements?: string;
+   absences_export_override?: Record<string, number> | null;
+   trajets_export_override?: Record<string, number> | null;
+   absences_baseline?: Record<string, number> | null;
+   trajets_baseline?: Record<string, number> | null;
+   }>;
 }
 
 /**
@@ -189,6 +195,8 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
       autresElements: (emp as any).autres_elements_export || "",
       absences_export_override: (emp as any).absences_export_override || null,
       trajets_export_override: (emp as any).trajets_export_override || null,
+      absences_baseline: (emp as any).absences_baseline || null,
+      trajets_baseline: (emp as any).trajets_baseline || null,
       
       detailJours: emp.detailJours.map(jour => ({
         date: jour.date,
