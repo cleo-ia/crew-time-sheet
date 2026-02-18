@@ -1,27 +1,55 @@
 
 
-# Ajout des types d'absence manquants dans la base de donnees
+# Correction du comptage paniers/trajets sur les jours d'absence
 
-## Le probleme en simple
+## Le probleme
 
-Quand vous selectionnez "Contrat non debute" dans le menu deroulant des absences, l'application envoie la valeur `CONTRAT_NON_DEBUTE` a la base de donnees. Mais cette valeur n'existe pas dans la liste autorisee par la base -- d'ou l'erreur "invalid input value".
+Dans la vue RH, quand un employe est absent (0h travaillees, 0h intemperies), ses paniers repas et trajets sont quand meme comptes dans les totaux. Par exemple, Bentouhami Mustafa a 2 jours "Contrat non debute" mais le systeme affiche 5 paniers et 5 trajets au lieu de 3.
 
-C'est comme essayer de mettre une couleur qui n'existe pas dans une palette predéfinie.
+## La cause
+
+Dans le fichier `src/hooks/rhShared.ts`, le code qui calcule les totaux ne verifie pas si le jour est une absence avant de compter les paniers et les trajets. Il compte tout, y compris les jours ou l'employe n'a pas travaille.
 
 ## La solution
 
-Ajouter les 2 valeurs manquantes (`CONTRAT_ARRETE` et `CONTRAT_NON_DEBUTE`) a l'enum `type_absence` dans la base de donnees via une migration SQL.
+Ajouter une condition : **ne compter le panier et le trajet que si le jour n'est pas une absence** (c'est-a-dire si les heures ou les intemperies sont superieures a 0).
 
 ## Detail technique
 
-**Fichier** : nouvelle migration SQL
+**Fichier modifie** : `src/hooks/rhShared.ts`
 
-```sql
-ALTER TYPE public.type_absence ADD VALUE IF NOT EXISTS 'CONTRAT_ARRETE';
-ALTER TYPE public.type_absence ADD VALUE IF NOT EXISTS 'CONTRAT_NON_DEBUTE';
+Lignes ~507-517, remplacer :
+
+```typescript
+if (heuresDuJour === 0 && intemperie === 0) {
+  absences++;
+}
+
+if (panier) paniers++;
+
+// Compteur par code trajet
+if ((jourRef as any).code_trajet) {
+  trajetsParCode[...] = ...;
+  totalJoursTrajets++;
+}
 ```
 
-Aucune modification de code n'est necessaire -- le menu deroulant dans `EditableAbsenceTypeCell.tsx` propose deja ces valeurs. Seule la base de donnees doit etre mise a jour.
+Par :
 
-**Apres la migration** : il faudra **publier** le projet pour que le changement s'applique aussi en production.
+```typescript
+const isAbsentDay = heuresDuJour === 0 && intemperie === 0;
 
+if (isAbsentDay) {
+  absences++;
+}
+
+// Ne compter panier et trajet QUE si le jour n'est pas une absence
+if (!isAbsentDay && panier) paniers++;
+
+if (!isAbsentDay && (jourRef as any).code_trajet) {
+  trajetsParCode[...] = ...;
+  totalJoursTrajets++;
+}
+```
+
+Cela corrigera les totaux dans le resume global, le recapitulatif par semaine, et le detail jour par jour. Il faudra publier pour que la correction s'applique en production.
