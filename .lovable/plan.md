@@ -1,55 +1,49 @@
 
 
-# Correction du comptage paniers/trajets sur les jours d'absence
+# Correction des paniers/trajets sur jours d'absence -- 2 endroits restants
 
 ## Le probleme
 
-Dans la vue RH, quand un employe est absent (0h travaillees, 0h intemperies), ses paniers repas et trajets sont quand meme comptes dans les totaux. Par exemple, Bentouhami Mustafa a 2 jours "Contrat non debute" mais le systeme affiche 5 paniers et 5 trajets au lieu de 3.
+La correction precedente dans `rhShared.ts` fonctionne pour la vue consolidee (liste des employes), mais **deux autres endroits** calculent les paniers et trajets sans verifier si le jour est une absence :
 
-## La cause
+1. **"Resume global de la periode"** (en haut de la fiche employe) -- fichier `src/hooks/useRHData.ts`, ligne 806
+2. **"Recapitulatif par semaine"** (paniers par semaine) -- fichier `src/components/rh/RHEmployeeDetail.tsx`, ligne 103
 
-Dans le fichier `src/hooks/rhShared.ts`, le code qui calcule les totaux ne verifie pas si le jour est une absence avant de compter les paniers et les trajets. Il compte tout, y compris les jours ou l'employe n'a pas travaille.
+Ces deux endroits comptent le panier des que `day.panier === true`, meme si l'employe a 0h travaillees et 0h intemperies.
 
 ## La solution
 
-Ajouter une condition : **ne compter le panier et le trajet que si le jour n'est pas une absence** (c'est-a-dire si les heures ou les intemperies sont superieures a 0).
+Ajouter la meme condition d'absence dans ces 2 fichiers.
 
 ## Detail technique
 
-**Fichier modifie** : `src/hooks/rhShared.ts`
+### Fichier 1 : `src/hooks/useRHData.ts` (ligne ~806)
 
-Lignes ~507-517, remplacer :
-
+Remplacer :
 ```typescript
-if (heuresDuJour === 0 && intemperie === 0) {
-  absences++;
-}
-
-if (panier) paniers++;
-
-// Compteur par code trajet
-if ((jourRef as any).code_trajet) {
-  trajetsParCode[...] = ...;
-  totalJoursTrajets++;
-}
+totalPaniers: dailyDetails.filter(d => d.panier).length,
+totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet).length,
 ```
 
 Par :
-
 ```typescript
-const isAbsentDay = heuresDuJour === 0 && intemperie === 0;
-
-if (isAbsentDay) {
-  absences++;
-}
-
-// Ne compter panier et trajet QUE si le jour n'est pas une absence
-if (!isAbsentDay && panier) paniers++;
-
-if (!isAbsentDay && (jourRef as any).code_trajet) {
-  trajetsParCode[...] = ...;
-  totalJoursTrajets++;
-}
+totalPaniers: dailyDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
 ```
 
-Cela corrigera les totaux dans le resume global, le recapitulatif par semaine, et le detail jour par jour. Il faudra publier pour que la correction s'applique en production.
+### Fichier 2 : `src/components/rh/RHEmployeeDetail.tsx` (lignes ~103-104)
+
+Remplacer :
+```typescript
+weekData.paniers += day.panier ? 1 : 0;
+weekData.trajets += (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER' ? 1 : 0;
+```
+
+Par :
+```typescript
+const isAbsentDay = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0;
+weekData.paniers += (!isAbsentDay && day.panier) ? 1 : 0;
+weekData.trajets += (!isAbsentDay && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
+```
+
+Cela garantit que les 3 niveaux d'affichage (global, par semaine, et par jour) appliquent tous la meme regle : pas de panier ni trajet sur un jour d'absence.
