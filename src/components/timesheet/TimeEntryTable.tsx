@@ -255,8 +255,25 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     weekId
   );
 
-  // ✅ Chef multi-chantier : plus de blocage sur les chantiers secondaires
-  // Le chef peut saisir ses heures sur tous ses chantiers
+  // ✅ Chef multi-chantier : query légère pour les valeurs par défaut uniquement
+  const { data: chefChantierPrincipalData } = useQuery({
+    queryKey: ["chef-chantier-principal-defaults", chefId],
+    queryFn: async () => {
+      if (!chefId) return null;
+      const { data } = await supabase
+        .from("utilisateurs")
+        .select("chantier_principal_id")
+        .eq("id", chefId)
+        .single();
+      return data;
+    },
+    enabled: !!chefId,
+  });
+
+  const isChefOnSecondaryChantier = useMemo(() => {
+    if (!chefId || !chantierId || !chefChantierPrincipalData?.chantier_principal_id) return false;
+    return chefChantierPrincipalData.chantier_principal_id !== chantierId;
+  }, [chefId, chantierId, chefChantierPrincipalData]);
 
   // Helper pour vérifier si un employé est autorisé à travailler un jour donné
   const isDayAuthorizedForEmployee = useCallback((employeeId: string, dayName: string): boolean => {
@@ -483,13 +500,22 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
           : null;
         
         // Valeurs par défaut - UNIQUEMENT Lundi à Vendredi
-        // ✅ Chef multi-chantier : mêmes heures par défaut que les autres (8/8/8/8/7)
+        // ✅ Chef multi-chantier : 0h par défaut sur chantier secondaire (sans panier ni trajet)
+        const isChefSelf = !!chefId && macon.id === chefId;
+        const useZeroDefaults = isChefSelf && isChefOnSecondaryChantier;
+        
+        const defaultHours = (day: string) => useZeroDefaults ? 0 : (day === "Vendredi" ? 7 : 8);
+        const defaultPanier = !useZeroDefaults;
+        const defaultRepas = useZeroDefaults ? null : ("PANIER" as RepasType);
+        const defaultTrajet = !useZeroDefaults;
+        const defaultCodeTrajet = useZeroDefaults ? null : ("A_COMPLETER" as CodeTrajet | null);
+        
         const daysDefault = {
-          Lundi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
-          Mardi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
-          Mercredi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
-          Jeudi: { hours: 8, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
-          Vendredi: { hours: 7, overtime: 0, absent: false, panierRepas: true, repasType: "PANIER" as RepasType, trajet: true, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: "A_COMPLETER" as CodeTrajet | null },
+          Lundi: { hours: defaultHours("Lundi"), overtime: 0, absent: false, panierRepas: defaultPanier, repasType: defaultRepas, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: defaultCodeTrajet },
+          Mardi: { hours: defaultHours("Mardi"), overtime: 0, absent: false, panierRepas: defaultPanier, repasType: defaultRepas, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: defaultCodeTrajet },
+          Mercredi: { hours: defaultHours("Mercredi"), overtime: 0, absent: false, panierRepas: defaultPanier, repasType: defaultRepas, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: defaultCodeTrajet },
+          Jeudi: { hours: defaultHours("Jeudi"), overtime: 0, absent: false, panierRepas: defaultPanier, repasType: defaultRepas, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: defaultCodeTrajet },
+          Vendredi: { hours: defaultHours("Vendredi"), overtime: 0, absent: false, panierRepas: defaultPanier, repasType: defaultRepas, trajet: defaultTrajet, trajetPerso: false, grandDeplacement: false, heuresIntemperie: 0, chantierId, chantierCode: selectedChantier?.code_chantier || null, chantierVille: null, chantierNom: null, commentaire: "", codeTrajet: defaultCodeTrajet },
         };
 
         // S'il y a des jours sauvegardés en BDD, on les applique
