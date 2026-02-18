@@ -100,8 +100,9 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
       weekData.chantiers.add(day.chantier);
       weekData.heuresNormales += day.heuresNormales || 0;
       weekData.heuresIntemperies += day.heuresIntemperies || 0;
-      weekData.paniers += day.panier ? 1 : 0;
-      weekData.trajets += (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER' ? 1 : 0;
+      const isAbsent = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0;
+      weekData.paniers += (!isAbsent && day.panier) ? 1 : 0;
+      weekData.trajets += (!isAbsent && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
       weekData.nbJours += 1;
       
       // Ne compter le type d'absence que si c'est vraiment un jour d'absence (heures normales = 0)
