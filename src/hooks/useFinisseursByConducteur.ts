@@ -14,6 +14,7 @@ export interface FicheJour {
   ville_du_jour?: string | null;
   commentaire?: string | null;
   repas_type?: "PANIER" | "RESTO" | null;
+  source_chantier_id?: string | null;
 }
 
 export interface FinisseurWithFiche {
@@ -111,7 +112,10 @@ export const useFinisseursByConducteur = (
               .order("date");
 
             if (jours) {
-              allFicheJours.push(...(jours as FicheJour[]));
+              allFicheJours.push(...(jours as FicheJour[]).map(j => ({
+                ...j,
+                source_chantier_id: fiche.chantier_id,
+              })));
             }
 
             const { data: signature } = await supabase

@@ -282,7 +282,10 @@ const ValidationConducteur = () => {
       chantierIds.forEach(chantierId => {
         const filteredDays = (f.affectedDays || []).filter(ad => ad.chantier_id === chantierId);
         const filteredDates = new Set(filteredDays.map(d => d.date));
-        const filteredFicheJours = (f.ficheJours || []).filter(fj => filteredDates.has(fj.date));
+        // Filtrer par source_chantier_id (fiable), fallback sur dates si pas dispo
+        const filteredFicheJours = (f.ficheJours || []).filter(fj => 
+          fj.source_chantier_id ? fj.source_chantier_id === chantierId : filteredDates.has(fj.date)
+        );
         const filteredTotalHeures = filteredFicheJours.reduce((sum, fj) => sum + (fj.HNORM || 0) + (fj.HI || 0), 0);
         
         if (!grouped.has(chantierId)) grouped.set(chantierId, []);
