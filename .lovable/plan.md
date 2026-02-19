@@ -1,57 +1,52 @@
 
 
-# Corriger le badge "Absent" dans "Modifier les donnees" pour le chef multi-chantier
+# Corriger la persistance du trajet dans TimeEntryTable + nettoyage BDD S09
 
-## Le probleme
+## Corrections code
 
-Quand le conducteur clique sur "Modifier les donnees", les jours du chef a 0h (parce qu'il travaille sur l'autre chantier) sont marques "Absent" avec un fond rose. C'est incorrect : il n'est pas absent, il est ailleurs.
+**`src/components/timesheet/TimeEntryTable.tsx`** - deux lignes a modifier :
 
-La cause est dans la fonction `convertFichesToTimeEntries()` du fichier `FicheDetail.tsx`, ligne 310 :
-
-```
-absent: hours === 0 && HI === 0
-```
-
-Ce flag est mis a `true` pour tous les jours a 0h, y compris pour le chef multi-chantier.
-
-## La solution
-
-Pour le chef de chantier, ne pas marquer les jours a 0h comme "absent". Il suffit de verifier si l'employe est le chef.
-
-## Fichier a modifier
-
-**`src/components/validation/FicheDetail.tsx`** - ligne 310, dans `convertFichesToTimeEntries()`
-
-### Avant
-
-```typescript
-absent: hours === 0 && HI === 0,
-```
-
-### Apres
-
-```typescript
-absent: (fiche.salarie?.id === ficheData?.chef?.id) ? false : (hours === 0 && HI === 0),
-```
-
-### Bonus : corriger aussi le trajet (ligne 313)
-
-Meme bug que celui corrige dans TimeEntryTable : le trajet est force a `true` au lieu de lire la valeur BDD.
+### Ligne 420 : lire T depuis la BDD au lieu de forcer true
 
 ```typescript
 // Avant
-trajet: (isTrajetPerso || isGD) ? false : true,
+const trajet = (isTrajetPerso || isGD) ? false : true;
 
 // Apres
-const dbTrajet = Number(jourData?.T || 0) > 0;
-trajet: (isTrajetPerso || isGD) ? false : dbTrajet,
+const dbTrajet = Number(j.T || 0) > 0;
+const trajet = (isTrajetPerso || isGD) ? false : dbTrajet;
+```
+
+### Ligne 444 : ne pas forcer A_COMPLETER
+
+```typescript
+// Avant
+codeTrajet: ((j as any).code_trajet || (trajet ? "A_COMPLETER" : null))
+
+// Apres
+codeTrajet: ((j as any).code_trajet || null)
+```
+
+## Nettoyage BDD (semaine S09)
+
+Les donnees corrompues de Thomas sur le chantier secondaire **S09** :
+
+```sql
+UPDATE fiches_jours fj
+SET "T" = 0, code_trajet = NULL
+FROM fiches f
+WHERE fj.fiche_id = f.id
+  AND f.semaine = '2026-S09'
+  AND f.salarie_id = '03e2cebf-c96f-41bf-b860-3bbeb3f97d5f'
+  AND f.chantier_id = 'f55e04cf-6521-4b51-9e0f-f3f23653003b'
+  AND fj."HNORM" = 0;
 ```
 
 ## Resume
 
-| Scenario | Avant | Apres |
-|----------|-------|-------|
-| Chef 0h un jour (sur l'autre chantier) | Badge "Absent" + fond rose | Pas de badge, jour normal |
-| Employe normal 0h | Badge "Absent" | Pas de changement |
-| Trajet decoche par le chef | Re-coche au chargement | Reste decoche |
+| Quoi | Detail |
+|------|--------|
+| Fichier modifie | `src/components/timesheet/TimeEntryTable.tsx` (lignes 420 et 444) |
+| Nettoyage BDD | S09, Thomas, chantier secondaire, jours a 0h |
+| Resultat | Cases trajet respectent la valeur BDD, donnees corrompues nettoyees |
 
