@@ -52,7 +52,8 @@ const TransportSheetWithFicheInner = ({
   chantierId, 
   conducteurId,
   isReadOnly,
-  finisseursEquipe
+  finisseursEquipe,
+  assignedDates
 }: {
   selectedWeek: Date;
   selectedWeekString: string;
@@ -60,6 +61,7 @@ const TransportSheetWithFicheInner = ({
   conducteurId: string;
   isReadOnly: boolean | undefined;
   finisseursEquipe: { id: string; nom: string; prenom: string; ficheJours?: Array<{ date: string; heures?: number; trajet_perso?: boolean; code_trajet?: string | null }> }[];
+  assignedDates?: string[];
 }) => {
   const { data: ficheId, isLoading } = useFicheId(
     selectedWeekString, 
@@ -92,6 +94,7 @@ const TransportSheetWithFicheInner = ({
       isReadOnly={isReadOnly}
       mode="conducteur"
       finisseursEquipe={finisseursEquipe}
+      assignedDates={assignedDates}
     />
   );
 };
@@ -106,7 +109,9 @@ const TransportSheetWithFiche = memo(TransportSheetWithFicheInner, (prevProps, n
     prevProps.isReadOnly === nextProps.isReadOnly &&
     // Comparer les finisseurs par leurs IDs
     prevProps.finisseursEquipe.length === nextProps.finisseursEquipe.length &&
-    prevProps.finisseursEquipe.every((f, i) => f.id === nextProps.finisseursEquipe[i]?.id)
+    prevProps.finisseursEquipe.every((f, i) => f.id === nextProps.finisseursEquipe[i]?.id) &&
+    // Comparer les dates assignées
+    JSON.stringify(prevProps.assignedDates) === JSON.stringify(nextProps.assignedDates)
   );
 });
 
@@ -881,6 +886,11 @@ const ValidationConducteur = () => {
                                 conducteurId={effectiveConducteurId!}
                                 isReadOnly={transmissionStatus?.isTransmitted}
                                 finisseursEquipe={finisseursEquipeByChantier.get(chantierId) || []}
+                                assignedDates={chantierId !== "sans-chantier" ? [...new Set(
+                                  (affectationsJours || [])
+                                    .filter(a => a.chantier_id === chantierId)
+                                    .map(a => a.date)
+                                )].sort() : undefined}
                               />
                               
                               {/* ✅ Bouton Enregistrer par chantier */}

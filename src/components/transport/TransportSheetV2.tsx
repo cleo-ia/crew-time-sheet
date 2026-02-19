@@ -38,6 +38,7 @@ interface TransportSheetV2Props {
   allIntempDays?: string[];
   mode?: "chef" | "conducteur";
   finisseursEquipe?: FinisseurEquipe[];
+  assignedDates?: string[];
 }
 
 export interface TransportSheetV2Ref {
@@ -56,6 +57,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   allIntempDays = [],
   mode = "chef",
   finisseursEquipe = [],
+  assignedDates,
 }, ref) => {
   const [transportDays, setTransportDays] = useState<TransportDayV2[]>([]);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -188,16 +190,14 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
     if (initialDataSource === 'copied') return; // Déjà initialisé par la copie
     if (isInitialized && existingTransport) return; // Éviter les re-initialisations après redirection
 
-    // Toujours générer les 5 jours de la semaine
-    const allDays: TransportDayV2[] = [];
-    for (let i = 0; i < 5; i++) {
-      const currentDate = addDays(selectedWeek, i);
-      const dateString = format(currentDate, "yyyy-MM-dd");
-      
-      // Chercher si ce jour existe déjà dans les données chargées
+    // Générer les jours : soit les jours assignés, soit les 5 jours de la semaine
+    const datesToGenerate: string[] = assignedDates && assignedDates.length > 0
+      ? assignedDates
+      : Array.from({ length: 5 }, (_, i) => format(addDays(selectedWeek, i), "yyyy-MM-dd"));
+
+    const allDays: TransportDayV2[] = datesToGenerate.map(dateString => {
       const existingDay = existingTransport?.days.find(d => d.date === dateString);
-      
-      allDays.push({
+      return {
         date: dateString,
         vehicules: existingDay 
           ? existingDay.vehicules 
@@ -209,14 +209,14 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
               conducteurSoirId: "",
               conducteurSoirNom: "",
             }],
-      });
-    }
+      };
+    });
     
     setTransportDays(allDays);
     setHasLoadedData(true);
     setInitialDataSource(existingTransport ? 'existing' : null);
     setIsInitialized(true);
-  }, [selectedWeek, existingTransport, isLoading, initialDataSource, isInitialized]);
+  }, [selectedWeek, existingTransport, isLoading, initialDataSource, isInitialized, assignedDates]);
 
   // Auto-save immédiat après copie depuis semaine précédente (seulement si l'utilisateur a modifié ensuite)
   useEffect(() => {
@@ -391,23 +391,22 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
         }
         isDirty.current = false;
 
-        // Recréer 5 jours vides
-        const emptyDays: TransportDayV2[] = [];
-        for (let i = 0; i < 5; i++) {
-          const currentDate = addDays(selectedWeek, i);
-          const dateString = format(currentDate, "yyyy-MM-dd");
-          emptyDays.push({
-            date: dateString,
-            vehicules: [{
-              id: crypto.randomUUID(),
-              immatriculation: "",
-              conducteurMatinId: "",
-              conducteurMatinNom: "",
-              conducteurSoirId: "",
-              conducteurSoirNom: "",
-            }],
-          });
-        }
+        // Recréer les jours vides selon les dates assignées ou 5 jours
+        const datesToGenerate: string[] = assignedDates && assignedDates.length > 0
+          ? assignedDates
+          : Array.from({ length: 5 }, (_, i) => format(addDays(selectedWeek, i), "yyyy-MM-dd"));
+
+        const emptyDays: TransportDayV2[] = datesToGenerate.map(dateString => ({
+          date: dateString,
+          vehicules: [{
+            id: crypto.randomUUID(),
+            immatriculation: "",
+            conducteurMatinId: "",
+            conducteurMatinNom: "",
+            conducteurSoirId: "",
+            conducteurSoirNom: "",
+          }],
+        }));
         setTransportDays(emptyDays);
         setHasLoadedData(true);
         setInitialDataSource(null);
