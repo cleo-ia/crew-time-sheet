@@ -481,6 +481,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       let intemperie: number;
       let panier: boolean;
       let jourRef: typeof joursData[0]; // Référence pour les champs non-numériques
+      let jourRefTrajet: typeof joursData[0]; // Référence pour le trajet (fiche avec heures > 0)
 
       if (isChef && entries.length > 1) {
         // 🆕 CHEF MULTI-CHANTIER : sommer les heures de toutes les fiches pour cette date
@@ -494,6 +495,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           return curPrio > bestPrio ? e : best;
         });
         jourRef = bestEntry.jour;
+
+        // Pour le trajet : prendre les infos depuis la fiche qui a des heures > 0
+        const entryAvecHeures = entries.find(e => 
+          (Number(e.jour.heures) || Number(e.jour.HNORM) || 0) > 0
+        );
+        jourRefTrajet = entryAvecHeures ? entryAvecHeures.jour : jourRef;
       } else {
         // NON-CHEF ou une seule fiche : dédupliquer (garder le meilleur statut)
         const bestEntry = entries.reduce((best, e) => {
@@ -502,6 +509,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           return curPrio > bestPrio ? e : best;
         });
         jourRef = bestEntry.jour;
+        jourRefTrajet = jourRef;
         heuresDuJour = Number(jourRef.heures) || Number(jourRef.HNORM) || 0;
         intemperie = Number(jourRef.HI) || 0;
         panier = jourRef.PA === true;
@@ -521,8 +529,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       if (!isAbsent && panier) paniers++;
       
       // Compteur par code trajet
-      if (!isAbsent && (jourRef as any).code_trajet) {
-        trajetsParCode[(jourRef as any).code_trajet] = (trajetsParCode[(jourRef as any).code_trajet] || 0) + 1;
+      if (!isAbsent && (jourRefTrajet as any).code_trajet) {
+        trajetsParCode[(jourRefTrajet as any).code_trajet] = (trajetsParCode[(jourRefTrajet as any).code_trajet] || 0) + 1;
         totalJoursTrajets++;
       }
 
@@ -539,8 +547,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         intemperie,
         panier,
         repasType: (jourRef as any).repas_type || null,
-        trajet: (jourRef as any).code_trajet || null,
-        trajetPerso: (jourRef as any).code_trajet === "T_PERSO",
+        trajet: (jourRefTrajet as any).code_trajet || null,
+        trajetPerso: (jourRefTrajet as any).code_trajet === "T_PERSO",
         typeAbsence: (jourRef as any).type_absence || null,
         isAbsent,
         regularisationM1: (jourRef as any).regularisation_m1 || "",
