@@ -556,8 +556,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                 trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
                 grandDeplacement: (j as any).code_trajet === "GD",
                 heuresIntemperie: HI,
-                // ✅ Chef multi-chantier : pas "Absent" sur chantier secondaire (il est sur le principal)
-                absent: useZeroDefaults ? false : (hours === 0 && !PA && HI === 0),
+                // ✅ Chef multi-chantier : ne pas auto-marquer absent (il peut être sur un autre chantier)
+                // Le chef coche "Absent" manuellement si c'est une vraie absence
+                absent: isChefSelf && (useZeroDefaults || !!chefChantierPrincipalData?.chantier_principal_id) 
+                  ? false 
+                  : (hours === 0 && !PA && HI === 0),
                 chantierId: chantierDuJour?.id || chantierId,
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
