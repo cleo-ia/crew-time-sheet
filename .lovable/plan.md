@@ -1,52 +1,48 @@
 
 
-# Ne plus afficher "Absent" pour le chef multi-chantier sur la page de signatures
+# Corriger le compteur d'absences du chef multi-chantier dans la vue conducteur
 
 ## Le probleme
 
-Sur la page de signatures (recap des heures), quand le chef a 0h un jour (parce qu'il est sur son autre chantier), le systeme affiche un badge rouge "Absent". C'est faux : il n'est pas absent, il travaille simplement ailleurs.
+Sur la page de validation conducteur, quand on ouvre le detail d'une fiche, le tableau recapitulatif affiche "2" dans la colonne "Absences" pour le chef Thomas. Or il n'est pas absent : il est simplement sur son autre chantier ces jours-la.
 
-On a deja corrige ca sur la page de saisie des heures, mais pas sur la page de signatures qui a sa propre logique d'affichage.
+C'est le meme probleme que sur la page de signatures, mais dans un composant different.
 
 ## La solution
 
-Pour le chef (`selectedMacon.isChef`), remplacer le badge "Absent" par un affichage neutre "0h" quand il a 0 heures. Les employes normaux gardent le badge "Absent" comme avant.
+Dans la fonction `calculateEmployeeSummary()` du fichier `FicheDetail.tsx`, ne pas compter les jours a 0h comme des absences quand l'employe est le chef de chantier (car un chef multi-chantier peut avoir 0h sur un site certains jours).
 
 ## Fichier a modifier
 
-**`src/pages/SignatureMacons.tsx`** - ligne 432
+**`src/components/validation/FicheDetail.tsx`** - fonction `calculateEmployeeSummary()` (lignes 445-450)
 
 ### Avant
 
 ```typescript
-{jour.HNORM === 0 && jour.HI === 0 ? (
-  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs ...">
-    Absent
-  </Badge>
-) : (
-  <span className="text-foreground font-medium">{jour.heures}h</span>
-)}
+// Absences = jours ou HNORM = 0 ET HI = 0 ET trajet_perso = false
+const totalAbsences = fiche.fiches_jours?.filter((fj: any) => {
+  const heures = Number(fj.HNORM || fj.heures || 0);
+  const intemperie = Number(fj.HI || 0);
+  return heures === 0 && intemperie === 0 && fj.trajet_perso !== true;
+}).length || 0;
 ```
 
 ### Apres
 
 ```typescript
-{jour.HNORM === 0 && jour.HI === 0 ? (
-  selectedMacon.isChef ? (
-    <span className="text-muted-foreground font-medium">0h</span>
-  ) : (
-    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
-      Absent
-    </Badge>
-  )
-) : (
-  <span className="text-foreground font-medium">{jour.heures}h</span>
-)}
+// Absences = jours ou HNORM = 0 ET HI = 0 ET trajet_perso = false
+// Pour le chef multi-chantier, ne pas compter les jours a 0h comme absences
+const isChef = fiche.salarie?.id === ficheData?.chef?.id;
+const totalAbsences = isChef ? 0 : (fiche.fiches_jours?.filter((fj: any) => {
+  const heures = Number(fj.HNORM || fj.heures || 0);
+  const intemperie = Number(fj.HI || 0);
+  return heures === 0 && intemperie === 0 && fj.trajet_perso !== true;
+}).length || 0);
 ```
 
 ## Resultat
 
-| Qui | 0h un jour | Avant | Apres |
-|-----|-----------|-------|-------|
-| Chef | Sur l'autre chantier | Badge rouge "Absent" | "0h" en gris (neutre) |
-| Employe normal | Vraiment absent | Badge rouge "Absent" | Badge rouge "Absent" (pas de changement) |
+| Qui | 0h certains jours | Avant | Apres |
+|-----|-------------------|-------|-------|
+| Chef Thomas (multi-chantier) | Sur l'autre chantier | "2" absences | "-" (pas d'absence) |
+| Employe normal | Vraiment absent | Nombre d'absences | Pas de changement |
