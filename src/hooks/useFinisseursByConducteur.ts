@@ -87,69 +87,50 @@ export const useFinisseursByConducteur = (
         affectedDays: finisseurAffectationsMap.get(u.id) || [],
       }));
 
-      // 5. Pour chaque finisseur, récupérer sa fiche SI elle existe
-      // ✅ CORRECTIF B: Sélectionner la fiche correspondant au chantier principal (affectedDays[0])
+      // 5. Pour chaque finisseur, récupérer TOUTES ses fiches (multi-chantier)
       for (const finisseur of finisseurs) {
-        // Déterminer le chantier attendu depuis les affectations
-        const preferredChantierId = finisseur.affectedDays?.[0]?.chantier_id || null;
-        
-        // Chercher la fiche par salarie_id + semaine
         const { data: fichesEmploye } = await supabase
           .from("fiches")
           .select("id, total_heures, chantier_id")
           .eq("semaine", semaine)
-          .eq("salarie_id", finisseur.id)
-          .order("created_at", { ascending: false });
+          .eq("salarie_id", finisseur.id);
 
-        // ✅ Sélectionner la fiche selon le chantier attendu
-        let fiche = null;
         if (fichesEmploye && fichesEmploye.length > 0) {
-          // Priorité 1: Fiche qui correspond au chantier d'affectation
-          if (preferredChantierId) {
-            fiche = fichesEmploye.find(f => f.chantier_id === preferredChantierId) || null;
+          // Charger les ficheJours de TOUTES les fiches
+          const allFicheJours: FicheJour[] = [];
+          let totalHeures = 0;
+          let allSigned = true;
+
+          for (const fiche of fichesEmploye) {
+            totalHeures += fiche.total_heures || 0;
+
+            const { data: jours } = await supabase
+              .from("fiches_jours")
+              .select("date, heures, HNORM, HI, T, PA, trajet_perso, code_trajet, code_chantier_du_jour, ville_du_jour, commentaire, repas_type")
+              .eq("fiche_id", fiche.id)
+              .order("date");
+
+            if (jours) {
+              allFicheJours.push(...(jours as FicheJour[]));
+            }
+
+            const { data: signature } = await supabase
+              .from("signatures")
+              .select("id")
+              .eq("fiche_id", fiche.id)
+              .eq("signed_by", finisseur.id)
+              .maybeSingle();
+
+            if (!signature) allSigned = false;
           }
-          // Priorité 2: Fiche avec un chantier_id (créée par sync-planning)
-          if (!fiche) {
-            fiche = fichesEmploye.find(f => f.chantier_id !== null) || null;
-          }
-          // Priorité 3: Première fiche disponible
-          if (!fiche) {
-            fiche = fichesEmploye[0];
-          }
-          
-          console.log(`[useFinisseursByConducteur] ${finisseur.prenom} ${finisseur.nom}: ` +
-            `preferredChantier=${preferredChantierId}, selectedFiche.chantier_id=${fiche?.chantier_id}, ` +
-            `total_heures=${fiche?.total_heures}`
-          );
-        }
 
-        if (fiche) {
-          // Fiche existante : charger les données
-          finisseur.totalHeures = fiche.total_heures || 0;
-
-          // Récupérer les jours
-          const { data: jours } = await supabase
-            .from("fiches_jours")
-          .select("date, heures, HNORM, HI, T, PA, trajet_perso, code_trajet, code_chantier_du_jour, ville_du_jour, commentaire, repas_type")
-            .eq("fiche_id", fiche.id)
-            .order("date");
-
-          finisseur.ficheJours = jours as FicheJour[];
-          finisseur.paniers = jours?.filter((j: any) => j.PA).length || 0;
-          finisseur.trajets = jours?.reduce((sum: number, j: any) => sum + (j.T || 0), 0) || 0;
-          finisseur.intemperie = jours?.reduce((sum: number, j: any) => sum + (j.HI || 0), 0) || 0;
-
-          // Vérifier signature
-          const { data: signature } = await supabase
-            .from("signatures")
-            .select("id")
-            .eq("fiche_id", fiche.id)
-            .eq("signed_by", finisseur.id)
-            .maybeSingle();
-
-          finisseur.hasSigned = !!signature;
+          finisseur.ficheJours = allFicheJours;
+          finisseur.totalHeures = totalHeures;
+          finisseur.paniers = allFicheJours.filter(j => j.PA).length;
+          finisseur.trajets = allFicheJours.reduce((sum, j) => sum + (j.T || 0), 0);
+          finisseur.intemperie = allFicheJours.reduce((sum, j) => sum + (j.HI || 0), 0);
+          finisseur.hasSigned = allSigned;
         } else {
-          // Pas de fiche : laisser les valeurs par défaut (la fiche sera créée à la saisie)
           finisseur.ficheJours = [];
         }
       }
