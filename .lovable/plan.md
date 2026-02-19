@@ -1,56 +1,59 @@
 
-# Correction : Finisseur multi-chantier invisible dans "Mes heures"
 
-## Probleme identifie
+# Correction : Charger TOUTES les fiches d'un finisseur multi-chantier
 
-Quand un finisseur (ex: BOUSHABI) est affecte a **2 chantiers differents** dans la meme semaine (AMBERIEU L/M/J + VILOGIA Me/V), le code actuel le place sous **un seul** chantier (le premier de sa liste `affectedDays`). Le second chantier n'apparait jamais dans la vue "Mes heures".
+## Probleme
 
-Le bug se situe dans `ValidationConducteur.tsx` (lignes 266-280) :
-```text
-finisseursByChantier = groupBy(finisseur => affectedDays[0]?.chantier_id)
-```
-Chaque finisseur n'apparait que sous UN chantier, meme s'il est affecte a plusieurs.
+Le hook `useFinisseursByConducteur` ne charge qu'**une seule fiche** par finisseur (celle du "chantier prefere" = `affectedDays[0]`). Pour un finisseur comme BOUSHABI affecte a 2 chantiers (AMBERIEU L/M/J + VILOGIA Me/V), seule la fiche d'un chantier est chargee. L'autre chantier apparait dans "Mes heures" mais avec 0h et aucune donnee de jours.
+
+**Donnees en base (correctes) :**
+- Fiche AMBERIEU : 31h (3 jours)
+- Fiche VILOGIA : 15h (2 jours)
+- Affectations : 5 jours repartis entre les 2 chantiers
+
+**Ce qui est affiche (incorrect) :**
+- AMBERIEU : 39h, 5 jours
+- VILOGIA : 39h, 5 jours
 
 ## Solution
 
-Modifier le regroupement pour qu'un finisseur apparaisse sous **chaque chantier** ou il a au moins un jour affecte.
+### Fichier : `src/hooks/useFinisseursByConducteur.ts` (lignes 90-154)
 
-### Fichier 1 : `src/pages/ValidationConducteur.tsx`
+Remplacer la logique "selectionner UNE fiche" par "charger TOUTES les fiches" :
 
-**Modifier `finisseursByChantier`** (lignes 266-280) : au lieu de grouper par `affectedDays[0]`, iterer sur tous les `affectedDays` et creer une entree par chantier unique.
+1. Recuperer toutes les fiches du finisseur pour la semaine (pas juste une)
+2. Pour chaque fiche, charger ses ficheJours
+3. Fusionner tous les ficheJours dans un seul tableau sur le finisseur
+4. Calculer totalHeures comme la somme de toutes les fiches
+5. Verifier les signatures sur toutes les fiches
 
-Pour chaque chantier, le finisseur aura ses `affectedDays` filtres pour ne contenir que les jours de CE chantier. Cela garantit que :
-- AMBERIEU affiche BOUSHABI avec L/M/J uniquement
-- VILOGIA affiche BOUSHABI avec Me/V uniquement
-- Les heures affichees sont correctement scopees par chantier
-
-**Modifier `finisseursEquipeByChantier`** (lignes 286-299) : adapter pour utiliser le meme decoupage, en filtrant les `ficheJours` par les dates du chantier concerne.
-
-### Fichier 2 : `src/hooks/useFinisseursByConducteur.ts`
-
-Aucun changement structurel necessaire. Le hook retourne deja tous les `affectedDays` avec le `chantier_id` pour chaque jour. La logique de separation se fait cote composant.
-
-### Detail technique
-
-Remplacement du code de regroupement :
+Concretement :
 
 ```text
-Avant:
-  finisseur -> affectedDays[0].chantier_id -> 1 seul groupe
+Avant (lignes 92-154):
+  preferredChantierId = affectedDays[0]?.chantier_id
+  fiche = fichesEmploye.find(f => f.chantier_id === preferredChantierId)
+  ficheJours = fiches_jours WHERE fiche_id = fiche.id  // UNE seule fiche
 
 Apres:
-  finisseur -> pour chaque chantier_id unique dans affectedDays :
-    - creer une copie du finisseur
-    - filtrer affectedDays pour ce chantier uniquement
-    - filtrer ficheJours pour les dates de ce chantier uniquement
-    - recalculer totalHeures a partir des ficheJours filtres
+  allFiches = fiches WHERE semaine + salarie_id  // TOUTES les fiches
+  allFicheJours = []
+  pour chaque fiche:
+    jours = fiches_jours WHERE fiche_id = fiche.id
+    allFicheJours.push(...jours)
+  finisseur.ficheJours = allFicheJours  // Fusion de toutes les fiches
+  finisseur.totalHeures = sum(allFiches.total_heures)
+  finisseur.hasSigned = toutes les fiches ont une signature
 ```
 
-Cela corrige aussi les totaux d'heures affiches (actuellement BOUSHABI affiche 39h sous VILOGIA alors qu'il ne fait que 15h sur ce chantier).
+Ensuite le regroupement par chantier deja en place dans `ValidationConducteur.tsx` filtrera correctement les ficheJours par dates d'affectation, donnant les bons totaux par chantier.
 
-## Impact
+### Aucun autre fichier a modifier
 
-- Correction de l'affichage des chantiers manquants
-- Correction des totaux d'heures par chantier
-- La fiche de trajet par chantier fonctionnera correctement
-- Aucun changement en base de donnees necessaire
+Le regroupement dans `ValidationConducteur.tsx` (corrige precedemment) fonctionne deja : il filtre `ficheJours` par les dates de chaque chantier. Le seul probleme etait que les ficheJours de l'autre chantier n'etaient jamais chargees.
+
+## Resultat attendu
+
+- AMBERIEU : BOUSHABI 31h (L/M/J uniquement)
+- VILOGIA : BOUSHABI 15h (Me/V uniquement)
+- Fiche de trajet scopee par chantier
