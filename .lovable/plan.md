@@ -1,101 +1,91 @@
 
-# Corriger l'absence auto-detectee pour un chef multi-chantier
+
+# Corriger la persistance Trajet/Panier pour les chefs multi-chantier
 
 ## Le probleme
 
-Quand le chef Thomas met 0h le mardi sur son chantier principal (car il est sur le secondaire ce jour-la), le systeme recalcule automatiquement "Absent" au rechargement depuis la BDD :
+Deux bugs lies dans le cycle sauvegarde/rechargement des cases Trajet :
 
+### Bug 1 : Trajet decoche reapparait sur le chantier principal
+- Le chef decoche "Trajet" sur le mardi (0h, chantier principal)
+- Il va sur le chantier secondaire, puis revient
+- La case Trajet est re-cochee automatiquement
+- **Cause** : Au chargement depuis la BDD (ligne 543), la logique est `trajet = true` par defaut si pas de T_PERSO/GD. Elle ne lit jamais la valeur `T` sauvee en BDD.
+
+### Bug 2 : Trajet coche disparait sur le chantier secondaire
+- Le chef coche "Trajet" sur le mardi (8h, chantier secondaire)
+- Il change de chantier et revient
+- La case Trajet n'est plus cochee
+- **Cause** : `useZeroDefaults` force `trajet = false` pour le secondaire, meme si la BDD dit `T=1` et `code_trajet` est renseigne.
+
+### Bug 3 (sauvegarde) : Auto-save ecrase la valeur T
+- Dans `useAutoSaveFiche.ts` ligne 418 : `T: ... ? 0 : 1` force toujours T=1 si pas GD/T_PERSO
+- Le decochage du chef n'est jamais sauvegarde correctement
+
+## Fichiers a modifier
+
+### 1. `src/components/timesheet/TimeEntryTable.tsx` - Chargement (ligne 543)
+
+**Avant** :
+```typescript
+const trajet = useZeroDefaults ? false : ((isTrajetPerso || isGD) ? false : true);
 ```
-absent: hours === 0 && !PA && HI === 0  →  true (fond rose)
+
+**Apres** :
+```typescript
+// Lire la valeur T depuis la BDD au lieu de toujours forcer true
+const dbTrajet = Number(j.T || 0) > 0;
+const trajet = (isTrajetPerso || isGD) ? false : dbTrajet;
 ```
 
-Le `useZeroDefaults` ne protege que le chantier secondaire, pas le principal.
+Cela corrige les deux bugs de chargement :
+- Chantier principal : si le chef a decoche (T=0), ca reste decoche
+- Chantier secondaire : si le chef a coche (T=1), ca reste coche
+- Plus besoin du `useZeroDefaults` pour le trajet ici car la BDD fait foi
 
-## La solution
+### 2. `src/hooks/useAutoSaveFiche.ts` - Sauvegarde (ligne 418)
 
-Pour le chef lui-meme, quand il est multi-chantier, ne jamais auto-marquer "Absent" depuis les donnees BDD. Le chef garde la possibilite de cocher "Absent" manuellement si c'est une vraie absence.
+**Avant** :
+```typescript
+T: (dayData?.codeTrajet === 'GD' || dayData?.codeTrajet === 'T_PERSO') ? 0 : 1,
+```
 
-## Fichier a modifier
+**Apres** :
+```typescript
+T: (dayData?.codeTrajet === 'GD' || dayData?.codeTrajet === 'T_PERSO') ? 0 : (dayData?.trajet !== false ? 1 : 0),
+```
 
-**`src/components/timesheet/TimeEntryTable.tsx`**
+Note : `dayData?.trajet` n'existe pas dans le type `DayData` du hook. Il faut soit ajouter `trajet?: boolean` a l'interface `DayData`, soit utiliser la logique deja presente via `codeTrajet`.
 
-### Changement 1 : Identifier si le chef est multi-chantier (pas juste secondaire)
-
-Ajouter un nouveau `useMemo` apres `isChefOnSecondaryChantier` (vers ligne 276) :
+Approche alternative (plus simple, sans changer l'interface) : si `codeTrajet` est `null` ou vide, ca signifie "pas de trajet" donc T=0. Si c'est renseigne (T1, T2, ..., A_COMPLETER), T=1 :
 
 ```typescript
-const isChefMultiChantier = useMemo(() => {
-  if (!chefId || !chefChantierPrincipalData?.chantier_principal_id) return false;
-  // Le chef est multi-chantier s'il a un chantier principal different du chantier actuel
-  // OU s'il est sur le chantier principal mais en a d'autres
-  return !!chefChantierPrincipalData.chantier_principal_id;
-}, [chefId, chefChantierPrincipalData]);
+T: (dayData?.codeTrajet === 'GD' || dayData?.codeTrajet === 'T_PERSO') ? 0 
+   : (dayData?.codeTrajet ? 1 : 0),
 ```
 
-En realite, `isChefOnSecondaryChantier` suffit deja a determiner qu'on est sur le secondaire. Pour le principal, il faut savoir si le chef **a** un secondaire. La logique la plus simple est de reutiliser `isChefOnSecondaryChantier` pour le secondaire et de verifier si le chef est multi-chantier pour le principal.
+Cela aligne la sauvegarde sur la meme logique : "pas de code_trajet = pas de trajet".
 
-Approche simplifiee : utiliser directement le fait que le chef a un `chantier_principal_id` et qu'il est affecte a plus d'un chantier.
+### 3. `src/hooks/useAutoSaveFiche.ts` - Default code_trajet (ligne 419)
 
-### Changement 2 : Elargir la condition sur ligne 560
-
-Remplacer :
-
+**Avant** :
 ```typescript
-absent: useZeroDefaults ? false : (hours === 0 && !PA && HI === 0),
+code_trajet: dayData?.codeTrajet || 'A_COMPLETER',
 ```
 
-Par :
-
+**Apres** :
 ```typescript
-absent: (isChefSelf && isChefOnSecondaryChantier) ? false : 
-        (isChefSelf && !isChefOnSecondaryChantier && chefChantierPrincipalData?.chantier_principal_id) ? (hours === 0 && !PA && HI === 0 && (j as any).absent === true) :
-        (hours === 0 && !PA && HI === 0),
+code_trajet: dayData?.codeTrajet ?? null,
 ```
 
-Explication : pour le chef sur le chantier **principal** quand il est multi-chantier, on ne marque absent que si le champ `absent` est explicitement `true` en BDD (= coche manuellement). Pour les non-chefs et le chantier secondaire, pas de changement.
+Si le chef a explicitement decoche trajet (codeTrajet = null), il ne faut pas remettre 'A_COMPLETER'. Le default 'A_COMPLETER' ne doit s'appliquer que lors de l'initialisation (forceNormalize), pas a chaque sauvegarde.
 
-### Version plus lisible
+## Resume des impacts
 
-```typescript
-// Logique absence pour le chef lui-meme
-let computedAbsent: boolean;
-if (isChefSelf && useZeroDefaults) {
-  // Chantier secondaire : jamais auto-absent
-  computedAbsent = false;
-} else if (isChefSelf && chefChantierPrincipalData?.chantier_principal_id && chantierId !== chefChantierPrincipalData.chantier_principal_id === false) {
-  // Chef sur chantier principal + est multi-chantier : absent seulement si explicitement en BDD
-  computedAbsent = (j as any).absent === true;
-} else {
-  // Cas normal (non-chef ou chef mono-chantier)
-  computedAbsent = hours === 0 && !PA && HI === 0;
-}
-```
+| Scenario | Avant | Apres |
+|----------|-------|-------|
+| Chef decoche trajet sur principal, change de chantier et revient | Trajet re-coche | Trajet reste decoche |
+| Chef coche trajet sur secondaire, change et revient | Trajet decoche | Trajet reste coche |
+| Chef decoche trajet, auto-save | T=1 (ecrase) | T=0 (respecte) |
+| Employe normal, initialisation | Trajet coche par defaut | Trajet coche par defaut (pas de changement) |
 
-### Solution finale simplifiee
-
-La condition cle : **si le chef est multi-chantier** (il a un `chantier_principal_id` different de certains de ses chantiers), alors pour SA propre ligne, on ne deduit JAMAIS `absent` automatiquement des heures. On respecte uniquement le champ `absent` de la BDD (ou `false` par defaut).
-
-Ligne 559-560, remplacer par :
-
-```typescript
-// Chef multi-chantier : ne pas auto-marquer absent (il peut etre sur un autre chantier)
-// Le chef coche "Absent" manuellement si c'est une vraie absence
-absent: isChefSelf && (useZeroDefaults || !!chefChantierPrincipalData?.chantier_principal_id) 
-  ? false 
-  : (hours === 0 && !PA && HI === 0),
-```
-
-Cela couvre les deux cas :
-- Chantier secondaire (`useZeroDefaults`) : jamais absent auto → deja OK
-- Chantier principal d'un chef multi-chantier : jamais absent auto → NOUVEAU
-
-Le chef peut toujours cocher "Absent" manuellement via la checkbox.
-
-## Resume
-
-| Situation | Avant | Apres |
-|-----------|-------|-------|
-| Chef 0h sur principal (travaille sur secondaire) | Auto-absent (rose) | Pas absent (neutre) |
-| Chef 0h sur secondaire | Pas absent (neutre) | Pas absent (neutre) |
-| Chef vraiment absent (coche la case) | Absent | Absent |
-| Employe normal 0h | Absent | Absent (pas de changement) |
