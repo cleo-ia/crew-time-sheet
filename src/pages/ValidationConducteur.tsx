@@ -545,10 +545,6 @@ const ValidationConducteur = () => {
       return { ok: false, errors };
     }
     
-    // Calculer les 5 dates de la semaine
-    const monday = parseISOWeek(selectedWeek);
-    const weekDates = [0, 1, 2, 3, 4].map(d => format(addDays(monday, d), "yyyy-MM-dd"));
-    
     // Pour chaque chantier, vérifier la fiche de trajet équipe
     for (const chantierId of chantierIds) {
       const chantierInfo = chantiersMap.get(chantierId);
@@ -563,10 +559,17 @@ const ValidationConducteur = () => {
           ?.map(a => a.finisseur_id) || []
       );
       
+      // Dates d'affectation réelles pour CE chantier (au lieu des 5 jours fixes)
+      const chantierDates = [...new Set(
+        affectationsJours
+          ?.filter(a => a.chantier_id === chantierId)
+          ?.map(a => a.date) || []
+      )];
+      
       // Calculer les jours travaillés (au moins 1 finisseur non absent)
       const workedDays: string[] = [];
       
-      for (const date of weekDates) {
+      for (const date of chantierDates) {
         // Vérifier si au moins un finisseur travaille ce jour (pas absent, pas trajet perso)
         let hasWorker = false;
         
