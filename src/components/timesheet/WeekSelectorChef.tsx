@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calculatePreviousWeek } from "@/lib/weekUtils";
+import { calculatePreviousWeek, getNextWeek, parseISOWeek } from "@/lib/weekUtils";
 
 interface WeekSelectorChefProps {
   value: string;
@@ -84,32 +86,58 @@ export const WeekSelectorChef = ({ value, onChange, disabled = false, chefId }: 
     }
   }, []);
 
-  // Build final weeks list with S-2 if needed
+  // Build final weeks list with S-2 if needed + dynamic current value
   const weeks = useMemo(() => {
-    if (!hasIncompleteS2 || baseWeeks.length === 0) return baseWeeks;
-
-    // Add S-2 at the beginning
-    const s2Start = startOfWeek(addWeeks(new Date(), -2), { weekStartsOn: 1, locale: fr });
-    const s2Label = format(s2Start, "'Semaine' II – 'du' dd/MM/yyyy", { locale: fr });
+    let list = [...baseWeeks];
     
-    return [
-      { value: s2Week, label: `⚠️ ${s2Label}` },
-      ...baseWeeks,
-    ];
-  }, [baseWeeks, hasIncompleteS2, s2Week]);
+    if (hasIncompleteS2 && baseWeeks.length > 0) {
+      const s2Start = startOfWeek(addWeeks(new Date(), -2), { weekStartsOn: 1, locale: fr });
+      const s2Label = format(s2Start, "'Semaine' II – 'du' dd/MM/yyyy", { locale: fr });
+      list = [{ value: s2Week, label: `⚠️ ${s2Label}` }, ...list];
+    }
+
+    // Add current value if not in list
+    if (value && !list.some(w => w.value === value)) {
+      const weekStart = parseISOWeek(value);
+      const weekLabel = format(weekStart, "'Semaine' II – 'du' dd/MM/yyyy", { locale: fr });
+      list = [{ value, label: weekLabel }, ...list];
+    }
+
+    return list;
+  }, [baseWeeks, hasIncompleteS2, s2Week, value]);
 
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="w-full h-12 text-base" disabled={disabled}>
-        <SelectValue placeholder="Choisir une semaine..." />
-      </SelectTrigger>
-      <SelectContent>
-        {weeks.map((week) => (
-          <SelectItem key={week.value} value={week.value} className="text-base">
-            {week.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onChange(calculatePreviousWeek(value))}
+        disabled={disabled || !value}
+        className="h-12 w-10 shrink-0"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="w-full h-12 text-base" disabled={disabled}>
+          <SelectValue placeholder="Choisir une semaine..." />
+        </SelectTrigger>
+        <SelectContent>
+          {weeks.map((week) => (
+            <SelectItem key={week.value} value={week.value} className="text-base">
+              {week.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onChange(getNextWeek(value))}
+        disabled={disabled || !value}
+        className="h-12 w-10 shrink-0"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };
