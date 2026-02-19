@@ -1,46 +1,49 @@
 
-# Correction : Jours d'affectation non filtrés par chantier dans TimeEntryTable
+# Correction : Vendredi AMBERIEU visible sous VILOGIA
 
-## Problème
+## Probleme
 
-Le regroupement des finisseurs par chantier fonctionne (BOUSHABI apparait sous AMBERIEU et VILOGIA), mais le composant `TimeEntryTable` recoit **toutes les affectations** du finisseur (5 jours) au lieu de seulement celles du chantier concerne.
+Le composant `TimeEntryTable` charge ses propres donnees via `useFinisseursByConducteur` (ligne 241), qui retourne TOUS les `ficheJours` de toutes les fiches de l'employe. Quand il construit les entrees (lignes 401-448), il itere sur tous les `ficheJours` sans filtrer par chantier. Resultat : le Vendredi avec `code_chantier_du_jour = AMBERIEU` apparait sous le groupe VILOGIA.
 
-La ligne fautive est dans `ValidationConducteur.tsx` (ligne 869) :
-
-```text
-affectationsJours={affectationsJours?.filter(a => 
-  chantierFinisseurs.some(f => f.id === a.finisseur_id)
-)}
-```
-
-Ce filtre ne garde que les affectations des bons finisseurs, mais ne filtre PAS par `chantier_id`. Resultat : BOUSHABI sous VILOGIA recoit ses 5 jours (L/M/J d'AMBERIEU + Me/V de VILOGIA), d'ou les 39h affiches au lieu de 15h.
-
-C'est exactement la meme logique que pour les chefs multi-site, ou `useAffectationsJoursByChefAndChantier` filtre par `chantier_id`.
+Le filtre `getVisibleDaysForFinisseur` (ligne 167) controle quels jours sont **affiches dans l'UI**, mais les donnees sont deja chargees dans le state `entries` avec les valeurs du mauvais chantier.
 
 ## Solution
 
-### Fichier : `src/pages/ValidationConducteur.tsx`
+### Fichier : `src/components/timesheet/TimeEntryTable.tsx` (lignes 401-448)
 
-**Ligne 869** : Ajouter un filtre `chantier_id` sur les affectations passees a `TimeEntryTable` :
+Filtrer les `ficheJours` par les dates presentes dans `affectationsJours` AVANT de les appliquer aux entrees, en mode conducteur uniquement.
+
+Concretement, a la ligne 401 :
 
 ```text
 Avant:
-  affectationsJours?.filter(a => 
-    chantierFinisseurs.some(f => f.id === a.finisseur_id)
-  )
+  if (finisseur.ficheJours) {
+    finisseur.ficheJours.forEach(j => {
+      // applique TOUS les ficheJours
 
 Apres:
-  affectationsJours?.filter(a => 
-    chantierFinisseurs.some(f => f.id === a.finisseur_id) &&
-    (chantierId === "sans-chantier" || a.chantier_id === chantierId)
-  )
+  if (finisseur.ficheJours) {
+    // En mode conducteur, ne garder que les ficheJours dont la date
+    // correspond a une affectation dans affectationsJours (deja filtre par chantier)
+    const visibleDates = new Set(
+      (affectationsJours || [])
+        .filter(a => a.finisseur_id === finisseur.id)
+        .map(a => a.date)
+    );
+    const filteredJours = isConducteurMode && visibleDates.size > 0
+      ? finisseur.ficheJours.filter(j => visibleDates.has(j.date))
+      : finisseur.ficheJours;
+    
+    filteredJours.forEach(j => {
+      // applique seulement les ficheJours du chantier concerne
 ```
 
-Cela garantit que `TimeEntryTable` ne voit que les jours affectes a CE chantier, et `getVisibleDaysForFinisseur` n'affichera que ces jours-la (L/M/J pour AMBERIEU, Me/V pour VILOGIA).
+Comme `affectationsJours` est deja filtre par `chantier_id` dans `ValidationConducteur.tsx` (ligne 869-872), les dates visibles correspondent exactement aux jours de CE chantier. Les ficheJours d'AMBERIEU (Vendredi) ne seront pas charges sous VILOGIA.
 
 ### Impact
 
-- AMBERIEU : BOUSHABI verra uniquement L/M/J, total 31h (jours Me/V masques/non editables)
-- VILOGIA : BOUSHABI verra uniquement Me/V, total 15h (jours L/M/J masques/non editables)
-- Comportement identique a ce que font les chefs multi-site (jours non affectes en jaune pale, non saisissables)
-- La sauvegarde par chantier (`useSaveChantierManuel`) filtre deja correctement par `chantier_id` (ligne 897-899), donc pas de changement necessaire la
+- Vendredi ne s'affichera plus sous VILOGIA avec le code AMBERIEU
+- Les donnees initiales de chaque jour correspondent au bon chantier
+- Le total 15h restera correct (seuls Me/V de VILOGIA sont charges)
+- Aucun changement en base de donnees
+- La fiche de trajet (5/5 jours) est un probleme separe lie au composant `TransportSheetV2` qui ne filtre pas par affectations
