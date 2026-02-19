@@ -540,7 +540,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
               const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
               const isGD = j.code_trajet === "GD";
               // Trajet = true par défaut SAUF si Trajet Perso ou GD est actif
-              const trajet = (isTrajetPerso || isGD) ? false : true;
+              const trajet = useZeroDefaults ? false : ((isTrajetPerso || isGD) ? false : true);
               
               // Trouver le chantier par code si disponible
               const chantierDuJour = j.code_chantier_du_jour 
