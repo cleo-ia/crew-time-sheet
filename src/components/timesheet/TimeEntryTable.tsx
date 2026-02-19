@@ -417,7 +417,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
               const isTrajetPerso = !!j.trajet_perso || j.code_trajet === "T_PERSO";
               const isGD = j.code_trajet === "GD";
               // Trajet = true par défaut SAUF si Trajet Perso ou GD est actif
-              const trajet = (isTrajetPerso || isGD) ? false : true;
+              const dbTrajet = Number(j.T || 0) > 0;
+              const trajet = (isTrajetPerso || isGD) ? false : dbTrajet;
               
               // Trouver le chantier par code si présent
               const chantierDuJour = j.code_chantier_du_jour 
@@ -441,7 +442,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                 chantierId: chantierDuJour?.id || null,
                 chantierNom: chantierDuJour?.nom || null,
                 commentaire: (j as any).commentaire || "",
-                codeTrajet: ((j as any).code_trajet || (trajet ? "A_COMPLETER" : null)) as CodeTrajet | null,
+                codeTrajet: ((j as any).code_trajet || null) as CodeTrajet | null,
               };
             }
           });
