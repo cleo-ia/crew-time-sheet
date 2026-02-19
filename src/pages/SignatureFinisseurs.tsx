@@ -508,7 +508,8 @@ const SignatureFinisseurs = () => {
     
     const affectedDaysSet = new Set(relevantAffectedDays.map(a => a.date));
     const relevantJours = finisseur.ficheJours.filter(jour => 
-      affectedDaysSet.has(jour.date)
+      affectedDaysSet.has(jour.date) &&
+      (!chantierId || jour.source_chantier_id === chantierId)
     );
     
     return {
@@ -699,7 +700,9 @@ const SignatureFinisseurs = () => {
                           
                           // Calculer les absences (jours affectés à CE chantier avec HNORM=0 et pas trajet perso)
                           const countAbsences = finisseur.ficheJours?.filter(jour => {
-                            return affectedDatesSet.has(jour.date) && jour.HNORM === 0 && !jour.trajet_perso;
+                            return affectedDatesSet.has(jour.date) && 
+                              (!chantierGroup.chantierId || jour.source_chantier_id === chantierGroup.chantierId) &&
+                              jour.HNORM === 0 && !jour.trajet_perso;
                           }).length || 0;
                           
                           return (
