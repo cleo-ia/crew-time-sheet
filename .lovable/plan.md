@@ -1,40 +1,56 @@
 
+# Correction : Finisseur multi-chantier invisible dans "Mes heures"
 
-# Accès a la semaine S15 pour les tests
+## Probleme identifie
 
-## Contexte
-Les selecteurs de semaine cote "Saisie Chef" et "Validation Conducteur" sont limites a 3 semaines (S-1, S, S+1). Pour tester sur une semaine eloignee (2026-S15), il faut les etendre.
+Quand un finisseur (ex: BOUSHABI) est affecte a **2 chantiers differents** dans la meme semaine (AMBERIEU L/M/J + VILOGIA Me/V), le code actuel le place sous **un seul** chantier (le premier de sa liste `affectedDays`). Le second chantier n'apparait jamais dans la vue "Mes heures".
 
-## Impact sur les semaines vivantes
-La synchronisation manuelle du planning est **strictement ciblee par semaine**. Lancer une sync sur S15 ne touchera ni S09, ni S10, ni aucune autre semaine. Le parametre `semaine` dans le body de la requete isole completement l'operation.
-
-## Modifications prevues
-
-### 1. WeekSelectorChef (src/components/timesheet/WeekSelectorChef.tsx)
-Ajouter une navigation libre par fleches (comme le PlanningWeekSelector) en complement du dropdown existant. L'approche la plus simple : ajouter deux boutons fleches a gauche et droite du Select pour permettre de naviguer semaine par semaine au-dela des 3 semaines par defaut.
-
-Quand l'utilisateur navigue avec les fleches vers une semaine hors du dropdown (ex: S15), la semaine est quand meme selectionnee et affichee correctement.
-
-### 2. WeekSelector conducteur (src/components/timesheet/WeekSelector.tsx)
-Meme modification : ajouter des boutons fleches pour naviguer librement.
-
-## Details techniques
-
-Pour les deux composants :
-- Importer `ChevronLeft`, `ChevronRight` de lucide-react et `Button` de ui/button
-- Importer `calculatePreviousWeek`, `getNextWeek` de `@/lib/weekUtils`
-- Wrapper le `Select` existant avec des boutons fleches
-- Quand la valeur courante n'est pas dans la liste du dropdown, l'ajouter dynamiquement pour que le Select affiche correctement le label
-- Le dropdown garde les 3 semaines standard (S-1, S, S+1) pour un acces rapide
-
-### Structure UI resultante
+Le bug se situe dans `ValidationConducteur.tsx` (lignes 266-280) :
 ```text
-[ < ] [ Semaine 09 - du 23/02/2026  v ] [ > ]
+finisseursByChantier = groupBy(finisseur => affectedDays[0]?.chantier_id)
+```
+Chaque finisseur n'apparait que sous UN chantier, meme s'il est affecte a plusieurs.
+
+## Solution
+
+Modifier le regroupement pour qu'un finisseur apparaisse sous **chaque chantier** ou il a au moins un jour affecte.
+
+### Fichier 1 : `src/pages/ValidationConducteur.tsx`
+
+**Modifier `finisseursByChantier`** (lignes 266-280) : au lieu de grouper par `affectedDays[0]`, iterer sur tous les `affectedDays` et creer une entree par chantier unique.
+
+Pour chaque chantier, le finisseur aura ses `affectedDays` filtres pour ne contenir que les jours de CE chantier. Cela garantit que :
+- AMBERIEU affiche BOUSHABI avec L/M/J uniquement
+- VILOGIA affiche BOUSHABI avec Me/V uniquement
+- Les heures affichees sont correctement scopees par chantier
+
+**Modifier `finisseursEquipeByChantier`** (lignes 286-299) : adapter pour utiliser le meme decoupage, en filtrant les `ficheJours` par les dates du chantier concerne.
+
+### Fichier 2 : `src/hooks/useFinisseursByConducteur.ts`
+
+Aucun changement structurel necessaire. Le hook retourne deja tous les `affectedDays` avec le `chantier_id` pour chaque jour. La logique de separation se fait cote composant.
+
+### Detail technique
+
+Remplacement du code de regroupement :
+
+```text
+Avant:
+  finisseur -> affectedDays[0].chantier_id -> 1 seul groupe
+
+Apres:
+  finisseur -> pour chaque chantier_id unique dans affectedDays :
+    - creer une copie du finisseur
+    - filtrer affectedDays pour ce chantier uniquement
+    - filtrer ficheJours pour les dates de ce chantier uniquement
+    - recalculer totalHeures a partir des ficheJours filtres
 ```
 
-## Ce qui ne change PAS
-- La logique S-2 conditionnelle du chef reste intacte
-- Le planning a deja des fleches, rien a modifier
-- Aucune modification backend ou BDD
-- Les fleches sont juste un raccourci qui appelle `onChange()` avec la semaine precedente/suivante
+Cela corrige aussi les totaux d'heures affiches (actuellement BOUSHABI affiche 39h sous VILOGIA alors qu'il ne fait que 15h sur ce chantier).
 
+## Impact
+
+- Correction de l'affichage des chantiers manquants
+- Correction des totaux d'heures par chantier
+- La fiche de trajet par chantier fonctionnera correctement
+- Aucun changement en base de donnees necessaire
