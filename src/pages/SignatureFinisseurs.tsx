@@ -216,7 +216,8 @@ const SignatureFinisseurs = () => {
         
         return {
           ...jour,
-          codeChantier: codeFromFiche || codeDefault || "-"
+          codeChantier: codeFromFiche || codeDefault || "-",
+          chantierId: ft?.chantier_id || ""
         };
       });
       
@@ -562,8 +563,7 @@ const SignatureFinisseurs = () => {
     allTransportJoursRaw.forEach((jour: any) => {
       // Trouver le chantier_id depuis la fiche transport
       // On utilise le codeChantier pour retrouver le chantierId
-      const chantierId = Array.from(chantiersInfo.entries())
-        .find(([_, info]) => info.code === jour.codeChantier)?.[0] || "";
+      const chantierId = jour.chantierId || "";
       
       if (!chantierId) return;
       
@@ -642,7 +642,16 @@ const SignatureFinisseurs = () => {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Récapitulatif des heures PAR CHANTIER */}
         {finisseursParChantier.length > 0 && finisseursParChantier.map((chantierGroup) => {
-          const transportDays = transportParChantier.get(chantierGroup.chantierId) || [];
+          const allTransportDays = transportParChantier.get(chantierGroup.chantierId) || [];
+          // Filtrer les jours de transport pour ne montrer que les dates d'affectation réelles
+          const chantierAffectedDates = new Set(
+            chantierGroup.finisseurs.flatMap(f =>
+              (f.affectedDays || [])
+                .filter(a => a.chantier_id === chantierGroup.chantierId)
+                .map(a => a.date)
+            )
+          );
+          const transportDays = allTransportDays.filter(day => chantierAffectedDates.has(day.date));
           const hasTransport = transportDays.length > 0;
           
           return (
