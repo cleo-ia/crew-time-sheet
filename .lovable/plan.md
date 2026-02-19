@@ -1,75 +1,51 @@
 
 
-# Corriger le trajet/trajet perso/GD pour les chefs multi-chantier dans la consolidation RH
+# Ajuster la logique trajet : chercher le code_trajet parmi toutes les fiches (comme le panier)
 
-## Rappel du contexte
+## Pourquoi
 
-Le chef ne renseigne pas le code zone (T1, T2...). Il coche simplement :
-- **Trajet** → sauvegarde `T = 1` + `code_trajet = "A_COMPLETER"` en BDD
-- **Trajet Perso** → sauvegarde `code_trajet = "T_PERSO"`
-- **GD** → sauvegarde `code_trajet = "GD"`
+Avec la logique actuelle (`entries.find(e => heures > 0)`), si le chef fait 4h sur A (pas de trajet) et 4h sur B (trajet coche), le systeme peut prendre A comme reference trajet car c'est la premiere avec des heures. Le trajet de B est perdu.
 
-C'est le RH qui, plus tard, remplace "A_COMPLETER" par le vrai code zone.
-
-## Le probleme
-
-Pour un chef multi-chantier, le systeme consolide les donnees de plusieurs fiches par jour. Actuellement :
-- **Heures** : somme de toutes les fiches → OK
-- **Panier** : "au moins un coche" parmi toutes les fiches → OK
-- **Trajet / Trajet Perso / GD** : pris depuis une seule fiche choisie par "meilleur statut" → PROBLEME
-
-Si le chef a travaille 8h sur le chantier B (avec trajet coche) et 0h sur le chantier A, le systeme peut prendre la fiche du chantier A (0h, pas de trajet) comme reference, et le trajet est perdu.
-
-## La solution
-
-Appliquer la meme logique que le panier : chercher le trajet parmi toutes les fiches du jour, en prenant celle qui a des heures > 0.
+La bonne logique est la meme que pour le panier : chercher parmi toutes les fiches du jour celle qui a un `code_trajet` renseigne, peu importe les heures.
 
 ## Fichier a modifier
 
-**`src/hooks/rhShared.ts`** - bloc chef multi-chantier (lignes 485-548)
+**`src/hooks/rhShared.ts`** - lignes 499-503
 
-### Changements concrets
+## Changement
 
-**1. Apres la ligne 496** (`jourRef = bestEntry.jour;`), ajouter :
+Remplacer :
 
 ```typescript
 // Pour le trajet : prendre les infos depuis la fiche qui a des heures > 0
 const entryAvecHeures = entries.find(e => 
   (Number(e.jour.heures) || Number(e.jour.HNORM) || 0) > 0
 );
-const jourRefTrajet = entryAvecHeures ? entryAvecHeures.jour : jourRef;
+jourRefTrajet = entryAvecHeures ? entryAvecHeures.jour : jourRef;
 ```
 
-**2. Lignes 524-527** : remplacer `jourRef` par `jourRefTrajet` pour le compteur trajet :
+Par :
 
 ```typescript
-if (!isAbsent && (jourRefTrajet as any).code_trajet) {
-  trajetsParCode[(jourRefTrajet as any).code_trajet] = 
-    (trajetsParCode[(jourRefTrajet as any).code_trajet] || 0) + 1;
-  totalJoursTrajets++;
-}
+// Pour le trajet : chercher la fiche qui a un code_trajet renseigne (meme logique que le panier)
+const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet);
+jourRefTrajet = entryAvecTrajet ? entryAvecTrajet.jour : jourRef;
 ```
 
-**3. Lignes 542-543** : remplacer `jourRef` par `jourRefTrajet` pour le detail :
+Et mettre a jour le commentaire ligne 484 :
 
 ```typescript
-trajet: (jourRefTrajet as any).code_trajet || null,
-trajetPerso: (jourRefTrajet as any).code_trajet === "T_PERSO",
+let jourRefTrajet: typeof joursData[0]; // Reference pour le trajet (fiche avec code_trajet renseigne)
 ```
 
-**4. Pour les non-chefs**, rien ne change : `jourRefTrajet` n'est pas defini, on continue a utiliser `jourRef` comme avant. On initialise `jourRefTrajet = jourRef` par defaut avant le `if`.
+## Resultat
 
-### Ce que ca couvre
+| Cas | Avant | Apres |
+|-----|-------|-------|
+| 4h sur A (pas trajet) + 4h sur B (trajet) | Peut prendre A → trajet perdu | Prend B → trajet OK |
+| 8h sur A (trajet) + 0h sur B (rien) | Prend A → OK | Prend A → OK |
+| 0h sur A (rien) + 8h sur B (GD) | Prend B → OK | Prend B → OK |
+| 4h sur A (trajet) + 4h sur B (trajet) | Prend A → OK | Prend A → OK |
 
-| Situation | Avant | Apres |
-|-----------|-------|-------|
-| Chef coche "Trajet" sur chantier B (8h), rien sur A (0h) | Peut prendre A → trajet perdu | Prend B → trajet OK |
-| Chef coche "Trajet Perso" sur chantier B (8h) | Peut prendre A → trajet perso perdu | Prend B → "T_PERSO" OK |
-| Chef coche "GD" sur chantier B (8h) | Peut prendre A → GD perdu | Prend B → "GD" OK |
-| Chef mono-chantier | Pas de changement | Pas de changement |
-| Employe normal | Pas de changement | Pas de changement |
-
-## Resume simple
-
-On applique la regle : "pour savoir quel trajet le chef a fait ce jour-la, on regarde la fiche ou il a travaille (heures > 0), pas la fiche avec le meilleur statut." C'est exactement la meme logique que pour le panier.
+C'est exactement la meme approche que `panier = entries.some(e => e.jour.PA === true)` : on cherche l'info la ou elle existe, sans presumer de la fiche.
 
