@@ -481,7 +481,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       let intemperie: number;
       let panier: boolean;
       let jourRef: typeof joursData[0]; // Référence pour les champs non-numériques
-      let jourRefTrajet: typeof joursData[0]; // Référence pour le trajet (fiche avec heures > 0)
+      let jourRefTrajet: typeof joursData[0]; // Référence pour le trajet (fiche avec code_trajet renseigné)
 
       if (isChef && entries.length > 1) {
         // 🆕 CHEF MULTI-CHANTIER : sommer les heures de toutes les fiches pour cette date
@@ -496,11 +496,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         });
         jourRef = bestEntry.jour;
 
-        // Pour le trajet : prendre les infos depuis la fiche qui a des heures > 0
-        const entryAvecHeures = entries.find(e => 
-          (Number(e.jour.heures) || Number(e.jour.HNORM) || 0) > 0
-        );
-        jourRefTrajet = entryAvecHeures ? entryAvecHeures.jour : jourRef;
+        // Pour le trajet : chercher la fiche qui a un code_trajet renseigné (même logique que le panier)
+        const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet);
+        jourRefTrajet = entryAvecTrajet ? entryAvecTrajet.jour : jourRef;
       } else {
         // NON-CHEF ou une seule fiche : dédupliquer (garder le meilleur statut)
         const bestEntry = entries.reduce((best, e) => {
