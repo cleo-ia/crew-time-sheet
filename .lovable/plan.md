@@ -1,53 +1,83 @@
 
-# Corriger la validation transport : ne verifier que les jours d'affectation reels
+# Corriger le récap signatures finisseurs : groupement multi-chantier et stats par site
 
-## Probleme
+## Problemes identifies
 
-La fonction `checkAllFinisseursTransportComplete` (ligne 548-550) calcule les 5 dates de la semaine (Lundi a Vendredi) et verifie chaque jour pour chaque chantier. Si un chantier n'a que 2 jours d'affectation (ex: Me/V pour VILOGIA), la validation echoue car elle cherche des vehicules pour les 3 autres jours non-assignes.
+1. **Chantier manquant** : Le groupement (ligne 529) prend uniquement `affectedDays[0].chantier_id`, donc BOUSHABI n'apparait que sous son premier chantier (VENISSIEUX ou VILOGIA) et AMBERIEU est absent.
 
-## Correction
+2. **Stats incorrectes** : `calculateAffectedStats` (ligne 495) ne filtre pas par `chantierId`. Pour VILOGIA, elle additionne les 5 jours de toutes les fiches au lieu des 2 jours du site, d'ou 54h/7 paniers/5 trajets.
 
-### Fichier : `src/pages/ValidationConducteur.tsx` (lignes 548-550)
+## Corrections
 
-Remplacer le calcul fixe des 5 dates par un filtrage base sur les `affectationsJours` pour chaque chantier.
+### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-**Avant** (ligne 548-550) :
-```
-const monday = parseISOWeek(selectedWeek);
-const weekDates = [0, 1, 2, 3, 4].map(d => format(addDays(monday, d), "yyyy-MM-dd"));
-```
+#### 1. Groupement multi-chantier (lignes 518-547)
 
-**Apres** : supprimer ces 2 lignes et calculer les dates par chantier a l'interieur de la boucle `for (const chantierId of chantierIds)`.
-
-A la ligne 567-589, remplacer la boucle `for (const date of weekDates)` par :
+Remplacer la logique qui prend `affectedDays[0]` par une boucle sur TOUS les chantiers uniques de chaque finisseur :
 
 ```text
-// Dates d'affectation reelles pour CE chantier
-const chantierDates = [...new Set(
-  affectationsJours
-    ?.filter(a => a.chantier_id === chantierId)
-    ?.map(a => a.date) || []
-)];
-
-// Parmi ces dates, garder celles ou au moins 1 finisseur travaille
-const workedDays: string[] = [];
-for (const date of chantierDates) {
-  let hasWorker = false;
-  for (const finisseur of finisseurs) {
-    if (!chantierFinisseursIds.has(finisseur.id)) continue;
-    const ficheJour = finisseur.ficheJours?.find(j => j.date === date);
-    const isAbsent = ficheJour && (ficheJour.HNORM || 0) === 0 && (ficheJour.HI || 0) === 0;
-    if (!isAbsent) { hasWorker = true; break; }
+finisseurs.forEach(finisseur => {
+  // Tous les chantiers uniques de ce finisseur
+  const chantierIdsUniques = [...new Set(
+    (finisseur.affectedDays || []).map(a => a.chantier_id).filter(Boolean)
+  )];
+  
+  for (const chantierId of chantierIdsUniques) {
+    if (!map.has(chantierId)) {
+      const info = chantiersInfo.get(chantierId);
+      map.set(chantierId, {
+        chantierId,
+        code: info?.code || "SANS_CODE",
+        nom: info?.nom || "",
+        finisseurs: []
+      });
+    }
+    map.get(chantierId)!.finisseurs.push(finisseur);
   }
-  if (hasWorker) workedDays.push(date);
-}
+});
 ```
 
-Le reste de la fonction (lignes 591-645) reste identique : elle itere sur `workedDays` qui contient maintenant seulement les jours effectivement assignes au chantier.
+Resultat : BOUSHABI apparaitra sous AMBERIEU ET sous VILOGIA.
 
-## Impact
+#### 2. Stats filtrees par chantier (lignes 494-516 + appel ligne 679)
 
-- VILOGIA (Me/V) : la validation ne verifiera que 2 jours au lieu de 5
-- AMBERIEU (L/M/J) : la validation ne verifiera que 3 jours au lieu de 5
-- La collecte de signatures ne sera plus bloquee par des jours non-assignes
-- Aucun changement en base de donnees
+Ajouter un parametre `chantierId` a `calculateAffectedStats` pour ne compter que les jours du site concerne :
+
+```text
+const calculateAffectedStats = (finisseur: FinisseurWithFiche, chantierId?: string) => {
+  // Filtrer affectedDays par chantierId si fourni
+  const relevantAffectedDays = chantierId
+    ? (finisseur.affectedDays || []).filter(a => a.chantier_id === chantierId)
+    : (finisseur.affectedDays || []);
+    
+  const affectedDatesSet = new Set(relevantAffectedDays.map(a => a.date));
+  const relevantJours = (finisseur.ficheJours || []).filter(jour => 
+    affectedDatesSet.has(jour.date)
+  );
+  // ... calcul identique sur relevantJours
+};
+```
+
+A l'appel (ligne 679), passer le chantierId du groupe :
+
+```text
+const stats = calculateAffectedStats(finisseur, chantierGroup.chantierId);
+```
+
+#### 3. Filtrage transport et absences par chantier (lignes 682-695)
+
+Filtrer egalement les jours de transport et le calcul d'absences par les dates du chantier en cours (pas toutes les affectations) :
+
+```text
+// Dates d'affectation pour CE chantier uniquement
+const chantierAffectedDays = (finisseur.affectedDays || [])
+  .filter(a => a.chantier_id === chantierGroup.chantierId);
+const affectedDatesSet = new Set(chantierAffectedDays.map(a => a.date));
+```
+
+## Resultat attendu
+
+- **AMBERIEU** : BOUSHABI avec ~31h sur 3 jours (L/M/J)
+- **VILOGIA** : BOUSHABI avec ~15h sur 2 jours (Me/V)
+- **VENISSIEUX** : RAZOUK avec 39h sur 5 jours (inchange)
+- Chaque bloc transport ne montre que les jours du site correspondant
