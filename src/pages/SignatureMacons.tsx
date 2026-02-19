@@ -430,9 +430,13 @@ const SignatureMacons = () => {
                                       </td>
                                       <td className="text-center py-2 px-3">
                                         {jour.HNORM === 0 && jour.HI === 0 ? (
-                                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
-                                            Absent
-                                          </Badge>
+                                          selectedMacon.isChef ? (
+                                            <span className="text-muted-foreground font-medium">0h</span>
+                                          ) : (
+                                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
+                                              Absent
+                                            </Badge>
+                                          )
                                         ) : (
                                           <span className="text-foreground font-medium">{jour.heures}h</span>
                                         )}
