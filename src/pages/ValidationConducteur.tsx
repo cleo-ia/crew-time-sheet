@@ -867,7 +867,8 @@ const ValidationConducteur = () => {
                                 }}
                                 mode="conducteur"
                                 affectationsJours={affectationsJours?.filter(a => 
-                                  chantierFinisseurs.some(f => f.id === a.finisseur_id)
+                                  chantierFinisseurs.some(f => f.id === a.finisseur_id) &&
+                                  (chantierId === "sans-chantier" || a.chantier_id === chantierId)
                                 )}
                                 allAffectations={allAffectationsEnriched}
                               />
