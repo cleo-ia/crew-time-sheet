@@ -492,7 +492,7 @@ const SignatureFinisseurs = () => {
   }
 
   // Fonction pour calculer les stats uniquement sur les jours affectés
-  const calculateAffectedStats = (finisseur: FinisseurWithFiche) => {
+  const calculateAffectedStats = (finisseur: FinisseurWithFiche, chantierId?: string) => {
     if (!finisseur.ficheJours || !finisseur.affectedDays || finisseur.affectedDays.length === 0) {
       return {
         heures: 0,
@@ -502,7 +502,11 @@ const SignatureFinisseurs = () => {
       };
     }
     
-    const affectedDaysSet = new Set(finisseur.affectedDays?.map(a => a.date));
+    const relevantAffectedDays = chantierId
+      ? finisseur.affectedDays.filter(a => a.chantier_id === chantierId)
+      : finisseur.affectedDays;
+    
+    const affectedDaysSet = new Set(relevantAffectedDays.map(a => a.date));
     const relevantJours = finisseur.ficheJours.filter(jour => 
       affectedDaysSet.has(jour.date)
     );
@@ -525,21 +529,23 @@ const SignatureFinisseurs = () => {
     }>();
     
     finisseurs.forEach(finisseur => {
-      // Trouver le chantier principal de ce finisseur (premier jour d'affectation)
-      const primaryChantierId = finisseur.affectedDays?.[0]?.chantier_id;
-      if (!primaryChantierId) return;
+      // Tous les chantiers uniques de ce finisseur
+      const chantierIdsUniques = [...new Set(
+        (finisseur.affectedDays || []).map(a => a.chantier_id).filter(Boolean)
+      )];
       
-      if (!map.has(primaryChantierId)) {
-        const info = chantiersInfo.get(primaryChantierId);
-        map.set(primaryChantierId, {
-          chantierId: primaryChantierId,
-          code: info?.code || "SANS_CODE",
-          nom: info?.nom || "",
-          finisseurs: []
-        });
+      for (const chantierId of chantierIdsUniques) {
+        if (!map.has(chantierId)) {
+          const info = chantiersInfo.get(chantierId);
+          map.set(chantierId, {
+            chantierId,
+            code: info?.code || "SANS_CODE",
+            nom: info?.nom || "",
+            finisseurs: []
+          });
+        }
+        map.get(chantierId)!.finisseurs.push(finisseur);
       }
-      
-      map.get(primaryChantierId)!.finisseurs.push(finisseur);
     });
     
     // Retourner comme array trié par code chantier
@@ -676,22 +682,24 @@ const SignatureFinisseurs = () => {
                       <TableBody>
                         {chantierGroup.finisseurs.map((finisseur) => {
                           const transportData = transportFinisseursData[finisseur.id];
-                          const stats = calculateAffectedStats(finisseur);
+                          const stats = calculateAffectedStats(finisseur, chantierGroup.chantierId);
                           
-                          // Filtrer les jours de transport pour ne garder QUE ceux affectés au conducteur actuel
-                          const affectedDatesSet = new Set(finisseur.affectedDays?.map(a => a.date) || []);
+                          // Dates d'affectation pour CE chantier uniquement
+                          const chantierAffectedDays = (finisseur.affectedDays || [])
+                            .filter(a => a.chantier_id === chantierGroup.chantierId);
+                          const affectedDatesSet = new Set(chantierAffectedDays.map(a => a.date));
+                          
                           const relevantTransportDays = transportData?.days?.filter((day: any) => 
                             affectedDatesSet.has(day.date)
                           ) || [];
                           
-                          // Calculer les trajets personnels et d'entreprise UNIQUEMENT sur les jours affectés
+                          // Calculer les trajets personnels et d'entreprise UNIQUEMENT sur les jours de CE chantier
                           const countTrajetPerso = relevantTransportDays.filter((day: any) => day.trajet_perso === true).length;
                           const countTrajetsEntreprise = relevantTransportDays.filter((day: any) => !day.trajet_perso && day.immatriculation).length;
                           
-                          // Calculer les absences (jours affectés avec HNORM=0 et pas trajet perso)
+                          // Calculer les absences (jours affectés à CE chantier avec HNORM=0 et pas trajet perso)
                           const countAbsences = finisseur.ficheJours?.filter(jour => {
-                            const isAffected = finisseur.affectedDays?.some(a => a.date === jour.date);
-                            return isAffected && jour.HNORM === 0 && !jour.trajet_perso;
+                            return affectedDatesSet.has(jour.date) && jour.HNORM === 0 && !jour.trajet_perso;
                           }).length || 0;
                           
                           return (
