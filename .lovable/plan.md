@@ -1,46 +1,67 @@
 
 
-# Corriger le calcul des stats par chantier dans le recap signatures
+# Afficher un recap trajet par chantier dans la page signatures
 
 ## Probleme
 
-La fonction `calculateAffectedStats` filtre les `ficheJours` uniquement par **date**, mais les `ficheJours` fusionnees contiennent des entrees de TOUS les chantiers (marquees par `source_chantier_id`). Quand BOUSHABI travaille mercredi sur VILOGIA, il a aussi potentiellement des entrees pour mercredi venant de la fiche AMBERIEU. Le filtre par date seule additionne tout.
-
-- VILOGIA attendu : 15h / 2 paniers / 2 trajets (Me + Ve)
-- VILOGIA affiche : 30h / 4 paniers / 2 trajets (double comptage)
+Actuellement, le recap trajet ("Recapitulatif Trajet") n'apparait que sous un seul chantier au lieu d'un par site. La cause est dans la construction de `transportParChantier` (ligne 557-620) : chaque jour de transport enrichi contient un `codeChantier` mais pas le `chantier_id` direct. Le groupement essaie de retrouver le `chantierId` en faisant un reverse-lookup par code chantier (ligne 565), ce qui echoue quand le `codeChantier` ne correspond pas exactement ou quand `codeChantierByDate` (keyed par date seule) ecrase les donnees multi-chantier sur la meme date.
 
 ## Correction
 
 ### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-#### Modifier `calculateAffectedStats` (ligne 510-512)
+#### 1. Stocker le `chantier_id` dans les donnees enrichies (ligne 210-221)
 
-Ajouter un filtre sur `source_chantier_id` en plus du filtre par date :
+Ajouter le champ `chantierId` directement dans chaque jour enrichi, recupere depuis `fichesTransportMeta` :
 
-**Avant :**
-```typescript
-const relevantJours = finisseur.ficheJours.filter(jour => 
-  affectedDaysSet.has(jour.date)
+```text
+return {
+  ...jour,
+  codeChantier: codeFromFiche || codeDefault || "-",
+  chantierId: ft?.chantier_id || ""   // <-- AJOUT
+};
+```
+
+#### 2. Simplifier le groupement `transportParChantier` (ligne 562-567)
+
+Remplacer le reverse-lookup par code par l'utilisation directe du `chantierId` stocke :
+
+```text
+// AVANT (fragile)
+const chantierId = Array.from(chantiersInfo.entries())
+  .find(([_, info]) => info.code === jour.codeChantier)?.[0] || "";
+
+// APRES (fiable)
+const chantierId = jour.chantierId || "";
+```
+
+#### 3. Filtrer les jours par chantier dans le recap transport (ligne 645)
+
+Actuellement `transportDays` contient tous les jours du chantier (5 jours). Il faut filtrer pour ne garder que les jours d'affectation reels du chantier. Le filtrage existe deja pour les stats heures (ligne 689-695) mais pas pour le transport affiché dans l'accordion.
+
+Ajouter un filtrage des `transportDays` par les dates d'affectation du chantier :
+
+```text
+// Dates d'affectation uniques pour ce chantier
+const chantierAffectedDates = new Set(
+  chantierGroup.finisseurs.flatMap(f =>
+    (f.affectedDays || [])
+      .filter(a => a.chantier_id === chantierGroup.chantierId)
+      .map(a => a.date)
+  )
+);
+
+// Filtrer les jours de transport pour ne montrer que les dates d'affectation
+const filteredTransportDays = transportDays.filter(day => 
+  chantierAffectedDates.has(day.date)
 );
 ```
 
-**Apres :**
-```typescript
-const relevantJours = finisseur.ficheJours.filter(jour => 
-  affectedDaysSet.has(jour.date) && 
-  (!chantierId || jour.source_chantier_id === chantierId)
-);
-```
-
-Ce filtre utilise le champ `source_chantier_id` deja present dans les `ficheJours` (ajoute par le hook `useFinisseursByConducteur` lors de la fusion multi-fiche). Cela garantit que seules les heures de la fiche du bon chantier sont comptabilisees.
-
-#### Meme correction pour les absences (ligne ~704)
-
-Appliquer le meme double filtre (date + source_chantier_id) au calcul `countAbsences` dans la boucle de rendu.
+Puis passer `filteredTransportDays` au composant `TransportSummaryV2` au lieu de `transportDays`.
 
 ## Resultat attendu
 
-- VILOGIA : 15h / 2 paniers (Me + Ve uniquement depuis la fiche VILOGIA)
-- AMBERIEU : heures correspondant aux 3 jours (L/M/J) depuis la fiche AMBERIEU
-- Aucun double comptage entre chantiers
-
+- **VENISSIEUX** : recap trajet avec 5 jours (L-V) - RAZOUK y est affecte toute la semaine
+- **AMBERIEU** : recap trajet avec 3 jours (L/M/J) - jours BOUSHABI sur ce site
+- **VILOGIA** : recap trajet avec 2 jours (Me/V) - jours BOUSHABI sur ce site
+- Chaque recap montre exactement les vehicules/conducteurs saisis a l'etape precedente pour ce chantier specifique
