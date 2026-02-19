@@ -1,69 +1,53 @@
 
-# Adapter la fiche de trajet aux jours d'affectation par chantier
+# Corriger la validation transport : ne verifier que les jours d'affectation reels
 
 ## Probleme
 
-Le composant `TransportSheetV2` genere toujours 5 jours (Lundi a Vendredi), meme quand le finisseur n'est affecte que certains jours sur ce chantier. Sous VILOGIA par exemple, on demande de remplir 5 jours de trajet alors que l'equipe n'y travaille que 2 jours (Me/V).
+La fonction `checkAllFinisseursTransportComplete` (ligne 548-550) calcule les 5 dates de la semaine (Lundi a Vendredi) et verifie chaque jour pour chaque chantier. Si un chantier n'a que 2 jours d'affectation (ex: Me/V pour VILOGIA), la validation echoue car elle cherche des vehicules pour les 3 autres jours non-assignes.
 
-## Solution
+## Correction
 
-Passer les dates d'affectation effectives au composant `TransportSheetV2` via une nouvelle prop `assignedDates`, et ne generer/afficher que ces jours-la.
+### Fichier : `src/pages/ValidationConducteur.tsx` (lignes 548-550)
 
-### 1. Fichier : `src/pages/ValidationConducteur.tsx`
+Remplacer le calcul fixe des 5 dates par un filtrage base sur les `affectationsJours` pour chaque chantier.
 
-Calculer les dates d'affectation pour chaque chantier et les passer au wrapper `TransportSheetWithFiche` :
+**Avant** (ligne 548-550) :
+```
+const monday = parseISOWeek(selectedWeek);
+const weekDates = [0, 1, 2, 3, 4].map(d => format(addDays(monday, d), "yyyy-MM-dd"));
+```
 
-- Ajouter une prop `assignedDates` au wrapper `TransportSheetWithFicheInner` (tableau de strings `yyyy-MM-dd`)
-- La transmettre a `TransportSheetV2`
-- Au point d'appel (ligne 877), calculer les dates a partir des `affectationsJours` filtrees par `chantierId`
+**Apres** : supprimer ces 2 lignes et calculer les dates par chantier a l'interieur de la boucle `for (const chantierId of chantierIds)`.
+
+A la ligne 567-589, remplacer la boucle `for (const date of weekDates)` par :
 
 ```text
-// Calcul des dates assignees pour ce chantier
-const chantierAssignedDates = [...new Set(
-  (affectationsJours || [])
-    .filter(a => chantierId !== "sans-chantier" && a.chantier_id === chantierId)
-    .map(a => a.date)
+// Dates d'affectation reelles pour CE chantier
+const chantierDates = [...new Set(
+  affectationsJours
+    ?.filter(a => a.chantier_id === chantierId)
+    ?.map(a => a.date) || []
 )];
 
-<TransportSheetWithFiche
-  ...
-  assignedDates={chantierAssignedDates}
-/>
+// Parmi ces dates, garder celles ou au moins 1 finisseur travaille
+const workedDays: string[] = [];
+for (const date of chantierDates) {
+  let hasWorker = false;
+  for (const finisseur of finisseurs) {
+    if (!chantierFinisseursIds.has(finisseur.id)) continue;
+    const ficheJour = finisseur.ficheJours?.find(j => j.date === date);
+    const isAbsent = ficheJour && (ficheJour.HNORM || 0) === 0 && (ficheJour.HI || 0) === 0;
+    if (!isAbsent) { hasWorker = true; break; }
+  }
+  if (hasWorker) workedDays.push(date);
+}
 ```
 
-### 2. Fichier : `src/components/transport/TransportSheetV2.tsx`
+Le reste de la fonction (lignes 591-645) reste identique : elle itere sur `workedDays` qui contient maintenant seulement les jours effectivement assignes au chantier.
 
-- Ajouter la prop `assignedDates?: string[]` a l'interface `TransportSheetV2Props`
-- Modifier la boucle d'initialisation des jours (ligne 192-213) : si `assignedDates` est fourni et non vide, ne generer que ces dates au lieu des 5 jours fixes
-- Adapter le calcul `isComplete` (ligne 430-438) pour ne verifier que les jours assignes
-- Adapter les compteurs `totalVehicules`/`completedVehicules` de la meme facon
+## Impact
 
-```text
-// Initialisation : generer seulement les jours assignes si fournis
-const datesToGenerate: string[] = assignedDates && assignedDates.length > 0
-  ? assignedDates
-  : Array.from({ length: 5 }, (_, i) => format(addDays(selectedWeek, i), "yyyy-MM-dd"));
-
-const allDays: TransportDayV2[] = datesToGenerate.map(dateString => {
-  const existingDay = existingTransport?.days.find(d => d.date === dateString);
-  return {
-    date: dateString,
-    vehicules: existingDay ? existingDay.vehicules : [{ ... vehicule vide }],
-  };
-});
-```
-
-### 3. Fichier : `src/hooks/useTransportValidation.ts`
-
-Ajouter un parametre `assignedDates` pour ajuster le nombre de jours attendus :
-
-- Si `assignedDates` est fourni, `expectedDays = assignedDates.length - absents`
-- Filtrer les jours verifies par `assignedDates`
-
-### Impact
-
-- VILOGIA : la fiche de trajet n'affichera que Me/V (2 jours au lieu de 5)
-- AMBERIEU : la fiche de trajet n'affichera que L/M/J (3 jours au lieu de 5)
-- La validation de completude tiendra compte du nombre reel de jours
+- VILOGIA (Me/V) : la validation ne verifiera que 2 jours au lieu de 5
+- AMBERIEU (L/M/J) : la validation ne verifiera que 3 jours au lieu de 5
+- La collecte de signatures ne sera plus bloquee par des jours non-assignes
 - Aucun changement en base de donnees
-- Le mode "chef" (sans `assignedDates`) continue a generer les 5 jours comme avant
