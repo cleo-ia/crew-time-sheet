@@ -399,7 +399,18 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
         // Appliquer les données existantes si disponibles
         const daysFromDb = { ...daysDefault };
         if (finisseur.ficheJours) {
-          finisseur.ficheJours.forEach(j => {
+          // En mode conducteur, ne garder que les ficheJours dont la date
+          // correspond à une affectation dans affectationsJours (déjà filtré par chantier)
+          const visibleDates = new Set(
+            (affectationsJours || [])
+              .filter(a => a.finisseur_id === finisseur.id)
+              .map(a => a.date)
+          );
+          const filteredJours = isConducteurMode && visibleDates.size > 0
+            ? finisseur.ficheJours.filter(j => visibleDates.has(j.date))
+            : finisseur.ficheJours;
+
+          filteredJours.forEach(j => {
             const d = new Date(j.date);
             const dayOfWeek = d.getDay();
             if (dayOfWeek === 0 || dayOfWeek === 6) return;
