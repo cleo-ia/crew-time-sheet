@@ -1,83 +1,46 @@
 
-# Corriger le récap signatures finisseurs : groupement multi-chantier et stats par site
 
-## Problemes identifies
+# Corriger le calcul des stats par chantier dans le recap signatures
 
-1. **Chantier manquant** : Le groupement (ligne 529) prend uniquement `affectedDays[0].chantier_id`, donc BOUSHABI n'apparait que sous son premier chantier (VENISSIEUX ou VILOGIA) et AMBERIEU est absent.
+## Probleme
 
-2. **Stats incorrectes** : `calculateAffectedStats` (ligne 495) ne filtre pas par `chantierId`. Pour VILOGIA, elle additionne les 5 jours de toutes les fiches au lieu des 2 jours du site, d'ou 54h/7 paniers/5 trajets.
+La fonction `calculateAffectedStats` filtre les `ficheJours` uniquement par **date**, mais les `ficheJours` fusionnees contiennent des entrees de TOUS les chantiers (marquees par `source_chantier_id`). Quand BOUSHABI travaille mercredi sur VILOGIA, il a aussi potentiellement des entrees pour mercredi venant de la fiche AMBERIEU. Le filtre par date seule additionne tout.
 
-## Corrections
+- VILOGIA attendu : 15h / 2 paniers / 2 trajets (Me + Ve)
+- VILOGIA affiche : 30h / 4 paniers / 2 trajets (double comptage)
+
+## Correction
 
 ### Fichier : `src/pages/SignatureFinisseurs.tsx`
 
-#### 1. Groupement multi-chantier (lignes 518-547)
+#### Modifier `calculateAffectedStats` (ligne 510-512)
 
-Remplacer la logique qui prend `affectedDays[0]` par une boucle sur TOUS les chantiers uniques de chaque finisseur :
+Ajouter un filtre sur `source_chantier_id` en plus du filtre par date :
 
-```text
-finisseurs.forEach(finisseur => {
-  // Tous les chantiers uniques de ce finisseur
-  const chantierIdsUniques = [...new Set(
-    (finisseur.affectedDays || []).map(a => a.chantier_id).filter(Boolean)
-  )];
-  
-  for (const chantierId of chantierIdsUniques) {
-    if (!map.has(chantierId)) {
-      const info = chantiersInfo.get(chantierId);
-      map.set(chantierId, {
-        chantierId,
-        code: info?.code || "SANS_CODE",
-        nom: info?.nom || "",
-        finisseurs: []
-      });
-    }
-    map.get(chantierId)!.finisseurs.push(finisseur);
-  }
-});
+**Avant :**
+```typescript
+const relevantJours = finisseur.ficheJours.filter(jour => 
+  affectedDaysSet.has(jour.date)
+);
 ```
 
-Resultat : BOUSHABI apparaitra sous AMBERIEU ET sous VILOGIA.
-
-#### 2. Stats filtrees par chantier (lignes 494-516 + appel ligne 679)
-
-Ajouter un parametre `chantierId` a `calculateAffectedStats` pour ne compter que les jours du site concerne :
-
-```text
-const calculateAffectedStats = (finisseur: FinisseurWithFiche, chantierId?: string) => {
-  // Filtrer affectedDays par chantierId si fourni
-  const relevantAffectedDays = chantierId
-    ? (finisseur.affectedDays || []).filter(a => a.chantier_id === chantierId)
-    : (finisseur.affectedDays || []);
-    
-  const affectedDatesSet = new Set(relevantAffectedDays.map(a => a.date));
-  const relevantJours = (finisseur.ficheJours || []).filter(jour => 
-    affectedDatesSet.has(jour.date)
-  );
-  // ... calcul identique sur relevantJours
-};
+**Apres :**
+```typescript
+const relevantJours = finisseur.ficheJours.filter(jour => 
+  affectedDaysSet.has(jour.date) && 
+  (!chantierId || jour.source_chantier_id === chantierId)
+);
 ```
 
-A l'appel (ligne 679), passer le chantierId du groupe :
+Ce filtre utilise le champ `source_chantier_id` deja present dans les `ficheJours` (ajoute par le hook `useFinisseursByConducteur` lors de la fusion multi-fiche). Cela garantit que seules les heures de la fiche du bon chantier sont comptabilisees.
 
-```text
-const stats = calculateAffectedStats(finisseur, chantierGroup.chantierId);
-```
+#### Meme correction pour les absences (ligne ~704)
 
-#### 3. Filtrage transport et absences par chantier (lignes 682-695)
-
-Filtrer egalement les jours de transport et le calcul d'absences par les dates du chantier en cours (pas toutes les affectations) :
-
-```text
-// Dates d'affectation pour CE chantier uniquement
-const chantierAffectedDays = (finisseur.affectedDays || [])
-  .filter(a => a.chantier_id === chantierGroup.chantierId);
-const affectedDatesSet = new Set(chantierAffectedDays.map(a => a.date));
-```
+Appliquer le meme double filtre (date + source_chantier_id) au calcul `countAbsences` dans la boucle de rendu.
 
 ## Resultat attendu
 
-- **AMBERIEU** : BOUSHABI avec ~31h sur 3 jours (L/M/J)
-- **VILOGIA** : BOUSHABI avec ~15h sur 2 jours (Me/V)
-- **VENISSIEUX** : RAZOUK avec 39h sur 5 jours (inchange)
-- Chaque bloc transport ne montre que les jours du site correspondant
+- VILOGIA : 15h / 2 paniers (Me + Ve uniquement depuis la fiche VILOGIA)
+- AMBERIEU : heures correspondant aux 3 jours (L/M/J) depuis la fiche AMBERIEU
+- Aucun double comptage entre chantiers
+
