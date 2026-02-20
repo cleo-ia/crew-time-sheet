@@ -1,92 +1,105 @@
 
-# Confirmation : Passage en Mode Planning Complet
+# Vérification des corrections — Résultat
 
-## Réponse directe à ta question
-
-**OUI**, avec les 4 corrections identifiées, l'application passera en mode planning complet et `affectations_jours_chef` deviendra la seule source de vérité pour les équipes chefs. **NON**, rien ne cassera** si les corrections sont faites correctement — voici pourquoi, point par point.
+## Bilan : 3 fichiers corrects, 1 problème restant
 
 ---
 
-## Ce qui existe aujourd'hui dans le code (état exact)
+## Ce qui a été correctement corrigé (3/4)
 
-Après lecture complète des fichiers, voici les 4 points legacy encore actifs :
+### `useMaconsByChantier.ts` — CORRECT
+La table `affectations` (legacy) n'est plus utilisée nulle part. Le hook lit uniquement depuis `affectations_jours_chef`. Si la semaine n'a pas de données, il retourne une équipe vide. La correction est complète.
 
-### Point 1 — `useMaconsByChantier.ts` (lignes 219-262)
-Il y a **2 niveaux de legacy** :
+### `TimeEntryTable.tsx` — CORRECT
+- Le chargement de `affectationsJoursChef` est maintenant toujours actif (pas conditionnel à `isPlanningActive`)
+- Le bypass `if (!isPlanningActive) return true` a bien été supprimé
+- L'import `usePlanningMode` a été retiré
+- La vérification des jours autorisés s'applique toujours en mode chef
 
-- **Fallback interne en mode planning** (lignes 219-240) : Si `affectations_jours_chef` est vide pour une semaine validée, le code retombe sur la table `affectations` comme plan B.
-- **Mode legacy complet** (lignes 241-262) : Si la semaine n'est pas validée, lecture systématique depuis `affectations` (ancienne table).
+### `SignatureMacons.tsx` — CORRECT
+- Les affectations sont chargées toujours (plus de `isPlanningActive ?`)
+- Le filtrage par jours planifiés est appliqué systématiquement
+- Le `if (!isPlanningActive) return macon` a bien été supprimé
 
-### Point 2 — `TimeEntryTable.tsx` (lignes 252-254 + ligne 281)
-- **Chargement conditionnel** : `affectationsJoursChef` n'est chargé QUE si `isPlanningActive` est true. Si false → tableau vide → aucune vérification.
-- **Bypass direct** ligne 281 : `if (!isPlanningActive) return true;` → tous les jours autorisés en mode legacy.
-
-### Point 3 — `SignatureMacons.tsx` (lignes 39-43 + lignes 56-58)
-- **Chargement conditionnel** : affectations jours chargées seulement si `isPlanningActive`.
-- **Bypass filtrage** ligne 56-58 : `if (!isPlanningActive) { return macon; }` → tous les jours et toutes les heures affichées sans filtrage.
-
-### Point 4 — `TransportDayAccordion.tsx` (ligne 124)
-- `const affectationsJoursChef = isPlanningActive ? rawAffectationsJoursChef : [];`
-- En mode legacy → tableau vide → le filtre conducteur s'applique à personne.
+### `TransportDayAccordion.tsx` — CORRECT
+- La ligne `const affectationsJoursChef = isPlanningActive ? rawAffectationsJoursChef : []` a bien été remplacée
+- `useAffectationsJoursByChef` est chargé sans condition
 
 ---
 
-## Les corrections à appliquer (4 fichiers)
+## Problème restant non corrigé : `useAutoSaveFiche.ts`
 
-### `useMaconsByChantier.ts`
-- **Supprimer** le bloc `else` complet (lignes 241-262) qui lit depuis `affectations`
-- **Supprimer** le fallback interne (lignes 219-240) qui retombe sur `affectations` quand `affectations_jours_chef` est vide
-- **Résultat** : si aucune donnée dans `affectations_jours_chef` pour une vieille semaine → équipe vide (correct)
+### Le bloc legacy est encore présent (lignes 314-316)
 
-### `TimeEntryTable.tsx`
-- **Modifier** les lignes 252-254 : retirer `isPlanningActive &&` → charger toujours les affectations en mode chef
-- **Supprimer** la ligne 281 : `if (!isPlanningActive) return true;`
-- **Résultat** : la vérification des jours s'applique toujours, que la semaine soit validée ou non
+Code actuel dans le fichier :
 
-### `SignatureMacons.tsx`
-- **Modifier** les lignes 39-42 : retirer `isPlanningActive ?` → charger toujours les affectations
-- **Supprimer** les lignes 56-58 : `if (!isPlanningActive) { return macon; }`
-- **Résultat** : le filtrage par jours planifiés s'applique toujours lors de la collecte des signatures
+```
+// 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
+if (!isPlanningActive) {
+  selectedDays = [...workDays];  // ← 5 jours pour tout le monde sans vérification
+} else {
+  // ... logique planning correcte
+}
+```
 
-### `TransportDayAccordion.tsx`
-- **Modifier** la ligne 124 : `const affectationsJoursChef = rawAffectationsJoursChef;`
-- **Résultat** : le filtre conducteur s'applique toujours, que la semaine soit validée ou non
+Ce bloc fait que :
+- Pour une semaine **non validée** → 5 fiches_jours créées pour chaque employé, ignorant complètement le planning
+- Pour une semaine **validée** → logique correcte avec `affectations_jours_chef`
+
+Les semaines S06, S07, S08, S09 (validées) fonctionnent correctement. Mais si un chef saisit sur une semaine non encore validée par le conducteur, la sauvegarde crée des jours fantômes.
+
+### Également détecté : `Index.tsx` ligne 301
+`usePlanningMode` est encore utilisé dans la page principale du chef pour `isPlanningActive`. Ce n'est pas bloquant (la variable n'est utilisée qu'à titre informatif pour les logs), mais il reste un vestige du mode legacy à nettoyer.
 
 ---
 
-## Garanties : ce qui ne changera PAS
+## Correction à apporter
 
-| Élément | Pourquoi ça ne change pas |
+### `useAutoSaveFiche.ts` — 1 seul bloc à modifier
+
+Remplacer le bloc conditionnel :
+```
+// 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
+if (!isPlanningActive) {
+  selectedDays = [...workDays];
+} else {
+  // logique planning...
+  let isChefHimself = ...
+  ...
+}
+```
+
+Par la logique planning directement (sans condition) :
+```
+// Mode planning complet : toujours vérifier affectations_jours_chef
+// Le chef lui-même garde toujours 5 jours
+let isChefHimself = entry.employeeId === chefId;
+if (isChefHimself) {
+  selectedDays = [...workDays];
+  ...
+}
+// Si ce n'est pas le chef, vérifier les affectations
+if (!isChefHimself) {
+  ...
+}
+```
+
+Supprimer aussi la vérification `isPlanningActive` et la requête `planning_validations` dans ce fichier (inutiles).
+
+### `Index.tsx` — Nettoyage optionnel
+Supprimer l'import et l'utilisation de `usePlanningMode` si la variable n'est utilisée que dans des logs. Vérifier si elle sert à autre chose avant de la retirer.
+
+---
+
+## Résumé
+
+| Fichier | Statut |
 |---|---|
-| Chef lui-même → 5 jours toujours | La logique `isChefHimself` dans `useAutoSaveFiche` reste intacte |
-| Mode conducteur (finisseurs) | Utilise `affectations_finisseurs_jours`, pas `affectations_jours_chef` |
-| Mode RH / edit | `mode === "edit"` → `return true` toujours, aucune restriction |
-| Fiches déjà validées | Les statuts VALIDE_CHEF / ENVOYE_RH ne sont pas touchés |
-| Multi-chantier | Le filtre `chantier_id` dans les requêtes reste en place |
-| Planning Main d'Oeuvre | Page non modifiée |
-| Export Excel / Récap RH | Non modifiés, lisent directement les `fiches_jours` |
+| `useMaconsByChantier.ts` | Correct |
+| `TimeEntryTable.tsx` | Correct |
+| `SignatureMacons.tsx` | Correct |
+| `TransportDayAccordion.tsx` | Correct |
+| `useAutoSaveFiche.ts` | **À corriger — bloc legacy lignes 314-316 encore actif** |
+| `Index.tsx` | Nettoyage mineur (`usePlanningMode` résiduel) |
 
----
-
-## Impact sur les vieilles semaines (S05 et avant)
-
-Pour les semaines sans données dans `affectations_jours_chef` (avant la première sync) :
-- **Vue chef** : équipe vide → normal, ce sont des semaines historiques non planifiées
-- **Fiches existantes** : les données `fiches_jours` existent toujours en base → la vue RH / historique n'est pas affectée
-- **L'application ne plante pas** : un tableau vide est géré partout
-
----
-
-## Récapitulatif : avant / après
-
-| Situation | Avant | Après |
-|---|---|---|
-| Semaine non validée — affichage équipe chef | Lit table `affectations` (legacy) | Lit `affectations_jours_chef` (vide si vieille semaine) |
-| Semaine validée — fallback si vide | Retombe sur `affectations` | Retourne équipe vide (pas de données fantômes) |
-| Saisie chef — jours autorisés | Tous les jours si semaine non validée | Uniquement les jours planifiés dans `affectations_jours_chef` |
-| Signature maçons | Affiche tout si mode legacy | Filtre toujours par jours planifiés |
-| Transport accordéon | Ignore le filtre conducteur si legacy | Applique toujours le filtre conducteur |
-| Chef lui-même | 5 jours | 5 jours (inchangé) |
-| Conducteur / finisseurs | Inchangé | Inchangé |
-| RH / récap / export | Inchangé | Inchangé |
-
+La correction principale est dans `useAutoSaveFiche.ts` : supprimer le bloc `if (!isPlanningActive)` et appliquer la logique planning pour tous les maçons, quelle que soit la semaine.
