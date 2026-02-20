@@ -1,75 +1,138 @@
 
-# Correction : Déduplication "Détail jour par jour" dans useRHData.ts
+# Correction du récap transport dans l'historique conducteur
 
-## Problème
+## Diagnostic complet des deux bugs
 
-Dans `useRHData.ts`, la fonction `useRHEmployeeDetail` construit un tableau `dailyDetails` en récupérant **tous les `fiches_jours`** de toutes les fiches d'un employé, sans jamais vérifier si deux entrées correspondent à la même date.
+### Bug 1 — RAZOUK : 2 lignes par jour (MATIN + SOIR séparées)
 
-Pour BOUSHABI Mohamed en S06, cela produit :
-- Mardi 03/02 → ligne VILOGIA (0h, pas de type d'absence) — entrée fantôme créée en Legacy Mode
-- Mardi 03/02 → ligne AMBERIEU (8h) — le jour réellement travaillé
+**Cause racine** : La table `fiches_transport_jours` stocke les entrées sur 2 lignes par jour :
+- 1 ligne `periode = "MATIN"` avec `conducteur_aller_id`
+- 1 ligne `periode = "SOIR"` avec `conducteur_retour_id`
 
-Les deux apparaissent dans le tableau, d'où le doublon visible.
+La requête dans `useConducteurHistorique` (ligne 212-221) ne sélectionne **pas** le champ `periode`, donc Supabase retourne les deux lignes brutes pour chaque date. Le `.map()` ligne 253 crée alors une entrée `TransportJourHistorique` par ligne brute → 2 lignes par jour dans l'affichage.
+
+**Résultat visible** : lun 09/02 apparaît 2 fois, mar 10/02 deux fois, etc.
+
+---
+
+### Bug 2 — BOUSHABI VILLEURBANNE : toute la semaine affichée au lieu de 2 jours
+
+**Cause racine** : Le `datesSet` (ligne 197) est construit depuis `datesAffectees` qui correspond à la clé `finisseurId_semaine` dans `affectationDates`. Mais cette Map est construite sans distinction de chantier — elle agrège TOUTES les dates d'affectation de BOUSHABI pour la semaine S07, tous chantiers confondus :
+
+```
+affectationDates.get("boushabi_2026-S07") = {09/02, 10/02, 11/02, 12/02, 13/02}
+                                              (AMBERIEU)  (VILLEURB) (AMBERIEU) (VILLEURB)
+```
+
+Quand la boucle traite la **fiche VILLEURBANNE** de BOUSHABI, elle utilise ce `datesSet` complet de 5 jours pour filtrer les `fiches_transport_jours`. Comme la fiche transport VILLEURBANNE a des entrées pour les 5 jours, le filtre laisse passer tout → 5 jours affichés au lieu de 2.
+
+**La vraie clé de segmentation doit être `finisseurId_semaine_chantierId`**, pas juste `finisseurId_semaine`.
+
+---
 
 ## Solution
 
-Ajouter une étape de déduplication **après le `.sort()`** (ligne 800) et **avant le calcul du `summary`** (ligne 802).
+### Fichier à modifier : `src/hooks/useConducteurHistorique.ts`
 
-### Règle de priorité (par ordre décroissant)
-1. Entrée avec `heures > 0` → c'est le jour réellement travaillé
-2. Entrée avec `typeAbsence` renseigné → absence qualifiée (CP, AT, etc.)
-3. Entrée à 0h sans type d'absence → fantôme/placeholder (à supprimer si une meilleure entrée existe)
+#### Correction 1 — Bug MATIN/SOIR (fusion des lignes de transport)
 
-### Fichier modifié
-
-**`src/hooks/useRHData.ts`** — entre la ligne 800 et 802, insérer :
+Ajouter le champ `periode` dans la requête et fusionner les lignes par date avant de construire `TransportJourHistorique` :
 
 ```typescript
-// 🔥 DÉDUPLICATION multi-chantier : pour chaque date, ne garder qu'une seule entrée
-// Priorité : heures > 0 > absence qualifiée > fantôme (0h sans type d'absence)
-const deduplicatedDetails = dailyDetails.reduce((acc, jour) => {
-  const existingIdx = acc.findIndex(d => d.date === jour.date);
-  if (existingIdx === -1) {
-    acc.push(jour);
-    return acc;
-  }
-  const existing = acc[existingIdx];
-  const existingHasHours = existing.heuresNormales > 0 || existing.heuresIntemperies > 0;
-  const newHasHours = jour.heuresNormales > 0 || jour.heuresIntemperies > 0;
+// Requête : ajouter "periode" dans le select
+const { data: joursAll } = await supabase
+  .from("fiches_transport_jours")
+  .select(`
+    date,
+    periode,        // ← AJOUTER
+    immatriculation,
+    conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(id, nom, prenom),
+    conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(id, nom, prenom)
+  `)
+  .eq("fiche_transport_id", transportFiche.id)
+  .order("date");
 
-  if (newHasHours && !existingHasHours) {
-    // Remplacer le fantôme par la ligne avec heures réelles
-    acc[existingIdx] = jour;
-  } else if (!newHasHours && !existingHasHours && jour.typeAbsence && !existing.typeAbsence) {
-    // Remplacer un fantôme non qualifié par un avec type d'absence
-    acc[existingIdx] = jour;
+// Fusionner MATIN + SOIR par date avant le filtre
+const byDate = new Map<string, { date: string; immatriculation: string | null; conducteur_aller: any; conducteur_retour: any }>();
+
+(joursAll || []).forEach((j: any) => {
+  if (!byDate.has(j.date)) {
+    byDate.set(j.date, { date: j.date, immatriculation: null, conducteur_aller: null, conducteur_retour: null });
   }
-  // Sinon : ignorer le doublon (l'entrée existante est déjà meilleure)
-  return acc;
-}, [] as typeof dailyDetails);
+  const entry = byDate.get(j.date)!;
+  if (j.periode === "MATIN") {
+    entry.conducteur_aller = j.conducteur_aller;
+    entry.immatriculation = j.immatriculation || entry.immatriculation;
+  } else if (j.periode === "SOIR") {
+    entry.conducteur_retour = j.conducteur_retour;
+    entry.immatriculation = entry.immatriculation || j.immatriculation;
+  }
+});
+
+// Filtrer les dates consolidées par le datesSet (scopé au bon chantier)
+const joursFiltres = Array.from(byDate.values()).filter(j => datesSet.has(j.date));
 ```
 
-Puis remplacer `dailyDetails` par `deduplicatedDetails` dans :
-- Le calcul du `summary` (ligne 803–808)
-- Le retour final `dailyDetails:` (ligne 837)
+#### Correction 2 — Bug BOUSHABI multi-chantier (datesSet scopé par chantier)
 
-## Tableau des cas couverts
+Modifier la Map `affectationDates` pour inclure le `chantier_id` dans la clé :
 
-| Scénario | Résultat |
-|---|---|
-| Mardi 03/02 : 8h AMBERIEU + 0h VILOGIA fantôme | Garde 8h AMBERIEU → supprime fantôme ✅ |
-| Date avec CP + fantôme 0h | Garde CP ✅ |
-| Date avec 2 fantômes 0h sans type | Garde le premier (neutre, sans effet) ✅ |
-| Employé mono-chantier, une seule entrée par date | Aucun changement ✅ |
-| Date avec 2 vraies absences qualifiées différentes | Garde la première rencontrée (cas très rare) ✅ |
+```typescript
+// AVANT (ligne 73-77) :
+const key = `${aff.finisseur_id}_${aff.semaine}`;
+
+// APRÈS :
+const key = `${aff.finisseur_id}_${aff.semaine}_${aff.chantier_id}`;
+```
+
+Et lors de la récupération des dates affectées (ligne 163-164) :
+
+```typescript
+// AVANT :
+const key = `${fiche.salarie_id}_${fiche.semaine}`;
+const datesAffectees = Array.from(affectationDates.get(key)!);
+
+// APRÈS :
+const key = `${fiche.salarie_id}_${fiche.semaine}_${fiche.chantier_id}`;
+const datesAffectees = Array.from(affectationDates.get(key) ?? new Set<string>());
+```
+
+**Avec ce changement**, pour BOUSHABI en S07 :
+- Fiche AMBERIEU → `key = "boushabi_2026-S07_AMBERIEU_id"` → datesAffectees = {09/02, 10/02, 12/02}
+- Fiche VILLEURBANNE → `key = "boushabi_2026-S07_VILLEURB_id"` → datesAffectees = {11/02, 13/02}
+
+Le filtre transport est alors correctement scopé par chantier.
+
+#### Attention : cas du conducteur lui-même (trajets perso)
+
+Les trajets perso du conducteur lui-même sont ajoutés via `fichesConducteurPerso` (ligne 100-115). Ces entrées n'ont pas de `chantier_id` dans leur clé. Il faut récupérer le `chantier_id` depuis la fiche pour construire la clé correcte :
+
+```typescript
+// Ligne 80-115 : ajouter chantier_id dans la requête fichesConducteurPerso
+const { data: fichesConducteurPerso } = await supabase
+  .from("fiches_jours")
+  .select(`
+    date, fiche_id, trajet_perso,
+    fiches!inner(semaine, salarie_id, statut, chantier_id)  // ← ajouter chantier_id
+  `)
+  ...
+
+// Et lors de la construction de la key :
+const key = `${finisseurId}_${semaine}_${fiche.chantier_id}`;
+```
 
 ## Périmètre d'impact
 
-- **Uniquement l'affichage** dans la vue "Détail jour par jour" de `ConsultationRH`
-- Aucune donnée en base n'est modifiée
-- Les fiches fantômes restent en base (inoffensives car à 0h) mais n'apparaissent plus à l'écran
-- Tous les employés multi-chantiers (BOUSHABI et autres) bénéficient de la correction
+- **Fichier unique modifié** : `src/hooks/useConducteurHistorique.ts`
+- Aucune modification d'UI, aucune modification en base
+- Les données sont correctes en base — c'est uniquement le traitement côté client qui était erroné
+- L'historique conducteur sera immédiatement correct pour toutes les semaines passées et futures
 
-## Données en base non touchées
+## Résultats attendus après correction
 
-La ligne fantôme `fiche_jour` à 0h sur VILOGIA reste en base. Elle ne fausse pas les totaux (0h + 8h = 8h) et la correction d'affichage suffit. Un nettoyage SQL ciblé pourrait être envisagé séparément si nécessaire.
+| Employé | Chantier | Avant | Après |
+|---|---|---|---|
+| RAZOUK | AMBERIEU | 10 lignes (2 par jour) | 5 lignes consolidées (1 par jour) |
+| BOUSHABI | VILLEURBANNE | 5 jours (toute la semaine) | 2 jours (mer 11/02, ven 13/02) |
+| BOUSHABI | AMBERIEU | 3 jours (lun, mar, jeu) ✅ | 3 jours ✅ (inchangé) |
+| Tout employé mono-chantier | Quelconque | Inchangé ✅ | Inchangé ✅ |
