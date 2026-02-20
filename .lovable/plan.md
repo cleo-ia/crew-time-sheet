@@ -1,147 +1,124 @@
 
-# Correction de `copyFichesFromPreviousWeek` dans `sync-planning-to-teams`
+# Analyse de non-régression : confirmation avant implémentation des corrections R3 et R4
 
-## Objectif
+## État actuel du code (après le dernier diff déjà appliqué)
 
-Corriger la fonction `copyFichesFromPreviousWeek` dans `supabase/functions/sync-planning-to-teams/index.ts` pour qu'elle n'initialise que les jours réellement affectés dans le planning côté conducteur, sans jamais créer de jours fantômes.
+Les correctifs suivants sont déjà en production dans `sync-planning-to-teams` :
+
+- Boucle conducteur sur `joursPlanning` au lieu de `i < 5` (fiche protégée) — ligne 913
+- Nettoyage post-copie des jours fantômes de S-1 (suppression BDD) — lignes 1017-1038
+- Affectations finisseurs basées sur `joursPlanning` au lieu de `jours` (dates S-1) — ligne 1072
+
+## Ce qui reste à corriger (R3 et R4 confirmés dans le code)
+
+### R3 — total_heures calculé avant le nettoyage (ligne 1042, code actuel)
+
+```typescript
+// ⚠️ Bug confirmé — joursS1 contient TOUS les jours de S-1, non filtrés
+const totalHeures = joursS1.reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+```
+
+Le nettoyage (lignes 1017-1038) supprime les jours fantômes de la BDD, mais `joursS1` en mémoire n'est pas modifié. Le `total_heures` écrit en BDD reflète donc les 5 jours de S-1, même si 2 jours viennent d'être supprimés.
+
+**Correction : filtrer `joursS1` par les dates `joursPlanning` transposées en S avant de sommer. La variable `daysDiff` existe déjà ligne 1050 pour faire la transposition.**
+
+### R4 — Orphan cleanup sans protection de statut (lignes 807-864, code actuel)
+
+```typescript
+// ⚠️ Bug confirmé — select sans statut
+.select('id, salarie_id, chantier_id, total_heures')  // statut absent
+
+// ⚠️ Filtre sans protection
+const orphanFiches = (allFichesS || []).filter((f: any) => {
+  const key = `${f.salarie_id}|${f.chantier_id}`
+  return !validEmployeChantierFromPlanning.has(key)  // aucune vérification de statut
+})
+```
+
+**Même bug confirmé sur `toDeleteChef` (lignes 706-743) et `toDeleteFinisseur` (lignes 746-788)** : les fiches sont sélectionnées avec `select('id, total_heures')` sans `statut`, et supprimées sans aucune protection sur le statut.
+
+## Plan de corrections
+
+### Correction R3 — `total_heures` filtré après nettoyage (ligne 1042)
+
+Calculer `totalHeures` uniquement pour les jours de S-1 dont la date transposée en S est dans `joursPlanning`. La variable `daysDiff` (différence en ms entre les deux lundis) est déjà calculée ligne 963 dans la fonction.
+
+```typescript
+// Calculer daysDiff avant la boucle de copie (déjà présent ligne 963)
+const mondayS1 = parseISOWeek(previousWeek)
+const mondayS = parseISOWeek(currentWeek)
+const daysDiff = mondayS.getTime() - mondayS1.getTime()
+
+// APRÈS le nettoyage, remplacer ligne 1042 par :
+const totalHeures = chantier?.conducteur_id
+  ? (joursS1 as any[])
+      .filter((j: any) => {
+        const oldDate = new Date(j.date)
+        const newDate = new Date(oldDate.getTime() + daysDiff)
+        return joursPlanning.includes(newDate.toISOString().split('T')[0])
+      })
+      .reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+  : (joursS1 as any[]).reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+```
+
+Les chefs gardent le calcul d'origine (5 jours intacts). Seuls les conducteurs bénéficient du filtre.
+
+### Correction R4 — Protection statut dans les 3 phases de suppression
+
+**Phase 1 — `toDeleteChef` (ligne 707)** : ajouter `statut` dans le select + protection avant suppression de la fiche.
+
+**Phase 2 — `toDeleteFinisseur` (ligne 751)** : même ajout.
+
+**Phase 3 — orphan cleanup (ligne 809)** : ajouter `statut` dans le select + filtre de protection.
+
+Statuts protégés dans les 3 phases :
+```typescript
+const STATUTS_PROTEGES = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+```
+
+Note : `VALIDE_CHEF` est ajouté par sécurité — si un chef a validé, cela vaut la peine de protéger même si la fiche n'est pas encore transmise.
+
+Pour chaque phase, la fiche est sautée si son statut est dans `STATUTS_PROTEGES` (log de l'action pour traçabilité).
+
+## Garantie de non-régression
+
+### Pages non impactées (zéro changement frontend)
+
+Toutes les corrections sont exclusivement dans l'Edge Function `sync-planning-to-teams`. Aucun fichier frontend n'est modifié.
+
+- `/consultation-rh` : aucun changement de code, les données lues en BDD seront plus correctes (R3)
+- `/validation-conducteur` : aucun changement de code, idem
+- `/planning-main-oeuvre` : aucun changement
+- `/signature-macons`, `/signature-finisseurs` : aucun changement
+- Pages chantier, admin, etc. : aucun changement
+
+### Comportement côté chefs (inchangé)
+
+- R3 : les chefs gardent le chemin `else` du ternaire → calcul identique à aujourd'hui
+- R4 : la protection statut ne fait que **réduire** le périmètre des suppressions → moins agressif, jamais plus agressif
+
+### Comportement côté conducteurs (amélioré)
+
+- R3 : `total_heures` en BDD sera désormais cohérent avec le nombre de jours réellement présents dans `fiches_jours`
+- R4 : les fiches `ENVOYE_RH` ou `VALIDE_CONDUCTEUR` ne seront plus supprimées si le planning change
+
+### Aucune régression possible
+
+Les deux corrections sont **exclusivement restrictives** :
+- R3 ne change qu'un calcul arithmétique (moins de jours comptés pour le conducteur, même résultat pour le chef)
+- R4 ne fait qu'ajouter une condition `if (STATUTS_PROTEGES.includes(f.statut)) continue` — cela réduit le nombre de suppressions, n'en ajoute jamais
+
+Il n'y a aucun chemin de code où ces corrections pourraient créer une nouvelle suppression, un nouveau doublon ou un conflit de données. La seule "perte de fonctionnalité" est intentionnelle : des fiches validées ne seront plus supprimées par erreur.
 
 ## Fichier modifié
 
 Un seul fichier : `supabase/functions/sync-planning-to-teams/index.ts`
 
----
-
-## Correction 1 — Ajouter `joursPlanning` comme paramètre de la fonction (ligne 871)
-
-La fonction reçoit déjà `chantier` et `entrepriseId` mais pas `joursPlanning`. On l'ajoute :
-
-```
-// AVANT
-async function copyFichesFromPreviousWeek(
-  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId
-)
-
-// APRÈS
-async function copyFichesFromPreviousWeek(
-  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId, joursPlanning: string[]
-)
-```
-
----
-
-## Correction 2 — Bug "fiche protégée" côté conducteur (lignes 913–931)
-
-Quand une fiche avec des heures existe déjà (protégée), le code crée une affectation pour chaque jour de la semaine en dur (boucle `for i < 5`). Pour les chantiers sans chef (côté conducteur), on remplace ça par les vrais jours du planning.
-
-```
-// AVANT (bugué) — lignes 913-931
-} else if (chantier?.conducteur_id) {
-  const mondayS = parseISOWeek(currentWeek)
-  for (let i = 0; i < 5; i++) {
-    const d = new Date(mondayS)
-    d.setDate(mondayS.getDate() + i)
-    const jour = d.toISOString().split('T')[0]
-    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
-  }
-}
-
-// APRÈS (corrigé)
-} else if (chantier?.conducteur_id) {
-  for (const jour of joursPlanning) {   // ← vrais jours du planning
-    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
-  }
-}
-```
-
-Note importante : la boucle `for i < 5` pour les chefs (lignes 895–912) reste intacte — le mécanisme garde-fou 5 jours côté chef est correct et voulu.
-
----
-
-## Correction 3 — Bug "copie S-1" : supprimer les jours fantômes après copie (après ligne 1019)
-
-Quand on copie les `fiches_jours` de S-1 vers S, on copie tout sans filtre. Après la boucle de copie, on ajoute une étape de nettoyage : supprimer tous les jours copiés dont la date n'est pas dans `joursPlanning`.
-
-```
-// AJOUTER après la boucle de copie (après ligne 1019)
-// Nettoyer les jours copiés de S-1 qui ne sont pas dans le planning actuel
-const mondayOfWeek = parseISOWeek(currentWeek)
-const allWeekDates: string[] = []
-for (let i = 0; i < 5; i++) {
-  const d = new Date(mondayOfWeek)
-  d.setDate(mondayOfWeek.getDate() + i)
-  allWeekDates.push(d.toISOString().split('T')[0])
-}
-if (chantier?.conducteur_id) {
-  // Pour les chantiers sans chef, on supprime les jours hors planning
-  const datesToDelete = allWeekDates.filter(d => !joursPlanning.includes(d))
-  if (datesToDelete.length > 0) {
-    await supabase
-      .from('fiches_jours')
-      .delete()
-      .eq('fiche_id', ficheIdS)
-      .in('date', datesToDelete)
-    console.log(`[sync] Supprimé ${datesToDelete.length} jours fantômes hors planning pour ${employeId}`)
-  }
-}
-```
-
-Ce nettoyage est uniquement conditionné à `chantier?.conducteur_id` — côté chef ça reste inchangé.
-
----
-
-## Correction 4 — Bug "copie S-1" : affectations côté conducteur basées sur `joursPlanning` (lignes 1051–1066)
-
-Actuellement, les affectations `affectations_finisseurs_jours` créées après la copie sont basées sur les dates de S-1 (variable `jours`) et non sur les jours du planning S. Si S-1 avait des jours fantômes, ils se propagent.
-
-```
-// AVANT (bugué) — lignes 1051-1066
-} else if (chantier?.conducteur_id) {
-  for (const jour of jours) {   // ← dates issues de S-1
-    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
-  }
-}
-
-// APRÈS (corrigé)
-} else if (chantier?.conducteur_id) {
-  for (const jour of joursPlanning) {   // ← vrais jours du planning S
-    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
-  }
-}
-```
-
-Note : le cas `chantier?.chef_id` (lignes 1037–1050) garde la variable `jours` (dates de S-1) — c'est voulu, le garde-fou chef gère la correction ensuite.
-
----
-
-## Correction 5 — Mettre à jour l'appel à `copyFichesFromPreviousWeek` (ligne 554)
-
-L'appel existant ne passe pas encore `joursPlanning`. On l'ajoute :
-
-```
-// AVANT (ligne 554)
-const copyResult = await copyFichesFromPreviousWeek(
-  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId
-)
-
-// APRÈS
-const copyResult = await copyFichesFromPreviousWeek(
-  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId, joursPlanning
-)
-```
-
----
-
-## Ce qui ne change pas
-
-- Toute la logique côté **chefs** (`affectations_jours_chef`) reste intacte
-- La fonction `createNewAffectation` n'est pas touchée (déjà correcte)
-- La logique de nettoyage des fiches orphelines reste intacte
-- Aucune migration de base de données requise
-- Aucun changement frontend
-
-## Résultat attendu
-
-Après cette correction, pour tout employé (finisseur, maçon, grutier, intérimaire) affecté à un chantier sans chef géré par un conducteur :
-- Planifié **3 jours** → exactement **3** `fiches_jours` + **3** `affectations_finisseurs_jours`
-- Les jours fantômes hérités de S-1 sont supprimés automatiquement à chaque sync
-- Les totaux d'heures côté RH et conducteur sont corrects
+4 zones modifiées, toutes dans la même fonction `syncEntreprise` et dans `copyFichesFromPreviousWeek` :
+1. Ligne 707 : `select` phase chef → ajouter `statut`
+2. Ligne 726 : filtre suppression chef → ajouter protection statut
+3. Ligne 751 : `select` phase finisseur → ajouter `statut`
+4. Ligne 770 : filtre suppression finisseur → ajouter protection statut
+5. Ligne 809 : `select` orphan cleanup → ajouter `statut`
+6. Ligne 819 : filtre orphan cleanup → ajouter protection statut
+7. Ligne 1042 : calcul `totalHeures` → filtrer par `joursPlanning` pour conducteur uniquement
