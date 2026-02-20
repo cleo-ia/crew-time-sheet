@@ -706,7 +706,7 @@ async function syncEntreprise(
     // Récupérer la fiche pour pouvoir la supprimer (liée au chantier spécifique)
     const { data: fiche } = await supabase
       .from('fiches')
-      .select('id, total_heures')
+      .select('id, total_heures, statut')
       .eq('salarie_id', maconId)
       .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
@@ -722,21 +722,26 @@ async function syncEntreprise(
       .eq('semaine', currentWeek)
       .eq('entreprise_id', entrepriseId)
 
-    // Supprimer les fiches_jours et la fiche associées
+    // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
+    const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
     if (fiche) {
-      await supabase
-        .from('fiches_jours')
-        .delete()
-        .eq('fiche_id', fiche.id)
-        .eq('entreprise_id', entrepriseId)
-      
-      await supabase
-        .from('fiches')
-        .delete()
-        .eq('id', fiche.id)
-        .eq('entreprise_id', entrepriseId)
-      
-      console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      if (STATUTS_PROTEGES_CHEF.includes(fiche.statut)) {
+        console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour macon ${maconId} chantier ${chantierId}`)
+      } else {
+        await supabase
+          .from('fiches_jours')
+          .delete()
+          .eq('fiche_id', fiche.id)
+          .eq('entreprise_id', entrepriseId)
+        
+        await supabase
+          .from('fiches')
+          .delete()
+          .eq('id', fiche.id)
+          .eq('entreprise_id', entrepriseId)
+        
+        console.log(`[sync-planning-to-teams] Supprimé macon ${maconId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      }
     }
 
     results.push({ employe_id: maconId, employe_nom: maconId, action: 'deleted', details: `Hors planning chantier ${chantierId}` })
@@ -750,7 +755,7 @@ async function syncEntreprise(
     // Récupérer la fiche pour pouvoir la supprimer
     const { data: fiche } = await supabase
       .from('fiches')
-      .select('id, total_heures')
+      .select('id, total_heures, statut')
       .eq('salarie_id', finisseurId)
       .eq('chantier_id', chantierId)
       .eq('semaine', currentWeek)
@@ -767,21 +772,26 @@ async function syncEntreprise(
       .eq('semaine', currentWeek)
       .eq('entreprise_id', entrepriseId)
 
-    // Supprimer les fiches_jours et la fiche associées
+    // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
+    const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
     if (fiche) {
-      await supabase
-        .from('fiches_jours')
-        .delete()
-        .eq('fiche_id', fiche.id)
-        .eq('entreprise_id', entrepriseId)
-      
-      await supabase
-        .from('fiches')
-        .delete()
-        .eq('id', fiche.id)
-        .eq('entreprise_id', entrepriseId)
-      
-      console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      if (STATUTS_PROTEGES_FINISSEUR.includes(fiche.statut)) {
+        console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour finisseur ${finisseurId} chantier ${chantierId}`)
+      } else {
+        await supabase
+          .from('fiches_jours')
+          .delete()
+          .eq('fiche_id', fiche.id)
+          .eq('entreprise_id', entrepriseId)
+        
+        await supabase
+          .from('fiches')
+          .delete()
+          .eq('id', fiche.id)
+          .eq('entreprise_id', entrepriseId)
+        
+        console.log(`[sync-planning-to-teams] Supprimé finisseur ${finisseurId} chantier ${chantierId} avec fiche ${fiche.id} (${fiche.total_heures || 0}h)`)
+      }
     }
 
     results.push({ employe_id: finisseurId, employe_nom: finisseurId, action: 'deleted', details: `Hors planning chantier ${chantierId}` })
@@ -806,7 +816,7 @@ async function syncEntreprise(
   // 2. Récupérer toutes les fiches existantes pour cette semaine/entreprise
   const { data: allFichesS, error: fichesError } = await supabase
     .from('fiches')
-    .select('id, salarie_id, chantier_id, total_heures')
+    .select('id, salarie_id, chantier_id, total_heures, statut')
     .eq('semaine', currentWeek)
     .eq('entreprise_id', entrepriseId)
 
@@ -815,10 +825,16 @@ async function syncEntreprise(
   }
 
   // 3. Identifier les fiches orphelines (pas dans le planning)
+  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
   // deno-lint-ignore no-explicit-any
   const orphanFiches = (allFichesS || []).filter((f: any) => {
     const key = `${f.salarie_id}|${f.chantier_id}`
-    return !validEmployeChantierFromPlanning.has(key)
+    if (validEmployeChantierFromPlanning.has(key)) return false
+    if (STATUTS_PROTEGES_ORPHAN.includes(f.statut)) {
+      console.log(`[sync-planning-to-teams] ⚠️ Fiche orpheline protégée (statut=${f.statut}) — ignorée pour salarie=${f.salarie_id} chantier=${f.chantier_id}`)
+      return false
+    }
+    return true
   })
 
   console.log(`[sync-planning-to-teams] ${orphanFiches.length} fiche(s) orpheline(s) détectée(s)`)
@@ -1039,7 +1055,18 @@ async function copyFichesFromPreviousWeek(
 
   // Mettre à jour le total_heures de la fiche
   // deno-lint-ignore no-explicit-any
-  const totalHeures = joursS1.reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+  // R3 FIX: Pour les chantiers conducteur, filtrer joursS1 par joursPlanning (après nettoyage des jours fantômes)
+  // Pour les chantiers chef, garder le calcul d'origine (5 jours intacts)
+  // deno-lint-ignore no-explicit-any
+  const totalHeures = chantier?.conducteur_id
+    ? (joursS1 as any[])
+        .filter((j: any) => {
+          const oldDate = new Date(j.date)
+          const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
+          return joursPlanning.includes(newDate.toISOString().split('T')[0])
+        })
+        .reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+    : (joursS1 as any[]).reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
   await supabase
     .from('fiches')
     .update({ total_heures: totalHeures, statut: 'BROUILLON' })
