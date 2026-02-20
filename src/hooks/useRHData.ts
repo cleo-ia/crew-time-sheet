@@ -799,12 +799,32 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
 
-      // 5. Calculer les totaux (heures normales uniquement, sans intempéries)
+      // 5. Déduplication multi-chantier : pour chaque date, ne garder qu'une seule entrée
+      // Priorité : heures > 0 > absence qualifiée > fantôme (0h sans type d'absence)
+      const deduplicatedDetails = dailyDetails.reduce((acc, jour) => {
+        const existingIdx = acc.findIndex(d => d.date === jour.date);
+        if (existingIdx === -1) {
+          acc.push(jour);
+          return acc;
+        }
+        const existing = acc[existingIdx];
+        const existingHasHours = existing.heuresNormales > 0 || existing.heuresIntemperies > 0;
+        const newHasHours = jour.heuresNormales > 0 || jour.heuresIntemperies > 0;
+
+        if (newHasHours && !existingHasHours) {
+          acc[existingIdx] = jour;
+        } else if (!newHasHours && !existingHasHours && jour.typeAbsence && !existing.typeAbsence) {
+          acc[existingIdx] = jour;
+        }
+        return acc;
+      }, [] as typeof dailyDetails);
+
+      // 6. Calculer les totaux (heures normales uniquement, sans intempéries)
       const summary = {
-        totalHeures: dailyDetails.reduce((sum, d) => sum + d.heuresNormales, 0),
-        totalIntemperies: dailyDetails.reduce((sum, d) => sum + d.heuresIntemperies, 0),
-        totalPaniers: dailyDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
-        totalTrajets: dailyDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+        totalHeures: deduplicatedDetails.reduce((sum, d) => sum + d.heuresNormales, 0),
+        totalIntemperies: deduplicatedDetails.reduce((sum, d) => sum + d.heuresIntemperies, 0),
+        totalPaniers: deduplicatedDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+        totalTrajets: deduplicatedDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
       };
 
       // Récupérer isChef et role pour le salarié
@@ -834,7 +854,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           isChef,
           role,
         },
-        dailyDetails,
+        dailyDetails: deduplicatedDetails,
         summary,
         signaturesBySemaine: Object.fromEntries(signaturesBySemaine),
       };
