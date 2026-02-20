@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { getCurrentEntrepriseId } from "@/lib/entreprise";
+
 
 type RepasType = "PANIER" | "RESTO" | null;
 
@@ -291,30 +291,9 @@ export const useAutoSaveFiche = () => {
             }
           } else {
             // ✅ MODE CHEF : utiliser affectations_jours_chef (code existant)
-            let entrepriseIdRobust: string | null = null;
-            try {
-              entrepriseIdRobust = await getCurrentEntrepriseId();
-            } catch (e) {
-              console.warn("[AutoSave] Impossible de récupérer entrepriseId, mode legacy activé:", e);
-            }
             
-            // Vérifier si le planning est actif pour cette semaine
-            let isPlanningActive = false;
-            if (entrepriseIdRobust) {
-              const { data: planningValidation } = await supabase
-                .from("planning_validations")
-                .select("id")
-                .eq("entreprise_id", entrepriseIdRobust)
-                .eq("semaine", weekId)
-                .maybeSingle();
-              
-              isPlanningActive = planningValidation !== null;
-            }
-            
-            // 🔥 MODE LEGACY : Si le planning n'est pas validé, tous les jours
-            if (!isPlanningActive) {
-              selectedDays = [...workDays];
-            } else {
+            // ✅ MODE PLANNING COMPLET : affectations_jours_chef est la seule source de vérité
+            {
               // ✅ CHEF MULTI-CHANTIER : Si l'employé est le chef lui-même,
               // toujours autoriser les 5 jours, quel que soit le chantier (principal ou secondaire)
               let isChefHimself = entry.employeeId === chefId;
