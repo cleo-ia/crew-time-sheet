@@ -112,7 +112,7 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
             </TableHeader>
             <TableBody>
               {days.map((day, idx) => {
-                const isAbsent = day.heuresNormales === 0;
+                const isAbsent = day.heuresNormales === 0 && (day.heuresIntemperies || 0) === 0;
                 
                 return (
                   <TableRow 
