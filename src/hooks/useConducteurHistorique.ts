@@ -51,7 +51,7 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
       // 🔥 NOUVELLE LOGIQUE: Récupérer les affectations du conducteur pour identifier ses finisseurs
       const { data: affectations, error: affectationsError } = await supabase
         .from("affectations_finisseurs_jours")
-        .select("finisseur_id, semaine, date")
+        .select("finisseur_id, semaine, date, chantier_id")
         .eq("conducteur_id", conducteurId);
 
       if (affectationsError) throw affectationsError;
@@ -62,7 +62,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
 
       // Grouper par finisseur et semaine pour récupérer les fiches
       const finisseursSemaines = new Map<string, Set<string>>();
-      const affectationDates = new Map<string, Set<string>>(); // key: "finisseurId_semaine"
+      // 🔥 FIX Bug 2: clé scopée par chantier pour éviter le mélange multi-chantier
+      const affectationDates = new Map<string, Set<string>>(); // key: "finisseurId_semaine_chantierId"
       
       affectations.forEach(aff => {
         if (!finisseursSemaines.has(aff.finisseur_id)) {
@@ -70,7 +71,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
         }
         finisseursSemaines.get(aff.finisseur_id)!.add(aff.semaine);
         
-        const key = `${aff.finisseur_id}_${aff.semaine}`;
+        // 🔥 FIX: inclure chantier_id dans la clé pour scoper par chantier
+        const key = `${aff.finisseur_id}_${aff.semaine}_${aff.chantier_id}`;
         if (!affectationDates.has(key)) {
           affectationDates.set(key, new Set());
         }
@@ -87,7 +89,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
           fiches!inner(
             semaine,
             salarie_id,
-            statut
+            statut,
+            chantier_id
           )
         `)
         .eq("fiches.salarie_id", conducteurId)
@@ -107,7 +110,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
         }
         finisseursSemaines.get(finisseurId)!.add(semaine);
         
-        const key = `${finisseurId}_${semaine}`;
+        // 🔥 FIX: inclure chantier_id dans la clé pour les trajets perso
+        const key = `${finisseurId}_${semaine}_${fiche.chantier_id}`;
         if (!affectationDates.has(key)) {
           affectationDates.set(key, new Set());
         }
@@ -147,9 +151,9 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
       for (const fiche of fiches) {
         if (!fiche.semaine || !fiche.salarie_id) continue;
 
-        // Vérifier que ce conducteur a bien affecté ce finisseur cette semaine
-        const key = `${fiche.salarie_id}_${fiche.semaine}`;
-        if (!affectationDates.has(key)) continue; // Ce conducteur n'a pas affecté ce finisseur cette semaine
+        // Vérifier que ce conducteur a bien affecté ce finisseur cette semaine sur ce chantier
+        const key = `${fiche.salarie_id}_${fiche.semaine}_${fiche.chantier_id}`;
+        if (!affectationDates.has(key)) continue; // Ce conducteur n'a pas affecté ce finisseur cette semaine sur ce chantier
 
         if (!semaines.has(fiche.semaine)) {
           semaines.set(fiche.semaine, {
@@ -160,8 +164,8 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
           });
         }
 
-        // 🔥 Récupérer UNIQUEMENT les jours affectés par ce conducteur
-        const datesAffectees = Array.from(affectationDates.get(key)!);
+        // 🔥 Récupérer UNIQUEMENT les jours affectés par ce conducteur sur ce chantier
+        const datesAffectees = Array.from(affectationDates.get(key) ?? new Set<string>());
         const { data: ficheJours, error: joursError } = await supabase
           .from("fiches_jours")
           .select("date, heures, HNORM, HI, PA, T, code_trajet, code_chantier_du_jour, ville_du_jour, trajet_perso")
@@ -208,11 +212,12 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
         if (transportFiche) {
           console.log(`[Historique] Transport unifié trouvé: ${transportFiche.id} pour chantier ${fiche.chantier_id}`);
 
-          // Récupérer les jours de transport avec les conducteurs
+          // 🔥 FIX Bug 1: ajouter "periode" dans le select pour fusionner MATIN+SOIR
           const { data: joursAll } = await supabase
             .from("fiches_transport_jours")
             .select(`
               date,
+              periode,
               immatriculation,
               conducteur_aller:utilisateurs!fiches_transport_jours_conducteur_aller_id_fkey(id, nom, prenom),
               conducteur_retour:utilisateurs!fiches_transport_jours_conducteur_retour_id_fkey(id, nom, prenom)
@@ -220,10 +225,31 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
             .eq("fiche_transport_id", transportFiche.id)
             .order("date");
 
-          // Filtrer par dates affectées à ce finisseur
-          const joursFiltres = (joursAll || []).filter(j => datesSet.has(j.date));
+          // 🔥 FIX Bug 1: Fusionner les lignes MATIN + SOIR par date en une seule entrée
+          const byDate = new Map<string, { date: string; immatriculation: string | null; conducteur_aller: any; conducteur_retour: any }>();
+          (joursAll || []).forEach((j: any) => {
+            if (!byDate.has(j.date)) {
+              byDate.set(j.date, { date: j.date, immatriculation: null, conducteur_aller: null, conducteur_retour: null });
+            }
+            const entry = byDate.get(j.date)!;
+            if (j.periode === "MATIN") {
+              entry.conducteur_aller = j.conducteur_aller;
+              entry.immatriculation = j.immatriculation || entry.immatriculation;
+            } else if (j.periode === "SOIR") {
+              entry.conducteur_retour = j.conducteur_retour;
+              entry.immatriculation = entry.immatriculation || j.immatriculation;
+            } else {
+              // Fallback si pas de période: remplir ce qui manque
+              if (!entry.conducteur_aller) entry.conducteur_aller = j.conducteur_aller;
+              if (!entry.conducteur_retour) entry.conducteur_retour = j.conducteur_retour;
+              entry.immatriculation = entry.immatriculation || j.immatriculation;
+            }
+          });
 
-          console.log(`[Historique] Transport ${fiche.salarie_id}: ${joursFiltres.length}/${datesAffectees.length} jours trouvés`);
+          // Filtrer par dates affectées à ce finisseur (scopées au bon chantier)
+          const joursFiltres = Array.from(byDate.values()).filter(j => datesSet.has(j.date));
+
+          console.log(`[Historique] Transport ${fiche.salarie_id}: ${joursFiltres.length}/${datesAffectees.length} jours consolidés`);
 
           // Créer des placeholders pour les jours manquants
           const filteredDatesSet = new Set(joursFiltres.map(j => j.date));
