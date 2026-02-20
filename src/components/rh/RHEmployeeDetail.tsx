@@ -657,25 +657,43 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
         semaine={selectedWeek || ""}
         days={
           selectedWeek
-            ? data.dailyDetails
-                .filter((day) => {
+            ? (() => {
+                const filtered = data.dailyDetails.filter((day) => {
                   const dateObj = new Date(day.date);
                   const weekNumber = getISOWeek(dateObj);
                   const year = getISOWeekYear(dateObj);
                   const semaineKey = `${year}-S${weekNumber.toString().padStart(2, '0')}`;
                   return semaineKey === selectedWeek;
-                })
-                .map((day) => ({
-                  date: day.date,
-                  chantier: day.chantier,
-                  heuresNormales: day.heuresNormales,
-                  heuresIntemperies: day.heuresIntemperies,
-                  panier: day.panier,
-                  ficheJourId: day.ficheJourId,
-                  codeTrajet: (day as any).codeTrajet,
-                  typeAbsence: (day as any).typeAbsence,
-                  trajetPerso: (day as any).trajetPerso,
-                }))
+                });
+
+                // Dates ayant au moins une ligne avec des heures (finisseur multi-chantier)
+                const datesWithHours = new Set(
+                  filtered
+                    .filter(d => d.heuresNormales > 0 || (d.heuresIntemperies || 0) > 0)
+                    .map(d => d.date)
+                );
+
+                return filtered
+                  .filter(d => {
+                    // Masquer les lignes à 0h si la même date a une autre ligne avec heures
+                    const isZeroHours = d.heuresNormales === 0 && (d.heuresIntemperies || 0) === 0;
+                    if (isZeroHours && datesWithHours.has(d.date)) return false;
+                    return true;
+                  })
+                  .map((day) => ({
+                    date: day.date,
+                    chantier: day.chantier,
+                    chantierNom: (day as any).chantierNom,
+                    chantierCode: (day as any).chantierCode,
+                    heuresNormales: day.heuresNormales,
+                    heuresIntemperies: day.heuresIntemperies,
+                    panier: day.panier,
+                    ficheJourId: day.ficheJourId,
+                    codeTrajet: (day as any).codeTrajet,
+                    typeAbsence: (day as any).typeAbsence,
+                    trajetPerso: (day as any).trajetPerso,
+                  }));
+              })()
             : []
         }
         signature={selectedWeek && data.signaturesBySemaine ? data.signaturesBySemaine[selectedWeek] : undefined}
