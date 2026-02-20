@@ -1,67 +1,147 @@
 
+# Correction de `copyFichesFromPreviousWeek` dans `sync-planning-to-teams`
 
-# Afficher un recap trajet par chantier dans la page signatures
+## Objectif
 
-## Probleme
+Corriger la fonction `copyFichesFromPreviousWeek` dans `supabase/functions/sync-planning-to-teams/index.ts` pour qu'elle n'initialise que les jours réellement affectés dans le planning côté conducteur, sans jamais créer de jours fantômes.
 
-Actuellement, le recap trajet ("Recapitulatif Trajet") n'apparait que sous un seul chantier au lieu d'un par site. La cause est dans la construction de `transportParChantier` (ligne 557-620) : chaque jour de transport enrichi contient un `codeChantier` mais pas le `chantier_id` direct. Le groupement essaie de retrouver le `chantierId` en faisant un reverse-lookup par code chantier (ligne 565), ce qui echoue quand le `codeChantier` ne correspond pas exactement ou quand `codeChantierByDate` (keyed par date seule) ecrase les donnees multi-chantier sur la meme date.
+## Fichier modifié
 
-## Correction
+Un seul fichier : `supabase/functions/sync-planning-to-teams/index.ts`
 
-### Fichier : `src/pages/SignatureFinisseurs.tsx`
+---
 
-#### 1. Stocker le `chantier_id` dans les donnees enrichies (ligne 210-221)
+## Correction 1 — Ajouter `joursPlanning` comme paramètre de la fonction (ligne 871)
 
-Ajouter le champ `chantierId` directement dans chaque jour enrichi, recupere depuis `fichesTransportMeta` :
+La fonction reçoit déjà `chantier` et `entrepriseId` mais pas `joursPlanning`. On l'ajoute :
 
-```text
-return {
-  ...jour,
-  codeChantier: codeFromFiche || codeDefault || "-",
-  chantierId: ft?.chantier_id || ""   // <-- AJOUT
-};
+```
+// AVANT
+async function copyFichesFromPreviousWeek(
+  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId
+)
+
+// APRÈS
+async function copyFichesFromPreviousWeek(
+  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId, joursPlanning: string[]
+)
 ```
 
-#### 2. Simplifier le groupement `transportParChantier` (ligne 562-567)
+---
 
-Remplacer le reverse-lookup par code par l'utilisation directe du `chantierId` stocke :
+## Correction 2 — Bug "fiche protégée" côté conducteur (lignes 913–931)
 
-```text
-// AVANT (fragile)
-const chantierId = Array.from(chantiersInfo.entries())
-  .find(([_, info]) => info.code === jour.codeChantier)?.[0] || "";
+Quand une fiche avec des heures existe déjà (protégée), le code crée une affectation pour chaque jour de la semaine en dur (boucle `for i < 5`). Pour les chantiers sans chef (côté conducteur), on remplace ça par les vrais jours du planning.
 
-// APRES (fiable)
-const chantierId = jour.chantierId || "";
+```
+// AVANT (bugué) — lignes 913-931
+} else if (chantier?.conducteur_id) {
+  const mondayS = parseISOWeek(currentWeek)
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(mondayS)
+    d.setDate(mondayS.getDate() + i)
+    const jour = d.toISOString().split('T')[0]
+    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
+  }
+}
+
+// APRÈS (corrigé)
+} else if (chantier?.conducteur_id) {
+  for (const jour of joursPlanning) {   // ← vrais jours du planning
+    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
+  }
+}
 ```
 
-#### 3. Filtrer les jours par chantier dans le recap transport (ligne 645)
+Note importante : la boucle `for i < 5` pour les chefs (lignes 895–912) reste intacte — le mécanisme garde-fou 5 jours côté chef est correct et voulu.
 
-Actuellement `transportDays` contient tous les jours du chantier (5 jours). Il faut filtrer pour ne garder que les jours d'affectation reels du chantier. Le filtrage existe deja pour les stats heures (ligne 689-695) mais pas pour le transport affiché dans l'accordion.
+---
 
-Ajouter un filtrage des `transportDays` par les dates d'affectation du chantier :
+## Correction 3 — Bug "copie S-1" : supprimer les jours fantômes après copie (après ligne 1019)
 
-```text
-// Dates d'affectation uniques pour ce chantier
-const chantierAffectedDates = new Set(
-  chantierGroup.finisseurs.flatMap(f =>
-    (f.affectedDays || [])
-      .filter(a => a.chantier_id === chantierGroup.chantierId)
-      .map(a => a.date)
-  )
-);
+Quand on copie les `fiches_jours` de S-1 vers S, on copie tout sans filtre. Après la boucle de copie, on ajoute une étape de nettoyage : supprimer tous les jours copiés dont la date n'est pas dans `joursPlanning`.
 
-// Filtrer les jours de transport pour ne montrer que les dates d'affectation
-const filteredTransportDays = transportDays.filter(day => 
-  chantierAffectedDates.has(day.date)
-);
+```
+// AJOUTER après la boucle de copie (après ligne 1019)
+// Nettoyer les jours copiés de S-1 qui ne sont pas dans le planning actuel
+const mondayOfWeek = parseISOWeek(currentWeek)
+const allWeekDates: string[] = []
+for (let i = 0; i < 5; i++) {
+  const d = new Date(mondayOfWeek)
+  d.setDate(mondayOfWeek.getDate() + i)
+  allWeekDates.push(d.toISOString().split('T')[0])
+}
+if (chantier?.conducteur_id) {
+  // Pour les chantiers sans chef, on supprime les jours hors planning
+  const datesToDelete = allWeekDates.filter(d => !joursPlanning.includes(d))
+  if (datesToDelete.length > 0) {
+    await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', ficheIdS)
+      .in('date', datesToDelete)
+    console.log(`[sync] Supprimé ${datesToDelete.length} jours fantômes hors planning pour ${employeId}`)
+  }
+}
 ```
 
-Puis passer `filteredTransportDays` au composant `TransportSummaryV2` au lieu de `transportDays`.
+Ce nettoyage est uniquement conditionné à `chantier?.conducteur_id` — côté chef ça reste inchangé.
 
-## Resultat attendu
+---
 
-- **VENISSIEUX** : recap trajet avec 5 jours (L-V) - RAZOUK y est affecte toute la semaine
-- **AMBERIEU** : recap trajet avec 3 jours (L/M/J) - jours BOUSHABI sur ce site
-- **VILOGIA** : recap trajet avec 2 jours (Me/V) - jours BOUSHABI sur ce site
-- Chaque recap montre exactement les vehicules/conducteurs saisis a l'etape precedente pour ce chantier specifique
+## Correction 4 — Bug "copie S-1" : affectations côté conducteur basées sur `joursPlanning` (lignes 1051–1066)
+
+Actuellement, les affectations `affectations_finisseurs_jours` créées après la copie sont basées sur les dates de S-1 (variable `jours`) et non sur les jours du planning S. Si S-1 avait des jours fantômes, ils se propagent.
+
+```
+// AVANT (bugué) — lignes 1051-1066
+} else if (chantier?.conducteur_id) {
+  for (const jour of jours) {   // ← dates issues de S-1
+    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
+  }
+}
+
+// APRÈS (corrigé)
+} else if (chantier?.conducteur_id) {
+  for (const jour of joursPlanning) {   // ← vrais jours du planning S
+    await supabase.from('affectations_finisseurs_jours').upsert({ ... })
+  }
+}
+```
+
+Note : le cas `chantier?.chef_id` (lignes 1037–1050) garde la variable `jours` (dates de S-1) — c'est voulu, le garde-fou chef gère la correction ensuite.
+
+---
+
+## Correction 5 — Mettre à jour l'appel à `copyFichesFromPreviousWeek` (ligne 554)
+
+L'appel existant ne passe pas encore `joursPlanning`. On l'ajoute :
+
+```
+// AVANT (ligne 554)
+const copyResult = await copyFichesFromPreviousWeek(
+  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId
+)
+
+// APRÈS
+const copyResult = await copyFichesFromPreviousWeek(
+  supabase, employeId, chantierId, previousWeek, currentWeek, chantier, entrepriseId, joursPlanning
+)
+```
+
+---
+
+## Ce qui ne change pas
+
+- Toute la logique côté **chefs** (`affectations_jours_chef`) reste intacte
+- La fonction `createNewAffectation` n'est pas touchée (déjà correcte)
+- La logique de nettoyage des fiches orphelines reste intacte
+- Aucune migration de base de données requise
+- Aucun changement frontend
+
+## Résultat attendu
+
+Après cette correction, pour tout employé (finisseur, maçon, grutier, intérimaire) affecté à un chantier sans chef géré par un conducteur :
+- Planifié **3 jours** → exactement **3** `fiches_jours` + **3** `affectations_finisseurs_jours`
+- Les jours fantômes hérités de S-1 sont supprimés automatiquement à chaque sync
+- Les totaux d'heures côté RH et conducteur sont corrects
