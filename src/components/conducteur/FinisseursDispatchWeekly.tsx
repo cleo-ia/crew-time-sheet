@@ -41,7 +41,7 @@ import {
   useFinisseursPartiellementAffectes,
   useEmployesAffectedByOtherConducteurs,
 } from "@/hooks/useAffectationsFinisseursJours";
-import { useCopyPreviousWeekFinisseurs } from "@/hooks/useCopyPreviousWeekFinisseurs";
+
 import { useCreateFicheJourForAffectation } from "@/hooks/useCreateFicheJourForAffectation";
 import { useDeleteFicheJourForAffectation } from "@/hooks/useDeleteFicheJourForAffectation";
 import { useFinisseursFichesThisWeek } from "@/hooks/useFinisseursFichesThisWeek";
@@ -99,7 +99,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
 
   const upsertMutation = useUpsertAffectationJour();
   const deleteMutation = useDeleteAffectationJour();
-  const copyMutation = useCopyPreviousWeekFinisseurs();
   const createFicheJourMutation = useCreateFicheJourForAffectation();
   const deleteFicheJourMutation = useDeleteFicheJourForAffectation();
 
