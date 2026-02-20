@@ -5,7 +5,7 @@ import { useCallback, useMemo } from "react";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
 import { useAffectationsJoursByChef } from "@/hooks/useAffectationsJoursChef";
-import { usePlanningMode } from "@/hooks/usePlanningMode";
+
 import {
   AccordionItem,
   AccordionTrigger,
@@ -113,15 +113,8 @@ export const TransportDayAccordion = ({
     ? finisseursAsMacons 
     : (isMultiChantier ? allMacons : macons);
   
-  // Vérifier si le planning est actif (validé par un conducteur)
-  const { isActive: isPlanningActive } = usePlanningMode(semaine);
-  
-  // Récupérer les affectations journalières pour ce chef
-  const { data: rawAffectationsJoursChef = [] } = useAffectationsJoursByChef(chefId, semaine);
-  
-  // En mode legacy, ignorer les affectations journalières pour ne pas bloquer les conducteurs
-  // Tous les membres de l'équipe restent sélectionnables
-  const affectationsJoursChef = isPlanningActive ? rawAffectationsJoursChef : [];
+  // Mode planning complet : toujours utiliser les affectations journalières comme seule source
+  const { data: affectationsJoursChef = [] } = useAffectationsJoursByChef(chefId, semaine);
 
   // Détecter si un conducteur assigné est en "Trajet perso"
   const hasTrajetPersoIssue = useMemo(() => {

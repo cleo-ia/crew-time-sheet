@@ -14,7 +14,7 @@ import { useSaveSignature } from "@/hooks/useSaveSignature";
 import { useUpdateFicheStatus } from "@/hooks/useFiches";
 import { useTransportByChantier } from "@/hooks/useTransportByChantier";
 import { useAffectationsJoursByChefAndChantier } from "@/hooks/useAffectationsJoursChef";
-import { usePlanningMode } from "@/hooks/usePlanningMode";
+
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -32,13 +32,10 @@ const SignatureMacons = () => {
 
   const { data: maconsData, isLoading } = useMaconsByChantier(chantierId || "", semaine || "", chefId || undefined);
   const { data: transportData } = useTransportByChantier(chantierId, semaine);
-  // Vérifier si le planning est actif (validé par un conducteur)
-  const { isActive: isPlanningActive } = usePlanningMode(semaine || "");
-  
-  // Ne charger les affectations jours QUE si le planning est actif - filtré par chantier
+  // Mode planning complet : toujours charger les affectations depuis affectations_jours_chef
   const { data: affectationsJoursChef = [] } = useAffectationsJoursByChefAndChantier(
-    isPlanningActive ? (chefId || null) : null,
-    isPlanningActive ? chantierId : null,
+    chefId || null,
+    chantierId,
     semaine || ""
   );
   const saveSignature = useSaveSignature();
@@ -50,14 +47,9 @@ const SignatureMacons = () => {
   const [macons, setMacons] = useState<MaconWithFiche[]>([]);
   const [selectedMacon, setSelectedMacon] = useState<MaconWithFiche | null>(null);
 
-  // Fonction pour filtrer les données d'un maçon selon ses jours affectés
+  // Fonction pour filtrer les données d'un maçon selon ses jours affectés (planning = seule source)
   const getFilteredMaconData = useMemo(() => {
     return (macon: MaconWithFiche): MaconWithFiche => {
-      // 🔥 MODE LEGACY : Si le planning n'est pas validé, ne pas filtrer
-      if (!isPlanningActive) {
-        return macon;
-      }
-      
       // Le chef n'est jamais filtré
       if (macon.isChef) {
         return macon;
@@ -106,7 +98,7 @@ const SignatureMacons = () => {
         intemperie: filteredJours.reduce((sum, j) => sum + Number(j.HI || 0), 0),
       };
     };
-  }, [isPlanningActive, affectationsJoursChef]);
+  }, [affectationsJoursChef]);
 
   // Update local state when data loads and sort: non-temporary workers first, then temporary workers
   useEffect(() => {
