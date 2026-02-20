@@ -16,7 +16,7 @@ import { UserSelector } from "@/components/timesheet/UserSelector";
 import { useAutoSaveFiche } from "@/hooks/useAutoSaveFiche";
 import { useMaconsByChantier } from "@/hooks/useMaconsByChantier";
 import { useMaconsAllChantiersByChef } from "@/hooks/useMaconsAllChantiersByChef";
-import { usePlanningMode } from "@/hooks/usePlanningMode";
+
 import { addDays, format, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChefMaconsManager } from "@/components/chef/ChefMaconsManager";
@@ -296,9 +296,6 @@ const Index = () => {
   // Validation de la fiche transport (en tenant compte des jours d'absence totale)
   const { isTransportComplete } = useTransportValidation(ficheId, undefined, allAbsentDays);
   const { toast } = useToast();
-  
-  // Vérifier si le planning est actif (validé par un conducteur)
-  const { isActive: isPlanningActive } = usePlanningMode(selectedWeek);
   
   // La logique de filtrage par jours autorisés est maintenant centralisée dans useAutoSaveFiche
 
