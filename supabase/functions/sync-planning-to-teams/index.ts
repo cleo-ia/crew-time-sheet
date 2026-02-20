@@ -558,7 +558,8 @@ async function syncEntreprise(
         previousWeek, 
         currentWeek,
         chantier,
-        entrepriseId
+        entrepriseId,
+        joursPlanning
       )
       
       if (copyResult.copied) {
@@ -876,7 +877,8 @@ async function copyFichesFromPreviousWeek(
   currentWeek: string,
   // deno-lint-ignore no-explicit-any
   chantier: any,
-  entrepriseId: string
+  entrepriseId: string,
+  joursPlanning: string[]
 ): Promise<{ copied: boolean; reason: string }> {
   
   // Vérifier si une fiche existe déjà pour S
@@ -911,11 +913,8 @@ async function copyFichesFromPreviousWeek(
       }
       console.log(`[sync] Affectations créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
     } else if (chantier?.conducteur_id) {
-      const mondayS = parseISOWeek(currentWeek)
-      for (let i = 0; i < 5; i++) {
-        const d = new Date(mondayS)
-        d.setDate(mondayS.getDate() + i)
-        const jour = d.toISOString().split('T')[0]
+      // ✅ CORRECTIF: utiliser les vrais jours du planning, pas une boucle fixe 5 jours
+      for (const jour of joursPlanning) {
         await supabase
           .from('affectations_finisseurs_jours')
           .upsert({
@@ -927,7 +926,7 @@ async function copyFichesFromPreviousWeek(
             entreprise_id: entrepriseId
           }, { onConflict: 'finisseur_id,date' })
       }
-      console.log(`[sync] Affectations finisseurs créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
+      console.log(`[sync] Affectations finisseurs créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h, ${joursPlanning.length} jours)`)
     }
     return { copied: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
   }
@@ -1018,6 +1017,26 @@ async function copyFichesFromPreviousWeek(
     }
   }
 
+  // ✅ CORRECTIF: Nettoyer les jours fantômes copiés de S-1 qui ne sont pas dans le planning actuel
+  if (chantier?.conducteur_id) {
+    const mondayOfWeek = parseISOWeek(currentWeek)
+    const allWeekDates: string[] = []
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mondayOfWeek)
+      d.setDate(mondayOfWeek.getDate() + i)
+      allWeekDates.push(d.toISOString().split('T')[0])
+    }
+    const datesToDelete = allWeekDates.filter(d => !joursPlanning.includes(d))
+    if (datesToDelete.length > 0) {
+      await supabase
+        .from('fiches_jours')
+        .delete()
+        .eq('fiche_id', ficheIdS)
+        .in('date', datesToDelete)
+      console.log(`[sync] Supprimé ${datesToDelete.length} jours fantômes hors planning pour ${employeId}: ${datesToDelete.join(', ')}`)
+    }
+  }
+
   // Mettre à jour le total_heures de la fiche
   // deno-lint-ignore no-explicit-any
   const totalHeures = joursS1.reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
@@ -1049,9 +1068,8 @@ async function copyFichesFromPreviousWeek(
         }, { onConflict: 'macon_id,jour' })
     }
   } else if (chantier?.conducteur_id) {
-    // Router vers affectations_finisseurs_jours
-    // ✅ CORRECTIF: Ajouter entreprise_id dans l'upsert
-    for (const jour of jours) {
+    // ✅ CORRECTIF: Utiliser joursPlanning (vrais jours du planning S) et non jours (dates de S-1)
+    for (const jour of joursPlanning) {
       await supabase
         .from('affectations_finisseurs_jours')
         .upsert({
