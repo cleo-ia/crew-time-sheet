@@ -965,7 +965,7 @@ const ValidationConducteur = () => {
                           <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                           <p className="text-lg font-medium">Aucun finisseur affecté cette semaine</p>
                           <p className="text-sm mt-2">
-                            Cliquez sur <strong className="text-primary">"Copier S-1"</strong> dans la section <strong>"Gérer mon équipe"</strong> ci-dessus pour reprendre les affectations de la semaine précédente.
+                            Le planning de votre équipe est géré depuis la page <strong className="text-primary">Planning</strong>. La synchronisation automatique du lundi matin initialise votre semaine.
                           </p>
                           <p className="text-xs mt-2 text-muted-foreground/70">
                             Ou utilisez la section "Planifier la semaine" pour gérer manuellement vos affectations.
