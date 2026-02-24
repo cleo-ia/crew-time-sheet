@@ -33,17 +33,29 @@ export const WeekSelectorChef = ({ value, onChange, disabled = false, chefId }: 
     queryFn: async () => {
       if (!chefId || !entrepriseId) return false;
 
-      // Get all active chantiers for this chef
-      const { data: chantiers, error: chantiersError } = await supabase
-        .from("chantiers")
-        .select("id")
-        .eq("chef_id", chefId)
+      // Get chantiers from planning_affectations for S-2 week
+      const { data: planningS2 } = await supabase
+        .from("planning_affectations")
+        .select("chantier_id")
+        .eq("employe_id", chefId)
         .eq("entreprise_id", entrepriseId)
-        .eq("actif", true);
+        .eq("semaine", s2Week);
 
-      if (chantiersError || !chantiers?.length) return false;
+      // Fallback: affectations_jours_chef if planning is empty
+      let chantierIds: string[] = [];
+      if (planningS2 && planningS2.length > 0) {
+        chantierIds = [...new Set(planningS2.map(p => p.chantier_id))];
+      } else {
+        const { data: ajcS2 } = await supabase
+          .from("affectations_jours_chef")
+          .select("chantier_id")
+          .eq("chef_id", chefId)
+          .eq("semaine", s2Week);
+        if (!ajcS2?.length) return false;
+        chantierIds = [...new Set(ajcS2.map(a => a.chantier_id))];
+      }
 
-      const chantierIds = chantiers.map(c => c.id);
+      if (chantierIds.length === 0) return false;
 
       // Check if any chantier has no validated fiche for S-2
       const { data: validatedFiches } = await supabase
