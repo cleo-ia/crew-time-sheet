@@ -250,9 +250,24 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     fichesQuery = fichesQuery.eq("chantiers.conducteur_id", filters.conducteur);
   }
 
-  // Filtre par chef (via chantier)
+  // Filtre par chef : chercher les chantiers où ce chef a des affectations_jours_chef
+  // (permet de retrouver les fiches gérées par un chef secondaire en multi-chef)
   if (filters.chef && filters.chef !== "all") {
-    fichesQuery = fichesQuery.eq("chantiers.chef_id", filters.chef);
+    // Récupérer les chantier_id où ce chef a des affectations dans les semaines du mois
+    const { data: chefAffectations } = await supabase
+      .from("affectations_jours_chef")
+      .select("chantier_id")
+      .eq("chef_id", filters.chef)
+      .eq("entreprise_id", entrepriseId || "");
+    
+    const chefChantierIds = [...new Set((chefAffectations || []).map(a => a.chantier_id))];
+    
+    if (chefChantierIds.length > 0) {
+      fichesQuery = fichesQuery.in("chantier_id", chefChantierIds);
+    } else {
+      // Fallback : utiliser l'ancien filtre via chantiers.chef_id
+      fichesQuery = fichesQuery.eq("chantiers.chef_id", filters.chef);
+    }
   }
 
   const { data: fichesAvecChantier, error: ficheError } = await fichesQuery;

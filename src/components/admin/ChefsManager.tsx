@@ -150,7 +150,11 @@ export const ChefsManager = () => {
   };
 
   const getChantierForChef = (chefId: string) => {
-    return chantiers.find((c) => c.chef_id === chefId);
+    // Priorité 1 : chantier où le chef est chef_id principal
+    const chantierPrincipal = chantiers.find((c) => c.chef_id === chefId);
+    if (chantierPrincipal) return chantierPrincipal;
+    // Priorité 2 : pas de recherche supplémentaire en sync (les affectations sont déjà gérées côté planning)
+    return undefined;
   };
 
   const getConducteurForChef = (chefId: string) => {
