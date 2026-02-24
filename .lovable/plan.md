@@ -1,41 +1,45 @@
 
 
-## Problème identifié
+## Problème
 
-Tu as raison. Le badge "Saisie" (`is_chef_responsable`) ne devrait concerner **que les chantiers avec 2+ chefs**. Pour un chef seul sur un chantier (même multi-chantier), il est **automatiquement** le responsable — pas besoin de flag.
+Dans `sync-planning-to-teams`, quand un chef multi-chantier est traité comme "chef secondaire" sur un chantier (lignes 616-636), ses `fiches_jours` sont pré-remplis avec :
+- **8h** (L-J) / **7h** (V)
+- **T: 1** (trajet)
+- **PA: true** (panier)
+- **code_trajet: "A_COMPLETER"**
+- **repas_type: "PANIER"**
 
-### Situation actuelle
+Or, le bandeau info bleu dit au chef que ses heures sur le chantier secondaire sont **initialisées à 0h** pour éviter les doublons. Il y a donc une incohérence entre la sync et l'UI.
 
-**L'UI est correcte** : le badge "Saisie" ne s'affiche que quand `chefsOnThisChantier.length >= 2` (ligne 517 de `PlanningChantierAccordion.tsx`). C'est bon.
+## Correction
 
-**Le problème est côté sync** (`sync-planning-to-teams`) : quand `is_chef_responsable = false` pour Thomas TEST (seul chef sur "test"), la sync le traite comme "chef secondaire" → il reçoit une fiche pré-remplie au lieu de gérer l'équipe normalement. C'est le bug.
+**Fichier : `supabase/functions/sync-planning-to-teams/index.ts` (lignes 616-636)**
 
-### Ce qu'il faut corriger
+Changer l'initialisation des `fiches_jours` pour un chef sur son chantier secondaire :
 
-**1. Edge Function `sync-planning-to-teams` (lignes ~304-332)** : Quand un chantier n'a qu'**un seul chef**, le traiter automatiquement comme responsable **peu importe le flag**.
+| Champ | Avant | Après |
+|-------|-------|-------|
+| `heures` | 8h/7h | **0** |
+| `HNORM` | 8h/7h | **0** |
+| `T` | 1 | **0** |
+| `PA` | true | **false** |
+| `code_trajet` | "A_COMPLETER" | **null** |
+| `repas_type` | "PANIER" | **null** |
 
-```text
-Logique actuelle :
-  si is_chef_responsable = true → chef responsable
-  sinon fallback jours → chef responsable
-  
-Logique corrigée :
-  si 1 seul chef sur le chantier → TOUJOURS responsable (ignorer le flag)
-  si 2+ chefs → utiliser is_chef_responsable, puis fallback jours
-```
+Et mettre `total_heures` à **0** au lieu de `totalHeuresChefSec` (ligne 642).
 
-**2. `handleAddEmploye` dans `PlanningMainOeuvre.tsx` (ligne 259-273)** : Déjà correct (auto-set quand aucun responsable). Mais il faut aussi **s'assurer que le flag est mis à `true` quand on retire le 2ème chef** d'un chantier (le chef restant devient auto-responsable).
+**Condition** : ce comportement ne s'applique que quand le chef est sur son **chantier secondaire** (pas son `chantier_principal_id`). On distingue :
+- **Chantier principal** → le chef gère l'équipe normalement (traitement standard)
+- **Chantier secondaire** → fiche initialisée à 0h/0T/0PA
 
-**3. Aucun changement UI** : Les badges Principal/Secondaire et Saisie fonctionnent déjà correctement côté affichage.
+La distinction se fait via `chefPrincipalMap` déjà disponible dans la fonction (ligne 535).
 
-### Plan d'implémentation
+**Note** : Le comportement pour les chefs "secondaires" au sens multi-chefs (2 chefs sur le même chantier) reste inchangé — ce cas est déjà corrigé par le fix précédent (chef solo = auto-responsable).
 
-| Fichier | Modification |
-|---|---|
-| `supabase/functions/sync-planning-to-teams/index.ts` | Dans la boucle `chefDaysPerChantier` (lignes 304-332), si `chefsMap.size === 1`, forcer le chef unique comme responsable sans vérifier le flag |
-| `src/pages/PlanningMainOeuvre.tsx` | Dans le handler de suppression d'employé, quand on retire un chef et qu'il ne reste qu'un seul chef sur le chantier, auto-set `is_chef_responsable = true` pour le chef restant |
+## Impact
 
-### Correction immédiate pour S15
-
-Pour le test en cours, pas besoin de corriger le flag manuellement — la correction de la sync fera que Thomas sera automatiquement traité comme responsable puisqu'il est seul sur chaque chantier.
+- Aucun changement UI nécessaire
+- Aucun changement de schema DB
+- Seul le edge function est modifié
+- Re-déploiement + re-sync nécessaire pour S15
 
