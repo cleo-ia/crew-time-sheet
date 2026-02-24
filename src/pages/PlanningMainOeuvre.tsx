@@ -221,7 +221,6 @@ const PlanningMainOeuvre = () => {
 
     if (empData?.role_metier === "chef") {
       // 1. TOUJOURS associer le chef au chantier si pas de chef_id existant
-      // (indépendamment de si le chef a déjà un chantier principal)
       const { data: chantierData } = await supabase
         .from("chantiers")
         .select("chef_id")
@@ -234,7 +233,6 @@ const PlanningMainOeuvre = () => {
           .update({ chef_id: employeId })
           .eq("id", chantierId);
         
-        // Invalider le cache des chantiers
         queryClient.invalidateQueries({ queryKey: ["chantiers"] });
         
         toast({
@@ -250,7 +248,6 @@ const PlanningMainOeuvre = () => {
           .update({ chantier_principal_id: chantierId })
           .eq("id", employeId);
 
-        // Rafraîchir le cache pour que l'UI se mette à jour
         queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
 
         toast({
@@ -258,7 +255,57 @@ const PlanningMainOeuvre = () => {
           description: "Les heures du chef seront comptées sur ce chantier.",
         });
       }
+
+      // 3. Auto-marquer comme chef responsable si aucun autre chef n'est responsable sur ce chantier
+      const chantierAffs = affectations.filter(a => a.chantier_id === chantierId);
+      const hasExistingResponsable = chantierAffs.some(a => a.is_chef_responsable);
+      if (!hasExistingResponsable) {
+        // Marquer toutes les affectations de ce chef sur ce chantier comme responsable
+        await supabase
+          .from("planning_affectations")
+          .update({ is_chef_responsable: true })
+          .eq("employe_id", employeId)
+          .eq("chantier_id", chantierId)
+          .eq("semaine", semaine)
+          .eq("entreprise_id", entrepriseId);
+        
+        queryClient.invalidateQueries({ queryKey: ["planning-affectations", semaine] });
+      }
     }
+  };
+
+  const handleSetChefResponsable = async (employeId: string, chantierId: string) => {
+    // 1. Retirer is_chef_responsable de tous les chefs sur ce chantier/semaine
+    const chefIds = affectations
+      .filter(a => a.chantier_id === chantierId && a.is_chef_responsable)
+      .map(a => a.employe_id);
+    
+    const uniqueChefIds = [...new Set(chefIds)];
+    for (const chefId of uniqueChefIds) {
+      await supabase
+        .from("planning_affectations")
+        .update({ is_chef_responsable: false })
+        .eq("employe_id", chefId)
+        .eq("chantier_id", chantierId)
+        .eq("semaine", semaine)
+        .eq("entreprise_id", entrepriseId);
+    }
+
+    // 2. Marquer le nouveau chef responsable
+    await supabase
+      .from("planning_affectations")
+      .update({ is_chef_responsable: true })
+      .eq("employe_id", employeId)
+      .eq("chantier_id", chantierId)
+      .eq("semaine", semaine)
+      .eq("entreprise_id", entrepriseId);
+
+    queryClient.invalidateQueries({ queryKey: ["planning-affectations", semaine] });
+    
+    toast({
+      title: "Chef responsable modifié",
+      description: "Ce chef gère désormais la saisie des heures de l'équipe sur ce chantier.",
+    });
   };
 
   const handleCopyFromPreviousWeek = async () => {
@@ -527,6 +574,7 @@ const PlanningMainOeuvre = () => {
                   isLoading={isMutating}
                   forceOpen={allExpanded}
                   chefsWithPrincipal={chefsWithPrincipal}
+                  onSetChefResponsable={handleSetChefResponsable}
                 />
               ))}
             </div>

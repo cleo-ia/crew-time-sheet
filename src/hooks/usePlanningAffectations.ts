@@ -13,6 +13,7 @@ export interface PlanningAffectation {
   vehicule_id: string | null;
   created_by: string | null;
   entreprise_id: string;
+  is_chef_responsable?: boolean;
   created_at: string;
   updated_at: string;
   // Jointures
@@ -269,6 +270,7 @@ export const useCopyPlanningWeek = () => {
         jour: format(addDays(new Date(aff.jour), daysDiff), "yyyy-MM-dd"),
         semaine: params.targetWeek,
         vehicule_id: aff.vehicule_id,
+        is_chef_responsable: aff.is_chef_responsable || false,
         created_by: user?.user?.id || null,
         entreprise_id: params.entreprise_id,
       }));

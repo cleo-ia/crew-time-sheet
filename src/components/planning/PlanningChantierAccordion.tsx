@@ -54,6 +54,7 @@ interface PlanningChantierAccordionProps {
   isLoading?: boolean;
   forceOpen?: boolean;
   chefsWithPrincipal?: Map<string, string>; // chef_id -> chantier_principal_id
+  onSetChefResponsable?: (employeId: string, chantierId: string) => void;
 }
 
 export const PlanningChantierAccordion = ({
@@ -71,6 +72,7 @@ export const PlanningChantierAccordion = ({
   isLoading,
   forceOpen,
   chefsWithPrincipal,
+  onSetChefResponsable,
 }: PlanningChantierAccordionProps) => {
   const { shortName } = useEnterpriseConfig();
   const { mutate: setChantierPrincipal } = useSetChantierPrincipal();
@@ -508,6 +510,13 @@ export const PlanningChantierAccordion = ({
                   // Un chef est "multi-chantiers" s'il a un chantier principal défini
                   const isMultiChantierChef = isChef && !!chantierPrincipalId;
                   
+                  // Chef responsable : compter les chefs sur ce chantier
+                  const chefsOnThisChantier = employeAffectations.filter(
+                    ea => ea.employe.role_metier === 'chef'
+                  );
+                  const showChefResponsable = isChef && chefsOnThisChantier.length >= 2;
+                  const isChefResponsable = isChef && empAff.some(a => a.is_chef_responsable);
+                  
                   return (
                     <PlanningEmployeRow
                       key={employe.id}
@@ -527,6 +536,11 @@ export const PlanningChantierAccordion = ({
                       isChantierPrincipal={isChantierPrincipal}
                       onSetChantierPrincipal={(empId) => 
                         setChantierPrincipal({ employeId: empId, chantierId: chantier.id })
+                      }
+                      isChefResponsable={isChefResponsable}
+                      showChefResponsable={showChefResponsable}
+                      onSetChefResponsable={(empId) =>
+                        onSetChefResponsable?.(empId, chantier.id)
                       }
                     />
                   );
