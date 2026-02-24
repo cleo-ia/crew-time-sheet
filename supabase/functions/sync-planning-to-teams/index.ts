@@ -688,11 +688,13 @@ async function syncEntreprise(
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche créée avec ${finalTotal}h sur ${joursPlanning.length} jours (chantier ${isChantierSecondaire ? 'secondaire → 0h' : 'principal → heures normales'})`)
         }
         
+        const chefPrincipalChantierIdForLog = chefPrincipalMap.get(employeId)
+        const isSecondaireForLog = chefPrincipalChantierIdForLog && chefPrincipalChantierIdForLog !== chantierId
         results.push({ 
           employe_id: employeId, 
           employe_nom: employeNom, 
           action: 'created', 
-          details: `Chef secondaire - ${isChantierSecondaire ? '0h (chantier secondaire)' : 'heures normales'} sur ${joursPlanning.length} jours` 
+          details: `Chef secondaire - ${isSecondaireForLog ? '0h (chantier secondaire)' : 'heures normales'} sur ${joursPlanning.length} jours` 
         })
         stats.created++
         continue
