@@ -697,7 +697,113 @@ async function syncEntreprise(
         stats.created++
         continue
       }
-      // Si isChefResponsable = true, on continue le traitement normal ci-dessous
+      // Si isChefResponsable = true, vérifier si c'est le chantier SECONDAIRE du chef
+      // (pas son chantier_principal_id) → initialiser à 0h pour éviter les doublons d'heures
+      const chefPrincipalChantierId = chefPrincipalMap.get(employeId)
+      if (chefPrincipalChantierId && chefPrincipalChantierId !== chantierId) {
+        console.log(`[sync-planning-to-teams] Chef responsable ${employeNom} sur chantier SECONDAIRE ${chantierId} (principal: ${chefPrincipalChantierId}) → 0h`)
+
+        // Récupérer ou créer la fiche
+        const { data: ficheChefSec } = await supabase
+          .from('fiches')
+          .select('id, total_heures, statut')
+          .eq('salarie_id', employeId)
+          .eq('chantier_id', chantierId)
+          .eq('semaine', currentWeek)
+          .maybeSingle()
+
+        const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+        if (ficheChefSec && STATUTS_PROTEGES_CHEF.includes(ficheChefSec.statut)) {
+          console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche protégée (${ficheChefSec.statut}) sur chantier secondaire, skip`)
+          results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef responsable chantier secondaire, fiche protégée` })
+          continue
+        }
+
+        let ficheChefSecId = ficheChefSec?.id
+
+        if (ficheChefSecId) {
+          // Supprimer les fiches_jours existantes pour les recréer à 0h
+          await supabase
+            .from('fiches_jours')
+            .delete()
+            .eq('fiche_id', ficheChefSecId)
+            .eq('entreprise_id', entrepriseId)
+        } else {
+          // Créer la fiche
+          const { data: newFicheChefSec } = await supabase
+            .from('fiches')
+            .insert({
+              salarie_id: employeId,
+              chantier_id: chantierId,
+              semaine: currentWeek,
+              user_id: employeId,
+              statut: 'BROUILLON',
+              total_heures: 0,
+              entreprise_id: entrepriseId
+            })
+            .select('id')
+            .single()
+          ficheChefSecId = newFicheChefSec?.id
+        }
+
+        if (ficheChefSecId) {
+          const chantierCode = chantier?.code_chantier || null
+          const chantierVille = chantier?.ville || null
+
+          // Créer les fiches_jours à 0h pour chaque jour planifié
+          for (const jour of joursPlanning) {
+            await supabase
+              .from('fiches_jours')
+              .upsert({
+                fiche_id: ficheChefSecId,
+                date: jour,
+                heures: 0,
+                HNORM: 0,
+                HI: 0,
+                T: 0,
+                PA: false,
+                pause_minutes: 0,
+                code_trajet: null,
+                code_chantier_du_jour: chantierCode,
+                ville_du_jour: chantierVille,
+                repas_type: null,
+                entreprise_id: entrepriseId
+              }, { onConflict: 'fiche_id,date' })
+          }
+
+          // Forcer total_heures = 0
+          await supabase
+            .from('fiches')
+            .update({ total_heures: 0, statut: 'BROUILLON' })
+            .eq('id', ficheChefSecId)
+
+          // Créer les affectations_jours_chef (chef = lui-même sur son chantier secondaire)
+          for (const jour of joursPlanning) {
+            await supabase
+              .from('affectations_jours_chef')
+              .upsert({
+                macon_id: employeId,
+                chef_id: employeId,
+                chantier_id: chantierId,
+                jour,
+                semaine: currentWeek,
+                entreprise_id: entrepriseId
+              }, { onConflict: 'macon_id,jour' })
+          }
+
+          console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche 0h créée sur chantier secondaire ${chantierId} (${joursPlanning.length} jours)`)
+        }
+
+        results.push({
+          employe_id: employeId,
+          employe_nom: employeNom,
+          action: 'created',
+          details: `Chef responsable chantier secondaire → 0h sur ${joursPlanning.length} jours`
+        })
+        stats.created++
+        continue
+      }
+      // Si isChefResponsable = true ET chantier principal → traitement normal ci-dessous
     }
 
     // Récupérer les affectations S-1 de ce couple employé-chantier
