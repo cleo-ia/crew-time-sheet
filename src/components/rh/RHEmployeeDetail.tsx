@@ -716,6 +716,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     isOnOtherSite: (day as any).isOnOtherSite,
                     otherSiteCode: (day as any).otherSiteCode,
                     otherSiteNom: (day as any).otherSiteNom,
+                    siteDetails: (day as any).siteDetails,
                   }));
               })()
             : []
