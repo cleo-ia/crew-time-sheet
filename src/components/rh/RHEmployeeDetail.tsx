@@ -100,13 +100,14 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
       weekData.chantiers.add(day.chantier);
       weekData.heuresNormales += day.heuresNormales || 0;
       weekData.heuresIntemperies += day.heuresIntemperies || 0;
-      const isAbsent = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0;
-      weekData.paniers += (!isAbsent && day.panier) ? 1 : 0;
-      weekData.trajets += (!isAbsent && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
+      const isOnOtherSite = !!(day as any).isOnOtherSite;
+      const isAbsent = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite;
+      weekData.paniers += (!isAbsent && !isOnOtherSite && day.panier) ? 1 : 0;
+      weekData.trajets += (!isAbsent && !isOnOtherSite && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
       weekData.nbJours += 1;
       
-      // Ne compter le type d'absence que si c'est vraiment un jour d'absence (heures normales = 0)
-      const isAbsentDay = (day.heuresNormales || 0) === 0;
+      // Ne compter le type d'absence que si c'est vraiment un jour d'absence (pas sur un autre chantier)
+      const isAbsentDay = (day.heuresNormales || 0) === 0 && !isOnOtherSite;
       if (isAbsentDay && (day as any).typeAbsence) {
         weekData.absences.push((day as any).typeAbsence);
       }
@@ -339,7 +340,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
             </TableHeader>
             <TableBody>
               {data.dailyDetails.map((day, idx) => {
-                const isAbsent = day.heuresNormales === 0;
+                const isOnOtherSite = !!(day as any).isOnOtherSite;
+                const isAbsent = day.heuresNormales === 0 && !isOnOtherSite;
                 
                 // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
                 const sameSiteDays = data.dailyDetails.filter(
@@ -359,6 +361,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     hover:bg-muted/30
                     ${idx % 2 === 0 ? 'bg-muted/5' : ''}
                     ${isAbsent ? 'bg-red-50/30 dark:bg-red-950/10' : ''}
+                    ${isOnOtherSite ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}
                   `}
                 >
                   <TableCell className="font-medium py-4 px-4">
@@ -366,9 +369,19 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   </TableCell>
                   <TableCell className="py-3 px-4">
                     <div className="leading-tight">
-                      <div className="font-medium">{(day as any).chantierNom || day.chantier}</div>
-                      {(day as any).chantierCode && (
-                        <div className="text-xs text-muted-foreground">{(day as any).chantierCode}</div>
+                      {isOnOtherSite ? (
+                        <>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
+                            Sur {(day as any).otherSiteCode || (day as any).otherSiteNom || 'autre chantier'}
+                          </Badge>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-medium">{(day as any).chantierNom || day.chantier}</div>
+                          {(day as any).chantierCode && (
+                            <div className="text-xs text-muted-foreground">{(day as any).chantierCode}</div>
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -675,6 +688,8 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
 
                 return filtered
                   .filter(d => {
+                    // Ne pas masquer les jours marqués "sur autre chantier"
+                    if ((d as any).isOnOtherSite) return true;
                     // Masquer les lignes à 0h si la même date a une autre ligne avec heures
                     const isZeroHours = d.heuresNormales === 0 && (d.heuresIntemperies || 0) === 0;
                     if (isZeroHours && datesWithHours.has(d.date)) return false;
@@ -692,6 +707,9 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     codeTrajet: (day as any).codeTrajet,
                     typeAbsence: (day as any).typeAbsence,
                     trajetPerso: (day as any).trajetPerso,
+                    isOnOtherSite: (day as any).isOnOtherSite,
+                    otherSiteCode: (day as any).otherSiteCode,
+                    otherSiteNom: (day as any).otherSiteNom,
                   }));
               })()
             : []
