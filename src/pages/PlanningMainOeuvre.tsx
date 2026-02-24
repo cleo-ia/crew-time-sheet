@@ -194,6 +194,43 @@ const PlanningMainOeuvre = () => {
       semaine,
       entreprise_id: entrepriseId,
     });
+
+    // ✅ CORRECTIF: Si on retire un chef et qu'il ne reste qu'un seul chef sur ce chantier,
+    // auto-set is_chef_responsable = true pour le chef restant
+    const { data: empData } = await supabase
+      .from("utilisateurs")
+      .select("role_metier")
+      .eq("id", employeId)
+      .maybeSingle();
+
+    if (empData?.role_metier === "chef") {
+      // Récupérer les chefs restants sur ce chantier pour cette semaine
+      const { data: remainingAffs } = await supabase
+        .from("planning_affectations")
+        .select("employe_id, utilisateurs!planning_affectations_employe_id_fkey(role_metier)")
+        .eq("chantier_id", chantierId)
+        .eq("semaine", semaine)
+        .eq("entreprise_id", entrepriseId);
+
+      const remainingChefIds = [...new Set(
+        (remainingAffs || [])
+          .filter((a: any) => a.utilisateurs?.role_metier === "chef")
+          .map((a: any) => a.employe_id)
+      )];
+
+      // S'il ne reste qu'un seul chef, le marquer automatiquement comme responsable
+      if (remainingChefIds.length === 1) {
+        await supabase
+          .from("planning_affectations")
+          .update({ is_chef_responsable: true })
+          .eq("employe_id", remainingChefIds[0])
+          .eq("chantier_id", chantierId)
+          .eq("semaine", semaine)
+          .eq("entreprise_id", entrepriseId);
+
+        queryClient.invalidateQueries({ queryKey: ["planning-affectations", semaine] });
+      }
+    }
   };
 
   const handleAddEmploye = async (
