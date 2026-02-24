@@ -1756,6 +1756,7 @@ export type Database = {
           employe_id: string
           entreprise_id: string
           id: string
+          is_chef_responsable: boolean
           jour: string
           semaine: string
           updated_at: string | null
@@ -1768,6 +1769,7 @@ export type Database = {
           employe_id: string
           entreprise_id: string
           id?: string
+          is_chef_responsable?: boolean
           jour: string
           semaine: string
           updated_at?: string | null
@@ -1780,6 +1782,7 @@ export type Database = {
           employe_id?: string
           entreprise_id?: string
           id?: string
+          is_chef_responsable?: boolean
           jour?: string
           semaine?: string
           updated_at?: string | null
