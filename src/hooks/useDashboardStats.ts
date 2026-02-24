@@ -150,9 +150,18 @@ export const useDashboardStats = () => {
       const chantiersActifs = chantiersEntreprise.filter(c => c.actif).length;
       const chantiersInactifs = chantiersEntreprise.filter(c => !c.actif).length;
       
-      // Chantiers orphelins (actifs sans chef)
+      // Chantiers orphelins (actifs sans chef ET sans chef secondaire dans le planning)
+      // On récupère les chantiers ayant un chef dans affectations_jours_chef pour exclure ceux avec un chef secondaire
+      const { data: chantiersAvecChefAffecte } = await supabase
+        .from("affectations_jours_chef")
+        .select("chantier_id")
+        .eq("entreprise_id", entrepriseId)
+        .eq("semaine", semaineCourante);
+      
+      const chantiersAvecChefSet = new Set((chantiersAvecChefAffecte || []).map(a => a.chantier_id));
+      
       const chantiersOrphelins: ChantierOrphelin[] = chantiersEntreprise
-        .filter(c => c.actif && !c.chef_id)
+        .filter(c => c.actif && !c.chef_id && !chantiersAvecChefSet.has(c.id))
         .map(c => ({
           id: c.id,
           nom: c.nom,
