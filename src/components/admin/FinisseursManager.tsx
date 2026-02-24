@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useCreateUtilisateur, useUpdateUtilisateur, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { useAffectationsFinisseursJours } from "@/hooks/useAffectationsFinisseursJours";
-import { useAffectations } from "@/hooks/useAffectations";
+import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { useChantiers } from "@/hooks/useChantiers";
 import { getCurrentWeek } from "@/lib/weekUtils";
 
@@ -57,24 +57,19 @@ export const FinisseursManager = () => {
   // Données pour les affectations
   const currentWeek = getCurrentWeek();
   const { data: affectationsHebdo = [] } = useAffectationsFinisseursJours(currentWeek);
-  const { data: affectationsPermanentes = [] } = useAffectations();
+  const { data: planningAffectations = {} } = usePlanningAffectationsCurrentWeek();
   const { data: chantiers = [] } = useChantiers();
   const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
 
   const getAffectationForFinisseur = (finisseurId: string) => {
-    // 1. Vérifier d'abord les affectations permanentes (via chef de chantier)
-    const affectationPermanente = affectationsPermanentes.find(
-      (a: any) => a.macon_id === finisseurId && a.date_fin === null
-    );
-    
-    if (affectationPermanente) {
+    // 1. Vérifier d'abord dans le planning de la semaine
+    const planning = (planningAffectations as any)[finisseurId];
+    if (planning) {
       return {
         type: 'permanent' as const,
-        chantier_nom: affectationPermanente.chantier_nom || "N/A",
-        chef_nom: affectationPermanente.chef_prenom && affectationPermanente.chef_nom
-          ? `${affectationPermanente.chef_prenom} ${affectationPermanente.chef_nom}`
-          : "Non assigné",
-        date_debut: affectationPermanente.date_debut,
+        chantier_nom: planning.chantier_nom,
+        chef_nom: "",
+        date_debut: null,
       };
     }
     

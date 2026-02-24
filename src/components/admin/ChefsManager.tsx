@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useCreateUtilisateur, useUpdateUtilisateur, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { useChantiers } from "@/hooks/useChantiers";
-import { useAffectations } from "@/hooks/useAffectations";
+import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { useInvitations } from "@/hooks/useInvitations";
 import { InviteUserDialog } from "./InviteUserDialog";
 
@@ -53,7 +53,7 @@ export const ChefsManager = () => {
   const { data: chefs = [], isLoading } = useUtilisateursByRole("chef");
   const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
   const { data: chantiers = [] } = useChantiers();
-  const { data: affectations = [] } = useAffectations();
+  const { data: planningAffectations = {} } = usePlanningAffectationsCurrentWeek();
   const { data: invitations = [] } = useInvitations();
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
@@ -150,24 +150,34 @@ export const ChefsManager = () => {
   };
 
   const getChantierForChef = (chefId: string) => {
-    // Priorité 1 : chantier où le chef est chef_id principal
+    // Source de vérité : planning_affectations
+    const planning = (planningAffectations as any)[chefId];
+    if (planning) {
+      return { id: planning.chantier_id, nom: planning.chantier_nom };
+    }
+    // Fallback : chantier où le chef est chef_id principal
     const chantierPrincipal = chantiers.find((c) => c.chef_id === chefId);
     if (chantierPrincipal) return chantierPrincipal;
-    // Priorité 2 : pas de recherche supplémentaire en sync (les affectations sont déjà gérées côté planning)
     return undefined;
   };
 
   const getConducteurForChef = (chefId: string) => {
+    // Chercher le chantier dans la liste complète (pas le mini-objet du planning)
     const chantier = getChantierForChef(chefId);
     if (!chantier) return null;
-    return conducteurs.find((c) => c.id === chantier.conducteur_id);
+    const fullChantier = chantiers.find(c => c.id === chantier.id);
+    if (!fullChantier) return null;
+    return conducteurs.find((c) => c.id === fullChantier.conducteur_id);
   };
 
   const getMaconsCount = (chefId: string) => {
-    // Le chef est maintenant lié au chantier, pas directement à l'affectation
-    const chantier = getChantierForChef(chefId);
-    if (!chantier) return 0;
-    return affectations.filter((a) => a.chantier_id === chantier.id && !a.date_fin).length;
+    // Compter les employés planifiés sur le même chantier que le chef
+    const planning = (planningAffectations as any)[chefId];
+    if (!planning) return 0;
+    // Compter les autres employés sur le même chantier
+    return Object.entries(planningAffectations as any).filter(
+      ([id, p]: [string, any]) => id !== chefId && p.chantier_id === planning.chantier_id
+    ).length;
   };
 
   return (

@@ -72,19 +72,20 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
     enabled: !!conducteurId,
   });
 
-  // Récupérer les employés sans affectation active (maçons, grutiers, finisseurs non affectés à un chef)
+  // Récupérer les employés non planifiés cette semaine (pour la liste des congés)
   const { data: employesSansAffectation = [] } = useQuery({
-    queryKey: ["employes-sans-affectation", entrepriseId],
+    queryKey: ["employes-sans-planning", entrepriseId, currentWeek],
     queryFn: async () => {
       if (!entrepriseId) return [];
       
-      // Récupérer les IDs des employés qui ONT une affectation active (dans une équipe chef)
-      const { data: affectationsActives } = await supabase
-        .from("affectations")
-        .select("macon_id")
-        .is("date_fin", null);
+      // Récupérer les IDs des employés planifiés cette semaine
+      const { data: planningData } = await supabase
+        .from("planning_affectations")
+        .select("employe_id")
+        .eq("entreprise_id", entrepriseId)
+        .eq("semaine", currentWeek);
       
-      const idsAvecAffectation = (affectationsActives || []).map(a => a.macon_id);
+      const idsPlanifies = new Set((planningData || []).map(a => a.employe_id));
       
       // Récupérer tous les employés (maçons, grutiers, finisseurs) de l'entreprise
       const { data, error } = await supabase
@@ -96,8 +97,8 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
       
       if (error) throw error;
       
-      // Filtrer côté client pour exclure ceux avec affectation active
-      return (data || []).filter(emp => !idsAvecAffectation.includes(emp.id));
+      // Filtrer côté client pour exclure ceux planifiés
+      return (data || []).filter(emp => !idsPlanifies.has(emp.id));
     },
     enabled: !!entrepriseId,
   });

@@ -161,7 +161,7 @@ export const useDashboardStats = () => {
       const chantiersAvecChefSet = new Set((chantiersAvecChefAffecte || []).map(a => a.chantier_id));
       
       const chantiersOrphelins: ChantierOrphelin[] = chantiersEntreprise
-        .filter(c => c.actif && !c.chef_id && !chantiersAvecChefSet.has(c.id))
+        .filter(c => c.actif && !chantiersAvecChefSet.has(c.id))
         .map(c => ({
           id: c.id,
           nom: c.nom,
@@ -184,8 +184,9 @@ export const useDashboardStats = () => {
       const fichesCloture = fiches.filter(f => f.statut === "CLOTURE").length;
 
       // Progression transmission semaine courante
-      const chantiersActifsAvecChef = chantiersEntreprise.filter(c => c.actif && c.chef_id);
-      const totalEquipes = chantiersActifsAvecChef.length;
+      // Source de vérité : chantiers ayant au moins un employé planifié cette semaine
+      const chantiersActifsAvecEquipe = chantiersEntreprise.filter(c => c.actif && chantiersAvecChefSet.has(c.id));
+      const totalEquipes = chantiersActifsAvecEquipe.length;
       const fichesTransmises = fiches.filter(f => 
         f.semaine === semaineCourante && f.statut !== "BROUILLON"
       );
