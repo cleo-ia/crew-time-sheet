@@ -384,6 +384,48 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     fichesBySalarie.get(fiche.salarie_id)!.push(fiche);
   });
 
+  // 🆕 Pre-fetch cross-chantier data for chefs when a chantier filter is active
+  // This allows us to detect "working on other site" vs "truly absent"
+  let chefOtherSiteDates = new Map<string, Set<string>>(); // salarieId -> Set of dates with hours on other sites
+  const hasChantierFilter = filters.chantier && filters.chantier !== "all";
+  
+  if (hasChantierFilter) {
+    // Find all chef salarieIds in current data
+    const chefSalarieIds = [...fichesBySalarie.keys()].filter(id => chefIds.has(id));
+    
+    if (chefSalarieIds.length > 0) {
+      // Query fiches_jours for these chefs on ALL chantiers (not just filtered)
+      const { data: chefAllFiches } = await supabase
+        .from("fiches")
+        .select("id, salarie_id")
+        .in("salarie_id", chefSalarieIds)
+        .neq("chantier_id", filters.chantier)
+        .in("statut", filters.includeCloture 
+          ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+          : ["ENVOYE_RH", "AUTO_VALIDE"]);
+      
+      if (chefAllFiches && chefAllFiches.length > 0) {
+        const otherFicheIds = chefAllFiches.map(f => f.id);
+        const ficheToSalarie = new Map(chefAllFiches.map(f => [f.id, f.salarie_id]));
+        
+        const { data: otherJours } = await supabase
+          .from("fiches_jours")
+          .select("fiche_id, date, heures, HI")
+          .in("fiche_id", otherFicheIds);
+        
+        (otherJours || []).forEach(j => {
+          const sid = ficheToSalarie.get(j.fiche_id);
+          if (!sid) return;
+          const h = (Number(j.heures) || 0) + (Number(j.HI) || 0);
+          if (h > 0) {
+            if (!chefOtherSiteDates.has(sid)) chefOtherSiteDates.set(sid, new Set());
+            chefOtherSiteDates.get(sid)!.add(j.date);
+          }
+        });
+      }
+    }
+  }
+
   // Agréger par salarié
   const employeeMap = new Map<string, EmployeeWithDetails>();
 
@@ -532,7 +574,16 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       intemperies += intemperie;
       totalHeures += heuresDuJour;
       
-      const isAbsent = heuresDuJour === 0 && intemperie === 0;
+      let isAbsent = heuresDuJour === 0 && intemperie === 0;
+
+      // For chefs with chantier filter: if 0h on filtered site but worked on another site,
+      // it's NOT an absence
+      if (isAbsent && isChef && hasChantierFilter) {
+        const otherDates = chefOtherSiteDates.get(salarieId);
+        if (otherDates && otherDates.has(date)) {
+          isAbsent = false; // Chef was working on another site
+        }
+      }
 
       if (isAbsent) {
         absences++;

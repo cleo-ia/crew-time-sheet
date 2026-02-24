@@ -822,20 +822,23 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
 
       if (isChef) {
         // CHEFS: sommer les heures de tous les chantiers par jour
-        const dayMap = new Map<string, typeof dailyDetails[0]>();
+        // AND build siteDetails array for each day
+        const dayMap = new Map<string, typeof dailyDetails[0] & { siteDetails: Array<{ code: string; nom: string; heures: number }> }>();
         dailyDetails.forEach(jour => {
           const existing = dayMap.get(jour.date);
+          const siteDetail = {
+            code: jour.chantierCode || jour.chantierNom || "?",
+            nom: jour.chantierNom || jour.chantierCode || "?",
+            heures: jour.heuresNormales,
+          };
           if (!existing) {
-            // Premier chantier pour ce jour - déterminer si c'est le chantier filtré ou un autre
-            const isOnFilteredSite = !activeChantierFilter || 
-              filteredFiches.some(f => f.id === (fichesJoursFiltrees?.find(fj => fj.id === jour.ficheJourId) as any)?.fiche_id && f.chantier_id === activeChantierFilter);
-            
             dayMap.set(jour.date, {
               ...jour,
               isOnOtherSite: false,
               otherSiteCode: null,
               otherSiteNom: null,
-            });
+              siteDetails: [siteDetail],
+            } as any);
           } else {
             // Sommer les heures
             existing.heuresNormales += jour.heuresNormales;
@@ -846,42 +849,67 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
             if (!existing.codeTrajet || existing.codeTrajet === 'A_COMPLETER') {
               existing.codeTrajet = jour.codeTrajet;
             }
-            // Fusionner les infos chantier
-            if (jour.heuresNormales > 0 && existing.heuresNormales === jour.heuresNormales) {
-              // Le nouveau jour a les seules heures - utiliser ses infos chantier
-              existing.chantier = jour.chantier;
-              existing.chantierNom = jour.chantierNom;
-              existing.chantierCode = jour.chantierCode;
-            }
+            // Add site detail
+            (existing as any).siteDetails.push(siteDetail);
           }
         });
-        
-        // Pour les chefs avec filtre chantier actif : marquer les jours où le chef était sur un autre chantier
+
+        // For chefs with active chantier filter: adjust display per day
         if (activeChantierFilter) {
-          // Trouver les ficheIds qui appartiennent au chantier filtré
           const filteredChantierFicheIds = new Set(
             filteredFiches.filter(f => f.chantier_id === activeChantierFilter).map(f => f.id)
           );
-          
+          // Get code of filtered chantier
+          const filteredChantierInfo = filteredFiches.find(f => f.chantier_id === activeChantierFilter)?.chantiers;
+          const filteredChantierCode = filteredChantierInfo?.code_chantier || null;
+
           dayMap.forEach((jour, date) => {
-            // Vérifier si ce jour a des fiches_jours du chantier filtré
             const joursForDate = fichesJoursFiltrees?.filter(fj => fj.date === date) || [];
-            const hasHoursOnFilteredSite = joursForDate.some(fj => 
-              filteredChantierFicheIds.has(fj.fiche_id) && (Number(fj.heures) > 0 || Number(fj.HNORM) > 0 || Number(fj.HI) > 0)
-            );
+            // Hours on the filtered site for this date
+            const hoursOnFilteredSite = joursForDate
+              .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
+              .reduce((sum, fj) => sum + (Number(fj.heures) || Number(fj.HNORM) || 0), 0);
+            const intemperiesOnFilteredSite = joursForDate
+              .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
+              .reduce((sum, fj) => sum + (Number(fj.HI) || 0), 0);
             const hasAnyFicheOnFilteredSite = joursForDate.some(fj => filteredChantierFicheIds.has(fj.fiche_id));
             
-            if (!hasHoursOnFilteredSite && jour.heuresNormales > 0) {
-              // Le chef a des heures mais pas sur le chantier filtré → il était sur un autre chantier
+            // Panier/trajet from filtered site only
+            const panierOnFilteredSite = joursForDate
+              .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
+              .some(fj => fj.PA === true);
+            const trajetOnFilteredSite = joursForDate
+              .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
+              .find(fj => (fj as any).code_trajet);
+
+            if (hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && jour.heuresNormales > 0) {
+              // Chef was on another site this day
               (jour as any).isOnOtherSite = true;
-              (jour as any).otherSiteCode = jour.chantierCode;
-              (jour as any).otherSiteNom = jour.chantierNom;
-              // Ne PAS marquer comme absent
+              // Find which other sites
+              const otherSites = ((jour as any).siteDetails as Array<{ code: string; nom: string; heures: number }>)
+                .filter(s => s.code !== filteredChantierCode && s.heures > 0);
+              (jour as any).otherSiteCode = otherSites.map(s => s.code).join(" + ");
+              (jour as any).otherSiteNom = otherSites.map(s => s.nom).join(" + ");
               jour.isAbsent = false;
-            } else if (!hasAnyFicheOnFilteredSite && jour.heuresNormales === 0) {
-              // Pas de fiche du tout sur le chantier filtré et 0h globalement
-              // C'est potentiellement un vrai absent, mais pour les chefs on est prudent
+              // Override heures to show filtered site heures (0)
+              jour.heuresNormales = 0;
+              jour.heuresIntemperies = 0;
+            } else if (hasAnyFicheOnFilteredSite) {
+              // Chef was on the filtered site - show only that site's hours
+              jour.heuresNormales = hoursOnFilteredSite;
+              jour.heuresIntemperies = intemperiesOnFilteredSite;
+              jour.panier = panierOnFilteredSite;
+              if (trajetOnFilteredSite) {
+                jour.codeTrajet = (trajetOnFilteredSite as any).code_trajet;
+              }
+              jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0;
               (jour as any).isOnOtherSite = false;
+              // Show filtered site info
+              if (filteredChantierInfo) {
+                jour.chantierNom = filteredChantierInfo.nom || jour.chantierNom;
+                jour.chantierCode = filteredChantierInfo.code_chantier || jour.chantierCode;
+                jour.chantier = filteredChantierInfo.nom || jour.chantier;
+              }
             }
           });
         }
@@ -910,12 +938,14 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         }, [] as typeof dailyDetails);
       }
 
-      // 6. Calculer les totaux (heures normales uniquement, sans intempéries)
+      // 6. Calculer les totaux
+      // For chefs with active filter: only count non-isOnOtherSite days
+      const countableDays = deduplicatedDetails.filter(d => !(d as any).isOnOtherSite);
       const summary = {
-        totalHeures: deduplicatedDetails.reduce((sum, d) => sum + d.heuresNormales, 0),
-        totalIntemperies: deduplicatedDetails.reduce((sum, d) => sum + d.heuresIntemperies, 0),
-        totalPaniers: deduplicatedDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
-        totalTrajets: deduplicatedDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+        totalHeures: countableDays.reduce((sum, d) => sum + d.heuresNormales, 0),
+        totalIntemperies: countableDays.reduce((sum, d) => sum + d.heuresIntemperies, 0),
+        totalPaniers: countableDays.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
+        totalTrajets: countableDays.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
       };
 
       // Récupérer le rôle depuis user_roles

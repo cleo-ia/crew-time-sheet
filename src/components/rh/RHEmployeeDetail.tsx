@@ -370,11 +370,17 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                   <TableCell className="py-3 px-4">
                     <div className="leading-tight">
                       {isOnOtherSite ? (
-                        <>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
-                            Sur {(day as any).otherSiteCode || (day as any).otherSiteNom || 'autre chantier'}
-                          </Badge>
-                        </>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
+                          Sur {(day as any).otherSiteCode || (day as any).otherSiteNom || 'autre chantier'}
+                        </Badge>
+                      ) : (day as any).siteDetails && (day as any).siteDetails.length > 1 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {((day as any).siteDetails as Array<{ code: string; nom: string; heures: number }>).map((site, sIdx) => (
+                            <Badge key={sIdx} variant="secondary" className="text-xs">
+                              {site.code} ({site.heures}h)
+                            </Badge>
+                          ))}
+                        </div>
                       ) : (
                         <>
                           <div className="font-medium">{(day as any).chantierNom || day.chantier}</div>
