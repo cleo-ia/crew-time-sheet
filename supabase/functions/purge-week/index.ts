@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     }
 
     // Security: Only allow purging specific weeks
-    const allowedWeeks = ['2026-S08', '2026-S07', '2026-S06', '2026-S05', '2026-S04', '2026-S03', '2025-S03', '2025-S43', '2025-S44', '2025-S45', '2025-S46', '2025-S47'];
+    const allowedWeeks = ['2026-S15', '2026-S08', '2026-S07', '2026-S06', '2026-S05', '2026-S04', '2026-S03', '2025-S03', '2025-S43', '2025-S44', '2025-S45', '2025-S46', '2025-S47'];
     if (!allowedWeeks.includes(semaine)) {
       return new Response(
         JSON.stringify({ error: `Cette fonction ne peut purger que les semaines: ${allowedWeeks.join(', ')}` }),
