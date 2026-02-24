@@ -570,8 +570,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       });
     }
 
-    // Ne créer l'entrée que si le salarié a des données
-    if (totalHeures > 0 || absences > 0 || paniers > 0) {
+    // Ne créer l'entrée que si le salarié a des données OU une fiche transmise au RH
+    const hasRHFiche = fiches.some(f => ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"].includes(f.statut));
+    if (totalHeures > 0 || absences > 0 || paniers > 0 || hasRHFiche) {
       // Collecter les codes chantier uniques depuis les jours UNIQUEMENT (format complet ex: CI893OLYMPIA)
       const chantierCodes = [...new Set(
         detailJours
