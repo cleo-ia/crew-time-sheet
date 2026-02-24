@@ -1,45 +1,63 @@
 
 
-## Problème
+## Diagnostic confirmé
 
-Dans `sync-planning-to-teams`, quand un chef multi-chantier est traité comme "chef secondaire" sur un chantier (lignes 616-636), ses `fiches_jours` sont pré-remplis avec :
-- **8h** (L-J) / **7h** (V)
-- **T: 1** (trajet)
-- **PA: true** (panier)
-- **code_trajet: "A_COMPLETER"**
-- **repas_type: "PANIER"**
-
-Or, le bandeau info bleu dit au chef que ses heures sur le chantier secondaire sont **initialisées à 0h** pour éviter les doublons. Il y a donc une incohérence entre la sync et l'UI.
+Thomas TEST est `isChefResponsable = true` sur CI000 **et** CI002 (seul chef sur chaque site). Il ne rentre donc **jamais** dans la branche `!isChefResponsable` (ligne 559) où on a mis le fix 0h. Il tombe dans le flux standard `copyFichesFromPreviousWeek` / `createNewAffectation` (lignes 703-747) qui crée des fiches avec 39h.
 
 ## Correction
 
-**Fichier : `supabase/functions/sync-planning-to-teams/index.ts` (lignes 616-636)**
+**Fichier** : `supabase/functions/sync-planning-to-teams/index.ts`
 
-Changer l'initialisation des `fiches_jours` pour un chef sur son chantier secondaire :
+**Emplacement** : lignes 700-701, juste après le `}` de la branche `!isChefResponsable` et avant le commentaire `// Récupérer les affectations S-1`.
 
-| Champ | Avant | Après |
-|-------|-------|-------|
-| `heures` | 8h/7h | **0** |
-| `HNORM` | 8h/7h | **0** |
-| `T` | 1 | **0** |
-| `PA` | true | **false** |
-| `code_trajet` | "A_COMPLETER" | **null** |
-| `repas_type` | "PANIER" | **null** |
+**Ajout** : un nouveau bloc qui intercepte le cas "chef responsable mais sur son chantier secondaire" :
 
-Et mettre `total_heures` à **0** au lieu de `totalHeuresChefSec` (ligne 642).
+```text
+if (employe.role_metier === 'chef') {
+  ...
+  if (!isChefResponsable) {
+    // branche existante (2 chefs même chantier) ← déjà corrigée, on ne touche pas
+    continue
+  }
+  // ← ICI : NOUVEAU BLOC
+  // Si isChefResponsable ET chantier ≠ chantier_principal_id → 0h
+  const chefPrincipalChantierId = chefPrincipalMap.get(employeId)
+  if (chefPrincipalChantierId && chefPrincipalChantierId !== chantierId) {
+    → créer/récupérer fiche
+    → supprimer fiches_jours existantes
+    → recréer fiches_jours à 0h/0T/0PA pour chaque jour
+    → mettre total_heures = 0
+    → créer affectations_jours_chef (chef_id = employeId, macon_id = employeId)
+    → continue (ne PAS tomber dans copy/create)
+  }
+}
+// flux normal copy/create (ligne 703+) pour les non-chefs et chefs sur leur principal
+```
 
-**Condition** : ce comportement ne s'applique que quand le chef est sur son **chantier secondaire** (pas son `chantier_principal_id`). On distingue :
-- **Chantier principal** → le chef gère l'équipe normalement (traitement standard)
-- **Chantier secondaire** → fiche initialisée à 0h/0T/0PA
+**Détail des valeurs pour les fiches_jours sur chantier secondaire** :
 
-La distinction se fait via `chefPrincipalMap` déjà disponible dans la fonction (ligne 535).
+| Champ | Valeur |
+|-------|--------|
+| heures | 0 |
+| HNORM | 0 |
+| HI | 0 |
+| T | 0 |
+| PA | false |
+| pause_minutes | 0 |
+| code_trajet | null |
+| repas_type | null |
+| code_chantier_du_jour | code du chantier secondaire |
+| ville_du_jour | ville du chantier secondaire |
 
-**Note** : Le comportement pour les chefs "secondaires" au sens multi-chefs (2 chefs sur le même chantier) reste inchangé — ce cas est déjà corrigé par le fix précédent (chef solo = auto-responsable).
+**Fiche** : `total_heures = 0`, `statut = 'BROUILLON'`
+
+## Garde-fou existant (lignes 780-799)
+
+Le garde-fou qui supprime les `affectations_jours_chef` du chef sur les chantiers secondaires reste utile et ne change pas. Il nettoie les affectations "polluées" en tant que **macon_id** (membre d'équipe), ce qui est correct : le chef ne doit pas apparaître dans l'équipe de son chantier secondaire.
 
 ## Impact
 
-- Aucun changement UI nécessaire
-- Aucun changement de schema DB
-- Seul le edge function est modifié
-- Re-déploiement + re-sync nécessaire pour S15
+- Seul `sync-planning-to-teams/index.ts` est modifié
+- Pas de changement UI ni DB
+- Re-déploiement + re-sync S15 nécessaire
 
