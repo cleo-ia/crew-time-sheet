@@ -1,97 +1,116 @@
 
 
-## Analyse de régression exhaustive — Migration `chantiers.chef_id` → `planning_affectations`
-
-### Inventaire complet des 11 fichiers utilisant `.eq("chef_id", ...)` sur la table `chantiers`
-
-| # | Fichier | Usage | Impacté ? | Détail |
-|---|---------|-------|-----------|--------|
-| 1 | `src/pages/Index.tsx` L141, L160 | Auto-sélection chantier au login | **OUI — à modifier** | Utilise `chantiers.chef_id` pour valider/trouver le chantier du chef |
-| 2 | `src/components/timesheet/WeekSelectorChef.tsx` L40 | Détection S-2 incomplètes | **OUI — à modifier** | Cherche chantiers via `chantiers.chef_id` |
-| 3 | `src/hooks/useChefHistorique.ts` L27 | Historique chef | **OUI — à modifier** | Cherche chantiers via `chantiers.chef_id` |
-| 4 | `src/components/timesheet/ChantierSelector.tsx` L38 | Query base chantiers | **NON** | Cette query est le fallback (`else` branch) quand `semaine` est absent. Utilisée uniquement par `TimeEntryTable` (pas de `semaine`). Le fix précédent l'ignore déjà quand `semaine + chefId` sont fournis |
-| 5 | `src/hooks/useFiches.ts` L166 | Filtre RH par chef (validation conducteur) | **NON** | C'est un filtre **admin/conducteur/RH**, pas utilisé côté chef. Le filtre "par chef" dans la page validation est un affichage secondaire. De plus, la sync du lundi maintient `chantiers.chef_id` à jour |
-| 6 | `src/hooks/rhShared.ts` L260 | Filtre consolidé RH par chef | **NON** | Utilise déjà `affectations_jours_chef` en priorité (L257-263), avec fallback sur `chantiers.chef_id` (L268-269). Fonctionne correctement |
-| 7 | `src/hooks/useDashboardStats.ts` L71, L164, L187 | Stats admin (orphelins, progression) | **NON** | Vue admin globale. Utilise déjà `affectations_jours_chef` en complément (L155-161). `chantiers.chef_id` sert uniquement à l'affichage "chantiers orphelins" et "progression" côté admin |
-| 8 | `src/hooks/useMaconsByChantier.ts` L178 | Charge l'équipe d'un chantier | **NON** | Filtre `affectations_jours_chef` par `chef_id` — c'est la table jour-par-jour, pas `chantiers.chef_id` |
-| 9 | `src/hooks/useAutoSaveFiche.ts` L312 | Sauvegarde auto des fiches | **NON** | Même chose : filtre `affectations_jours_chef.chef_id`, pas `chantiers.chef_id` |
-| 10 | `src/hooks/useAffectationsJoursChef.ts` L49,93 | Requêtes affectations jour | **NON** | Table `affectations_jours_chef`, pas `chantiers` |
-| 11 | `src/hooks/useMaconsAllChantiersByChef.ts` L38,72 | Multi-chantier chef | **NON** | Table `affectations_jours_chef`, pas `chantiers` |
-| 12 | `src/hooks/useInitialWeek.ts` | Semaine initiale | **NON** | N'utilise pas `chef_id` du tout, filtre par `user_id` + `chantier_id` sur la table `fiches` |
-| 13 | `src/hooks/useFichesEnAttente.ts` | Fiches en attente | **NON** | Utilise `conducteur_id`, pas `chef_id` |
+## Plan de correction -- Migration complète vers `planning_affectations` comme source de vérité
 
 ---
 
-### Les 3 modifications à effectuer
-
-#### 1. `src/pages/Index.tsx` — Auto-sélection chantier au login (lignes 136-168)
-
-**Avant** : `chantiers.chef_id = utilisateur.id`
-**Après** : chercher dans `planning_affectations` pour la semaine courante, avec fallback sur `affectations_jours_chef`
-
-```text
-Logique :
-1. Si chantier en session → vérifier qu'il existe dans planning_affectations (semaine courante, employe_id = chef)
-2. Si non trouvé dans planning → vérifier dans affectations_jours_chef (semaine courante)
-3. Si toujours pas → reset la session
-4. Si pas de chantier en session → prendre le premier du planning_affectations
-5. Fallback → premier de affectations_jours_chef
-```
-
-**Risque** : Le chef se connecte un dimanche soir avant que la sync du lundi ait tourné → `planning_affectations` pour S+1 peut être vide.
-**Mitigation** : Le fallback `affectations_jours_chef` couvre ce cas car la sync crée les données dans cette table aussi. Et le `ChantierSelector` gère déjà correctement l'affichage même si aucun chantier n'est pré-sélectionné (le chef peut choisir manuellement).
-
-#### 2. `src/components/timesheet/WeekSelectorChef.tsx` — Détection S-2 incomplètes (lignes 37-43)
-
-**Avant** : `chantiers.chef_id = chefId AND actif = true`
-**Après** : `planning_affectations.employe_id = chefId AND semaine = s2Week`
-
-```text
-Logique :
-1. Récupérer les chantier_id distincts du planning pour la semaine S-2
-2. Vérifier si des fiches validées existent pour ces chantiers en S-2
-3. Si un chantier du planning S-2 n'a pas de fiche validée → afficher S-2
-```
-
-**Risque** : Si le planning n'existe pas pour S-2 (pas encore d'historique planning) → `planning_affectations` retourne vide → S-2 ne s'affiche pas.
-**Mitigation** : Ajouter un fallback sur `affectations_jours_chef` qui contient l'historique réel.
-
-#### 3. `src/hooks/useChefHistorique.ts` — Historique des chantiers (lignes 24-28)
-
-**Avant** : `chantiers.chef_id = chefId AND actif = true`
-**Après** : `affectations_jours_chef.chef_id = chefId` (chantiers distincts)
-
-```text
-Logique :
-1. Récupérer tous les chantier_id distincts dans affectations_jours_chef pour ce chef
-2. Utiliser ces IDs pour charger les fiches (indépendamment de chantiers.actif)
-```
-
-**Pourquoi `affectations_jours_chef` et pas `planning_affectations`** : L'historique doit montrer TOUTES les semaines passées. `planning_affectations` ne contient que les données de planification, pas l'historique complet des affectations réellement exécutées. `affectations_jours_chef` est alimentée par la sync et contient l'historique semaine par semaine.
-
-**Risque** : Aucun. `affectations_jours_chef` contient plus de données que `chantiers.chef_id` (qui ne référence que le dernier chef affecté). L'historique sera plus complet.
+### Résumé des 9 corrections par fichier
 
 ---
 
-### Pages et composants vérifiés — AUCUNE régression
+### 1. `useDashboardStats.ts` -- Stats dashboard cassées (CRITIQUE)
 
-| Page | Composant utilisant `chef_id` | Impact |
-|------|-------------------------------|--------|
-| `/` (Index) | `ChantierSelector` | ✅ Déjà corrigé (planning = source unique) |
-| `/` (Index) | Auto-sélection | 🔧 Modification prévue |
-| `/admin` | `ChantiersManager` | ✅ Affichage uniquement via jointure `chef:utilisateurs!chef_id` — pas de logique |
-| `/admin` | `DashboardManager` | ✅ Stats admin, utilise déjà `affectations_jours_chef` en complément |
-| `/validation-conducteur` | `ChantierSelector` | ✅ Pas impacté (utilise `conducteurId`, pas `chefId + semaine`) |
-| `/validation-conducteur` | `useFichesByStatus` | ✅ Filtre conducteur, pas chef |
-| `/consultation-rh` | `rhShared.ts` | ✅ Utilise déjà `affectations_jours_chef` en priorité |
-| `/planning-main-oeuvre` | — | ✅ Utilise directement `planning_affectations` |
-| `/signature-macons` | — | ✅ N'utilise pas `ChantierSelector` ni `chef_id` |
-| `/signature-finisseurs` | — | ✅ N'utilise pas `ChantierSelector` ni `chef_id` |
+**Probleme** : La "Progression transmission" (L187) compte les chantiers actifs ayant un `chef_id` pour calculer le total d'equipes. Comme `chef_id` est maintenant `null`, le total est 0 et le pourcentage est casse.
 
-### Garanties
+**Correction** : Remplacer `chantiersActifsAvecChef` par une requete sur `planning_affectations` pour la semaine courante : on recupere les `chantier_id` distincts qui ont au moins un employe planifie. Pour les "chantiers orphelins" (L164), retirer le check `!c.chef_id` et ne garder que le check `!chantiersAvecChefSet.has(c.id)` (qui utilise deja `affectations_jours_chef`).
 
-1. **Aucune table n'est modifiée** — on change uniquement les requêtes de lecture
-2. **Chaque modification a un fallback** — si `planning_affectations` est vide, on tombe sur `affectations_jours_chef`
-3. **Les vues admin/conducteur/RH ne sont pas touchées** — elles continuent d'utiliser `chantiers.chef_id` qui est maintenu à jour par la sync du lundi
-4. **Le `ChantierSelector` base query (L38)** reste en place comme fallback pour les usages sans `semaine` (TimeEntryTable jour par jour)
+---
+
+### 2. `useFiches.ts` -- Filtre "par chef" casse en validation conducteur (CRITIQUE)
+
+**Probleme** : Quand un conducteur filtre les fiches par chef (L162-167), le code cherche `chantiers.chef_id = filters.chef`. Avec `chef_id` vide, ce filtre ne retourne plus rien.
+
+**Correction** : Remplacer la requete `chantiers.chef_id` par une requete sur `affectations_jours_chef` pour trouver les `chantier_id` distincts ou le chef est affecte dans la semaine filtree (ou toutes les semaines si pas de filtre semaine).
+
+---
+
+### 3. `ChefMaconsManager.tsx` -- Retirer la gestion d'equipe par le chef (HAUTE)
+
+**Decision utilisateur** : Le chef ne doit plus pouvoir ajouter/retirer des membres. C'est le conducteur qui gere via le planning.
+
+**Correction** :
+- Transformer le bouton "Gerer mon equipe" en un bouton "Mon equipe" qui ouvre un dialog **en lecture seule** : on voit l'equipe actuelle (noms, roles, jours) mais sans boutons "Ajouter", "Retirer", "Dissoudre", "Transferer".
+- Retirer les imports et hooks : `useAffectations`, `useCreateAffectation`, `useUpdateAffectation`, `useDeleteFichesByMacon`, `useDissoudreEquipe`, `useTransfererEquipe`, `useChantiers`, `TeamMemberCombobox`, `InterimaireFormDialog`.
+- Retirer toute la logique : `handleAddMacon`, `handleRemoveMacon`, `isMaconInTeam`, `getMaconStatus`, les 4 colonnes "AJOUTER DES MACONS/GRUTIERS/INTERIMAIRES/FINISSEURS", les dialogs dissolution/transfert.
+- Garder uniquement : affichage de l'equipe actuelle (via `useMaconsByChantier`) + affichage des jours (via `affectationsJoursChef`) + le `DaysSelectionDialog` en lecture seule.
+
+---
+
+### 4. `useTransfererEquipe.ts` -- Supprimer (HAUTE)
+
+**Decision utilisateur** : Le transfert d'equipe n'a plus de sens puisque c'est le conducteur qui compose les equipes via le planning.
+
+**Correction** : Supprimer le fichier. L'import dans `ChefMaconsManager` est deja retire au point 3.
+
+---
+
+### 5. `useDissoudreEquipe.ts` -- Supprimer (HAUTE)
+
+**Decision utilisateur** : Meme logique, la dissolution n'a plus de sens.
+
+**Correction** : Supprimer le fichier. L'import dans `ChefMaconsManager` est deja retire au point 3.
+
+---
+
+### 6. `usePlanningMode.ts` -- Supprimer dead code (MOYENNE)
+
+**Constat** : Ce hook n'est importe nulle part dans l'application.
+
+**Correction** : Supprimer le fichier.
+
+---
+
+### 7. `ChantierSelector.tsx` -- Pas de changement
+
+Le fallback `chantiers.chef_id` (L38) n'est atteint que quand `semaine` est absent, ce qui ne se produit pas dans le flux chef (toujours une semaine selectionnee). Ce code sert potentiellement a d'autres contextes. On le laisse tel quel.
+
+---
+
+### 8. Panels admin (`MaconsManager`, `GrutiersManager`, `InterimairesManager`, `FinisseursManager`, `ChefsManager`) -- Migrer vers `planning_affectations` (BASSE)
+
+**Probleme** : Ces panels utilisent `useAffectations()` (table legacy) pour afficher le "chantier actuel" d'un employe. Les donnees sont potentiellement obsoletes.
+
+**Correction** : Remplacer `useAffectations()` par une requete sur `planning_affectations` pour la semaine courante. Afficher le chantier planifie cette semaine au lieu de l'affectation statique. Si un employe est planifie sur plusieurs chantiers, afficher le principal.
+
+Pour `MaconsManager` et `GrutiersManager` qui utilisent aussi `useCreateAffectation` pour le bouton "Affecter" dans l'admin : retirer ce bouton car l'affectation se fait via le planning. Garder uniquement l'affichage.
+
+---
+
+### 9. `CongesListSheet.tsx` -- Migrer le filtre employes (BASSE)
+
+**Probleme** : Le filtre "employes sans affectation" (L82-100) utilise la table legacy `affectations` pour savoir qui est dans une equipe.
+
+**Correction** : Remplacer la requete `affectations.date_fin IS NULL` par une requete sur `planning_affectations` pour la semaine courante, afin d'identifier les employes actuellement planifies sur un chantier.
+
+---
+
+### Fichiers crees / supprimes
+
+| Action | Fichier |
+|--------|---------|
+| Supprimer | `src/hooks/useDissoudreEquipe.ts` |
+| Supprimer | `src/hooks/useTransfererEquipe.ts` |
+| Supprimer | `src/hooks/usePlanningMode.ts` |
+
+### Fichiers modifies
+
+| Fichier | Nature du changement |
+|---------|---------------------|
+| `src/hooks/useDashboardStats.ts` | Requete planning_affectations au lieu de chantiers.chef_id |
+| `src/hooks/useFiches.ts` | Filtre chef via affectations_jours_chef au lieu de chantiers.chef_id |
+| `src/components/chef/ChefMaconsManager.tsx` | Refonte majeure : lecture seule, suppression ajout/retrait/dissolution/transfert |
+| `src/components/admin/MaconsManager.tsx` | useAffectations -> planning_affectations, retrait bouton "Affecter" |
+| `src/components/admin/GrutiersManager.tsx` | useAffectations -> planning_affectations, retrait bouton "Affecter" |
+| `src/components/admin/InterimairesManager.tsx` | useAffectations -> planning_affectations |
+| `src/components/admin/FinisseursManager.tsx` | useAffectations -> planning_affectations |
+| `src/components/admin/ChefsManager.tsx` | useAffectations -> planning_affectations |
+| `src/components/conges/CongesListSheet.tsx` | affectations -> planning_affectations |
+
+### Ce qui ne change PAS
+
+- Aucune modification de schema BDD
+- La table `affectations` reste en BDD (pas de suppression de table)
+- Le hook `useAffectations.ts` reste dans le code (mais ne sera plus importe apres migration)
+- Les pages `/planning-main-oeuvre`, `/validation-conducteur`, `/consultation-rh`, `/signature-*` ne sont pas touchees
+- La sync du lundi (`sync-planning-to-teams`) n'est pas modifiee
 
