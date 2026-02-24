@@ -1,29 +1,41 @@
 
-## Je suis là !
 
-Le nettoyage du mode legacy est maintenant terminé. Voici un plan pour vérifier que tout fonctionne parfaitement avec le nouveau système de planning.
+## Problème identifié
 
-### Plan de Vérification Post-Migration
+Tu as raison. Le badge "Saisie" (`is_chef_responsable`) ne devrait concerner **que les chantiers avec 2+ chefs**. Pour un chef seul sur un chantier (même multi-chantier), il est **automatiquement** le responsable — pas besoin de flag.
 
-1. **Vérification du Dashboard Admin**
-    - Naviguer sur `/admin?tab=dashboard`.
-    - Vérifier que les statistiques de "Progression transmission" et "Chantiers orphelins" sont cohérentes.
-    - *Note : Ces stats utilisent maintenant `affectations_jours_chef` au lieu de `chantiers.chef_id`.*
+### Situation actuelle
 
-2. **Vérification des Panels Employés**
-    - Consulter les onglets `Maçons`, `Grutiers`, et `Intérimaires`.
-    - Vérifier que les affectations s'affichent correctement (le nom du chantier doit apparaître à côté du nom de l'employé).
-    - *Note : Ces panels sont désormais 100% en lecture seule, basés sur `planning_affectations`.*
+**L'UI est correcte** : le badge "Saisie" ne s'affiche que quand `chefsOnThisChantier.length >= 2` (ligne 517 de `PlanningChantierAccordion.tsx`). C'est bon.
 
-3. **Vérification de la Validation Conducteur**
-    - Naviguer sur `/validation-conducteur`.
-    - Utiliser le filtre par Chef et vérifier que les fiches remontent correctement.
-    - *Note : Le filtrage par chef a été migré pour utiliser `affectations_jours_chef`.*
+**Le problème est côté sync** (`sync-planning-to-teams`) : quand `is_chef_responsable = false` pour Thomas TEST (seul chef sur "test"), la sync le traite comme "chef secondaire" → il reçoit une fiche pré-remplie au lieu de gérer l'équipe normalement. C'est le bug.
 
-4. **Nettoyage Additionnel (Optionnel)**
-    - J'ai identifié un autre hook legacy inutilisé : `src/hooks/usePurgeAffectations.ts`.
-    - Si vous le souhaitez, je peux aussi le supprimer pour que le projet soit parfaitement propre.
+### Ce qu'il faut corriger
 
-### Détails techniques
-- La table `affectations` et son hook associé `useAffectations.ts` ne sont plus du tout référencés dans le code source.
-- Les données sont désormais centralisées dans `planning_affectations` (pour les ouvriers/intérimaires) et `affectations_jours_chef` (pour la responsabilité des chantiers).
+**1. Edge Function `sync-planning-to-teams` (lignes ~304-332)** : Quand un chantier n'a qu'**un seul chef**, le traiter automatiquement comme responsable **peu importe le flag**.
+
+```text
+Logique actuelle :
+  si is_chef_responsable = true → chef responsable
+  sinon fallback jours → chef responsable
+  
+Logique corrigée :
+  si 1 seul chef sur le chantier → TOUJOURS responsable (ignorer le flag)
+  si 2+ chefs → utiliser is_chef_responsable, puis fallback jours
+```
+
+**2. `handleAddEmploye` dans `PlanningMainOeuvre.tsx` (ligne 259-273)** : Déjà correct (auto-set quand aucun responsable). Mais il faut aussi **s'assurer que le flag est mis à `true` quand on retire le 2ème chef** d'un chantier (le chef restant devient auto-responsable).
+
+**3. Aucun changement UI** : Les badges Principal/Secondaire et Saisie fonctionnent déjà correctement côté affichage.
+
+### Plan d'implémentation
+
+| Fichier | Modification |
+|---|---|
+| `supabase/functions/sync-planning-to-teams/index.ts` | Dans la boucle `chefDaysPerChantier` (lignes 304-332), si `chefsMap.size === 1`, forcer le chef unique comme responsable sans vérifier le flag |
+| `src/pages/PlanningMainOeuvre.tsx` | Dans le handler de suppression d'employé, quand on retire un chef et qu'il ne reste qu'un seul chef sur le chantier, auto-set `is_chef_responsable = true` pour le chef restant |
+
+### Correction immédiate pour S15
+
+Pour le test en cours, pas besoin de corriger le flag manuellement — la correction de la sync fera que Thomas sera automatiquement traité comme responsable puisqu'il est seul sur chaque chantier.
+
