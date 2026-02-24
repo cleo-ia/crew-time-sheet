@@ -21,6 +21,9 @@ interface DayDetail {
   codeTrajet?: string | null;
   typeAbsence?: string | null;
   trajetPerso?: boolean;
+  isOnOtherSite?: boolean;
+  otherSiteCode?: string | null;
+  otherSiteNom?: string | null;
 }
 
 interface SignatureData {
@@ -112,30 +115,41 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
             </TableHeader>
             <TableBody>
               {days.map((day, idx) => {
-                const isAbsent = day.heuresNormales === 0 && (day.heuresIntemperies || 0) === 0;
+                 const isOnOtherSite = !!day.isOnOtherSite;
+                 const isAbsent = day.heuresNormales === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite;
                 
                 return (
                   <TableRow 
                     key={idx} 
-                    className={`border-b border-border/30 ${isAbsent ? 'bg-red-50/30 dark:bg-red-950/10' : ''}`}
+                    className={`border-b border-border/30 ${isAbsent ? 'bg-red-50/30 dark:bg-red-950/10' : ''} ${isOnOtherSite ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}`}
                   >
                     <TableCell className="py-2 px-3 text-foreground font-medium">
                       {format(new Date(day.date), "EEE dd/MM", { locale: fr })}
                     </TableCell>
                     <TableCell className="py-2 px-3">
                       <div className="leading-tight">
-                        <span className="text-foreground font-medium">
-                          {day.chantierNom || day.chantier}
-                        </span>
-                        {day.chantierCode && (
-                          <span className="block text-xs text-muted-foreground">
-                            {day.chantierCode}
-                          </span>
+                        {isOnOtherSite ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
+                            Sur {day.otherSiteCode || day.otherSiteNom || 'autre chantier'}
+                          </Badge>
+                        ) : (
+                          <>
+                            <span className="text-foreground font-medium">
+                              {day.chantierNom || day.chantier}
+                            </span>
+                            {day.chantierCode && (
+                              <span className="block text-xs text-muted-foreground">
+                                {day.chantierCode}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-center py-2 px-3">
-                      {isAbsent ? (
+                      {isOnOtherSite ? (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      ) : isAbsent ? (
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/30 text-xs">
                           Absent
                         </Badge>

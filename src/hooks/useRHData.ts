@@ -619,9 +619,11 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       if (filters.semaine && filters.semaine !== "all") {
         fichesQuery = fichesQuery.eq("semaine", filters.semaine);
       }
-      if (filters.chantier && filters.chantier !== "all") {
-        fichesQuery = fichesQuery.eq("chantier_id", filters.chantier);
-      }
+      // NOTE: Pour les chefs, on ne filtre PAS par chantier ici
+      // On charge toutes leurs fiches puis on gère l'affichage côté client
+      // Le filtre chantier sera appliqué après détection du statut chef
+      const activeChantierFilter = filters.chantier && filters.chantier !== "all" ? filters.chantier : null;
+      // Ne PAS appliquer le filtre chantier à la requête - on le fera après
 
       const { data: fiches, error: fichesError } = await fichesQuery;
       if (fichesError) throw fichesError;
@@ -647,6 +649,11 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           return finisseurAffected;
         });
       }
+
+      // Pour les non-chefs, appliquer le filtre chantier côté client
+      // Pour les chefs, on garde toutes les fiches pour sommer les heures multi-sites
+      // On déterminera isChef plus tard, mais on garde toutes les fiches pour l'instant
+      // Le filtre sera appliqué lors de la déduplication si nécessaire
 
       if (!filteredFiches || filteredFiches.length === 0) return null;
 
@@ -789,6 +796,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           trajetPerso: !!(jour as any).trajet_perso,
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
+          isOnOtherSite: false as boolean,
+          otherSiteCode: null as string | null,
+          otherSiteNom: null as string | null,
           regularisationM1: (jour as any).regularisation_m1 || "",
           autresElements: (jour as any).autres_elements || "",
           commentaire: (jour as any).commentaire || "",
@@ -799,25 +809,106 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
 
-      // 5. Déduplication multi-chantier : pour chaque date, ne garder qu'une seule entrée
-      // Priorité : heures > 0 > absence qualifiée > fantôme (0h sans type d'absence)
-      const deduplicatedDetails = dailyDetails.reduce((acc, jour) => {
-        const existingIdx = acc.findIndex(d => d.date === jour.date);
-        if (existingIdx === -1) {
-          acc.push(jour);
-          return acc;
-        }
-        const existing = acc[existingIdx];
-        const existingHasHours = existing.heuresNormales > 0 || existing.heuresIntemperies > 0;
-        const newHasHours = jour.heuresNormales > 0 || jour.heuresIntemperies > 0;
+      // Récupérer isChef et role pour le salarié AVANT la déduplication
+      const { data: chantiersData } = await supabase
+        .from("chantiers")
+        .select("id, chef_id")
+        .in("id", filteredFiches.map(f => f.chantier_id).filter(Boolean));
 
-        if (newHasHours && !existingHasHours) {
-          acc[existingIdx] = jour;
-        } else if (!newHasHours && !existingHasHours && jour.typeAbsence && !existing.typeAbsence) {
-          acc[existingIdx] = jour;
+      const isChef = chantiersData?.some(c => c.chef_id === salarieId) || false;
+
+      // 5. Déduplication/sommation multi-chantier
+      let deduplicatedDetails: typeof dailyDetails;
+
+      if (isChef) {
+        // CHEFS: sommer les heures de tous les chantiers par jour
+        const dayMap = new Map<string, typeof dailyDetails[0]>();
+        dailyDetails.forEach(jour => {
+          const existing = dayMap.get(jour.date);
+          if (!existing) {
+            // Premier chantier pour ce jour - déterminer si c'est le chantier filtré ou un autre
+            const isOnFilteredSite = !activeChantierFilter || 
+              filteredFiches.some(f => f.id === (fichesJoursFiltrees?.find(fj => fj.id === jour.ficheJourId) as any)?.fiche_id && f.chantier_id === activeChantierFilter);
+            
+            dayMap.set(jour.date, {
+              ...jour,
+              isOnOtherSite: false,
+              otherSiteCode: null,
+              otherSiteNom: null,
+            });
+          } else {
+            // Sommer les heures
+            existing.heuresNormales += jour.heuresNormales;
+            existing.heuresIntemperies += jour.heuresIntemperies;
+            existing.panier = existing.panier || jour.panier;
+            existing.trajetPerso = existing.trajetPerso || jour.trajetPerso;
+            // Garder le code trajet le plus pertinent
+            if (!existing.codeTrajet || existing.codeTrajet === 'A_COMPLETER') {
+              existing.codeTrajet = jour.codeTrajet;
+            }
+            // Fusionner les infos chantier
+            if (jour.heuresNormales > 0 && existing.heuresNormales === jour.heuresNormales) {
+              // Le nouveau jour a les seules heures - utiliser ses infos chantier
+              existing.chantier = jour.chantier;
+              existing.chantierNom = jour.chantierNom;
+              existing.chantierCode = jour.chantierCode;
+            }
+          }
+        });
+        
+        // Pour les chefs avec filtre chantier actif : marquer les jours où le chef était sur un autre chantier
+        if (activeChantierFilter) {
+          // Trouver les ficheIds qui appartiennent au chantier filtré
+          const filteredChantierFicheIds = new Set(
+            filteredFiches.filter(f => f.chantier_id === activeChantierFilter).map(f => f.id)
+          );
+          
+          dayMap.forEach((jour, date) => {
+            // Vérifier si ce jour a des fiches_jours du chantier filtré
+            const joursForDate = fichesJoursFiltrees?.filter(fj => fj.date === date) || [];
+            const hasHoursOnFilteredSite = joursForDate.some(fj => 
+              filteredChantierFicheIds.has(fj.fiche_id) && (Number(fj.heures) > 0 || Number(fj.HNORM) > 0 || Number(fj.HI) > 0)
+            );
+            const hasAnyFicheOnFilteredSite = joursForDate.some(fj => filteredChantierFicheIds.has(fj.fiche_id));
+            
+            if (!hasHoursOnFilteredSite && jour.heuresNormales > 0) {
+              // Le chef a des heures mais pas sur le chantier filtré → il était sur un autre chantier
+              (jour as any).isOnOtherSite = true;
+              (jour as any).otherSiteCode = jour.chantierCode;
+              (jour as any).otherSiteNom = jour.chantierNom;
+              // Ne PAS marquer comme absent
+              jour.isAbsent = false;
+            } else if (!hasAnyFicheOnFilteredSite && jour.heuresNormales === 0) {
+              // Pas de fiche du tout sur le chantier filtré et 0h globalement
+              // C'est potentiellement un vrai absent, mais pour les chefs on est prudent
+              (jour as any).isOnOtherSite = false;
+            }
+          });
         }
-        return acc;
-      }, [] as typeof dailyDetails);
+        
+        deduplicatedDetails = Array.from(dayMap.values()).sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+      } else {
+        // NON-CHEFS: déduplication classique (garder l'entrée avec le plus d'heures)
+        deduplicatedDetails = dailyDetails.reduce((acc, jour) => {
+          const existingIdx = acc.findIndex(d => d.date === jour.date);
+          if (existingIdx === -1) {
+            acc.push(jour);
+            return acc;
+          }
+          const existing = acc[existingIdx];
+          const existingHasHours = existing.heuresNormales > 0 || existing.heuresIntemperies > 0;
+          const newHasHours = jour.heuresNormales > 0 || jour.heuresIntemperies > 0;
+
+          if (newHasHours && !existingHasHours) {
+            acc[existingIdx] = jour;
+          } else if (!newHasHours && !existingHasHours && jour.typeAbsence && !existing.typeAbsence) {
+            acc[existingIdx] = jour;
+          }
+          return acc;
+        }, [] as typeof dailyDetails);
+      }
 
       // 6. Calculer les totaux (heures normales uniquement, sans intempéries)
       const summary = {
@@ -826,14 +917,6 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         totalPaniers: deduplicatedDetails.filter(d => d.panier && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
         totalTrajets: deduplicatedDetails.filter(d => (d as any).codeTrajet && (d.heuresNormales > 0 || d.heuresIntemperies > 0)).length,
       };
-
-      // Récupérer isChef et role pour le salarié
-      const { data: chantiersData } = await supabase
-        .from("chantiers")
-        .select("chef_id")
-        .in("id", filteredFiches.map(f => f.chantier_id).filter(Boolean));
-
-      const isChef = chantiersData?.some(c => c.chef_id === salarieId) || false;
 
       // Récupérer le rôle depuis user_roles
       const { data: roleData } = await supabase
