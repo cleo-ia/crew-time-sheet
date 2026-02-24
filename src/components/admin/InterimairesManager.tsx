@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUtilisateursByRole, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useAffectations, useCreateAffectation } from "@/hooks/useAffectations";
+import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 
 export const InterimairesManager = () => {
@@ -27,6 +28,7 @@ export const InterimairesManager = () => {
   const { data: chefs = [] } = useUtilisateursByRole("chef");
   const { data: chantiers = [] } = useChantiers();
   const { data: affectations = [] } = useAffectations();
+  const { data: planningAffectations = {} } = usePlanningAffectationsCurrentWeek();
   const deleteUtilisateur = useDeleteUtilisateur();
   const createAffectation = useCreateAffectation();
 
@@ -42,6 +44,9 @@ export const InterimairesManager = () => {
   };
 
   const getAffectationForInterimaire = (interimaireId: string) => {
+    const planning = (planningAffectations as any)[interimaireId];
+    if (planning) return planning;
+    // fallback to legacy
     return affectations?.find((a) => a.macon_id === interimaireId && !a.date_fin);
   };
 
@@ -99,22 +104,21 @@ export const InterimairesManager = () => {
                     </TableCell>
                     <TableCell>
                       {affectation ? (
-                        <div className="space-y-1">
-                          <div className="font-medium">{affectation.chantier_nom || "N/A"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Chef: {affectation.chef_prenom && affectation.chef_nom
-                              ? `${affectation.chef_prenom} ${affectation.chef_nom}`
-                              : "Non assigné"}
-                          </div>
-                          {affectation.date_debut && (
+                        'chantier_nom' in affectation ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">{(affectation as any).chantier_nom}</div>
                             <div className="text-xs text-muted-foreground">
-                              Depuis le {new Date(affectation.date_debut).toLocaleDateString("fr-FR")}
+                              {(affectation as any).nb_jours}/5 jours planifiés
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="font-medium">{(affectation as any).chantier_nom || "N/A"}</div>
+                          </div>
+                        )
                       ) : (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                          Non affecté
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400">
+                          Non planifié
                         </Badge>
                       )}
                     </TableCell>

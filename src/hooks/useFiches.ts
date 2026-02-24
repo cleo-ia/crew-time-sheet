@@ -157,21 +157,28 @@ export const useFichesByStatus = (status: string, filters?: { semaine?: string; 
         return [];
       }
 
-      // If filtering by chef, first get the chantiers for that chef
+      // If filtering by chef, get chantiers from affectations_jours_chef (source of truth)
       let chantierIds: string[] | null = null;
       if (filters?.chef && filters.chef !== "all") {
-        const { data: chantiers, error: chantiersError } = await supabase
-          .from("chantiers")
-          .select("id")
-          .eq("chef_id", filters.chef)
-          .eq("entreprise_id", entrepriseId);
+        let affQuery = supabase
+          .from("affectations_jours_chef")
+          .select("chantier_id")
+          .eq("chef_id", filters.chef);
+        
+        // Si on a un filtre semaine, l'utiliser pour être plus précis
+        if (filters?.semaine && filters.semaine !== "all") {
+          affQuery = affQuery.eq("semaine", filters.semaine);
+        }
+        
+        const { data: chefAffectations, error: chantiersError } = await affQuery;
         
         if (chantiersError) {
           console.error("Error fetching chantiers for chef:", chantiersError);
           throw chantiersError;
         }
         
-        chantierIds = chantiers?.map(c => c.id) || [];
+        // Extraire les chantier_id uniques
+        chantierIds = [...new Set((chefAffectations || []).map(a => a.chantier_id))];
         
         // If chef has no chantiers, return empty array immediately
         if (chantierIds.length === 0) {
