@@ -613,33 +613,61 @@ async function syncEntreprise(
           const chantierVille = chantier?.ville || null
           let totalHeuresChefSec = 0
           
+          // Déterminer si ce chantier est le chantier SECONDAIRE du chef
+          // (pas son chantier_principal_id) → initialiser à 0h pour éviter les doublons
+          const chefPrincipalChantierId = chefPrincipalMap.get(employeId)
+          const isChantierSecondaire = chefPrincipalChantierId && chefPrincipalChantierId !== chantierId
+
           for (const jour of joursPlanning) {
-            const heuresJour = getHeuresForDay(jour) // 8h L-J, 7h V
-            totalHeuresChefSec += heuresJour
-            
-            await supabase
-              .from('fiches_jours')
-              .upsert({
-                fiche_id: ficheSecId,
-                date: jour,
-                heures: heuresJour,
-                HNORM: heuresJour,
-                HI: 0,
-                T: 1,
-                PA: true,
-                pause_minutes: 0,
-                code_trajet: "A_COMPLETER",
-                code_chantier_du_jour: chantierCode,
-                ville_du_jour: chantierVille,
-                repas_type: "PANIER",
-                entreprise_id: entrepriseId
-              }, { onConflict: 'fiche_id,date' })
+            if (isChantierSecondaire) {
+              // Chantier secondaire : 0h, 0 trajet, 0 panier
+              await supabase
+                .from('fiches_jours')
+                .upsert({
+                  fiche_id: ficheSecId,
+                  date: jour,
+                  heures: 0,
+                  HNORM: 0,
+                  HI: 0,
+                  T: 0,
+                  PA: false,
+                  pause_minutes: 0,
+                  code_trajet: null,
+                  code_chantier_du_jour: chantierCode,
+                  ville_du_jour: chantierVille,
+                  repas_type: null,
+                  entreprise_id: entrepriseId
+                }, { onConflict: 'fiche_id,date' })
+            } else {
+              // Chantier principal ou pas de chantier principal défini : heures normales
+              const heuresJour = getHeuresForDay(jour) // 8h L-J, 7h V
+              totalHeuresChefSec += heuresJour
+              
+              await supabase
+                .from('fiches_jours')
+                .upsert({
+                  fiche_id: ficheSecId,
+                  date: jour,
+                  heures: heuresJour,
+                  HNORM: heuresJour,
+                  HI: 0,
+                  T: 1,
+                  PA: true,
+                  pause_minutes: 0,
+                  code_trajet: "A_COMPLETER",
+                  code_chantier_du_jour: chantierCode,
+                  ville_du_jour: chantierVille,
+                  repas_type: "PANIER",
+                  entreprise_id: entrepriseId
+                }, { onConflict: 'fiche_id,date' })
+            }
           }
           
-          // Mettre à jour le total
+          // Mettre à jour le total (0 si chantier secondaire)
+          const finalTotal = isChantierSecondaire ? 0 : totalHeuresChefSec
           await supabase
             .from('fiches')
-            .update({ total_heures: totalHeuresChefSec, statut: 'BROUILLON' })
+            .update({ total_heures: finalTotal, statut: 'BROUILLON' })
             .eq('id', ficheSecId)
           
           // Créer les affectations_jours_chef pour le chef secondaire
@@ -657,14 +685,14 @@ async function syncEntreprise(
               }, { onConflict: 'macon_id,jour' })
           }
           
-          console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche créée avec ${totalHeuresChefSec}h sur ${joursPlanning.length} jours`)
+          console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche créée avec ${finalTotal}h sur ${joursPlanning.length} jours (chantier ${isChantierSecondaire ? 'secondaire → 0h' : 'principal → heures normales'})`)
         }
         
         results.push({ 
           employe_id: employeId, 
           employe_nom: employeNom, 
           action: 'created', 
-          details: `Chef secondaire - heures personnelles créées sur ${joursPlanning.length} jours` 
+          details: `Chef secondaire - ${isChantierSecondaire ? '0h (chantier secondaire)' : 'heures normales'} sur ${joursPlanning.length} jours` 
         })
         stats.created++
         continue
