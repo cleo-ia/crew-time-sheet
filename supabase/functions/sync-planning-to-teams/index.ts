@@ -320,15 +320,27 @@ async function syncEntreprise(
     
     allChefsPerChantier.set(chantierId, allChefIds)
     
-    // Utiliser is_chef_responsable si défini, sinon fallback
-    const selectedChef = responsableChef || (bestByDays ? { chefId: bestByDays.chefId, chefNom: bestByDays.chefNom } : null)
+    // ✅ CORRECTIF: Chef seul sur un chantier = TOUJOURS responsable (ignorer le flag)
+    // Le badge "Saisie" et le flag is_chef_responsable ne concernent que les chantiers multi-chefs
+    let selectedChef: { chefId: string; chefNom: string } | null = null
+    if (chefsMap.size === 1) {
+      // Un seul chef → automatiquement responsable, peu importe le flag
+      const [soloChefId, soloData] = [...chefsMap.entries()][0]
+      selectedChef = { chefId: soloChefId, chefNom: soloData.nom }
+      console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef unique = ${selectedChef.chefNom} (auto-responsable)`)
+    } else {
+      // Plusieurs chefs → utiliser is_chef_responsable, puis fallback jours
+      selectedChef = responsableChef || (bestByDays ? { chefId: bestByDays.chefId, chefNom: bestByDays.chefNom } : null)
+      if (selectedChef) {
+        if (responsableChef) {
+          console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef responsable (flag) = ${responsableChef.chefNom}`)
+        } else {
+          console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef responsable (fallback jours) = ${selectedChef.chefNom}`)
+        }
+      }
+    }
     if (selectedChef) {
       plannedChefByChantier.set(chantierId, selectedChef)
-      if (responsableChef) {
-        console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef responsable (flag) = ${responsableChef.chefNom}`)
-      } else {
-        console.log(`[sync-planning-to-teams] Chantier ${chantierId}: chef responsable (fallback jours) = ${selectedChef.chefNom}`)
-      }
     }
   }
 
