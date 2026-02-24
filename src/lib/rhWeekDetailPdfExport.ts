@@ -13,6 +13,7 @@ interface DayDetail {
   codeTrajet?: string | null;
   typeAbsence?: string | null;
   trajetPerso?: boolean;
+  siteDetails?: Array<{ code: string; nom: string; heures: number }>;
 }
 
 interface SignatureData {
@@ -324,17 +325,25 @@ export function generateWeekDetailPdf(
     doc.text(dateText, xPos + colWidths[0] / 2, y + 5, { align: "center" });
     xPos += colWidths[0];
 
-    // Chantier (nom + code en petit)
-    const nomDisplay = day.chantierNom || day.chantier;
-    const nomText = nomDisplay.length > 20 ? nomDisplay.substring(0, 18) + "..." : nomDisplay;
-    doc.text(nomText, xPos + 2, y + 3.5);
-    if (day.chantierCode) {
-      doc.setFontSize(5);
-      doc.setTextColor(120, 120, 120);
-      const codeText = day.chantierCode.length > 16 ? day.chantierCode.substring(0, 14) + "..." : day.chantierCode;
-      doc.text(codeText, xPos + 2, y + 6);
+    // Chantier (nom + code en petit, ou multi-site)
+    if (day.siteDetails && day.siteDetails.length > 1) {
+      const multiText = day.siteDetails.map(s => `${s.code || s.nom} (${s.heures}h)`).join(" + ");
+      const displayText = multiText.length > 28 ? multiText.substring(0, 26) + "..." : multiText;
+      doc.setFontSize(6);
+      doc.text(displayText, xPos + 2, y + 4.5);
       doc.setFontSize(7);
-      doc.setTextColor(50, 50, 50);
+    } else {
+      const nomDisplay = day.chantierNom || day.chantier;
+      const nomText = nomDisplay.length > 20 ? nomDisplay.substring(0, 18) + "..." : nomDisplay;
+      doc.text(nomText, xPos + 2, y + 3.5);
+      if (day.chantierCode) {
+        doc.setFontSize(5);
+        doc.setTextColor(120, 120, 120);
+        const codeText = day.chantierCode.length > 16 ? day.chantierCode.substring(0, 14) + "..." : day.chantierCode;
+        doc.text(codeText, xPos + 2, y + 6);
+        doc.setFontSize(7);
+        doc.setTextColor(50, 50, 50);
+      }
     }
     xPos += colWidths[1];
 

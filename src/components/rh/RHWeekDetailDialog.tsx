@@ -24,6 +24,7 @@ interface DayDetail {
   isOnOtherSite?: boolean;
   otherSiteCode?: string | null;
   otherSiteNom?: string | null;
+  siteDetails?: Array<{ code: string; nom: string; heures: number }>;
 }
 
 interface SignatureData {
@@ -132,6 +133,14 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
                             Sur {day.otherSiteCode || day.otherSiteNom || 'autre chantier'}
                           </Badge>
+                        ) : day.siteDetails && day.siteDetails.length > 1 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {day.siteDetails.map((site, sIdx) => (
+                              <Badge key={sIdx} variant="secondary" className="text-xs">
+                                {site.code || site.nom} ({site.heures}h)
+                              </Badge>
+                            ))}
+                          </div>
                         ) : (
                           <>
                             <span className="text-foreground font-medium">
