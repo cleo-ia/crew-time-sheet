@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, AlertTriangle, Star } from "lucide-react";
+import { X, AlertTriangle, Star, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { 
@@ -29,6 +29,9 @@ interface PlanningEmployeRowProps {
   isChef?: boolean; // L'employé est-il un chef de chantier?
   isChantierPrincipal?: boolean; // Est-ce le chantier principal du chef?
   onSetChantierPrincipal?: (employeId: string) => void; // Callback pour définir comme principal
+  isChefResponsable?: boolean; // Est-ce le chef responsable de ce chantier?
+  showChefResponsable?: boolean; // Afficher le badge responsable (2+ chefs sur le chantier)?
+  onSetChefResponsable?: (employeId: string) => void; // Callback pour définir comme responsable
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
@@ -83,6 +86,9 @@ export const PlanningEmployeRow = ({
   isChef,
   isChantierPrincipal,
   onSetChantierPrincipal,
+  isChefResponsable,
+  showChefResponsable,
+  onSetChefResponsable,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
@@ -155,6 +161,49 @@ export const PlanningEmployeRow = ({
                 <p className="text-xs">
                   <strong>Chantier secondaire</strong> : cliquer pour définir comme principal. 
                   Les heures ne sont pas comptées sur ce chantier.
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        
+        {/* Badge Chef Responsable — visible uniquement si 2+ chefs sur le chantier */}
+        {showChefResponsable && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 cursor-pointer transition-colors",
+                  isChefResponsable 
+                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-300 hover:bg-blue-100" 
+                    : "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isChefResponsable && onSetChefResponsable) {
+                    onSetChefResponsable(employe.id);
+                  }
+                }}
+              >
+                {isChefResponsable ? (
+                  <>
+                    <Crown className="h-2.5 w-2.5 mr-0.5 fill-current" />
+                    Responsable
+                  </>
+                ) : (
+                  "Secondaire"
+                )}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[220px]">
+              {isChefResponsable ? (
+                <p className="text-xs">
+                  <strong>Chef responsable</strong> : il gère la saisie des heures de l'équipe sur ce chantier.
+                </p>
+              ) : (
+                <p className="text-xs">
+                  <strong>Chef secondaire</strong> : cliquer pour le désigner comme responsable de l'équipe.
                 </p>
               )}
             </TooltipContent>
