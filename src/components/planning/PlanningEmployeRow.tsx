@@ -189,21 +189,21 @@ export const PlanningEmployeRow = ({
                 {isChefResponsable ? (
                   <>
                     <Crown className="h-2.5 w-2.5 mr-0.5 fill-current" />
-                    Responsable
+                    Saisie
                   </>
                 ) : (
-                  "Secondaire"
+                  "Saisie"
                 )}
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[220px]">
               {isChefResponsable ? (
                 <p className="text-xs">
-                  <strong>Chef responsable</strong> : il gère la saisie des heures de l'équipe sur ce chantier.
+                  Ce chef gère la saisie des heures de l'équipe sur ce chantier.
                 </p>
               ) : (
                 <p className="text-xs">
-                  <strong>Chef secondaire</strong> : cliquer pour le désigner comme responsable de l'équipe.
+                  Cliquer pour donner la main sur la saisie à ce chef.
                 </p>
               )}
             </TooltipContent>
