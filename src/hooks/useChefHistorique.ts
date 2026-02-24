@@ -20,15 +20,16 @@ export const useChefHistorique = (chefId: string | null) => {
     queryFn: async () => {
       if (!chefId) return [];
 
-      // 1. Récupérer les chantiers du chef
-      const { data: chantiers, error: chantiersError } = await supabase
-        .from("chantiers")
-        .select("id")
-        .eq("chef_id", chefId)
-        .eq("actif", true);
+      // 1. Récupérer tous les chantiers distincts via affectations_jours_chef (historique réel)
+      const { data: affectations, error: affError } = await supabase
+        .from("affectations_jours_chef")
+        .select("chantier_id")
+        .eq("chef_id", chefId);
 
-      if (chantiersError) throw chantiersError;
-      if (!chantiers || chantiers.length === 0) return [];
+      if (affError) throw affError;
+      if (!affectations || affectations.length === 0) return [];
+
+      const chantiers = [...new Set(affectations.map(a => a.chantier_id))].map(id => ({ id }));
 
       const chantierIds = chantiers.map(c => c.id);
 

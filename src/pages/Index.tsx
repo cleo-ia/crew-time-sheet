@@ -132,39 +132,65 @@ const Index = () => {
       if (userRole?.role === "chef") {
         setSelectedChef(utilisateur.id);
 
-        // Validation multi-tenant : vérifier que le chantier en session appartient à cette entreprise
+        // Validation multi-tenant : vérifier que le chantier en session est dans le planning
+        const semaineCourante = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "RRRR-'S'II");
+        
         if (selectedChantier) {
-          const { data: chantierValide } = await supabase
-            .from("chantiers")
-            .select("id")
-            .eq("id", selectedChantier)
-            .eq("chef_id", utilisateur.id)
-            .eq("actif", true)
+          // 1. Vérifier dans planning_affectations
+          const { data: planningValid } = await supabase
+            .from("planning_affectations")
+            .select("chantier_id")
+            .eq("employe_id", utilisateur.id)
             .eq("entreprise_id", entrepriseId)
-            .maybeSingle();
+            .eq("semaine", semaineCourante)
+            .eq("chantier_id", selectedChantier)
+            .limit(1);
 
-          if (chantierValide) {
-            // Le chantier en session est valide pour cette entreprise, on le garde
-            return;
-          } else {
-            // Le chantier n'appartient pas à cette entreprise → reset
-            setSelectedChantier("");
-            sessionStorage.removeItem('timesheet_selectedChantier');
+          if (planningValid && planningValid.length > 0) {
+            return; // chantier valide dans le planning
           }
+
+          // 2. Fallback : vérifier dans affectations_jours_chef
+          const { data: ajcValid } = await supabase
+            .from("affectations_jours_chef")
+            .select("chantier_id")
+            .eq("chef_id", utilisateur.id)
+            .eq("semaine", semaineCourante)
+            .eq("chantier_id", selectedChantier)
+            .limit(1);
+
+          if (ajcValid && ajcValid.length > 0) {
+            return; // chantier valide dans les affectations jours
+          }
+
+          // Le chantier n'est dans aucune source → reset
+          setSelectedChantier("");
+          sessionStorage.removeItem('timesheet_selectedChantier');
         }
 
-        // Choisir le plus récent parmi les chantiers actifs du chef dans cette entreprise
-        const { data: chantiers } = await supabase
-          .from("chantiers")
-          .select("id")
-          .eq("chef_id", utilisateur.id)
-          .eq("actif", true)
+        // Choisir le premier chantier du planning pour la semaine courante
+        const { data: planningChantiers } = await supabase
+          .from("planning_affectations")
+          .select("chantier_id")
+          .eq("employe_id", utilisateur.id)
           .eq("entreprise_id", entrepriseId)
-          .order("updated_at", { ascending: false })
+          .eq("semaine", semaineCourante)
           .limit(1);
 
-        if (chantiers && chantiers.length > 0) {
-          setSelectedChantier(chantiers[0].id);
+        if (planningChantiers && planningChantiers.length > 0) {
+          setSelectedChantier(planningChantiers[0].chantier_id);
+        } else {
+          // Fallback : affectations_jours_chef
+          const { data: ajcChantiers } = await supabase
+            .from("affectations_jours_chef")
+            .select("chantier_id")
+            .eq("chef_id", utilisateur.id)
+            .eq("semaine", semaineCourante)
+            .limit(1);
+
+          if (ajcChantiers && ajcChantiers.length > 0) {
+            setSelectedChantier(ajcChantiers[0].chantier_id);
+          }
         }
       }
     };
