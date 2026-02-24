@@ -322,5 +322,7 @@ export const useConducteurHistorique = (conducteurId: string | null) => {
       return Array.from(semaines.values());
     },
     enabled: !!conducteurId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };

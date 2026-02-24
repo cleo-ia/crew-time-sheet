@@ -124,8 +124,8 @@ export const ConducteurHistorique = ({ conducteurId }: ConducteurHistoriqueProps
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {finisseur.ficheJours.map((jour) => (
-                                <TableRow key={jour.date}>
+                              {finisseur.ficheJours.map((jour, idx) => (
+                                <TableRow key={`${jour.date}_${idx}`}>
                                   <TableCell className="font-medium">
                                     {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
                                   </TableCell>
@@ -170,8 +170,8 @@ export const ConducteurHistorique = ({ conducteurId }: ConducteurHistoriqueProps
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {finisseur.transportJours.map((jour) => (
-                                <TableRow key={jour.date}>
+                              {finisseur.transportJours.map((jour, idx) => (
+                                <TableRow key={`${jour.date}_${jour.immatriculation || idx}`}>
                                   <TableCell className="font-medium">
                                     {format(new Date(jour.date), "EEE dd/MM", { locale: fr })}
                                   </TableCell>
