@@ -112,25 +112,18 @@ export const ChantierSelector = ({ value, onChange, chefId, conducteurId, compac
     enabled: !!chefId,
   });
 
-  // Fusionner les chantiers (base + planning) et dédupliquer
+  // Planning = unique source de vérité quand semaine + chefId sont fournis
   const chantiers = (() => {
-    const baseList = chantiersBase || [];
     const planningList = chantiersPlanning || [];
     
-    const merged = new Map<string, typeof baseList[0]>();
+    // Quand semaine + chefId sont fournis, le planning est l'unique source
+    if (semaine && chefId) {
+      return planningList.sort((a, b) => a.nom.localeCompare(b.nom));
+    }
     
-    // Ajouter d'abord les chantiers de base
-    baseList.forEach(c => merged.set(c.id, c));
-    
-    // Ajouter les chantiers du planning
-    planningList.forEach(c => {
-      if (!merged.has(c.id)) {
-        merged.set(c.id, c);
-      }
-    });
-    
-    // Trier par nom
-    return Array.from(merged.values()).sort((a, b) => a.nom.localeCompare(b.nom));
+    // Sinon (conducteur, allowAll, pas de semaine) : source de base
+    const baseList = chantiersBase || [];
+    return baseList.sort((a, b) => a.nom.localeCompare(b.nom));
   })();
 
   const isLoading = isLoadingBase || isLoadingPlanning;
