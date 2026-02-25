@@ -357,7 +357,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     affectationsQuery = affectationsQuery.eq("conducteur_id", filters.conducteur);
   }
 
-  const { data: affectationsData } = await affectationsQuery;
+  const { data: affectationsData } = await affectationsQuery.limit(10000);
   const affectationsMap = new Map<string, Set<string>>();
   
   affectationsData?.forEach(aff => {
@@ -371,7 +371,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
     .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
-    .in("fiche_id", ficheIds);
+    .in("fiche_id", ficheIds)
+    .limit(10000);
 
   if (joursError) throw joursError;
 
