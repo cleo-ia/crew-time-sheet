@@ -1,51 +1,42 @@
 
 
-## Analyse de la correction proposée
+## Problème identifié
 
-### Les 2 endroits où `calculateHeuresSuppBTP` est appelé
+La requête `fiches_jours` dans `buildRHConsolidation` (`src/hooks/rhShared.ts`, ligne 371-374) ne spécifie aucune limite. Supabase applique sa limite par défaut de **1 000 lignes**.
 
-**1. `rhShared.ts` ligne 643** — dans `buildRHConsolidation` :
-```typescript
-const mois = filters.periode; // peut être "all"
-// ...
-calculateHeuresSuppBTP(detailJours, mois, ...)
-```
-→ `mois` peut valoir `"all"` → **bug actuel** : `NaN` → 0h supp.
+Avec "Toutes" les périodes sélectionnées, l'entreprise a **1 790 fiches_jours** éligibles. Les 790 dernières sont tronquées silencieusement, ce qui explique pourquoi certains employés comme Hafedh n'affichent qu'une partie de leurs heures (39h au lieu de 78h).
 
-**2. `useRHExport.ts` ligne 116** — dans `fetchRHExportData` :
-```typescript
-calculateHeuresSuppBTP(emp.detailJours, mois, ...)
-```
-→ `mois` vient du paramètre de `fetchRHExportData`, qui est lui aussi `filters.periode` → même bug potentiel.
+La vue détail (`useRHEmployeeDetail`) n'est pas affectée car elle charge les jours d'un seul salarié (quelques dizaines de lignes maximum).
 
-### La correction proposée
+## Correction
 
-Dans `calculateHeuresSuppBTP` (lignes 107 et 134) :
+### Fichier : `src/hooks/rhShared.ts`
+
+**1. Ligne 374** — Ajouter `.limit(10000)` à la requête `fiches_jours` :
 
 ```typescript
-// Ligne 107 : ajouter un flag
-const isAllPeriods = !moisCible || moisCible === "all";
-const [annee, mois] = isAllPeriods ? [0, 0] : moisCible.split("-").map(Number);
+// Avant :
+.in("fiche_id", ficheIds);
 
-// Ligne 134 : ne filtrer par mois que si une période spécifique est choisie
-if (!isAllPeriods && (lundiAnnee !== annee || lundiMois !== mois)) {
-  return;
-}
+// Après :
+.in("fiche_id", ficheIds)
+.limit(10000);
 ```
 
-### Pourquoi c'est sans risque
+**2. Ligne 346** — Même correction sur la requête `affectations_finisseurs_jours` (actuellement 14 lignes pour un finisseur, mais pourrait croître) :
 
-| Scénario | Avant correction | Après correction |
-|----------|-----------------|-----------------|
-| Période = `"2025-02"` | Filtre par mois ✅ | Filtre par mois ✅ (identique) |
-| Période = `"all"` | `NaN` → 0h supp ❌ | Pas de filtre mois → calcul correct ✅ |
-| Période = `undefined` | Crash potentiel | `isAllPeriods = true` → pas de filtre ✅ |
+```typescript
+// Avant :
+.select("finisseur_id, conducteur_id, date");
 
-- **Quand une période spécifique est sélectionnée** (cas normal, 99% du temps) : le code suit exactement le même chemin qu'avant, `isAllPeriods = false`, le filtre par mois s'applique. **Aucun changement de comportement.**
-- **Quand "Toutes" est sélectionné** : au lieu de planter sur `NaN`, toutes les semaines sont comptées. C'est le comportement attendu.
-- La proratisation du seuil, le calcul 25%/50%, l'arrondi — **rien ne change**.
+// Après (ajouter .limit en fin de chaîne, après les filtres existants) :
+// Ajouter .limit(10000) après la ligne 360
+```
 
-### Résumé
+### Détails techniques
 
-Correction de 2 lignes dans `calculateHeuresSuppBTP`, **zéro régression** sur le cas nominal (période spécifique). Le seul changement est que le cas `"all"` fonctionne correctement au lieu de retourner 0.
+- Supabase PostgREST applique par défaut `LIMIT 1000` quand aucun `.limit()` n'est spécifié
+- 10 000 est une limite raisonnable (un salarié = ~20 jours/mois × 50 salariés × 12 mois max = 12 000 lignes au maximum absolu)
+- Aucun changement de logique métier — la seule différence est que TOUTES les lignes sont désormais chargées
+- La vue détail et l'export Excel ne sont pas affectés (ils font des requêtes ciblées par salarié)
 
