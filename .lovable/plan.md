@@ -1,30 +1,12 @@
 
 
-## Correction du Problème #1 : `user_id` du chef secondaire
+## Correction : noms "Inconnu" dans les conversations
 
-### Le problème
+**Problème** : Dans `useMessages.ts` ligne 46, on cherche les auteurs avec `.in("id", authorIds)` mais `author_id` contient l'`auth.uid()` (UUID Supabase Auth), tandis que `utilisateurs.id` est l'ID interne. La jointure échoue → "Inconnu".
 
-Ligne 637 de `supabase/functions/sync-planning-to-teams/index.ts` :
+**Correction** dans `src/hooks/useMessages.ts` :
+1. Ligne 46 : `.in("id", authorIds)` → `.in("auth_user_id", authorIds)`
+2. Ligne 49 : `new Map(authors?.map((a) => [a.id, a])` → `new Map(authors?.map((a) => [a.auth_user_id, a])` pour que le lookup par `author_id` fonctionne
 
-```
-user_id: plannedChef?.chefId || employeId
-```
-
-Quand le système crée la fiche de Giovanni (chef secondaire), il met `user_id = Amine` (le chef Saisie) au lieu de `user_id = Giovanni`. La fiche de Giovanni porte donc le nom d'Amine comme "gestionnaire".
-
-### La correction
-
-Remplacer la ligne 637 par :
-
-```
-user_id: employeId
-```
-
-Puisque chaque chef gère ses propres heures de manière indépendante, la fiche doit porter l'identifiant du chef concerné, pas celui du chef responsable de la saisie.
-
-### Impact
-
-- Aucun risque fonctionnel : le conducteur et le RH utilisent `salarie_id` (qui est déjà correct) pour identifier le salarié
-- Les fiches existantes déjà créées avec le mauvais `user_id` ne seront pas corrigées rétroactivement (uniquement les nouvelles créations lors des prochaines syncs)
-- Redéploiement de la Edge Function nécessaire
+C'est une correction de 2 lignes, rien d'autre à changer.
 
