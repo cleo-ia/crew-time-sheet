@@ -1,59 +1,79 @@
 
 
-## Plan : Generation immediate de la fiche fantome a la creation d'une absence longue duree
+## Plan : Corriger la visibilite des fiches ghost (absences longue duree) dans la consolidation RH
 
-### Contexte
+### Probleme
 
-Actuellement, quand le RH cree une absence longue duree via le sheet, seule la ligne dans `absences_longue_duree` est inseree. Les fiches fantomes ne sont generees que par le cron `sync-planning-to-teams` le lundi suivant a 5h. Si l'absence commence en milieu de semaine (ex: mercredi S09), la semaine en cours est ratee.
+La requete principale dans `rhShared.ts` (ligne 205-237) utilise `chantiers!inner(...)` qui exclut toutes les fiches avec `chantier_id = NULL`. Les fiches ghost d'absences longue duree sont donc invisibles dans toute la chaine RH (consolidation, pre-export, export Excel, detail employe).
 
 ### Solution
 
-Apres l'insertion dans `absences_longue_duree`, generer immediatement la fiche fantome (fiche + fiches_jours) pour la semaine en cours si elle chevauche la date de debut de l'absence. La logique est identique a celle deja presente dans `sync-planning-to-teams` (lignes 1238-1310).
+Ajouter une deuxieme requete dans `buildRHConsolidation` pour recuperer les fiches ghost (`chantier_id IS NULL`) et les fusionner avec les fiches normales.
 
 ### Modifications
 
-**1. `src/hooks/useAbsencesLongueDuree.ts`** - Ajouter la logique de generation immediate dans `useCreateAbsenceLongueDuree`
+**1. `src/hooks/rhShared.ts` - `buildRHConsolidation()`**
 
-Apres le `supabase.from("absences_longue_duree").insert(...)`, enchainer avec :
-- Calculer la semaine courante via `getCurrentWeek()` de `src/lib/weekUtils.ts`
-- Calculer le lundi et vendredi de cette semaine
-- Verifier que l'absence chevauche la semaine (date_debut <= vendredi ET (date_fin null OU date_fin >= lundi))
-- Verifier qu'une fiche ghost n'existe pas deja (salarie_id + chantier_id IS NULL + semaine)
-- Si pas de doublon : creer la fiche (`statut: ENVOYE_RH`, `chantier_id: null`, `total_heures: 0`)
-- Creer les `fiches_jours` pour chaque jour Lun-Ven qui tombe dans la periode (0h, type_absence pre-qualifie, PA false)
+Apres la requete principale `fichesAvecChantier` (ligne 274), ajouter une requete complementaire :
 
-La logique replique exactement le bloc du sync (lignes 1238-1310) mais cote client.
+```typescript
+// Requete 2 : fiches ghost (absences longue duree, chantier_id = NULL)
+let fichesGhostQuery = supabase
+  .from("fiches")
+  .select(`id, semaine, statut, salarie_id, chantier_id, entreprise_id, ...`)
+  .is("chantier_id", null)
+  .in("statut", ["ENVOYE_RH", "AUTO_VALIDE", ...]);
 
-**2. Aucune autre modification necessaire**
-- Le cron du lundi continuera a gerer les semaines futures (S10+) comme avant
-- Le cron verifie deja `existingGhost` donc pas de doublon si la fiche a ete creee immediatement
-- Les RLS policies sur `fiches` et `fiches_jours` autorisent deja l'insertion via `user_has_access_to_entreprise` et `get_selected_entreprise_id`
+const { data: fichesGhost } = await fichesGhostQuery;
+```
+
+Fusionner `fichesAvecChantier` et `fichesGhost` dans `toutesLesFiches` (ligne 278).
+
+Pour les fiches ghost, les champs chantier (`code_chantier`, `ville`, etc.) seront `null` ou vides - adapter le mapping dans la boucle d'agregation (lignes 434+) pour gerer ce cas.
+
+**2. Adapter le mapping employe pour les fiches sans chantier**
+
+Dans la boucle `for (const [salarieId, fiches])` :
+- Si la fiche n'a pas de `chantiers` (ghost), utiliser un code chantier vide ou un libelle type "Absence LD"
+- Les `detailJours` auront `chantierCode: ""` et `chantierVille: ""`
+- Le `type_absence` sera deja renseigne dans `fiches_jours`
+
+**3. Bonus mineur : `useAbsencesLongueDuree.ts` - Aligner les champs avec le sync**
+
+Ajouter les champs manquants dans les `fiches_jours` crees par le hook client pour coherence avec le sync :
+- `HNORM: 0`, `HI: 0`, `T: 0`, `pause_minutes: 0`
+- `code_trajet: null`, `code_chantier_du_jour: null`, `ville_du_jour: null`, `repas_type: null`
+
+### Impact
+
+- La vue consolidee RH affichera le salarie en absence LD avec ses jours pre-qualifies
+- Le pre-export et l'export Excel incluront ces absences
+- Le detail employe montrera les jours d'absence avec le bon type
+- Aucun impact sur les fiches normales (avec chantier)
 
 ### Detail technique
 
 ```text
-Creation absence LD (ex: debut 26/02 = mercredi S09)
+buildRHConsolidation()
   |
   v
-Insert absences_longue_duree ─── OK
+Requete 1 : fiches avec chantier_id NOT NULL (inner join chantiers) ─── existant
   |
   v
-Semaine courante = 2026-S09 (lundi=24/02, vendredi=28/02)
+Requete 2 : fiches avec chantier_id IS NULL (ghost absences LD) ─── NOUVEAU
   |
   v
-26/02 <= 28/02 ? OUI → chevauche
+Fusion : toutesLesFiches = [...fichesAvecChantier, ...fichesGhost]
   |
   v
-Fiche ghost existe deja ? NON
+Filtrage par mois/semaine (identique)
   |
   v
-Creer fiche: salarie_id, chantier_id=NULL, semaine=2026-S09, statut=ENVOYE_RH
+Agregation par salarie : 
+  - Si fiche.chantier_id = null → chantierCode = "" (ou "ABS-LD")
+  - Les fiches_jours ont deja type_absence renseigne
   |
   v
-Creer fiches_jours pour: 26/02, 27/02, 28/02 (mer-ven)
-  avec type_absence=AT, heures=0, PA=false
-  |
-  v
-Lundi suivant (S10): sync-planning-to-teams genere S10 automatiquement
+Resultat : employe visible en RH avec absences pre-qualifiees
 ```
 
