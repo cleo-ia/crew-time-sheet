@@ -634,7 +634,7 @@ async function syncEntreprise(
               salarie_id: employeId,
               chantier_id: chantierId,
               semaine: currentWeek,
-              user_id: plannedChef?.chefId || employeId, // le chef responsable gère cette fiche
+              user_id: employeId, // chaque chef gère sa propre fiche indépendamment
               statut: 'BROUILLON',
               total_heures: 0,
               entreprise_id: entrepriseId
