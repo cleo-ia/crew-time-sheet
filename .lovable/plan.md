@@ -1,46 +1,30 @@
 
 
-## Problème
+## Correction du Problème #1 : `user_id` du chef secondaire
 
-Le badge "Principal/Secondaire" sur un chef multi-chantiers ne fonctionne qu'en sens unique : Secondaire → Principal. Un clic sur "Principal" ne fait rien car le code bloque explicitement l'action (`if (!isChantierPrincipal)`).
+### Le problème
 
-## Solution : Toggle bidirectionnel
+Ligne 637 de `supabase/functions/sync-planning-to-teams/index.ts` :
 
-### 1. Hook `useSetChantierPrincipal.ts` — Ajouter le support "unset"
-
-Ajouter un nouveau hook `useUnsetChantierPrincipal` (ou modifier l'existant) pour accepter `chantierId: string | null`. Quand `chantierId` est `null`, on met `chantier_principal_id = null` dans `utilisateurs`, ce qui retire le statut principal du chef et le repasse en mode "pas de chantier principal défini" (= tous ses chantiers sont équivalents).
-
-### 2. Composant `PlanningEmployeRow.tsx` — Débloquer le clic sur "Principal"
-
-Ligne 140 : retirer la condition `!isChantierPrincipal` pour permettre le clic dans les deux sens. Quand le badge est "Principal", le clic appellera un callback `onUnsetChantierPrincipal` qui mettra `chantier_principal_id` à `null`.
-
-### 3. Composant `PlanningChantierAccordion.tsx` — Passer le callback d'unset
-
-Ajouter la logique pour distinguer le clic "set principal" vs "unset principal" et appeler la mutation appropriée.
-
-### Détails techniques
-
-**`useSetChantierPrincipal.ts`** : Modifier pour accepter `chantierId: string | null`. Si `null`, on update `chantier_principal_id` à `null` et on ne touche pas à `chantiers.chef_id`. Toast adapté ("Chantier principal retiré").
-
-**`PlanningEmployeRow.tsx`** (ligne 138-143) :
-```tsx
-onClick={(e) => {
-  e.stopPropagation();
-  if (isChantierPrincipal && onSetChantierPrincipal) {
-    // Déjà principal → retirer le statut
-    onUnsetChantierPrincipal?.(employe.id);
-  } else if (!isChantierPrincipal && onSetChantierPrincipal) {
-    onSetChantierPrincipal(employe.id);
-  }
-}}
+```
+user_id: plannedChef?.chefId || employeId
 ```
 
-**Nouveau prop** `onUnsetChantierPrincipal` dans `PlanningEmployeRow` et `PlanningChantierAccordion`.
+Quand le système crée la fiche de Giovanni (chef secondaire), il met `user_id = Amine` (le chef Saisie) au lieu de `user_id = Giovanni`. La fiche de Giovanni porte donc le nom d'Amine comme "gestionnaire".
 
-**`PlanningChantierAccordion.tsx`** : Appeler `unsetChantierPrincipal({ employeId })` qui met `chantier_principal_id = null`.
+### La correction
+
+Remplacer la ligne 637 par :
+
+```
+user_id: employeId
+```
+
+Puisque chaque chef gère ses propres heures de manière indépendante, la fiche doit porter l'identifiant du chef concerné, pas celui du chef responsable de la saisie.
 
 ### Impact
 
-- Quand un chef n'a plus de `chantier_principal_id`, `isMultiChantierChef` sera `false` → les badges Principal/Secondaire disparaissent (comportement normal d'un chef mono-chantier ou sans principal défini).
-- La sync planning traitera ce chef comme n'ayant pas de distinction principal/secondaire (heures normales partout).
+- Aucun risque fonctionnel : le conducteur et le RH utilisent `salarie_id` (qui est déjà correct) pour identifier le salarié
+- Les fiches existantes déjà créées avec le mauvais `user_id` ne seront pas corrigées rétroactivement (uniquement les nouvelles créations lors des prochaines syncs)
+- Redéploiement de la Edge Function nécessaire
 
