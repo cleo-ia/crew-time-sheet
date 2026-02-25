@@ -274,8 +274,59 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   const { data: fichesAvecChantier, error: ficheError } = await fichesQuery;
   if (ficheError) throw ficheError;
 
-  // ✅ Plus de fichesFinisseurs - toutes les fiches ont un chantier_id
-  const toutesLesFiches = fichesAvecChantier || [];
+  // Requête 2 : fiches ghost (absences longue durée, chantier_id = NULL)
+  let fichesGhostQuery = supabase
+    .from("fiches")
+    .select(`
+      id,
+      semaine,
+      statut,
+      salarie_id,
+      chantier_id,
+      entreprise_id,
+      absences_export_override,
+      trajets_export_override,
+      absences_baseline,
+      trajets_baseline,
+      acomptes,
+      prets,
+      commentaire_rh,
+      notes_paie,
+      total_saisie,
+      saisie_du_mois,
+      commentaire_saisie,
+      regularisation_m1_export,
+      autres_elements_export
+    `)
+    .is("chantier_id", null)
+    .not("salarie_id", "is", null)
+    .in("statut", filters.includeCloture 
+      ? ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]
+      : ["ENVOYE_RH", "AUTO_VALIDE"]);
+
+  if (entrepriseId) {
+    fichesGhostQuery = fichesGhostQuery.eq("entreprise_id", entrepriseId);
+  }
+
+  const { data: fichesGhost, error: ghostError } = await fichesGhostQuery;
+  if (ghostError) {
+    console.warn("[RH Consolidation] Erreur fiches ghost:", ghostError);
+  }
+
+  // Fusionner fiches normales et fiches ghost
+  // Pour les ghost, ajouter un objet chantiers vide pour compatibilité
+  const fichesGhostNormalized = (fichesGhost || []).map(f => ({
+    ...f,
+    chantiers: {
+      code_chantier: null,
+      ville: null,
+      conducteur_id: null,
+      chef_id: null,
+      entreprise_id: f.entreprise_id,
+    }
+  }));
+
+  const toutesLesFiches = [...(fichesAvecChantier || []), ...fichesGhostNormalized];
   const fichesDuMois = toutesLesFiches.filter(fiche => {
     if (!fiche.semaine) return false;
     try {
