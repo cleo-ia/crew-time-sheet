@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      absences_longue_duree: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_debut: string
+          date_fin: string | null
+          entreprise_id: string
+          id: string
+          motif: string | null
+          salarie_id: string
+          type_absence: Database["public"]["Enums"]["type_absence"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_debut: string
+          date_fin?: string | null
+          entreprise_id: string
+          id?: string
+          motif?: string | null
+          salarie_id: string
+          type_absence: Database["public"]["Enums"]["type_absence"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_debut?: string
+          date_fin?: string | null
+          entreprise_id?: string
+          id?: string
+          motif?: string | null
+          salarie_id?: string
+          type_absence?: Database["public"]["Enums"]["type_absence"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absences_longue_duree_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "absences_longue_duree_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "absences_longue_duree_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       achats_chantier: {
         Row: {
           chantier_id: string
