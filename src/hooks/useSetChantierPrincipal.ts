@@ -15,7 +15,7 @@ export const useSetChantierPrincipal = () => {
       chantierId 
     }: { 
       employeId: string; 
-      chantierId: string;
+      chantierId: string | null;
     }) => {
       // 1. Mettre à jour le chantier principal de l'utilisateur
       const { error: userError } = await supabase
@@ -25,21 +25,23 @@ export const useSetChantierPrincipal = () => {
 
       if (userError) throw userError;
 
-      // 2. Si le chantier n'a pas de chef, associer ce chef
-      const { data: chantier } = await supabase
-        .from("chantiers")
-        .select("chef_id")
-        .eq("id", chantierId)
-        .single();
-
-      if (!chantier?.chef_id) {
-        await supabase
+      // 2. Si on définit un chantier principal et qu'il n'a pas de chef, associer ce chef
+      if (chantierId) {
+        const { data: chantier } = await supabase
           .from("chantiers")
-          .update({ chef_id: employeId })
-          .eq("id", chantierId);
+          .select("chef_id")
+          .eq("id", chantierId)
+          .single();
+
+        if (!chantier?.chef_id) {
+          await supabase
+            .from("chantiers")
+            .update({ chef_id: employeId })
+            .eq("id", chantierId);
+        }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       // Invalider les queries pour rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
       queryClient.invalidateQueries({ queryKey: ["all-employes"] });
@@ -47,9 +49,15 @@ export const useSetChantierPrincipal = () => {
       queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
       queryClient.invalidateQueries({ queryKey: ["chantiers"] });
       
-      toast.success("Chantier principal mis à jour", {
-        description: "Les heures du chef seront comptées sur ce chantier.",
-      });
+      if (variables.chantierId) {
+        toast.success("Chantier principal mis à jour", {
+          description: "Les heures du chef seront comptées sur ce chantier.",
+        });
+      } else {
+        toast.success("Chantier principal retiré", {
+          description: "Le chef n'a plus de distinction principal/secondaire.",
+        });
+      }
     },
     onError: (error: Error) => {
       toast.error("Erreur lors de la mise à jour", {
