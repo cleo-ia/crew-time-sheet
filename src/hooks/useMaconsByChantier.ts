@@ -189,6 +189,8 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
        console.log(`[useMaconsByChantier] ${finalMaconIds.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine} (chef: ${chefId || 'tous'})`);
 
        // ÉTAPE 3 : Charger les utilisateurs pour ces macon_id (hors chef déjà ajouté)
+       // ✅ CORRECTIF: Exclure aussi les autres chefs (role_metier = 'chef')
+       // Chaque chef gère ses propres heures indépendamment via sa propre fiche
        const maconIdsToLoad = finalMaconIds.filter(id => id !== chefId);
 
       if (maconIdsToLoad.length > 0) {
@@ -203,9 +205,11 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         }
 
         // Pour chaque maçon, récupérer fiche + signature
+        // ✅ CORRECTIF: Filtrer les autres chefs — chaque chef gère ses propres heures
         if (macons) {
+          const nonChefMacons = macons.filter(m => m.role_metier !== 'chef');
           const maconsWithStatus = await Promise.all(
-            macons.map(async (macon) => {
+            nonChefMacons.map(async (macon) => {
               // Récupérer la fiche pour ce maçon cette semaine
               const { data: fiche } = await supabase
                 .from("fiches")
