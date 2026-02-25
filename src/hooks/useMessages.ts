@@ -45,10 +45,10 @@ export const useMessages = (conversationId: string | null) => {
       const authorIds = [...new Set(data.map((m) => m.author_id))];
       const { data: authors } = await supabase
         .from("utilisateurs")
-        .select("id, nom, prenom, role_metier")
-        .in("id", authorIds);
+        .select("id, nom, prenom, role_metier, auth_user_id")
+        .in("auth_user_id", authorIds);
 
-      const authorsMap = new Map(authors?.map((a) => [a.id, a]) || []);
+      const authorsMap = new Map(authors?.map((a) => [a.auth_user_id, a]) || []);
 
       return data.map((m) => ({
         ...m,
