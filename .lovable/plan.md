@@ -1,42 +1,59 @@
 
 
-## Problème identifié
+## Plan : Generation immediate de la fiche fantome a la creation d'une absence longue duree
 
-La requête `fiches_jours` dans `buildRHConsolidation` (`src/hooks/rhShared.ts`, ligne 371-374) ne spécifie aucune limite. Supabase applique sa limite par défaut de **1 000 lignes**.
+### Contexte
 
-Avec "Toutes" les périodes sélectionnées, l'entreprise a **1 790 fiches_jours** éligibles. Les 790 dernières sont tronquées silencieusement, ce qui explique pourquoi certains employés comme Hafedh n'affichent qu'une partie de leurs heures (39h au lieu de 78h).
+Actuellement, quand le RH cree une absence longue duree via le sheet, seule la ligne dans `absences_longue_duree` est inseree. Les fiches fantomes ne sont generees que par le cron `sync-planning-to-teams` le lundi suivant a 5h. Si l'absence commence en milieu de semaine (ex: mercredi S09), la semaine en cours est ratee.
 
-La vue détail (`useRHEmployeeDetail`) n'est pas affectée car elle charge les jours d'un seul salarié (quelques dizaines de lignes maximum).
+### Solution
 
-## Correction
+Apres l'insertion dans `absences_longue_duree`, generer immediatement la fiche fantome (fiche + fiches_jours) pour la semaine en cours si elle chevauche la date de debut de l'absence. La logique est identique a celle deja presente dans `sync-planning-to-teams` (lignes 1238-1310).
 
-### Fichier : `src/hooks/rhShared.ts`
+### Modifications
 
-**1. Ligne 374** — Ajouter `.limit(10000)` à la requête `fiches_jours` :
+**1. `src/hooks/useAbsencesLongueDuree.ts`** - Ajouter la logique de generation immediate dans `useCreateAbsenceLongueDuree`
 
-```typescript
-// Avant :
-.in("fiche_id", ficheIds);
+Apres le `supabase.from("absences_longue_duree").insert(...)`, enchainer avec :
+- Calculer la semaine courante via `getCurrentWeek()` de `src/lib/weekUtils.ts`
+- Calculer le lundi et vendredi de cette semaine
+- Verifier que l'absence chevauche la semaine (date_debut <= vendredi ET (date_fin null OU date_fin >= lundi))
+- Verifier qu'une fiche ghost n'existe pas deja (salarie_id + chantier_id IS NULL + semaine)
+- Si pas de doublon : creer la fiche (`statut: ENVOYE_RH`, `chantier_id: null`, `total_heures: 0`)
+- Creer les `fiches_jours` pour chaque jour Lun-Ven qui tombe dans la periode (0h, type_absence pre-qualifie, PA false)
 
-// Après :
-.in("fiche_id", ficheIds)
-.limit(10000);
+La logique replique exactement le bloc du sync (lignes 1238-1310) mais cote client.
+
+**2. Aucune autre modification necessaire**
+- Le cron du lundi continuera a gerer les semaines futures (S10+) comme avant
+- Le cron verifie deja `existingGhost` donc pas de doublon si la fiche a ete creee immediatement
+- Les RLS policies sur `fiches` et `fiches_jours` autorisent deja l'insertion via `user_has_access_to_entreprise` et `get_selected_entreprise_id`
+
+### Detail technique
+
+```text
+Creation absence LD (ex: debut 26/02 = mercredi S09)
+  |
+  v
+Insert absences_longue_duree ─── OK
+  |
+  v
+Semaine courante = 2026-S09 (lundi=24/02, vendredi=28/02)
+  |
+  v
+26/02 <= 28/02 ? OUI → chevauche
+  |
+  v
+Fiche ghost existe deja ? NON
+  |
+  v
+Creer fiche: salarie_id, chantier_id=NULL, semaine=2026-S09, statut=ENVOYE_RH
+  |
+  v
+Creer fiches_jours pour: 26/02, 27/02, 28/02 (mer-ven)
+  avec type_absence=AT, heures=0, PA=false
+  |
+  v
+Lundi suivant (S10): sync-planning-to-teams genere S10 automatiquement
 ```
-
-**2. Ligne 346** — Même correction sur la requête `affectations_finisseurs_jours` (actuellement 14 lignes pour un finisseur, mais pourrait croître) :
-
-```typescript
-// Avant :
-.select("finisseur_id, conducteur_id, date");
-
-// Après (ajouter .limit en fin de chaîne, après les filtres existants) :
-// Ajouter .limit(10000) après la ligne 360
-```
-
-### Détails techniques
-
-- Supabase PostgREST applique par défaut `LIMIT 1000` quand aucun `.limit()` n'est spécifié
-- 10 000 est une limite raisonnable (un salarié = ~20 jours/mois × 50 salariés × 12 mois max = 12 000 lignes au maximum absolu)
-- Aucun changement de logique métier — la seule différence est que TOUTES les lignes sont désormais chargées
-- La vue détail et l'export Excel ne sont pas affectés (ils font des requêtes ciblées par salarié)
 
