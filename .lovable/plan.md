@@ -1,26 +1,51 @@
 
 
-## Confirmation
+## Analyse de la correction proposée
 
-Oui, la correction ligne 729 résoudra le problème. Voici pourquoi :
+### Les 2 endroits où `calculateHeuresSuppBTP` est appelé
 
-**Situation actuelle (ligne 729) :**
+**1. `rhShared.ts` ligne 643** — dans `buildRHConsolidation` :
 ```typescript
-if (filters.periode && (!filters.semaine || filters.semaine === "all")) {
+const mois = filters.periode; // peut être "all"
+// ...
+calculateHeuresSuppBTP(detailJours, mois, ...)
+```
+→ `mois` peut valoir `"all"` → **bug actuel** : `NaN` → 0h supp.
+
+**2. `useRHExport.ts` ligne 116** — dans `fetchRHExportData` :
+```typescript
+calculateHeuresSuppBTP(emp.detailJours, mois, ...)
+```
+→ `mois` vient du paramètre de `fetchRHExportData`, qui est lui aussi `filters.periode` → même bug potentiel.
+
+### La correction proposée
+
+Dans `calculateHeuresSuppBTP` (lignes 107 et 134) :
+
+```typescript
+// Ligne 107 : ajouter un flag
+const isAllPeriods = !moisCible || moisCible === "all";
+const [annee, mois] = isAllPeriods ? [0, 0] : moisCible.split("-").map(Number);
+
+// Ligne 134 : ne filtrer par mois que si une période spécifique est choisie
+if (!isAllPeriods && (lundiAnnee !== annee || lundiMois !== mois)) {
+  return;
+}
 ```
 
-Quand `filters.periode = "all"` (sélection "Toutes"), le code entre dans le bloc, parse `"all".split("-")` → `[NaN, NaN]`, ce qui crée des dates invalides → **tous les jours sont exclus** → 0h affiché.
+### Pourquoi c'est sans risque
 
-**Après correction :**
-```typescript
-if (filters.periode && filters.periode !== "all" && (!filters.semaine || filters.semaine === "all")) {
-```
+| Scénario | Avant correction | Après correction |
+|----------|-----------------|-----------------|
+| Période = `"2025-02"` | Filtre par mois ✅ | Filtre par mois ✅ (identique) |
+| Période = `"all"` | `NaN` → 0h supp ❌ | Pas de filtre mois → calcul correct ✅ |
+| Période = `undefined` | Crash potentiel | `isAllPeriods = true` → pas de filtre ✅ |
 
-Quand `filters.periode = "all"`, la condition est court-circuitée → `fichesJoursFiltrees` garde **tous les jours** sans filtre calendaire → les 13 jours d'Amadeu (S06 + S07 + S08) s'afficheront correctement dans le détail jour par jour avec :
+- **Quand une période spécifique est sélectionnée** (cas normal, 99% du temps) : le code suit exactement le même chemin qu'avant, `isAllPeriods = false`, le filtre par mois s'applique. **Aucun changement de comportement.**
+- **Quand "Toutes" est sélectionné** : au lieu de planter sur `NaN`, toutes les semaines sont comptées. C'est le comportement attendu.
+- La proratisation du seuil, le calcul 25%/50%, l'arrondi — **rien ne change**.
 
-- **S06** : 5 jours, 39h, paniers ✓, trajets ✓
-- **S07** : 5 jours, 39h, paniers ✓, trajets ✓
-- **S08** : 3 jours (16-18 fév), 24h + les 2 jours MAILLARD existants
+### Résumé
 
-Correction d'une seule ligne, aucun effet de bord.
+Correction de 2 lignes dans `calculateHeuresSuppBTP`, **zéro régression** sur le cas nominal (période spécifique). Le seul changement est que le cas `"all"` fonctionne correctement au lieu de retourner 0.
 
