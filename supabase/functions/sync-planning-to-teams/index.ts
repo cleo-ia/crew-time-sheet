@@ -1131,6 +1131,8 @@ async function syncEntreprise(
   const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
   // deno-lint-ignore no-explicit-any
   const orphanFiches = (allFichesS || []).filter((f: any) => {
+    // ✅ Skip fiches sans chantier (absences longue durée)
+    if (!f.chantier_id) return false
     const key = `${f.salarie_id}|${f.chantier_id}`
     if (validEmployeChantierFromPlanning.has(key)) return false
     if (STATUTS_PROTEGES_ORPHAN.includes(f.statut)) {
@@ -1183,6 +1185,132 @@ async function syncEntreprise(
   }
 
   console.log(`[sync-planning-to-teams] ${orphanDeletedCount} fiche(s) orpheline(s) supprimée(s)`)
+
+  // ========================================================================
+  // ABSENCES LONGUE DURÉE: Générer automatiquement des fiches "ghost"
+  // pour les salariés en absence longue durée (AT, AM, congé parental, etc.)
+  // Fiches sans chantier, 0h, type_absence pré-qualifié, statut ENVOYE_RH
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase absences longue durée...`)
+
+  const mondayOfCurrentWeek = parseISOWeek(currentWeek)
+  const fridayOfCurrentWeek = new Date(mondayOfCurrentWeek)
+  fridayOfCurrentWeek.setDate(mondayOfCurrentWeek.getDate() + 4)
+  const mondayStr = mondayOfCurrentWeek.toISOString().split('T')[0]
+  const fridayStr = fridayOfCurrentWeek.toISOString().split('T')[0]
+
+  // Récupérer les absences longue durée actives pour cette semaine
+  const { data: absencesLD, error: absLDError } = await supabase
+    .from('absences_longue_duree')
+    .select('*, salarie:utilisateurs!absences_longue_duree_salarie_id_fkey(id, prenom, nom)')
+    .eq('entreprise_id', entrepriseId)
+    .lte('date_debut', fridayStr) // Commence avant ou pendant la semaine
+    .or(`date_fin.is.null,date_fin.gte.${mondayStr}`) // Pas encore terminée ou se termine pendant/après la semaine
+
+  if (absLDError) {
+    console.error(`[sync-planning-to-teams] Erreur récupération absences longue durée:`, absLDError)
+  }
+
+  let absLDCreated = 0
+  // deno-lint-ignore no-explicit-any
+  for (const absence of (absencesLD || []) as any[]) {
+    const salarieId = absence.salarie_id
+    const salarieNom = `${absence.salarie?.prenom || ''} ${absence.salarie?.nom || ''}`.trim() || salarieId
+    const typeAbsence = absence.type_absence
+    const absDateDebut = new Date(absence.date_debut)
+    const absDateFin = absence.date_fin ? new Date(absence.date_fin) : null
+
+    // Vérifier si une fiche ghost existe déjà pour ce salarié cette semaine (chantier_id = NULL)
+    const { data: existingGhost } = await supabase
+      .from('fiches')
+      .select('id')
+      .eq('salarie_id', salarieId)
+      .is('chantier_id', null)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .maybeSingle()
+
+    if (existingGhost) {
+      console.log(`[sync-planning-to-teams] Fiche absence LD déjà existante pour ${salarieNom} (${typeAbsence})`)
+      continue
+    }
+
+    // Calculer les jours d'absence dans la semaine (Lun-Ven)
+    const joursAbsence: string[] = []
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mondayOfCurrentWeek)
+      d.setDate(mondayOfCurrentWeek.getDate() + i)
+      const dateStr = d.toISOString().split('T')[0]
+      // Le jour doit être >= date_debut et <= date_fin (ou pas de date_fin)
+      if (d >= absDateDebut && (!absDateFin || d <= absDateFin)) {
+        joursAbsence.push(dateStr)
+      }
+    }
+
+    if (joursAbsence.length === 0) {
+      console.log(`[sync-planning-to-teams] Aucun jour d'absence LD pour ${salarieNom} cette semaine`)
+      continue
+    }
+
+    console.log(`[sync-planning-to-teams] Création fiche absence LD: ${salarieNom} (${typeAbsence}) - ${joursAbsence.length} jour(s)`)
+
+    // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
+    const { data: newFiche, error: ficheError } = await supabase
+      .from('fiches')
+      .insert({
+        salarie_id: salarieId,
+        chantier_id: null,
+        semaine: currentWeek,
+        user_id: null,
+        statut: 'ENVOYE_RH',
+        total_heures: 0,
+        entreprise_id: entrepriseId
+      })
+      .select('id')
+      .single()
+
+    if (ficheError) {
+      console.error(`[sync-planning-to-teams] Erreur création fiche absence LD pour ${salarieNom}:`, ficheError)
+      continue
+    }
+
+    // Créer les fiches_jours avec 0h et type_absence pré-qualifié
+    for (const jour of joursAbsence) {
+      const { error: jourError } = await supabase
+        .from('fiches_jours')
+        .upsert({
+          fiche_id: newFiche.id,
+          date: jour,
+          heures: 0,
+          HNORM: 0,
+          HI: 0,
+          T: 0,
+          PA: false,
+          pause_minutes: 0,
+          type_absence: typeAbsence,
+          code_trajet: null,
+          code_chantier_du_jour: null,
+          ville_du_jour: null,
+          repas_type: null,
+          entreprise_id: entrepriseId
+        }, { onConflict: 'fiche_id,date' })
+
+      if (jourError) {
+        console.error(`[sync-planning-to-teams] Erreur création fiche_jour absence LD:`, jourError)
+      }
+    }
+
+    results.push({
+      employe_id: salarieId,
+      employe_nom: salarieNom,
+      action: 'created',
+      details: `Absence longue durée (${typeAbsence}) - ${joursAbsence.length} jour(s)`
+    })
+    absLDCreated++
+    stats.created++
+  }
+
+  console.log(`[sync-planning-to-teams] ${absLDCreated} fiche(s) absence longue durée créée(s)`)
 
   return { results, stats }
 }

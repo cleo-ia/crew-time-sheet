@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck, Calendar } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,7 @@ import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog
 import { RHModificationsTab } from "@/components/rh/RHModificationsTab";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesRHSheet } from "@/components/conges/CongesRHSheet";
+import { AbsencesLongueDureeSheet } from "@/components/conges/AbsencesLongueDureeSheet";
 import { useDemandesEnAttenteRH } from "@/hooks/useDemandesCongesRH";
 import { VentilationRecapChantier } from "@/components/rh/VentilationRecapChantier";
 import { VentilationOuvrier } from "@/components/rh/VentilationOuvrier";
@@ -53,6 +54,7 @@ const ConsultationRH = () => {
   const [showConversation, setShowConversation] = useState(false);
   const [showInterimaireExport, setShowInterimaireExport] = useState(false);
   const [showConges, setShowConges] = useState(false);
+  const [showAbsencesLD, setShowAbsencesLD] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [entrepriseId, setEntrepriseId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
@@ -230,6 +232,10 @@ const ConsultationRH = () => {
         actions={
           <div className="flex flex-col gap-2 items-end">
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setShowAbsencesLD(true)}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Absences longue durée
+              </Button>
               <CongesButton
                 onClick={() => setShowConges(true)}
                 pendingCount={nbCongesEnAttente}
@@ -457,11 +463,18 @@ const ConsultationRH = () => {
       />
 
       {entrepriseId && (
-        <CongesRHSheet
-          open={showConges}
-          onOpenChange={setShowConges}
-          entrepriseId={entrepriseId}
-        />
+        <>
+          <CongesRHSheet
+            open={showConges}
+            onOpenChange={setShowConges}
+            entrepriseId={entrepriseId}
+          />
+          <AbsencesLongueDureeSheet
+            open={showAbsencesLD}
+            onOpenChange={setShowAbsencesLD}
+            entrepriseId={entrepriseId}
+          />
+        </>
       )}
       </div>
     </PageLayout>
