@@ -726,7 +726,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       // 🔥 NOUVEAU : Filtrer les jours par mois calendaire
       let fichesJoursFiltrees = fichesJours;
 
-      if (filters.periode && (!filters.semaine || filters.semaine === "all")) {
+      if (filters.periode && filters.periode !== "all" && (!filters.semaine || filters.semaine === "all")) {
         const [year, month] = filters.periode.split("-").map(Number);
         const dateDebut = startOfMonth(new Date(year, month - 1));
         const dateFin = endOfMonth(new Date(year, month - 1));
