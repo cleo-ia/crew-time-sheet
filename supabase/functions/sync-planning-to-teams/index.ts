@@ -540,6 +540,44 @@ async function syncEntreprise(
   
   console.log(`[sync-planning-to-teams] ${chefPrincipalMap.size} chef(s) avec chantier principal défini`)
 
+  // ========================================================================
+  // AUTO-ASSIGN chantier_principal_id pour les chefs mono-chantier
+  // Si un chef n'est affecté qu'à un seul chantier dans le planning,
+  // on force automatiquement son chantier_principal_id sur ce chantier.
+  // ========================================================================
+  const chantiersByChef = new Map<string, Set<string>>()
+  for (const [chantierId, chefsMap] of chefDaysPerChantier) {
+    for (const [chefId] of chefsMap) {
+      if (!chantiersByChef.has(chefId)) {
+        chantiersByChef.set(chefId, new Set())
+      }
+      chantiersByChef.get(chefId)!.add(chantierId)
+    }
+  }
+
+  for (const [chefId, chantierSet] of chantiersByChef) {
+    if (chantierSet.size === 1) {
+      const uniqueChantierId = [...chantierSet][0]
+      const currentPrincipal = chefPrincipalMap.get(chefId)
+      
+      if (currentPrincipal !== uniqueChantierId) {
+        console.log(`[sync-planning-to-teams] Chef mono-chantier ${chefId}: auto-assign chantier_principal_id = ${uniqueChantierId}`)
+        
+        const { error: updateError } = await supabase
+          .from('utilisateurs')
+          .update({ chantier_principal_id: uniqueChantierId })
+          .eq('id', chefId)
+        
+        if (updateError) {
+          console.error(`[sync-planning-to-teams] Erreur auto-assign chantier_principal_id:`, updateError)
+        } else {
+          // Mettre à jour le map local
+          chefPrincipalMap.set(chefId, uniqueChantierId)
+        }
+      }
+    }
+  }
+
   // 4. Traiter chaque employé du planning
   for (const [key, affectations] of planningByEmployeChantier) {
     const [employeId, chantierId] = key.split('|')
