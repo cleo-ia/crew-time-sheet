@@ -137,7 +137,7 @@ export const PlanningEmployeRow = ({
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!isChantierPrincipal && onSetChantierPrincipal) {
+                  if (onSetChantierPrincipal) {
                     onSetChantierPrincipal(employe.id);
                   }
                 }}
@@ -155,7 +155,7 @@ export const PlanningEmployeRow = ({
             <TooltipContent side="top" className="max-w-[220px]">
               {isChantierPrincipal ? (
                 <p className="text-xs">
-                  <strong>Chantier principal</strong> : les heures du chef sont comptées ici.
+                  <strong>Chantier principal</strong> : les heures du chef sont comptées ici. Cliquer pour retirer.
                 </p>
               ) : (
                 <p className="text-xs">

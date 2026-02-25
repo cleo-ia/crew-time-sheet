@@ -534,9 +534,16 @@ export const PlanningChantierAccordion = ({
                       conflictDays={conflictsByEmploye.get(employe.id)}
                       isChef={isMultiChantierChef}
                       isChantierPrincipal={isChantierPrincipal}
-                      onSetChantierPrincipal={(empId) => 
-                        setChantierPrincipal({ employeId: empId, chantierId: chantier.id })
-                      }
+                      onSetChantierPrincipal={(empId) => {
+                        const currentPrincipal = chefsWithPrincipal?.get(empId);
+                        if (currentPrincipal === chantier.id) {
+                          // Déjà principal → retirer le statut
+                          setChantierPrincipal({ employeId: empId, chantierId: null });
+                        } else {
+                          // Secondaire → définir comme principal
+                          setChantierPrincipal({ employeId: empId, chantierId: chantier.id });
+                        }
+                      }}
                       isChefResponsable={isChefResponsable}
                       showChefResponsable={showChefResponsable}
                       onSetChefResponsable={(empId) =>
