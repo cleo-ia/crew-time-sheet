@@ -188,8 +188,19 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
        finalMaconIds = [...new Set((joursAffectations || []).map(a => a.macon_id))];
        console.log(`[useMaconsByChantier] ${finalMaconIds.length} employés trouvés dans affectations_jours_chef pour semaine ${semaine} (chef: ${chefId || 'tous'})`);
 
+       // Récupérer tous les chef_id connus pour ce chantier/semaine (filet de sécurité)
+       const { data: chefIdsData } = await supabase
+         .from("affectations_jours_chef")
+         .select("chef_id")
+         .eq("chantier_id", chantierId)
+         .eq("semaine", semaine)
+         .eq("entreprise_id", entrepriseId!);
+
+       const knownChefIds = new Set(
+         (chefIdsData || []).map(a => a.chef_id)
+       );
+
        // ÉTAPE 3 : Charger les utilisateurs pour ces macon_id (hors chef déjà ajouté)
-       // ✅ CORRECTIF: Exclure aussi les autres chefs (role_metier = 'chef')
        // Chaque chef gère ses propres heures indépendamment via sa propre fiche
        const maconIdsToLoad = finalMaconIds.filter(id => id !== chefId);
 
@@ -207,7 +218,9 @@ export const useMaconsByChantier = (chantierId: string | null, semaine: string, 
         // Pour chaque maçon, récupérer fiche + signature
         // ✅ CORRECTIF: Filtrer les autres chefs — chaque chef gère ses propres heures
         if (macons) {
-          const nonChefMacons = macons.filter(m => m.role_metier !== 'chef');
+          // ✅ CORRECTIF #2: Double filtre — role_metier ET chef_id connus
+          // Protège contre les cas où role_metier serait NULL (données legacy)
+          const nonChefMacons = macons.filter(m => m.role_metier !== 'chef' && !knownChefIds.has(m.id));
           const maconsWithStatus = await Promise.all(
             nonChefMacons.map(async (macon) => {
               // Récupérer la fiche pour ce maçon cette semaine
