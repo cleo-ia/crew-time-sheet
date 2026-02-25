@@ -124,6 +124,14 @@ async function generateGhostFicheForCurrentWeek(params: {
         heures: 0,
         type_absence: params.type_absence,
         PA: false,
+        HNORM: 0,
+        HI: 0,
+        T: 0,
+        pause_minutes: 0,
+        code_trajet: null,
+        code_chantier_du_jour: null,
+        ville_du_jour: null,
+        repas_type: null,
       });
     }
 
