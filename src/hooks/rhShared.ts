@@ -104,7 +104,8 @@ export const calculateHeuresSuppBTP = (
   moisCible: string,
   heuresSuppMensualisees: number = 0 // Heures supp déjà incluses dans le salaire
 ): { heuresSupp25: number; heuresSupp50: number } => {
-  const [annee, mois] = moisCible.split("-").map(Number);
+  const isAllPeriods = !moisCible || moisCible === "all";
+  const [annee, mois] = isAllPeriods ? [0, 0] : moisCible.split("-").map(Number);
   
   // Grouper les jours par semaine civile (lundi = début de semaine ISO)
   const joursParSemaine = new Map<string, EmployeeDetail[]>();
@@ -130,8 +131,8 @@ export const calculateHeuresSuppBTP = (
     const lundiAnnee = lundi.getFullYear();
     const lundiMois = lundi.getMonth() + 1; // getMonth() retourne 0-11
     
-    // ⚠️ OPTION A : On ne traite que les semaines dont le lundi est dans le mois cible
-    if (lundiAnnee !== annee || lundiMois !== mois) {
+    // ⚠️ Ne filtrer par mois que si une période spécifique est choisie
+    if (!isAllPeriods && (lundiAnnee !== annee || lundiMois !== mois)) {
       return; // Ignorer cette semaine (son lundi n'est pas dans le mois demandé)
     }
     
