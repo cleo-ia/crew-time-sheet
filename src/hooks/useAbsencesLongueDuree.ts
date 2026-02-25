@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getCurrentWeek, parseISOWeek } from "@/lib/weekUtils";
+import { format, addDays } from "date-fns";
 
 export type AbsenceLongueDuree = {
   id: string;
@@ -46,6 +48,101 @@ export const useAbsencesLongueDuree = (entrepriseId?: string | null) => {
   });
 };
 
+/**
+ * Génère immédiatement la fiche fantôme (fiche + fiches_jours) pour la semaine en cours
+ * si l'absence chevauche cette semaine. Réplique la logique de sync-planning-to-teams.
+ */
+async function generateGhostFicheForCurrentWeek(params: {
+  salarie_id: string;
+  entreprise_id: string;
+  type_absence: string;
+  date_debut: string;
+  date_fin?: string | null;
+}) {
+  try {
+    const currentWeek = getCurrentWeek();
+    const monday = parseISOWeek(currentWeek);
+    const friday = addDays(monday, 4);
+
+    const mondayStr = format(monday, "yyyy-MM-dd");
+    const fridayStr = format(friday, "yyyy-MM-dd");
+
+    // Vérifier le chevauchement : date_debut <= vendredi ET (date_fin null OU date_fin >= lundi)
+    const absenceStart = params.date_debut;
+    const absenceEnd = params.date_fin;
+
+    if (absenceStart > fridayStr) return; // L'absence commence après cette semaine
+    if (absenceEnd && absenceEnd < mondayStr) return; // L'absence est finie avant cette semaine
+
+    // Vérifier qu'une fiche ghost n'existe pas déjà
+    const { data: existingGhost } = await supabase
+      .from("fiches")
+      .select("id")
+      .eq("salarie_id", params.salarie_id)
+      .is("chantier_id", null)
+      .eq("semaine", currentWeek)
+      .maybeSingle();
+
+    if (existingGhost) {
+      console.log("Fiche fantôme déjà existante pour", currentWeek);
+      return;
+    }
+
+    // Créer la fiche fantôme
+    const { data: newFiche, error: ficheError } = await supabase
+      .from("fiches")
+      .insert({
+        salarie_id: params.salarie_id,
+        entreprise_id: params.entreprise_id,
+        chantier_id: null,
+        semaine: currentWeek,
+        statut: "ENVOYE_RH" as any,
+        total_heures: 0,
+      })
+      .select("id")
+      .single();
+
+    if (ficheError) {
+      console.error("Erreur création fiche fantôme:", ficheError);
+      return;
+    }
+
+    // Créer les fiches_jours pour chaque jour Lun-Ven qui tombe dans la période d'absence
+    const fichesJours: any[] = [];
+    for (let i = 0; i < 5; i++) {
+      const dayDate = addDays(monday, i);
+      const dayStr = format(dayDate, "yyyy-MM-dd");
+
+      // Le jour doit être dans la période d'absence
+      if (dayStr < absenceStart) continue;
+      if (absenceEnd && dayStr > absenceEnd) continue;
+
+      fichesJours.push({
+        fiche_id: newFiche.id,
+        date: dayStr,
+        entreprise_id: params.entreprise_id,
+        heures: 0,
+        type_absence: params.type_absence,
+        PA: false,
+      });
+    }
+
+    if (fichesJours.length > 0) {
+      const { error: joursError } = await supabase
+        .from("fiches_jours")
+        .insert(fichesJours);
+
+      if (joursError) {
+        console.error("Erreur création fiches_jours fantômes:", joursError);
+      } else {
+        console.log(`Fiche fantôme créée pour ${currentWeek}: ${fichesJours.length} jours`);
+      }
+    }
+  } catch (err) {
+    console.error("Erreur génération fiche fantôme:", err);
+  }
+}
+
 export const useCreateAbsenceLongueDuree = () => {
   const queryClient = useQueryClient();
 
@@ -66,10 +163,21 @@ export const useCreateAbsenceLongueDuree = () => {
         .single();
 
       if (error) throw error;
+
+      // Générer immédiatement la fiche fantôme pour la semaine en cours
+      await generateGhostFicheForCurrentWeek({
+        salarie_id: params.salarie_id,
+        entreprise_id: params.entreprise_id,
+        type_absence: params.type_absence,
+        date_debut: params.date_debut,
+        date_fin: params.date_fin,
+      });
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
+      queryClient.invalidateQueries({ queryKey: ["fiches"] });
       toast.success("Absence longue durée créée");
     },
     onError: (error: Error) => {
