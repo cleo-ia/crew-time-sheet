@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, AlertTriangle, Star, Crown } from "lucide-react";
+import { X, AlertTriangle, Star, Crown, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanningAffectation } from "@/hooks/usePlanningAffectations";
 import { 
@@ -32,6 +32,7 @@ interface PlanningEmployeRowProps {
   isChefResponsable?: boolean; // Est-ce le chef responsable de ce chantier?
   showChefResponsable?: boolean; // Afficher le badge responsable (2+ chefs sur le chantier)?
   onSetChefResponsable?: (employeId: string) => void; // Callback pour définir comme responsable
+  absenceDays?: Map<string, string>; // date -> type_absence (absences longue durée)
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
@@ -58,6 +59,20 @@ const DayIndicator = ({
   >
     {checked ? "1" : ""}
   </button>
+);
+
+// Composant pour afficher une absence longue durée (bloqué)
+const AbsenceIndicator = ({ typeAbsence }: { typeAbsence: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div className="w-6 h-6 flex items-center justify-center text-destructive cursor-help">
+        <Ban className="h-4 w-4" />
+      </div>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-[200px]">
+      <p className="text-xs">Absent — <strong>{typeAbsence}</strong></p>
+    </TooltipContent>
+  </Tooltip>
 );
 
 // Composant pour afficher un conflit (employé affecté ailleurs ce jour)
@@ -89,6 +104,7 @@ export const PlanningEmployeRow = ({
   isChefResponsable,
   showChefResponsable,
   onSetChefResponsable,
+  absenceDays,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
@@ -242,7 +258,13 @@ export const PlanningEmployeRow = ({
       <div className="flex items-center gap-0.5">
         {weekDays.map(day => {
           const isAffectedHere = affectedDates.has(day.date);
+          const absenceType = absenceDays?.get(day.date);
           const conflictChantier = conflictDays?.get(day.date);
+          
+          // Si absence longue durée, afficher icône bloquée
+          if (absenceType) {
+            return <AbsenceIndicator key={day.date} typeAbsence={absenceType} />;
+          }
           
           // Si conflit sur ce jour (affecté ailleurs), afficher alerte
           if (conflictChantier && !isAffectedHere) {

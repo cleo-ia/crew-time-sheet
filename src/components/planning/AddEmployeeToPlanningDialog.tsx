@@ -33,6 +33,7 @@ interface AddEmployeeToPlanningDialogProps {
   existingAffectations: PlanningAffectation[];
   allAffectations: PlanningAffectation[];
   onAdd: (employeId: string, days: string[]) => void;
+  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string }>;
 }
 
 const TYPE_FILTERS: { value: EmployeType; label: string }[] = [
@@ -53,6 +54,7 @@ export const AddEmployeeToPlanningDialog = ({
   existingAffectations,
   allAffectations,
   onAdd,
+  absencesLDByEmploye,
 }: AddEmployeeToPlanningDialogProps) => {
   const { data: allEmployes = [], isLoading } = useAllEmployes();
   const [search, setSearch] = useState("");
@@ -81,8 +83,8 @@ export const AddEmployeeToPlanningDialog = ({
     );
   }, [allEmployes]);
 
-  // Jours déjà pris par chaque employé (sur d'autres chantiers)
-  // EXCEPTION : Les chefs ne sont jamais bloqués car ils peuvent être multi-chantiers
+  // Jours déjà pris par chaque employé (sur d'autres chantiers + absences LD)
+  // EXCEPTION : Les chefs ne sont jamais bloqués par les conflits multi-chantiers
   const daysTakenByEmploye = useMemo(() => {
     const map = new Map<string, Set<string>>();
     allAffectations.forEach(aff => {
@@ -96,8 +98,19 @@ export const AddEmployeeToPlanningDialog = ({
         map.get(aff.employe_id)!.add(aff.jour);
       }
     });
+
+    // Ajouter les jours d'absence longue durée (bloquent TOUS les employés, y compris les chefs)
+    if (absencesLDByEmploye) {
+      absencesLDByEmploye.forEach((absence, employeId) => {
+        if (!map.has(employeId)) {
+          map.set(employeId, new Set());
+        }
+        absence.dates.forEach(d => map.get(employeId)!.add(d));
+      });
+    }
+
     return map;
-  }, [allAffectations, chantierId, chefIds]);
+  }, [allAffectations, chantierId, chefIds, absencesLDByEmploye]);
 
   // Priorité de tri par type (cohérent avec getEmployeType et useAllEmployes)
   const TYPE_PRIORITY: Record<string, number> = {
@@ -359,10 +372,16 @@ export const AddEmployeeToPlanningDialog = ({
                         <span className="font-medium">
                           {employe.nom?.toUpperCase()} {employe.prenom}
                         </span>
-                        {employe.libelle_emploi && (
+                      {employe.libelle_emploi && (
                           <span className="text-sm text-muted-foreground">
                             - {employe.libelle_emploi}
                           </span>
+                        )}
+                        {/* Badge absence LD */}
+                        {absencesLDByEmploye?.has(employe.id) && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                            Absent — {absencesLDByEmploye.get(employe.id)!.type}
+                          </Badge>
                         )}
                       </div>
 
