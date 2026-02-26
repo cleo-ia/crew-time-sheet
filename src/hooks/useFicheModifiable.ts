@@ -30,7 +30,8 @@ export const useFicheModifiable = (
       }
 
       // 2. Vérifier le statut des fiches existantes
-      // ✅ CORRECTION : chantier_id est maintenant obligatoire
+      // ✅ FIX MULTI-CHANTIER: toujours scoper par chantier_id quand fourni
+      // pour ne pas bloquer un chantier BROUILLON à cause d'un autre chantier ENVOYE_RH
       let query = supabase
         .from("fiches")
         .select("statut")
@@ -40,7 +41,6 @@ export const useFicheModifiable = (
       if (chantierId) {
         query = query.eq("chantier_id", chantierId);
       }
-      // Plus de filtre chantier_id IS NULL - toutes les fiches ont un chantier
 
       const { data: fiches } = await query;
 

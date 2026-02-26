@@ -88,10 +88,10 @@ export const useSaveFiche = () => {
         // 🔒 BLOQUER SI DÉJÀ TRANSMISE AU CONDUCTEUR OU AUX RH
         const statutsBloquants = ["VALIDE_CONDUCTEUR", "ENVOYE_RH"];
         if (existingFiche && statutsBloquants.includes(existingFiche.statut)) {
-          // Si chantierId fourni et la fiche existante est sur un AUTRE chantier, 
-          // on skip cet employé (sa fiche est déjà transmise sur un autre chantier)
-          if (chantierId && existingFiche.chantier_id && existingFiche.chantier_id !== chantierId) {
-            console.log(`Skip: ${employee.employeeName} a déjà une fiche transmise sur un autre chantier`);
+          // ✅ FIX MULTI-CHANTIER: toujours comparer le chantier_id de la fiche trouvée
+          // avec le chantierId demandé. Si différent → skip (la fiche bloquante est sur un autre chantier)
+          if (effectiveChantierId && existingFiche.chantier_id && existingFiche.chantier_id !== effectiveChantierId) {
+            console.log(`Skip: ${employee.employeeName} a déjà une fiche transmise sur un autre chantier (${existingFiche.chantier_id} ≠ ${effectiveChantierId})`);
             return null; // Skip this employee without error
           }
           
