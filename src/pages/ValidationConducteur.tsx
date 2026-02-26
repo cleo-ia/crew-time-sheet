@@ -445,9 +445,10 @@ const ValidationConducteur = () => {
 
     // Filtrer les jours selon les affectations réelles pour éviter les "heures fantômes"
     const employeesData: EmployeeData[] = timeEntries.map((entry) => {
-      // Récupérer les dates affectées pour cet employé
+      // ✅ FIX MULTI-CHANTIER: utiliser affectationsFromHook (scopé au conducteur connecté)
+      // au lieu de affectationsJours (qui contient TOUS les conducteurs)
       const employeeAffectedDates = new Set(
-        affectationsJours
+        affectationsFromHook
           ?.filter(aff => aff.finisseur_id === entry.employeeId)
           ?.map(aff => aff.date) || []
       );
@@ -495,8 +496,9 @@ const ValidationConducteur = () => {
       const employeesByChantier = new Map<string | null, EmployeeData[]>();
 
       for (const entry of employeesData) {
-        // Récupérer le chantier_id depuis les affectations de cet employé
-        const employeeAffectations = affectationsJours?.filter(
+        // ✅ FIX MULTI-CHANTIER: utiliser affectationsFromHook (scopé au conducteur connecté)
+        // pour résoudre le bon chantier_id (évite de prendre NUANCE au lieu de CHEVIGNY)
+        const employeeAffectations = affectationsFromHook?.filter(
           aff => aff.finisseur_id === entry.employeeId
         );
         const chantierId = employeeAffectations?.[0]?.chantier_id || null;
@@ -535,9 +537,9 @@ const ValidationConducteur = () => {
     
     const errors: string[] = [];
     
-    // Grouper les finisseurs par chantier
+    // ✅ FIX MULTI-CHANTIER: utiliser affectationsFromHook (scopé au conducteur connecté)
     const chantierIds = [...new Set(
-      affectationsJours?.map(a => a.chantier_id).filter(Boolean) || []
+      affectationsFromHook?.map(a => a.chantier_id).filter(Boolean) || []
     )];
     
     if (chantierIds.length === 0) {
@@ -554,14 +556,14 @@ const ValidationConducteur = () => {
       
       // Récupérer les finisseurs affectés à ce chantier
       const chantierFinisseursIds = new Set(
-        affectationsJours
+        affectationsFromHook
           ?.filter(a => a.chantier_id === chantierId)
           ?.map(a => a.finisseur_id) || []
       );
       
       // Dates d'affectation réelles pour CE chantier (au lieu des 5 jours fixes)
       const chantierDates = [...new Set(
-        affectationsJours
+        affectationsFromHook
           ?.filter(a => a.chantier_id === chantierId)
           ?.map(a => a.date) || []
       )];
