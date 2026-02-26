@@ -34,8 +34,20 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
 
       if (error) throw error;
 
+      // 2e requête : congés classiques validés
+      const { data: conges, error: congesError } = await supabase
+        .from("demandes_conges")
+        .select("demandeur_id, date_debut, date_fin, type_conge, statut")
+        .eq("entreprise_id", entrepriseId)
+        .in("statut", ["VALIDEE_CONDUCTEUR", "VALIDEE_RH"])
+        .lte("date_debut", lastDay)
+        .gte("date_fin", firstDay);
+
+      if (congesError) throw congesError;
+
       const map = new Map<string, AbsenceLD>();
 
+      // Fusionner absences longue durée
       (data || []).forEach((absence) => {
         const existing = map.get(absence.salarie_id);
         const dates = existing?.dates || new Set<string>();
@@ -53,6 +65,24 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
 
         if (dates.size > 0) {
           map.set(absence.salarie_id, { dates, type });
+        }
+      });
+
+      // Fusionner congés classiques validés
+      (conges || []).forEach((conge) => {
+        const existing = map.get(conge.demandeur_id);
+        const dates = existing?.dates || new Set<string>();
+        const type = existing?.type || conge.type_conge;
+
+        weekDays.forEach((day) => {
+          const d = day.date;
+          if (d >= conge.date_debut && d <= conge.date_fin) {
+            dates.add(d);
+          }
+        });
+
+        if (dates.size > 0) {
+          map.set(conge.demandeur_id, { dates, type });
         }
       });
 
