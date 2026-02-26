@@ -186,6 +186,7 @@ export const useCreateAbsenceLongueDuree = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
       toast.success("Absence longue durée créée");
     },
     onError: (error: Error) => {
@@ -260,6 +261,7 @@ export const useUpdateAbsenceLongueDuree = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
       toast.success("Absence mise à jour");
     },
     onError: (error: Error) => {
@@ -282,6 +284,7 @@ export const useDeleteAbsenceLongueDuree = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
+      queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
       toast.success("Absence supprimée");
     },
     onError: (error: Error) => {

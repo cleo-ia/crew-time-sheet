@@ -43,6 +43,7 @@ export const useRefuseDemandeConge = () => {
       queryClient.invalidateQueries({ queryKey: ["demandes-conges-en-attente-rh"] });
       // Invalider les notifications demandeurs
       queryClient.invalidateQueries({ queryKey: ["demandes-traitees-non-lues"] });
+      queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
       toast({
         title: "Demande refusée",
         description: "La demande de congé a été refusée.",

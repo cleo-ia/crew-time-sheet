@@ -60,6 +60,7 @@ export const useCreateDemandeConge = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["demandes-conges"] });
       queryClient.invalidateQueries({ queryKey: ["demandes-conges-conducteur"] });
+      queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
       toast({
         title: "✅ Demande envoyée",
         description: variables.createdByConducteur
