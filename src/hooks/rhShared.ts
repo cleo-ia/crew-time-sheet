@@ -595,6 +595,20 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       }
     }
 
+    if (salarie.nom === "AOUEL MAHMOUD") {
+      console.log(`[DEBUG-RH] AOUEL joursParDate:`, 
+        [...joursParDate.entries()].map(([date, entries]) => ({
+          date, 
+          nbEntries: entries.length, 
+          heures: entries.map(e => Number(e.jour.heures) || Number(e.jour.HNORM) || 0),
+          ficheIds: entries.map(e => e.ficheId.substring(0, 8))
+        }))
+      );
+      console.log(`[DEBUG-RH] AOUEL ficheIds dans boucle:`, 
+        fiches.map(f => ({ id: f.id.substring(0, 8), chantier: (f as any).chantiers?.code_chantier }))
+      );
+    }
+
     // Maintenant traiter les jours : sommer pour les chefs, dédupliquer pour les autres
     for (const [date, entries] of joursParDate.entries()) {
       let heuresDuJour: number;
