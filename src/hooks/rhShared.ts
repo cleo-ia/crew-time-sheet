@@ -418,18 +418,19 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     affectationsMap.get(aff.finisseur_id)!.add(aff.date);
   });
 
-  console.log("[DEBUG-RH] affectationsMap:", 
-    [...affectationsMap.entries()].map(([id, dates]) => ({ id, dates: [...dates] }))
-  );
-
-  // Récupérer les jours de toutes les fiches
-  const { data: joursData, error: joursError } = await supabase
-    .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
-    .in("fiche_id", ficheIds)
-    .limit(10000);
-
-  if (joursError) throw joursError;
+  // Récupérer les jours de toutes les fiches (par paquets de 100 pour éviter la troncature d'URL PostgREST)
+  const CHUNK_SIZE = 100;
+  let joursData: any[] = [];
+  for (let i = 0; i < ficheIds.length; i += CHUNK_SIZE) {
+    const chunk = ficheIds.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("fiches_jours")
+      .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
+      .in("fiche_id", chunk)
+      .limit(10000);
+    if (error) throw error;
+    if (data) joursData.push(...data);
+  }
 
   // Construire la map des fiches par salarié
   const fichesBySalarie = new Map<string, typeof fichesDuMois>();
@@ -504,7 +505,6 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
     if (isFinisseur) {
       const datesAff = affectationsMap.get(salarieId);
-      console.log(`[DEBUG-RH] Finisseur: ${salarie.nom} ${salarie.prenom}, salarieId=${salarieId}, nbFiches=${fichesBySalarie.get(salarieId)?.length || 0}, datesAffectees=`, datesAff ? [...datesAff] : "AUCUNE");
     }
     const isInterimaire = !!salarie.agence_interim && !isChef && !isFinisseur && !isGrutier;
     const isMacon = !isChef && !isFinisseur && !isGrutier && !isInterimaire;
@@ -582,7 +582,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           const datesAffectees = affectationsMap.get(salarieId);
           if (datesAffectees && datesAffectees.size > 0) {
             if (!datesAffectees.has(jour.date)) {
-              console.log(`[DEBUG-RH] JOUR IGNORÉ: ${salarie.nom} ${salarie.prenom}, date=${jour.date}, salarieId=${salarieId}, datesAffectees=`, [...datesAffectees]);
+              
               continue; // Ignorer ce jour si non affecté
             }
           }
@@ -593,20 +593,6 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         }
         joursParDate.get(jour.date)!.push({ jour, ficheStatut, ficheId: fiche.id });
       }
-    }
-
-    if (salarie.nom === "AOUEL MAHMOUD") {
-      console.log(`[DEBUG-RH] AOUEL joursParDate:`, 
-        [...joursParDate.entries()].map(([date, entries]) => ({
-          date, 
-          nbEntries: entries.length, 
-          heures: entries.map(e => Number(e.jour.heures) || Number(e.jour.HNORM) || 0),
-          ficheIds: entries.map(e => e.ficheId.substring(0, 8))
-        }))
-      );
-      console.log(`[DEBUG-RH] AOUEL ficheIds dans boucle:`, 
-        fiches.map(f => ({ id: f.id.substring(0, 8), chantier: (f as any).chantiers?.code_chantier }))
-      );
     }
 
     // Maintenant traiter les jours : sommer pour les chefs, dédupliquer pour les autres
