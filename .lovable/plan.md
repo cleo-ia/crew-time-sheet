@@ -1,35 +1,42 @@
 
 
-## Plan : Ajouter 3 console.log de debug dans rhShared.ts
+## Diagnostic : Ajout d'un log ciblé sur la boucle de traitement d'Aouel
 
-### Modifications dans `src/hooks/rhShared.ts`
+### Ce qu'on sait maintenant
+Les 3 premiers logs nous ont appris que le filtre finisseur n'est PAS la cause. L'affectationsMap est correcte, les dates passent le filtre. Le problème se situe donc entre le chargement des fiches et le calcul final des heures.
 
-**Log 1 — Après ligne 419** (après construction de `affectationsMap`) :
+### Hypothèse restante
+La fiche NUANCE S06 (`0138095b`) est dans `fichesBySalarie` (nbFiches=4), mais ses `fiches_jours` ne sont peut-être pas trouvées dans `joursData` (la variable qui stocke tous les jours récupérés de la base). Cela pourrait arriver si l'ID de cette fiche n'est pas dans `ficheIds` pour une raison inattendue.
+
+### Modification à faire
+
+Ajouter **un seul console.log** dans `src/hooks/rhShared.ts`, juste après la boucle de collecte des jours (après ligne 596), pour Aouel uniquement :
+
 ```js
-console.log("[DEBUG-RH] affectationsMap:", 
-  [...affectationsMap.entries()].map(([id, dates]) => ({ id, dates: [...dates] }))
-);
-```
-→ Montre toutes les dates affectées par finisseur. On vérifie si le 2 et 3 février sont bien là pour Aouel.
-
-**Log 2 — Après ligne 498** (quand on identifie un finisseur dans la boucle) :
-```js
-if (isFinisseur) {
-  const datesAff = affectationsMap.get(salarieId);
-  console.log(`[DEBUG-RH] Finisseur: ${salarie.nom} ${salarie.prenom}, salarieId=${salarieId}, isFinisseur=${isFinisseur}, nbFiches=${fichesSalarie.length}, datesAffectees=`, datesAff ? [...datesAff] : "AUCUNE");
+// Après la boucle for (const fiche of fiches), ligne ~596
+if (salarie.nom === "AOUEL MAHMOUD") {
+  console.log(`[DEBUG-RH] AOUEL joursParDate:`, 
+    [...joursParDate.entries()].map(([date, entries]) => ({
+      date, 
+      nbEntries: entries.length, 
+      heures: entries.map(e => Number(e.jour.heures) || Number(e.jour.HNORM) || 0),
+      ficheIds: entries.map(e => e.ficheId.substring(0, 8))
+    }))
+  );
+  console.log(`[DEBUG-RH] AOUEL ficheIds dans boucle:`, 
+    fiches.map(f => ({ id: f.id.substring(0, 8), chantier: (f as any).chantiers?.code_chantier }))
+  );
 }
 ```
-→ Pour chaque finisseur, montre combien de fiches et quelles dates affectées.
 
-**Log 3 — À la ligne 576** (quand un jour est ignoré par le filtre finisseur) :
-```js
-console.log(`[DEBUG-RH] JOUR IGNORÉ: ${salarie.nom} ${salarie.prenom}, date=${jour.date}, salarieId=${salarieId}, datesAffectees=`, [...(affectationsMap.get(salarieId) || [])]);
-```
-→ Le plus important : montre exactement quel jour est exclu et pourquoi.
+Ce log montrera :
+1. Quelles dates sont dans `joursParDate` (après tous les filtres) — on verra si Feb 2-3 sont absentes
+2. Les IDs des fiches réellement itérées — on verra si la fiche NUANCE `0138095b` est bien là
 
-### Étapes après déploiement
-1. Tu recharges la page RH consolidée sur février
-2. Tu ouvres la console (F12 → Console)
-3. Tu tapes "DEBUG-RH" dans le filtre de la console
-4. Tu me montres un screenshot des résultats
+Avec cette information, on saura exactement à quelle étape les 16h disparaissent et on pourra corriger.
+
+### Étapes
+1. Ajouter ce console.log ciblé dans rhShared.ts après ligne 596
+2. Tu recharges la page RH → console → filtre "AOUEL"
+3. On identifie la cause exacte et on fixe
 
