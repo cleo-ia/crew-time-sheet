@@ -1,39 +1,47 @@
 
 
-## Plan : Points 11 et 12
+## Confirmation de sécurité du plan
 
-### Point 11 : Onglet Historique dans AbsencesLongueDureeSheet
+Après relecture complète des 4 fichiers impactés, je confirme que le plan est **sans risque de régression**. Voici pourquoi :
 
-**Fichier** : `src/components/conges/AbsencesLongueDureeSheet.tsx`
+### Analyse fichier par fichier
 
-Remplacer la liste simple par des `Tabs` avec deux onglets :
+**1. Nouveau hook `useAbsencesLongueDureePlanning.ts`**
+- Fichier entièrement nouveau, aucun code existant touché
+- Lecture seule sur `absences_longue_duree` (table déjà utilisée ailleurs)
+- Retourne une simple `Map` calculée, aucun effet de bord
 
-- **"En cours"** (compteur) : absences actives + bouton "Déclarer" + cards avec boutons edit/delete
-- **"Historique"** (compteur) : absences terminées (date_fin passée), cards en lecture seule (sans boutons edit/delete), style plus discret
+**2. `PlanningMainOeuvre.tsx`**
+- Ajout d'un appel au nouveau hook (ligne ~103, après les autres hooks) : additif
+- `handleDayToggle` : ajout d'un `if` de garde **avant** le code existant. Si l'absence n'est pas concernée, le flux existant s'exécute tel quel
+- `handleAddEmploye` : filtrage des jours **avant** la boucle existante. Si aucun jour n'est filtré, le comportement est identique
+- Passage d'une nouvelle prop optionnelle à `PlanningChantierAccordion` : rétro-compatible
 
-Import de `Tabs, TabsList, TabsTrigger, TabsContent` depuis `@/components/ui/tabs`.
+**3. `PlanningChantierAccordion.tsx`**
+- Ajout d'une prop optionnelle `absencesLDByEmploye?: Map<string, ...>` : rétro-compatible (les composants existants qui ne la passent pas ne sont pas affectés car elle est optionnelle)
+- Transmission à `PlanningEmployeRow` via une nouvelle prop optionnelle `absenceDays` : même logique
+- Transmission à `AddEmployeeToPlanningDialog` via une nouvelle prop optionnelle : même logique
 
-La logique de split `actives` / `terminees` existe déjà (lignes 156-161), il suffit de les placer dans des TabsContent séparés.
+**4. `PlanningEmployeRow.tsx`**
+- Ajout d'une prop optionnelle `absenceDays?: Map<string, string>` : si non fournie, `undefined`, et le code existant s'exécute normalement
+- Nouveau composant `AbsenceIndicator` : pur ajout, similaire au `ConflictIndicator` déjà existant
+- Dans le rendu des jours : ajout d'un `if (absenceDays?.has(day.date))` **avant** les conditions existantes. Si `absenceDays` est `undefined`, la condition est `false` et le code existant prend le relais
 
----
+**5. `AddEmployeeToPlanningDialog.tsx`**
+- Ajout d'une prop optionnelle `absencesLDByEmploye` : si non fournie, aucun changement de comportement
+- Fusion dans `daysTakenByEmploye` : les jours LD sont ajoutés **en plus** des jours déjà pris, sans modifier la logique existante
+- Badge visuel "Absent" : rendu conditionnel uniquement si la prop est fournie
 
-### Point 12 : Propagation du type_absence dans useUpdateAbsenceLongueDuree
+### Résumé
 
-**Fichier** : `src/hooks/useAbsencesLongueDuree.ts`
+| Aspect | Risque |
+|--------|--------|
+| Props existantes modifiées | Aucune |
+| Logique existante modifiée | Aucune (gardes ajoutées avant) |
+| Requêtes Supabase modifiées | Aucune |
+| Mutations modifiées | Aucune (filtrage avant appel) |
+| Nouvelles tables/colonnes SQL | Aucune |
+| Composants sans la nouvelle prop | Comportement identique (props optionnelles) |
 
-Dans `useUpdateAbsenceLongueDuree` (ligne 197-225), après le `update` réussi sur `absences_longue_duree`, si `type_absence` est présent dans les params :
-
-1. Récupérer `salarie_id`, `date_debut`, `date_fin` depuis le `data` retourné
-2. Chercher toutes les fiches ghost du salarié : `fiches WHERE salarie_id = X AND chantier_id IS NULL AND statut != 'CLOTURE'`
-3. Pour chaque fiche ghost trouvée, mettre à jour les `fiches_jours` :
-```sql
-UPDATE fiches_jours
-SET type_absence = :nouveau_type
-WHERE fiche_id IN (:ficheIds)
-AND date >= :date_debut
-AND (date <= :date_fin OR :date_fin IS NULL)
-```
-4. Invalider aussi `["fiches"]` dans le `onSuccess`
-
-**Risque de régression** : Aucun. On ajoute du code après le update existant (pas de modification du flux actuel). La propagation ne touche que les fiches ghost (chantier_id IS NULL) non clôturées. Les fiches normales ne sont pas affectées.
+Toutes les modifications sont **purement additives**. Le plan est sûr.
 
