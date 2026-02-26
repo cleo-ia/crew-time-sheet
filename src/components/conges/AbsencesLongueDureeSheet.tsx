@@ -6,6 +6,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,51 +175,65 @@ export const AbsencesLongueDureeSheet = ({
           </SheetHeader>
 
           <div className="mt-4">
-            <Button onClick={handleOpenCreate} size="sm" className="w-full mb-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Déclarer une absence longue durée
-            </Button>
+            <Tabs defaultValue="en-cours">
+              <TabsList className="w-full mb-3">
+                <TabsTrigger value="en-cours" className="flex-1">
+                  En cours {actives.length > 0 && `(${actives.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="historique" className="flex-1">
+                  Historique {terminees.length > 0 && `(${terminees.length})`}
+                </TabsTrigger>
+              </TabsList>
 
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="space-y-3">
-                {isLoading ? (
-                  <p className="text-muted-foreground text-center py-8">Chargement...</p>
-                ) : absences.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    Aucune absence longue durée déclarée
-                  </p>
-                ) : (
-                  <>
-                    {actives.length > 0 && (
-                      <>
-                        <p className="text-sm font-medium text-muted-foreground">En cours</p>
-                        {actives.map((absence) => (
-                          <AbsenceCard
-                            key={absence.id}
-                            absence={absence}
-                            onEdit={() => handleOpenEdit(absence)}
-                            onDelete={() => setDeleteId(absence.id)}
-                          />
-                        ))}
-                      </>
+              <TabsContent value="en-cours">
+                <Button onClick={handleOpenCreate} size="sm" className="w-full mb-4">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Déclarer une absence longue durée
+                </Button>
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="space-y-3">
+                    {isLoading ? (
+                      <p className="text-muted-foreground text-center py-8">Chargement...</p>
+                    ) : actives.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        Aucune absence en cours
+                      </p>
+                    ) : (
+                      actives.map((absence) => (
+                        <AbsenceCard
+                          key={absence.id}
+                          absence={absence}
+                          onEdit={() => handleOpenEdit(absence)}
+                          onDelete={() => setDeleteId(absence.id)}
+                        />
+                      ))
                     )}
-                    {terminees.length > 0 && (
-                      <>
-                        <p className="text-sm font-medium text-muted-foreground mt-4">Terminées</p>
-                        {terminees.map((absence) => (
-                          <AbsenceCard
-                            key={absence.id}
-                            absence={absence}
-                            onEdit={() => handleOpenEdit(absence)}
-                            onDelete={() => setDeleteId(absence.id)}
-                          />
-                        ))}
-                      </>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="historique">
+                <ScrollArea className="h-[calc(100vh-240px)]">
+                  <div className="space-y-3">
+                    {isLoading ? (
+                      <p className="text-muted-foreground text-center py-8">Chargement...</p>
+                    ) : terminees.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        Aucune absence terminée
+                      </p>
+                    ) : (
+                      terminees.map((absence) => (
+                        <AbsenceCard
+                          key={absence.id}
+                          absence={absence}
+                          readOnly
+                        />
+                      ))
                     )}
-                  </>
-                )}
-              </div>
-            </ScrollArea>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </div>
         </SheetContent>
       </Sheet>
@@ -332,16 +347,18 @@ function AbsenceCard({
   absence,
   onEdit,
   onDelete,
+  readOnly = false,
 }: {
   absence: AbsenceLongueDuree;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  readOnly?: boolean;
 }) {
   const today = new Date();
   const isActive = !absence.date_fin || isAfter(parseISO(absence.date_fin), today);
 
   return (
-    <Card className="border-border/50">
+    <Card className={`border-border/50 ${readOnly ? "opacity-75" : ""}`}>
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -367,14 +384,16 @@ function AbsenceCard({
               <p className="text-xs text-muted-foreground mt-1 truncate">{absence.motif}</p>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -213,10 +213,53 @@ export const useUpdateAbsenceLongueDuree = () => {
         .single();
 
       if (error) throw error;
+
+      // Propager le type_absence aux fiches_jours ghost existantes
+      if (params.type_absence && data) {
+        const absData = data as any;
+        try {
+          // Chercher les fiches ghost non clôturées du salarié
+          const { data: ghostFiches } = await supabase
+            .from("fiches")
+            .select("id")
+            .eq("salarie_id", absData.salarie_id)
+            .is("chantier_id", null)
+            .neq("statut", "CLOTURE");
+
+          if (ghostFiches && ghostFiches.length > 0) {
+            const ficheIds = ghostFiches.map((f: any) => f.id);
+
+            // Construire la requête de mise à jour des fiches_jours
+            let query = supabase
+              .from("fiches_jours")
+              .update({ type_absence: params.type_absence } as any)
+              .in("fiche_id", ficheIds)
+              .gte("date", absData.date_debut);
+
+            if (absData.date_fin) {
+              query = query.lte("date", absData.date_fin);
+            }
+
+            // Filtrer uniquement les jours qui avaient déjà un type_absence (pas les jours travaillés)
+            query = query.not("type_absence", "is", null);
+
+            const { error: updateError } = await query;
+            if (updateError) {
+              console.error("Erreur propagation type_absence aux fiches_jours:", updateError);
+            } else {
+              console.log(`type_absence propagé à ${ficheIds.length} fiche(s) ghost`);
+            }
+          }
+        } catch (err) {
+          console.error("Erreur lors de la propagation type_absence:", err);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
+      queryClient.invalidateQueries({ queryKey: ["fiches"] });
       toast.success("Absence mise à jour");
     },
     onError: (error: Error) => {
