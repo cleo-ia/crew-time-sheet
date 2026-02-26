@@ -418,6 +418,10 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     affectationsMap.get(aff.finisseur_id)!.add(aff.date);
   });
 
+  console.log("[DEBUG-RH] affectationsMap:", 
+    [...affectationsMap.entries()].map(([id, dates]) => ({ id, dates: [...dates] }))
+  );
+
   // Récupérer les jours de toutes les fiches
   const { data: joursData, error: joursError } = await supabase
     .from("fiches_jours")
@@ -497,6 +501,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     const isChef = chefIds.has(salarieId);
     const isFinisseur = salarie.role_metier === "finisseur";
     const isGrutier = salarie.role_metier === "grutier";
+
+    if (isFinisseur) {
+      const datesAff = affectationsMap.get(salarieId);
+      console.log(`[DEBUG-RH] Finisseur: ${salarie.nom} ${salarie.prenom}, salarieId=${salarieId}, nbFiches=${fichesBySalarie.get(salarieId)?.length || 0}, datesAffectees=`, datesAff ? [...datesAff] : "AUCUNE");
+    }
     const isInterimaire = !!salarie.agence_interim && !isChef && !isFinisseur && !isGrutier;
     const isMacon = !isChef && !isFinisseur && !isGrutier && !isInterimaire;
 
@@ -573,6 +582,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           const datesAffectees = affectationsMap.get(salarieId);
           if (datesAffectees && datesAffectees.size > 0) {
             if (!datesAffectees.has(jour.date)) {
+              console.log(`[DEBUG-RH] JOUR IGNORÉ: ${salarie.nom} ${salarie.prenom}, date=${jour.date}, salarieId=${salarieId}, datesAffectees=`, [...datesAffectees]);
               continue; // Ignorer ce jour si non affecté
             }
           }
