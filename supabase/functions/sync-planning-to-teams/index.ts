@@ -1102,6 +1102,58 @@ async function syncEntreprise(
   }
 
   // ========================================================================
+  // PHASE NETTOYAGE CROSS-TABLE: supprimer les affectations dans la mauvaise table
+  // Si un chantier a un chef_id → supprimer les lignes dans affectations_finisseurs_jours
+  // Si un chantier n'a PAS de chef_id → supprimer les lignes dans affectations_jours_chef
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase nettoyage cross-table...`)
+
+  // Collecter les chantiers impliqués dans le planning de cette semaine
+  const chantiersInPlanning = new Set<string>()
+  for (const key of employeChantierInPlanning) {
+    const chantierId = key.split('|')[1]
+    if (chantierId) chantiersInPlanning.add(chantierId)
+  }
+
+  for (const chantierId of chantiersInPlanning) {
+    // deno-lint-ignore no-explicit-any
+    const chantier = chantiersMap.get(chantierId) as any
+    if (!chantier) continue
+
+    if (chantier.chef_id) {
+      // Ce chantier a un chef → les affectations doivent être dans affectations_jours_chef
+      // Supprimer les lignes parasites dans affectations_finisseurs_jours
+      const { data: parasites, error: parasiteErr } = await supabase
+        .from('affectations_finisseurs_jours')
+        .delete()
+        .eq('chantier_id', chantierId)
+        .eq('semaine', currentWeek)
+        .eq('entreprise_id', entrepriseId)
+        .select('id')
+
+      if (!parasiteErr && parasites && parasites.length > 0) {
+        console.log(`[sync-planning-to-teams] 🧹 Cross-table: supprimé ${parasites.length} lignes parasites dans affectations_finisseurs_jours pour chantier ${chantierId} (a un chef_id)`)
+        stats.deleted += parasites.length
+      }
+    } else if (chantier.conducteur_id) {
+      // Ce chantier n'a PAS de chef → les affectations doivent être dans affectations_finisseurs_jours
+      // Supprimer les lignes parasites dans affectations_jours_chef
+      const { data: parasites, error: parasiteErr } = await supabase
+        .from('affectations_jours_chef')
+        .delete()
+        .eq('chantier_id', chantierId)
+        .eq('semaine', currentWeek)
+        .eq('entreprise_id', entrepriseId)
+        .select('id')
+
+      if (!parasiteErr && parasites && parasites.length > 0) {
+        console.log(`[sync-planning-to-teams] 🧹 Cross-table: supprimé ${parasites.length} lignes parasites dans affectations_jours_chef pour chantier ${chantierId} (pas de chef, géré par conducteur)`)
+        stats.deleted += parasites.length
+      }
+    }
+  }
+
+  // ========================================================================
   // NOUVELLE PHASE: Nettoyage direct des fiches orphelines (hors planning)
   // Cette phase supprime les fiches créées par useAutoSaveFiche pour des
   // couples (salarie_id, chantier_id) qui ne sont pas dans le planning validé
