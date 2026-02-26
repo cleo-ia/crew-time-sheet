@@ -1,22 +1,27 @@
 
 
-## Plan : Purge des affectations parasites MAILLARD en S06
+## Fix : blocage multi-chantier dans useSaveFiche et useFicheModifiable
 
-### Contexte
-Le chantier MAILLARD (CI888, id `c8b507d6-f1ae-4c13-aee9-e069aca0358c`) a un chef assigné (BOUILLET) mais des enregistrements parasites existent dans `affectations_finisseurs_jours` pour S06, ce qui le fait apparaitre dans l'espace conducteur d'Anthony Lampert.
+### Problème
+Quand un salarié (ex: Aouel) a une fiche `ENVOYE_RH` sur un chantier (NUANCE) et une fiche `BROUILLON` sur un autre (CHEVIGNY), la sauvegarde/transmission peut échouer si le `chantierId` n'est pas résolu (cache périmé, affectations non chargées). La requête remonte alors la fiche NUANCE au lieu de CHEVIGNY → erreur bloquante.
 
-### Action
-Executer une requete DELETE via l'outil d'insertion de donnees :
+### Corrections (2 fichiers)
 
-```sql
-DELETE FROM affectations_finisseurs_jours
-WHERE chantier_id = 'c8b507d6-f1ae-4c13-aee9-e069aca0358c'
-AND semaine = '2026-S06';
-```
+#### 1. `src/hooks/useSaveFiche.ts`
+**Lignes 88-102** — Rendre la logique de blocage plus robuste :
+- Actuellement : skip seulement si `chantierId` est fourni ET `existingFiche.chantier_id` diffère
+- Après fix : **toujours comparer** le `chantier_id` de la fiche trouvée avec le `chantierId` demandé. Si la fiche bloquante est sur un chantier différent de celui qu'on essaie de sauvegarder → skip (return null) au lieu de throw
+- Si la fiche bloquante est sur le MÊME chantier → throw comme avant (aucun changement de comportement)
 
-### Verification post-purge
-Confirmer avec un SELECT que plus aucune ligne n'existe pour MAILLARD S06 dans `affectations_finisseurs_jours`.
+#### 2. `src/hooks/useFicheModifiable.ts`
+**Lignes 34-45** — Scoper la vérification par chantier :
+- Actuellement : filtre `chantier_id` conditionnel, ce qui peut remonter les fiches d'autres chantiers
+- Après fix : quand `chantierId` est fourni, appliquer systématiquement `.eq("chantier_id", chantierId)` pour ne vérifier que les fiches du chantier concerné
+- Sans `chantierId` : comportement inchangé
 
-### Resultat attendu
-MAILLARD disparait de l'espace conducteur d'Anthony en S06. Seul CHEVIGNY (sans chef) reste visible.
+### Vérification régression
+- **Côté conducteur** : `ValidationConducteur.handleSaveAndSign` et `useSaveChantierManuel` passent toujours un `chantierId`. Si le chantier est correct et la fiche est bloquée sur CE chantier → throw inchangé. Si bloquée sur un AUTRE → skip au lieu de crash.
+- **Côté chef** : `Index.tsx` passe toujours `selectedChantier` à `useFicheModifiable`. Le filtre devient plus strict (ne regarde QUE ce chantier), ce qui est le comportement attendu.
+- **Signatures** : `SignatureMacons` et `SignatureFinisseurs` n'utilisent PAS ces hooks → aucun impact.
+- **RH** : `ConsultationRH` et `FicheDetail` n'utilisent PAS `useSaveFiche` ni `useFicheModifiable` → aucun impact.
 
