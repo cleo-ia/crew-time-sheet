@@ -37,6 +37,7 @@ import { generatePlanningExcel, preparePlanningData } from "@/lib/planningExcelE
 import { useToast } from "@/hooks/use-toast";
 import { usePlanningValidation } from "@/hooks/usePlanningValidation";
 import { useSyncPlanningToTeams } from "@/hooks/useSyncPlanningToTeams";
+import { useAbsencesLongueDureePlanning } from "@/hooks/useAbsencesLongueDureePlanning";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
@@ -101,6 +102,7 @@ const PlanningMainOeuvre = () => {
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
   const { data: affectations = [], isLoading: loadingAffectations } = usePlanningAffectations(semaine);
   const { data: chefsWithPrincipal = new Map() } = useChefsWithPrincipal();
+  const { data: absencesLDByEmploye = new Map() } = useAbsencesLongueDureePlanning(semaine);
   
   // Mutations
   const upsertAffectation = useUpsertPlanningAffectation();
@@ -156,6 +158,17 @@ const PlanningMainOeuvre = () => {
     date: string, 
     checked: boolean
   ) => {
+    // Bloquer si absence longue durée
+    const absenceLD = absencesLDByEmploye.get(employeId);
+    if (checked && absenceLD?.dates.has(date)) {
+      toast({
+        title: "Jour bloqué",
+        description: `Ce salarié est en absence longue durée (${absenceLD.type}) ce jour-là.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (checked) {
       await upsertAffectation.mutateAsync({
         employe_id: employeId,
@@ -238,8 +251,14 @@ const PlanningMainOeuvre = () => {
     chantierId: string, 
     days: string[]
   ) => {
+    // Filtrer les jours en absence longue durée
+    const absenceLD = absencesLDByEmploye.get(employeId);
+    const filteredDays = absenceLD 
+      ? days.filter(d => !absenceLD.dates.has(d))
+      : days;
+
     // Créer une affectation pour chaque jour sélectionné
-    for (const date of days) {
+    for (const date of filteredDays) {
       await upsertAffectation.mutateAsync({
         employe_id: employeId,
         chantier_id: chantierId,
@@ -612,6 +631,7 @@ const PlanningMainOeuvre = () => {
                   forceOpen={allExpanded}
                   chefsWithPrincipal={chefsWithPrincipal}
                   onSetChefResponsable={handleSetChefResponsable}
+                  absencesLDByEmploye={absencesLDByEmploye}
                 />
               ))}
             </div>

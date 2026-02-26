@@ -55,6 +55,7 @@ interface PlanningChantierAccordionProps {
   forceOpen?: boolean;
   chefsWithPrincipal?: Map<string, string>; // chef_id -> chantier_principal_id
   onSetChefResponsable?: (employeId: string, chantierId: string) => void;
+  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string }>;
 }
 
 export const PlanningChantierAccordion = ({
@@ -73,6 +74,7 @@ export const PlanningChantierAccordion = ({
   forceOpen,
   chefsWithPrincipal,
   onSetChefResponsable,
+  absencesLDByEmploye,
 }: PlanningChantierAccordionProps) => {
   const { shortName } = useEnterpriseConfig();
   const { mutate: setChantierPrincipal } = useSetChantierPrincipal();
@@ -532,6 +534,9 @@ export const PlanningChantierAccordion = ({
                       onRemove={(empId) => onRemoveEmploye(empId, chantier.id)}
                       isLoading={isLoading}
                       conflictDays={conflictsByEmploye.get(employe.id)}
+                      absenceDays={absencesLDByEmploye?.get(employe.id) 
+                        ? new Map([...absencesLDByEmploye.get(employe.id)!.dates].map(d => [d, absencesLDByEmploye.get(employe.id)!.type]))
+                        : undefined}
                       isChef={isMultiChantierChef}
                       isChantierPrincipal={isChantierPrincipal}
                       onSetChantierPrincipal={(empId) => {
@@ -577,6 +582,7 @@ export const PlanningChantierAccordion = ({
         existingAffectations={affectations}
         allAffectations={allAffectations}
         onAdd={handleAdd}
+        absencesLDByEmploye={absencesLDByEmploye}
       />
     </>
   );
