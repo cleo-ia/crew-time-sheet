@@ -1,47 +1,39 @@
 
 
-## Confirmation de sécurité du plan
+## Confirmation : zero regression
 
-Après relecture complète des 4 fichiers impactés, je confirme que le plan est **sans risque de régression**. Voici pourquoi :
+Le plan consiste a ajouter une **2e requete Supabase** dans le `queryFn` existant du hook `useAbsencesLongueDureePlanning.ts`, puis a fusionner les resultats dans la meme `Map<string, AbsenceLD>`. Voici pourquoi c'est sans risque :
 
-### Analyse fichier par fichier
+### Analyse
 
-**1. Nouveau hook `useAbsencesLongueDureePlanning.ts`**
-- Fichier entièrement nouveau, aucun code existant touché
-- Lecture seule sur `absences_longue_duree` (table déjà utilisée ailleurs)
-- Retourne une simple `Map` calculée, aucun effet de bord
+**Seul fichier modifie** : `src/hooks/useAbsencesLongueDureePlanning.ts`
 
-**2. `PlanningMainOeuvre.tsx`**
-- Ajout d'un appel au nouveau hook (ligne ~103, après les autres hooks) : additif
-- `handleDayToggle` : ajout d'un `if` de garde **avant** le code existant. Si l'absence n'est pas concernée, le flux existant s'exécute tel quel
-- `handleAddEmploye` : filtrage des jours **avant** la boucle existante. Si aucun jour n'est filtré, le comportement est identique
-- Passage d'une nouvelle prop optionnelle à `PlanningChantierAccordion` : rétro-compatible
+**Ce qui ne change pas** :
+- La requete absences longue duree (lignes 28-33) reste strictement identique
+- La boucle de calcul des jours LD (lignes 39-57) reste identique
+- L'interface `AbsenceLD` (`{ dates: Set<string>, type: string }`) ne change pas
+- La signature du hook (entree : `semaine`, sortie : `Map<string, AbsenceLD>`) ne change pas
+- Aucun composant en aval n'est modifie (PlanningMainOeuvre, PlanningChantierAccordion, PlanningEmployeRow, AddEmployeeToPlanningDialog consomment tous la meme Map)
 
-**3. `PlanningChantierAccordion.tsx`**
-- Ajout d'une prop optionnelle `absencesLDByEmploye?: Map<string, ...>` : rétro-compatible (les composants existants qui ne la passent pas ne sont pas affectés car elle est optionnelle)
-- Transmission à `PlanningEmployeRow` via une nouvelle prop optionnelle `absenceDays` : même logique
-- Transmission à `AddEmployeeToPlanningDialog` via une nouvelle prop optionnelle : même logique
+**Ce qui est ajoute** :
+- Une 2e requete `.from("demandes_conges")` filtree sur `statut IN (VALIDEE_CONDUCTEUR, VALIDEE_RH)` + chevauchement semaine
+- Une 2e boucle identique qui fusionne les jours de conges valides dans la meme Map (via `dates.add()`)
+- La `queryKey` integre un marqueur supplementaire pour l'invalidation
 
-**4. `PlanningEmployeRow.tsx`**
-- Ajout d'une prop optionnelle `absenceDays?: Map<string, string>` : si non fournie, `undefined`, et le code existant s'exécute normalement
-- Nouveau composant `AbsenceIndicator` : pur ajout, similaire au `ConflictIndicator` déjà existant
-- Dans le rendu des jours : ajout d'un `if (absenceDays?.has(day.date))` **avant** les conditions existantes. Si `absenceDays` est `undefined`, la condition est `false` et le code existant prend le relais
+**Pourquoi pas de regression** :
 
-**5. `AddEmployeeToPlanningDialog.tsx`**
-- Ajout d'une prop optionnelle `absencesLDByEmploye` : si non fournie, aucun changement de comportement
-- Fusion dans `daysTakenByEmploye` : les jours LD sont ajoutés **en plus** des jours déjà pris, sans modifier la logique existante
-- Badge visuel "Absent" : rendu conditionnel uniquement si la prop est fournie
+| Point de controle | Resultat |
+|---|---|
+| Requete absences LD modifiee ? | Non, intacte |
+| Calcul jours LD modifie ? | Non, intact |
+| Interface AbsenceLD modifiee ? | Non |
+| Composants aval modifies ? | Aucun |
+| Nouvelle table SQL ? | Non |
+| Mutation modifiee ? | Non (lecture seule) |
+| Si la requete conges echoue ? | Le `throw error` arrete le queryFn, meme comportement que si la requete LD echouait — React Query gere l'erreur |
+| Si aucun conge valide ? | La 2e boucle ne fait rien, la Map ne contient que les LD comme avant |
 
-### Résumé
+Le rendu visuel est identique : un jour bloque par un conge CP affichera le meme `AbsenceIndicator` (icone Ban + tooltip "Absent — CP") qu'un jour bloque par un AT. Les composants ne font aucune distinction entre LD et conge classique — ils lisent la meme Map.
 
-| Aspect | Risque |
-|--------|--------|
-| Props existantes modifiées | Aucune |
-| Logique existante modifiée | Aucune (gardes ajoutées avant) |
-| Requêtes Supabase modifiées | Aucune |
-| Mutations modifiées | Aucune (filtrage avant appel) |
-| Nouvelles tables/colonnes SQL | Aucune |
-| Composants sans la nouvelle prop | Comportement identique (props optionnelles) |
-
-Toutes les modifications sont **purement additives**. Le plan est sûr.
+**Conclusion** : l'implementation est purement additive dans un seul fichier. Les absences longue duree continuent de fonctionner exactement comme avant.
 
