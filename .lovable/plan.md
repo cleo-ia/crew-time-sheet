@@ -1,42 +1,36 @@
 
 
-## Diagnostic : Ajout d'un log ciblé sur la boucle de traitement d'Aouel
+## Confirmation : zéro risque de régression
 
-### Ce qu'on sait maintenant
-Les 3 premiers logs nous ont appris que le filtre finisseur n'est PAS la cause. L'affectationsMap est correcte, les dates passent le filtre. Le problème se situe donc entre le chargement des fiches et le calcul final des heures.
+Le fix consiste en **deux changements purement mécaniques** :
 
-### Hypothèse restante
-La fiche NUANCE S06 (`0138095b`) est dans `fichesBySalarie` (nbFiches=4), mais ses `fiches_jours` ne sont peut-être pas trouvées dans `joursData` (la variable qui stocke tous les jours récupérés de la base). Cela pourrait arriver si l'ID de cette fiche n'est pas dans `ficheIds` pour une raison inattendue.
+1. **Batching de la requête** (lignes 426-430) : Au lieu d'un seul `.in("fiche_id", ficheIds)`, on découpe en paquets de 100 et on concatène. Le résultat final `joursData` contient **exactement les mêmes données** qu'avant, mais en plus complet (plus de troncature). La logique métier en aval ne change pas d'un seul caractère — elle reçoit juste le même tableau, potentiellement avec plus de lignes qu'avant (celles qui manquaient).
 
-### Modification à faire
+2. **Suppression des console.log** : Ce sont des logs de debug temporaires qui n'ont aucun effet sur le comportement de l'application.
 
-Ajouter **un seul console.log** dans `src/hooks/rhShared.ts`, juste après la boucle de collecte des jours (après ligne 596), pour Aouel uniquement :
+**Pourquoi zéro régression :**
+- Aucune modification de la logique de calcul (heures, trajets, absences, BTP)
+- Aucune modification des types, interfaces, ou signatures de fonctions
+- Aucun changement dans les composants UI
+- Le seul effet observable : des salariés qui avaient des heures manquantes verront maintenant leurs heures correctes
 
-```js
-// Après la boucle for (const fiche of fiches), ligne ~596
-if (salarie.nom === "AOUEL MAHMOUD") {
-  console.log(`[DEBUG-RH] AOUEL joursParDate:`, 
-    [...joursParDate.entries()].map(([date, entries]) => ({
-      date, 
-      nbEntries: entries.length, 
-      heures: entries.map(e => Number(e.jour.heures) || Number(e.jour.HNORM) || 0),
-      ficheIds: entries.map(e => e.ficheId.substring(0, 8))
-    }))
-  );
-  console.log(`[DEBUG-RH] AOUEL ficheIds dans boucle:`, 
-    fiches.map(f => ({ id: f.id.substring(0, 8), chantier: (f as any).chantiers?.code_chantier }))
-  );
+### Modifications dans `src/hooks/rhShared.ts`
+
+**Étape 1** — Remplacer la requête unique (lignes 426-432) par un batching par paquets de 100 :
+```ts
+const CHUNK_SIZE = 100;
+let joursData: any[] = [];
+for (let i = 0; i < ficheIds.length; i += CHUNK_SIZE) {
+  const chunk = ficheIds.slice(i, i + CHUNK_SIZE);
+  const { data, error } = await supabase
+    .from("fiches_jours")
+    .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
+    .in("fiche_id", chunk)
+    .limit(10000);
+  if (error) throw error;
+  if (data) joursData.push(...data);
 }
 ```
 
-Ce log montrera :
-1. Quelles dates sont dans `joursParDate` (après tous les filtres) — on verra si Feb 2-3 sont absentes
-2. Les IDs des fiches réellement itérées — on verra si la fiche NUANCE `0138095b` est bien là
-
-Avec cette information, on saura exactement à quelle étape les 16h disparaissent et on pourra corriger.
-
-### Étapes
-1. Ajouter ce console.log ciblé dans rhShared.ts après ligne 596
-2. Tu recharges la page RH → console → filtre "AOUEL"
-3. On identifie la cause exacte et on fixe
+**Étape 2** — Supprimer les 4 blocs de console.log temporaires (lignes 421-423, 507-510, 585, 598-613).
 
