@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -133,9 +133,10 @@ const RapprochementInterim = () => {
         <AppNav />
         <div className="container mx-auto px-4 py-6 space-y-4">
           {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedAgence(null)}>
-              <ArrowLeft className="h-5 w-5" />
+          <div className="flex items-center gap-4 border-b border-border/50 bg-muted/30 rounded-lg p-4">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedAgence(null)} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Retour
             </Button>
             <div className="flex items-center gap-3">
               <Building2 className="h-6 w-6 text-primary" />
@@ -148,45 +149,48 @@ const RapprochementInterim = () => {
 
           {/* Récap agence */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Card className="p-3 text-center">
-              <p className="text-xl font-bold">{agenceTotals.heuresNormales}h</p>
-              <p className="text-xs text-muted-foreground">H. Normales</p>
+            <Card className="p-3 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{agenceTotals.heuresNormales}h</p>
+              <p className="text-xs text-blue-600/70 dark:text-blue-400/70">H. Normales</p>
             </Card>
-            <Card className="p-3 text-center">
-              <p className="text-xl font-bold">{agenceTotals.heuresSupp25}h</p>
-              <p className="text-xs text-muted-foreground">H. Supp 25%</p>
+            <Card className="p-3 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+              <p className="text-xl font-bold text-orange-700 dark:text-orange-300">{agenceTotals.heuresSupp25}h</p>
+              <p className="text-xs text-orange-600/70 dark:text-orange-400/70">H. Supp 25%</p>
             </Card>
-            <Card className="p-3 text-center">
-              <p className="text-xl font-bold">{agenceTotals.heuresSupp50}h</p>
-              <p className="text-xs text-muted-foreground">H. Supp 50%</p>
+            <Card className="p-3 text-center bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+              <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{agenceTotals.heuresSupp50}h</p>
+              <p className="text-xs text-amber-600/70 dark:text-amber-400/70">H. Supp 50%</p>
             </Card>
-            <Card className="p-3 text-center">
-              <p className="text-xl font-bold">{agenceTotals.paniers}</p>
-              <p className="text-xs text-muted-foreground">Paniers</p>
+            <Card className="p-3 text-center bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{agenceTotals.paniers}</p>
+              <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">Paniers</p>
             </Card>
-            <Card className="p-3 text-center">
-              <p className="text-xl font-bold">{agenceTotals.trajets}</p>
-              <p className="text-xs text-muted-foreground">Trajets</p>
+            <Card className="p-3 text-center bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800">
+              <p className="text-xl font-bold text-violet-700 dark:text-violet-300">{agenceTotals.trajets}</p>
+              <p className="text-xs text-violet-600/70 dark:text-violet-400/70">Trajets</p>
             </Card>
           </div>
 
           {/* Accordéons intérimaires */}
-          <Accordion type="multiple" className="space-y-2">
+          <Accordion type="multiple" className="space-y-3">
             {agenceEmployees.map((emp) => (
               <AccordionItem
                 key={emp.id}
                 value={emp.id}
-                className="border border-border rounded-lg bg-muted/30 px-3"
+                className="border border-border rounded-lg bg-card shadow-sm px-4"
               >
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-4 py-1">
-                    <span className="font-medium text-foreground">
-                      {emp.prenom} {emp.nom}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">
+                        {emp.prenom} {emp.nom}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-3">
                       <div className="flex flex-wrap gap-1">
                         {emp.chantier_codes.map((code, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
+                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
                             {code}
                           </Badge>
                         ))}
