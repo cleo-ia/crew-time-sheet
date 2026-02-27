@@ -386,11 +386,6 @@ export const AddEmployeeToPlanningDialog = ({
             <span className="font-medium">
               {employe.nom?.toUpperCase()} {employe.prenom}
             </span>
-            {employe.libelle_emploi && (
-              <span className="text-sm text-muted-foreground">
-                - {employe.libelle_emploi}
-              </span>
-            )}
             {absencesLDByEmploye?.has(employe.id) && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
                 {absencesLDByEmploye.get(employe.id)!.type}
