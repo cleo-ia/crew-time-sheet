@@ -205,7 +205,7 @@ const RapprochementInterim = () => {
                   {agenceEmployees.length} intérimaire{agenceEmployees.length > 1 ? "s" : ""}
                 </Badge>
                 {semaineFilter !== "all" && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs border-primary text-primary">
                     Semaine {semaineFilter.split("-S")[1]}
                   </Badge>
                 )}
