@@ -408,8 +408,8 @@ const RapprochementInterim = () => {
                       ))}
 
                       {/* Sous-total agence */}
-                      <TableRow key={`total-${agenceName}`} className="bg-muted/40 border-b-2 border-border/50">
-                        <TableCell className="font-bold text-sm pl-8 text-muted-foreground">
+                      <TableRow key={`total-${agenceName}`} className="bg-muted/60 border-t-2 border-b-2 border-border/50 border-l-4 border-l-primary/50">
+                        <TableCell className="font-bold text-sm pl-8 text-foreground/80">
                           Sous-total {agenceName}
                         </TableCell>
                         <TableCell />
