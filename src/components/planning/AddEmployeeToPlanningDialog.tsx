@@ -12,7 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Search, UserPlus, Users } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, UserPlus, Users, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   useAllEmployes, 
@@ -45,6 +46,15 @@ const TYPE_FILTERS: { value: EmployeType; label: string }[] = [
   { value: "interim", label: "Intérimaires" },
 ];
 
+// Filtres sans intérimaires pour l'onglet "Non affectés"
+const TYPE_FILTERS_NO_INTERIM: { value: EmployeType; label: string }[] = [
+  { value: "all", label: "Tous" },
+  { value: "chef", label: "Chefs" },
+  { value: "macon", label: "Maçons" },
+  { value: "finisseur", label: "Finisseurs" },
+  { value: "grutier", label: "Grutiers" },
+];
+
 export const AddEmployeeToPlanningDialog = ({
   open,
   onOpenChange,
@@ -59,6 +69,7 @@ export const AddEmployeeToPlanningDialog = ({
   const { data: allEmployes = [], isLoading } = useAllEmployes();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<EmployeType>("all");
+  const [activeTab, setActiveTab] = useState<"tous" | "non-affectes">("tous");
   
   // Mode simple (un seul employé)
   const [selectedEmployeId, setSelectedEmployeId] = useState<string | null>(null);
@@ -112,7 +123,19 @@ export const AddEmployeeToPlanningDialog = ({
     return map;
   }, [allAffectations, chantierId, chefIds, absencesLDByEmploye]);
 
-  // Priorité de tri par type (cohérent avec getEmployeType et useAllEmployes)
+  // Jours affectés à N'IMPORTE QUEL chantier par employé (pour onglet "Non affectés")
+  const daysAssignedByEmploye = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    allAffectations.forEach(aff => {
+      if (!map.has(aff.employe_id)) {
+        map.set(aff.employe_id, new Set());
+      }
+      map.get(aff.employe_id)!.add(aff.jour);
+    });
+    return map;
+  }, [allAffectations]);
+
+  // Priorité de tri par type
   const TYPE_PRIORITY: Record<string, number> = {
     chef: 1,
     macon: 2,
@@ -121,14 +144,23 @@ export const AddEmployeeToPlanningDialog = ({
     interim: 5,
   };
 
-  // Filtrer les employés
+  const sortEmployes = (list: Employe[]) => {
+    return [...list].sort((a, b) => {
+      const typeA = getEmployeType(a);
+      const typeB = getEmployeType(b);
+      const priorityDiff = TYPE_PRIORITY[typeA] - TYPE_PRIORITY[typeB];
+      if (priorityDiff !== 0) return priorityDiff;
+      const nomCompare = (a.nom || "").localeCompare(b.nom || "");
+      if (nomCompare !== 0) return nomCompare;
+      return (a.prenom || "").localeCompare(b.prenom || "");
+    });
+  };
+
+  // Filtrer les employés (onglet "Tous")
   const filteredEmployes = useMemo(() => {
     let result = filterEmployesByType(allEmployes, typeFilter);
-    
-    // Exclure ceux déjà sur le chantier
     result = result.filter(emp => !employeIdsOnChantier.has(emp.id));
 
-    // Filtrer par recherche
     if (search.trim()) {
       const searchLower = search.toLowerCase();
       result = result.filter(emp => 
@@ -137,32 +169,59 @@ export const AddEmployeeToPlanningDialog = ({
       );
     }
 
-    // Trier par type (via getEmployeType) puis par nom/prénom
-    result.sort((a, b) => {
-      const typeA = getEmployeType(a);
-      const typeB = getEmployeType(b);
-      const priorityDiff = TYPE_PRIORITY[typeA] - TYPE_PRIORITY[typeB];
-      if (priorityDiff !== 0) return priorityDiff;
+    return sortEmployes(result);
+  }, [allEmployes, typeFilter, search, employeIdsOnChantier]);
+
+  // Employés "Non affectés" : permanents (hors intérimaires) pas entièrement affectés sur la semaine
+  const unassignedEmployes = useMemo(() => {
+    const weekDateSet = new Set(weekDays.map(d => d.date));
+
+    let result = allEmployes.filter(emp => {
+      // Exclure les intérimaires
+      if (getEmployeType(emp) === "interim") return false;
+      // Exclure ceux déjà sur ce chantier
+      if (employeIdsOnChantier.has(emp.id)) return false;
+
+      // Vérifier qu'il a au moins 1 jour non affecté dans la semaine
+      const assigned = daysAssignedByEmploye.get(emp.id) || new Set();
+      const absenceDates = absencesLDByEmploye?.get(emp.id)?.dates || new Set();
       
-      const nomCompare = (a.nom || "").localeCompare(b.nom || "");
-      if (nomCompare !== 0) return nomCompare;
-      
-      return (a.prenom || "").localeCompare(b.prenom || "");
+      // Compter les jours où l'employé est libre (ni affecté, ni en absence LD)
+      let freeDays = 0;
+      weekDateSet.forEach(date => {
+        if (!assigned.has(date) && !absenceDates.has(date)) {
+          freeDays++;
+        }
+      });
+
+      return freeDays > 0;
     });
 
-    return result;
-  }, [allEmployes, typeFilter, search, employeIdsOnChantier]);
+    // Appliquer filtre type (sans interim)
+    if (typeFilter !== "all") {
+      result = result.filter(emp => getEmployeType(emp) === typeFilter);
+    }
+
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(emp => 
+        `${emp.prenom} ${emp.nom}`.toLowerCase().includes(searchLower) ||
+        `${emp.nom} ${emp.prenom}`.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return sortEmployes(result);
+  }, [allEmployes, typeFilter, search, employeIdsOnChantier, daysAssignedByEmploye, weekDays, absencesLDByEmploye]);
 
   // Mode simple : sélection d'un employé
   const handleSelectEmploye = (employe: Employe) => {
-    if (multiSelectMode) return; // Ignorer en mode multi
+    if (multiSelectMode) return;
     
     if (selectedEmployeId === employe.id) {
       setSelectedEmployeId(null);
       setSelectedDays([]);
     } else {
       setSelectedEmployeId(employe.id);
-      // Par défaut, sélectionner tous les jours disponibles
       const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
       const availableDays = weekDays
         .map(d => d.date)
@@ -171,38 +230,27 @@ export const AddEmployeeToPlanningDialog = ({
     }
   };
 
-  // Mode simple : toggle d'un jour
   const handleDayToggle = (date: string) => {
     setSelectedDays(prev => 
-      prev.includes(date)
-        ? prev.filter(d => d !== date)
-        : [...prev, date]
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
     );
   };
 
-  // Mode multi : toggle d'un employé dans la sélection
   const handleToggleEmployeMulti = (employeId: string) => {
     setSelectedEmployeIds(prev => {
       const next = new Set(prev);
-      if (next.has(employeId)) {
-        next.delete(employeId);
-      } else {
-        next.add(employeId);
-      }
+      if (next.has(employeId)) next.delete(employeId);
+      else next.add(employeId);
       return next;
     });
   };
 
-  // Mode multi : toggle d'un jour commun
   const handleToggleCommonDay = (date: string) => {
     setCommonDays(prev => 
-      prev.includes(date)
-        ? prev.filter(d => d !== date)
-        : [...prev, date]
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
     );
   };
 
-  // Ajout simple (un employé)
   const handleAdd = () => {
     if (selectedEmployeId && selectedDays.length > 0) {
       onAdd(selectedEmployeId, selectedDays);
@@ -210,10 +258,8 @@ export const AddEmployeeToPlanningDialog = ({
     }
   };
 
-  // Ajout en masse (plusieurs employés)
   const handleBatchAdd = () => {
     if (selectedEmployeIds.size === 0 || commonDays.length === 0) return;
-    
     selectedEmployeIds.forEach(employeId => {
       const takenDays = daysTakenByEmploye.get(employeId) || new Set();
       const availableDays = commonDays.filter(d => !takenDays.has(d));
@@ -221,7 +267,6 @@ export const AddEmployeeToPlanningDialog = ({
         onAdd(employeId, availableDays);
       }
     });
-    
     resetAndClose();
   };
 
@@ -233,10 +278,21 @@ export const AddEmployeeToPlanningDialog = ({
     onOpenChange(false);
   };
 
-  // Toggle mode multi-sélection
   const handleToggleMultiMode = (checked: boolean) => {
     setMultiSelectMode(checked);
-    // Reset les sélections quand on change de mode
+    setSelectedEmployeId(null);
+    setSelectedDays([]);
+    setSelectedEmployeIds(new Set());
+    setCommonDays([]);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as "tous" | "non-affectes");
+    // Reset type filter if switching to non-affectes and interim was selected
+    if (tab === "non-affectes" && typeFilter === "interim") {
+      setTypeFilter("all");
+    }
+    // Reset selections on tab change
     setSelectedEmployeId(null);
     setSelectedDays([]);
     setSelectedEmployeIds(new Set());
@@ -245,20 +301,154 @@ export const AddEmployeeToPlanningDialog = ({
 
   const selectedEmploye = allEmployes.find(e => e.id === selectedEmployeId);
 
-  // Calculer les jours disponibles pour tous les employés sélectionnés en mode multi
   const commonAvailableDays = useMemo(() => {
     if (selectedEmployeIds.size === 0) return weekDays.map(d => d.date);
-    
-    // Intersection des jours disponibles pour tous les employés sélectionnés
     let available = new Set(weekDays.map(d => d.date));
-    
     selectedEmployeIds.forEach(empId => {
       const taken = daysTakenByEmploye.get(empId) || new Set();
       available = new Set([...available].filter(d => !taken.has(d)));
     });
-    
     return [...available];
   }, [selectedEmployeIds, daysTakenByEmploye, weekDays]);
+
+  const currentFilters = activeTab === "non-affectes" ? TYPE_FILTERS_NO_INTERIM : TYPE_FILTERS;
+  const currentEmployes = activeTab === "non-affectes" ? unassignedEmployes : filteredEmployes;
+
+  // Render employee row (shared between tabs)
+  const renderEmployeeRow = (employe: Employe) => {
+    const type = getEmployeType(employe);
+    const colors = EMPLOYE_TYPE_COLORS[type];
+    const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
+    const isSelectedSingle = selectedEmployeId === employe.id;
+    const isSelectedMulti = selectedEmployeIds.has(employe.id);
+
+    // For "Non affectés" tab, show assigned days (all chantiers)
+    const assignedDays = activeTab === "non-affectes" 
+      ? daysAssignedByEmploye.get(employe.id) || new Set()
+      : null;
+    const absenceDates = absencesLDByEmploye?.get(employe.id)?.dates || new Set();
+
+    return (
+      <div
+        key={employe.id}
+        className={cn(
+          "p-3 rounded-md transition-colors",
+          multiSelectMode 
+            ? (isSelectedMulti ? "bg-primary/10 border border-primary" : "hover:bg-muted/50")
+            : (isSelectedSingle ? "bg-primary/10 border border-primary" : "hover:bg-muted/50 cursor-pointer")
+        )}
+        onClick={() => !multiSelectMode && handleSelectEmploye(employe)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {multiSelectMode && (
+              <Checkbox
+                checked={isSelectedMulti}
+                onCheckedChange={() => handleToggleEmployeMulti(employe.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <span className={cn(
+              "px-2 py-0.5 rounded text-xs font-medium",
+              colors.bg, colors.text
+            )}>
+              {colors.label}
+            </span>
+            <span className="font-medium">
+              {employe.nom?.toUpperCase()} {employe.prenom}
+            </span>
+            {employe.libelle_emploi && (
+              <span className="text-sm text-muted-foreground">
+                - {employe.libelle_emploi}
+              </span>
+            )}
+            {absencesLDByEmploye?.has(employe.id) && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                Absent — {absencesLDByEmploye.get(employe.id)!.type}
+              </Badge>
+            )}
+          </div>
+
+          {/* Availability grid for "Non affectés" tab */}
+          {activeTab === "non-affectes" && assignedDays !== null ? (
+            <div className="flex gap-1">
+              {weekDays.map(day => {
+                const isAssigned = assignedDays.has(day.date);
+                const isAbsent = absenceDates.has(day.date);
+                const isFree = !isAssigned && !isAbsent;
+                return (
+                  <div
+                    key={day.date}
+                    className={cn(
+                      "w-7 h-7 rounded flex items-center justify-center text-xs font-medium",
+                      isFree 
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                        : isAbsent
+                          ? "bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500"
+                          : "bg-muted text-muted-foreground"
+                    )}
+                    title={isFree ? `${day.fullName} — Disponible` : isAbsent ? `${day.fullName} — Absent` : `${day.fullName} — Affecté`}
+                  >
+                    {day.dayName}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Jours déjà pris ailleurs (onglet "Tous") */
+            takenDays.size > 0 && (
+              <div className="flex gap-1">
+                {weekDays.map(day => (
+                  takenDays.has(day.date) && (
+                    <Badge 
+                      key={day.date} 
+                      variant="secondary" 
+                      className="text-xs"
+                    >
+                      {day.dayName}
+                    </Badge>
+                  )
+                ))}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Sélection des jours - MODE SIMPLE uniquement */}
+        {!multiSelectMode && isSelectedSingle && (
+          <div className="mt-3 pt-3 border-t flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Jours à affecter :
+            </span>
+            <div className="flex gap-2">
+              {weekDays.map(day => {
+                const isTaken = takenDays.has(day.date);
+                return (
+                  <div key={day.date} className="flex items-center gap-1">
+                    <Checkbox
+                      id={`day-${day.date}`}
+                      checked={selectedDays.includes(day.date)}
+                      onCheckedChange={() => handleDayToggle(day.date)}
+                      disabled={isTaken}
+                    />
+                    <label 
+                      htmlFor={`day-${day.date}`}
+                      className={cn(
+                        "text-sm cursor-pointer",
+                        isTaken && "text-muted-foreground line-through"
+                      )}
+                    >
+                      {day.fullName}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -293,154 +483,77 @@ export const AddEmployeeToPlanningDialog = ({
           )}
         </div>
 
-        {/* Filtres */}
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+        {/* Tabs: Tous / Non affectés */}
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="w-full">
+            <TabsTrigger value="tous" className="flex-1 gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Tous
+            </TabsTrigger>
+            <TabsTrigger value="non-affectes" className="flex-1 gap-1.5">
+              <UserX className="h-3.5 w-3.5" />
+              Non affectés
+              {unassignedEmployes.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0 h-4">
+                  {unassignedEmployes.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Shared content below tabs */}
+          <div className="space-y-3 mt-3">
+            {/* Filtres */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              {currentFilters.map(filter => (
+                <Button
+                  key={filter.value}
+                  variant={typeFilter === filter.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTypeFilter(filter.value)}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {TYPE_FILTERS.map(filter => (
-              <Button
-                key={filter.value}
-                variant={typeFilter === filter.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTypeFilter(filter.value)}
-              >
-                {filter.label}
-              </Button>
-            ))}
+          {/* Compteur */}
+          <div className="text-sm text-muted-foreground mt-2">
+            {currentEmployes.length} employé{currentEmployes.length > 1 ? "s" : ""} 
+            {activeTab === "non-affectes" ? " non entièrement affecté" : " disponible"}
+            {currentEmployes.length > 1 ? "s" : ""}
+            {typeFilter !== "all" && ` (filtre: ${currentFilters.find(f => f.value === typeFilter)?.label})`}
           </div>
-        </div>
 
-        {/* Compteur d'employés */}
-        <div className="text-sm text-muted-foreground">
-          {filteredEmployes.length} employé{filteredEmployes.length > 1 ? "s" : ""} disponible{filteredEmployes.length > 1 ? "s" : ""}
-          {typeFilter !== "all" && ` (filtre: ${TYPE_FILTERS.find(f => f.value === typeFilter)?.label})`}
-        </div>
-
-        {/* Liste des employés */}
-        <ScrollArea className="h-[40vh] border rounded-md">
-          <div className="p-2 space-y-1">
-            {isLoading ? (
-              <p className="text-center text-muted-foreground py-4">Chargement...</p>
-            ) : filteredEmployes.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">
-                Aucun employé disponible
-              </p>
-            ) : (
-              filteredEmployes.map(employe => {
-                const type = getEmployeType(employe);
-                const colors = EMPLOYE_TYPE_COLORS[type];
-                const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
-                const isSelectedSingle = selectedEmployeId === employe.id;
-                const isSelectedMulti = selectedEmployeIds.has(employe.id);
-
-                return (
-                  <div
-                    key={employe.id}
-                    className={cn(
-                      "p-3 rounded-md transition-colors",
-                      multiSelectMode 
-                        ? (isSelectedMulti ? "bg-primary/10 border border-primary" : "hover:bg-muted/50")
-                        : (isSelectedSingle ? "bg-primary/10 border border-primary" : "hover:bg-muted/50 cursor-pointer")
-                    )}
-                    onClick={() => !multiSelectMode && handleSelectEmploye(employe)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {/* Checkbox en mode multi */}
-                        {multiSelectMode && (
-                          <Checkbox
-                            checked={isSelectedMulti}
-                            onCheckedChange={() => handleToggleEmployeMulti(employe.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        )}
-                        <span className={cn(
-                          "px-2 py-0.5 rounded text-xs font-medium",
-                          colors.bg, colors.text
-                        )}>
-                          {colors.label}
-                        </span>
-                        <span className="font-medium">
-                          {employe.nom?.toUpperCase()} {employe.prenom}
-                        </span>
-                      {employe.libelle_emploi && (
-                          <span className="text-sm text-muted-foreground">
-                            - {employe.libelle_emploi}
-                          </span>
-                        )}
-                        {/* Badge absence LD */}
-                        {absencesLDByEmploye?.has(employe.id) && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
-                            Absent — {absencesLDByEmploye.get(employe.id)!.type}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Jours déjà pris ailleurs */}
-                      {takenDays.size > 0 && (
-                        <div className="flex gap-1">
-                          {weekDays.map(day => (
-                            takenDays.has(day.date) && (
-                              <Badge 
-                                key={day.date} 
-                                variant="secondary" 
-                                className="text-xs"
-                              >
-                                {day.dayName}
-                              </Badge>
-                            )
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sélection des jours - MODE SIMPLE uniquement */}
-                    {!multiSelectMode && isSelectedSingle && (
-                      <div className="mt-3 pt-3 border-t flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground">
-                          Jours à affecter :
-                        </span>
-                        <div className="flex gap-2">
-                          {weekDays.map(day => {
-                            const isTaken = takenDays.has(day.date);
-                            return (
-                              <div key={day.date} className="flex items-center gap-1">
-                                <Checkbox
-                                  id={`day-${day.date}`}
-                                  checked={selectedDays.includes(day.date)}
-                                  onCheckedChange={() => handleDayToggle(day.date)}
-                                  disabled={isTaken}
-                                />
-                                <label 
-                                  htmlFor={`day-${day.date}`}
-                                  className={cn(
-                                    "text-sm cursor-pointer",
-                                    isTaken && "text-muted-foreground line-through"
-                                  )}
-                                >
-                                  {day.fullName}
-                                </label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </ScrollArea>
+          {/* Employee list (same for both tabs, different data source) */}
+          <ScrollArea className="h-[35vh] border rounded-md mt-2">
+            <div className="p-2 space-y-1">
+              {isLoading ? (
+                <p className="text-center text-muted-foreground py-4">Chargement...</p>
+              ) : currentEmployes.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  {activeTab === "non-affectes" 
+                    ? "Tous les employés permanents sont entièrement affectés cette semaine"
+                    : "Aucun employé disponible"
+                  }
+                </p>
+              ) : (
+                currentEmployes.map(renderEmployeeRow)
+              )}
+            </div>
+          </ScrollArea>
+        </Tabs>
 
         {/* Sélection des jours communs - MODE MULTI */}
         {multiSelectMode && selectedEmployeIds.size > 0 && (
@@ -482,7 +595,7 @@ export const AddEmployeeToPlanningDialog = ({
           </div>
         )}
 
-        {/* Footer avec bouton d'ajout */}
+        {/* Footer */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
