@@ -1,35 +1,36 @@
 
 
-## Plan : Page Rapprochement Intérimaires (SDER)
+## Plan : Affiner la page Rapprochement Intérimaires
 
-### Résumé
+### 1. Vue détail comme côté RH (lecture seule)
+Remplacer le Dialog basique (tableau jour par jour) par le composant `RHEmployeeDetail` existant, en mode **lecture seule** :
+- Quand on clique sur l'œil, on passe dans un état "détail" qui affiche `RHEmployeeDetail` avec le `salarieId` et les `filters` actuels
+- Masquer les éléments éditables : on ajoute une prop `readOnly` à `RHEmployeeDetail` qui désactive les `EditableCell`, `EditableAbsenceTypeCell`, `EditableTextCell`, `CodeTrajetSelector` et les mutations
+- Garder l'export PDF individuel et le dialog semaine (`RHWeekDetailDialog`)
 
-Créer la page `/rapprochement-interim` accessible uniquement pour SDER. Aucun bouton ajouté dans le header. Le super_admin y accède via le sélecteur de routes Lovable (dropdown en haut à gauche de l'IDE). Carole (gestionnaire) y accède via sa nav isolée.
+### 2. Export PDF par agence
+Intégrer le `InterimaireExportDialog` existant :
+- Ajouter un bouton "Export PDF" dans le header de la page
+- Ouvrir le dialog avec les `filters` courants (période, agence)
+- Le dialog permet déjà de sélectionner une semaine et d'exporter par agence ou toutes les agences
 
-### Étapes
+### 3. Regroupement par agence dans le tableau
+Grouper les lignes du tableau par agence avec des en-têtes de section :
+- Trier les intérimaires par agence puis par nom
+- Insérer une ligne d'en-tête colorée pour chaque agence (nom + nombre d'intérimaires)
+- Les intérimaires sans agence sont regroupés sous "Sans agence"
 
-1. **Créer `src/pages/RapprochementInterim.tsx`**
-   - Page avec `AppNav` + `PageHeader` "Rapprochement Intérimaires"
-   - Filtres : mois (sélecteur période), agence (`AgenceInterimCombobox`), recherche nom
-   - Tableau consolidé des intérimaires (réutilise `buildRHConsolidation` avec `typeSalarie: 'interim'`) : nom, agence, chantiers, heures normales, heures sup 25/50, absences, paniers, trajets
-   - Dialog détail jour par jour au clic sur un salarié
-   - Boutons "Nouvel intérimaire" et "Modifier" via `InterimaireFormDialog`
+### 4. Sous-totaux par agence
+Ajouter une ligne de totaux après chaque groupe d'agence :
+- Total heures normales, H. Supp 25%, H. Supp 50%, absences, paniers, trajets pour l'agence
+- Style distinct (fond grisé, texte en gras)
 
-2. **Ajouter la route dans `App.tsx`**
-   - Route `/rapprochement-interim` avec `RequireRole allowedRoles={["super_admin", "gestionnaire"]}`
-   - Pas de redirection, pas de garde entreprise supplémentaire (la page n'existe que pour SDER)
+### 5. Fix filtre agence
+Le problème : `AgenceInterimCombobox` est un champ texte libre (conçu pour créer de nouvelles agences). Pour le filtre, il faut un **Select classique** avec les options "Toutes" + liste des agences extraites des données.
+- Remplacer `AgenceInterimCombobox` par un `Select` simple dans la page Rapprochement
+- Options : "Toutes les agences" + agences uniques extraites des données chargées
 
-3. **Adapter `AppNav.tsx`**
-   - Pour le rôle `gestionnaire` : nav isolée avec uniquement "Rapprochement Intérim" + "Aide" + "Déconnexion"
-   - Aucun nouveau bouton pour les autres rôles (super_admin, chef, conducteur, rh, admin)
-
-4. **Adapter `RequireRole.tsx`**
-   - Redirection par défaut du rôle `gestionnaire` vers `/rapprochement-interim`
-
-### Détails techniques
-
-- `buildRHConsolidation` de `rhShared.ts` accepte déjà le filtre `typeSalarie: 'interim'`, réutilisation directe
-- `InterimaireFormDialog` existant réutilisé tel quel pour créer/modifier
-- Le super_admin accède à la page via le sélecteur de routes Lovable (capture d'écran fournie), aucune modification du header nécessaire
-- La restriction SDER est implicite : seuls les utilisateurs SDER avec rôle `gestionnaire` ou `super_admin` y accèdent, et les données sont filtrées par `entreprise_id` via les hooks existants
+### Fichiers modifiés
+- `src/pages/RapprochementInterim.tsx` — refonte complète (vue détail, regroupement, totaux, filtre, export)
+- `src/components/rh/RHEmployeeDetail.tsx` — ajout prop `readOnly?: boolean` pour masquer les champs éditables
 
