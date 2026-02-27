@@ -198,12 +198,17 @@ const RapprochementInterim = () => {
                 <ArrowLeft className="h-4 w-4" />
                 Retour
               </Button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Building2 className="h-6 w-6 text-primary" />
                 <h1 className="text-2xl font-bold">{selectedAgence}</h1>
                 <Badge variant="secondary">
                   {agenceEmployees.length} intérimaire{agenceEmployees.length > 1 ? "s" : ""}
                 </Badge>
+                {semaineFilter !== "all" && (
+                  <Badge variant="outline" className="text-xs">
+                    Semaine {semaineFilter.split("-S")[1]}
+                  </Badge>
+                )}
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setShowAgenceExportDialog(true)} className="gap-2">
