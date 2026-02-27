@@ -393,7 +393,7 @@ export const AddEmployeeToPlanningDialog = ({
             )}
             {absencesLDByEmploye?.has(employe.id) && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
-                Absent — {absencesLDByEmploye.get(employe.id)!.type}
+                {absencesLDByEmploye.get(employe.id)!.type}
               </Badge>
             )}
           </div>
