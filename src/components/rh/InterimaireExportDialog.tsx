@@ -153,12 +153,17 @@ export const InterimaireExportDialog = ({
         // Extraire les agences uniques
         const uniqueAgences = [...new Set(utilisateurs?.map(u => u.agence_interim).filter(Boolean) as string[])];
         
+        // Si un filtre agence est défini, ne garder que cette agence
+        const agencesToProcess = filters.agenceInterim 
+          ? uniqueAgences.filter(a => a === filters.agenceInterim)
+          : uniqueAgences;
+        
         // Pour chaque agence, récupérer les données complètes
         const agencesWithCount: AgenceData[] = [];
         const dataMap = new Map<string, RHExportEmployee[]>();
         const allEmployeesData: RHExportEmployee[] = [];
         
-        for (const agence of uniqueAgences) {
+        for (const agence of agencesToProcess) {
           const mois = (!filters.periode || filters.periode === "all") 
             ? new Date().toISOString().slice(0, 7) 
             : filters.periode;
