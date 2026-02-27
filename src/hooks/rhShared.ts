@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { batchQueryIn } from "@/lib/supabaseBatch";
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 
@@ -418,19 +419,14 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     affectationsMap.get(aff.finisseur_id)!.add(aff.date);
   });
 
-  // Récupérer les jours de toutes les fiches (par paquets de 100 pour éviter la troncature d'URL PostgREST)
-  const CHUNK_SIZE = 100;
-  let joursData: any[] = [];
-  for (let i = 0; i < ficheIds.length; i += CHUNK_SIZE) {
-    const chunk = ficheIds.slice(i, i + CHUNK_SIZE);
-    const { data, error } = await supabase
-      .from("fiches_jours")
-      .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
-      .in("fiche_id", chunk)
-      .limit(10000);
-    if (error) throw error;
-    if (data) joursData.push(...data);
-  }
+  // Récupérer les jours de toutes les fiches (batched via utilitaire)
+  const joursData = await batchQueryIn<any>(
+    "fiches_jours",
+    "fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire",
+    "fiche_id",
+    ficheIds,
+    { limitPerChunk: 10000 }
+  );
 
   // Construire la map des fiches par salarié
   const fichesBySalarie = new Map<string, typeof fichesDuMois>();
@@ -466,10 +462,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         const otherFicheIds = chefAllFiches.map(f => f.id);
         const ficheToSalarie = new Map(chefAllFiches.map(f => [f.id, f.salarie_id]));
         
-        const { data: otherJours } = await supabase
-          .from("fiches_jours")
-          .select("fiche_id, date, heures, HI")
-          .in("fiche_id", otherFicheIds);
+        const otherJours = await batchQueryIn<any>(
+          "fiches_jours",
+          "fiche_id, date, heures, HI",
+          "fiche_id",
+          otherFicheIds
+        );
         
         (otherJours || []).forEach(j => {
           const sid = ficheToSalarie.get(j.fiche_id);
