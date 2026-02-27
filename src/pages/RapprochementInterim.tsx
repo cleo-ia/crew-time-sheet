@@ -25,6 +25,7 @@ const RapprochementInterim = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showAgenceExportDialog, setShowAgenceExportDialog] = useState(false);
   const [selectedSalarieId, setSelectedSalarieId] = useState<string | null>(null);
   const [selectedAgence, setSelectedAgence] = useState<string | null>(null);
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -133,18 +134,24 @@ const RapprochementInterim = () => {
         <AppNav />
         <div className="container mx-auto px-4 py-6 space-y-4">
           {/* Header */}
-          <div className="flex items-center gap-4 bg-gradient-to-r from-primary/5 to-primary/10 border-l-4 border-primary rounded-lg p-4">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedAgence(null)} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Retour
-            </Button>
-            <div className="flex items-center gap-3">
-              <Building2 className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-bold">{selectedAgence}</h1>
-              <Badge variant="secondary">
-                {agenceEmployees.length} intérimaire{agenceEmployees.length > 1 ? "s" : ""}
-              </Badge>
+          <div className="flex items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10 border-l-4 border-primary rounded-lg p-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedAgence(null)} className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Retour
+              </Button>
+              <div className="flex items-center gap-3">
+                <Building2 className="h-6 w-6 text-primary" />
+                <h1 className="text-2xl font-bold">{selectedAgence}</h1>
+                <Badge variant="secondary">
+                  {agenceEmployees.length} intérimaire{agenceEmployees.length > 1 ? "s" : ""}
+                </Badge>
+              </div>
             </div>
+            <Button variant="outline" size="sm" onClick={() => setShowAgenceExportDialog(true)} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export PDF
+            </Button>
           </div>
 
           {/* Récap agence */}
@@ -437,6 +444,12 @@ const RapprochementInterim = () => {
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
         filters={filtersWithAgence}
+      />
+
+      <InterimaireExportDialog
+        open={showAgenceExportDialog}
+        onOpenChange={setShowAgenceExportDialog}
+        filters={{ ...filters, agenceInterim: selectedAgence ?? undefined }}
       />
     </PageLayout>
   );
