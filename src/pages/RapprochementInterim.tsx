@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { format, parseISO, startOfWeek } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays, CheckCircle2 } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
@@ -18,6 +19,7 @@ import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog
 import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
 import { buildRHConsolidation, EmployeeWithDetails } from "@/hooks/rhShared";
 import { useQuery } from "@tanstack/react-query";
+import { useRapprochementStatus } from "@/hooks/useRapprochementStatus";
 
 const RapprochementInterim = () => {
   const now = new Date();
@@ -31,6 +33,7 @@ const RapprochementInterim = () => {
   const [selectedSalarieId, setSelectedSalarieId] = useState<string | null>(null);
   const [selectedAgence, setSelectedAgence] = useState<string | null>(null);
   const entrepriseId = localStorage.getItem("current_entreprise_id");
+  const { isRapproche, getRapprocheSummary, toggle: toggleRapproche, isToggling } = useRapprochementStatus(periode, entrepriseId);
 
   const filters = {
     periode,
@@ -450,6 +453,38 @@ const RapprochementInterim = () => {
                             <Badge variant="secondary" className="text-xs">
                               {emps.length} intérimaire{emps.length > 1 ? "s" : ""}
                             </Badge>
+                            {/* Rapprochement status */}
+                            {semaineFilter !== "all" ? (
+                              <div
+                                className="flex items-center gap-1.5 ml-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleRapproche({ agenceName, semaine: semaineFilter });
+                                }}
+                              >
+                                <Checkbox
+                                  checked={isRapproche(agenceName, semaineFilter)}
+                                  disabled={isToggling}
+                                  className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                                />
+                                <span className="text-xs text-muted-foreground">Rapproché</span>
+                              </div>
+                            ) : (
+                              (() => {
+                                const summary = getRapprocheSummary(agenceName, uniqueWeeks);
+                                if (summary.total === 0) return null;
+                                const allDone = summary.done === summary.total;
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs ml-2 ${allDone ? "border-green-600 text-green-600" : "border-muted-foreground text-muted-foreground"}`}
+                                  >
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    {summary.done}/{summary.total} rapproché{summary.done > 1 ? "s" : ""}
+                                  </Badge>
+                                );
+                              })()
+                            )}
                             <Eye className="h-4 w-4 text-muted-foreground ml-auto" />
                           </div>
                         </TableCell>
