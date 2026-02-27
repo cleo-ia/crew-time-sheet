@@ -1,17 +1,24 @@
 
 
-## Plan : Bouton Conversation dans le header de la page Rapprochement
+## Objectif
+Ajouter un bouton "Créer un utilisateur" dans l'onglet Utilisateurs du panel admin, permettant de pré-créer une fiche utilisateur (nom, prénom, email) sans envoyer d'invitation. L'invitation et l'attribution du rôle pourront être faites plus tard.
 
-Le bouton Conversation est actuellement dans la nav (AppNav) mais l'utilisateur veut le voir dans le header de la page, à côté de "Export PDF" et "Nouvel intérimaire".
+## Modification
 
-### Modifications
+### 1. Créer un dialog `CreateUserDialog`
+- Nouveau composant `src/components/admin/CreateUserDialog.tsx`
+- Champs : nom, prénom, email (optionnel)
+- Pas de sélection de rôle (le rôle sera attribué à l'invitation)
+- Utilise `useCreateUtilisateur` existant pour insérer dans `utilisateurs`
+- Vérifie les doublons (déjà géré par le hook)
 
-**`src/pages/RapprochementInterim.tsx`** :
-- Importer `ConversationButton`, `ConversationListSheet`, `useUnreadMessages`, `supabase`, et ajouter les states nécessaires (`showConversation`, `currentUserId`)
-- Ajouter un `useEffect` pour récupérer le `currentUserId`
-- Ajouter le `ConversationButton` dans le bloc `actions` du `PageHeader`, entre "Export PDF" et "Nouvel intérimaire"
-- Ajouter le rendu de `ConversationListSheet` en bas du composant
+### 2. Modifier `UsersManager.tsx`
+- Ajouter un bouton "Créer un utilisateur" à côté du bouton "Inviter"
+- Ouvrir le `CreateUserDialog` au clic
+- Invalider le cache après création pour rafraîchir la liste
 
-**`src/components/navigation/AppNav.tsx`** :
-- Retirer le `ConversationButton` et `ConversationListSheet` de la nav gestionnaire (puisqu'il sera dans la page directement)
+## Détails techniques
+- Le hook `useCreateUtilisateur` gère déjà : insertion avec `entreprise_id`, vérification de doublon, invalidation du cache React Query
+- L'utilisateur créé apparaîtra dans la liste sans `auth_user_id` (pas encore connecté)
+- Lors de l'invitation ultérieure, le trigger `handle_new_user_signup` liera automatiquement le compte Auth à la fiche existante via l'email
 
