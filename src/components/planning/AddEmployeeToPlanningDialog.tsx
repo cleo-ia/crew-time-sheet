@@ -174,13 +174,26 @@ export const AddEmployeeToPlanningDialog = ({
 
   // Employés "Non affectés" : permanents (hors intérimaires) pas entièrement affectés sur la semaine
   const unassignedEmployes = useMemo(() => {
+    const weekDateSet = new Set(weekDays.map(d => d.date));
+
     let result = allEmployes.filter(emp => {
       // Exclure les intérimaires
       if (getEmployeType(emp) === "interim") return false;
       // Exclure ceux déjà sur ce chantier
       if (employeIdsOnChantier.has(emp.id)) return false;
 
-      return true;
+      const assigned = daysAssignedByEmploye.get(emp.id) || new Set();
+      const absDates = absencesLDByEmploye?.get(emp.id)?.dates || new Set();
+
+      let freeDays = 0;
+      let absOnlyDays = 0;
+      weekDateSet.forEach(date => {
+        if (!assigned.has(date) && !absDates.has(date)) freeDays++;
+        if (!assigned.has(date) && absDates.has(date)) absOnlyDays++;
+      });
+
+      // Garder si au moins 1 jour libre OU si bloqué uniquement par des absences (pas par des affectations)
+      return freeDays > 0 || absOnlyDays > 0;
     });
 
     // Appliquer filtre type (sans interim)
@@ -197,7 +210,6 @@ export const AddEmployeeToPlanningDialog = ({
     }
 
     // Trier : employés avec jours libres d'abord (par nb décroissant), puis ceux à 0 jour libre en dernier
-    const weekDateSet = new Set(weekDays.map(d => d.date));
     const getFreeDays = (empId: string) => {
       const assigned = daysAssignedByEmploye.get(empId) || new Set();
       const absDates = absencesLDByEmploye?.get(empId)?.dates || new Set();
