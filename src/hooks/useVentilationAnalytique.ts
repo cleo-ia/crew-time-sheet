@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { batchQueryIn } from "@/lib/supabaseBatch";
 import { getISOWeek, getISOWeekYear } from "date-fns";
 
 // Types
@@ -111,14 +112,14 @@ export const useRecapChantier = (periode: string) => {
       
       const ficheIds = filteredFiches.map(f => f.id);
       
-      // Fetch fiches_jours for these fiches
-      const { data: joursData, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("fiche_id, code_chantier_du_jour, HNORM")
-        .in("fiche_id", ficheIds);
-      
-      if (joursError) throw joursError;
-      if (!joursData) return [];
+      // Fetch fiches_jours for these fiches (batched)
+      const joursData = await batchQueryIn<any>(
+        "fiches_jours",
+        "fiche_id, code_chantier_du_jour, HNORM",
+        "fiche_id",
+        ficheIds
+      );
+      if (!joursData || joursData.length === 0) return [];
       
       // Build a map fiche_id -> utilisateur
       const ficheUserMap = new Map<string, { agence_interim: string | null; statut: string | null }>();
@@ -219,14 +220,14 @@ export const useVentilationOuvrier = (periode: string) => {
       
       const ficheIds = filteredFiches.map(f => f.id);
       
-      // Fetch fiches_jours
-      const { data: joursData, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("fiche_id, code_chantier_du_jour, HNORM")
-        .in("fiche_id", ficheIds);
-      
-      if (joursError) throw joursError;
-      if (!joursData) return [];
+      // Fetch fiches_jours (batched)
+      const joursData = await batchQueryIn<any>(
+        "fiches_jours",
+        "fiche_id, code_chantier_du_jour, HNORM",
+        "fiche_id",
+        ficheIds
+      );
+      if (!joursData || joursData.length === 0) return [];
       
       // Build maps
       const ficheUserMap = new Map<string, { id: string; nom: string; prenom: string; statut: string | null }>();
@@ -372,14 +373,14 @@ export const useVentilationInterim = (periode: string) => {
       
       const ficheIds = filteredFiches.map(f => f.id);
       
-      // Fetch fiches_jours
-      const { data: joursData, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("fiche_id, code_chantier_du_jour, HNORM")
-        .in("fiche_id", ficheIds);
-      
-      if (joursError) throw joursError;
-      if (!joursData) return [];
+      // Fetch fiches_jours (batched)
+      const joursData = await batchQueryIn<any>(
+        "fiches_jours",
+        "fiche_id, code_chantier_du_jour, HNORM",
+        "fiche_id",
+        ficheIds
+      );
+      if (!joursData || joursData.length === 0) return [];
       
       // Build maps
       const ficheUserMap = new Map<string, { id: string; nom: string; prenom: string; agence_interim: string }>();

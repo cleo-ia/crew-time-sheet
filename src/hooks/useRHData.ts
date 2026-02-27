@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { batchQueryIn } from "@/lib/supabaseBatch";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { buildRHConsolidation } from "./rhShared";
@@ -223,14 +224,14 @@ export const useRHDetails = (filters: any) => {
         });
       }
 
-      // 3. Récupérer tous les fiches_jours pour calculer les heures totales
+      // 3. Récupérer tous les fiches_jours pour calculer les heures totales (batched)
       const ficheIds = fichesFiltered.map(f => f.id) || [];
-      const { data: allFichesJours, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("fiche_id, HNORM, HI, heures")
-        .in("fiche_id", ficheIds);
-
-      if (joursError) throw joursError;
+      const allFichesJours = await batchQueryIn<any>(
+        "fiches_jours",
+        "fiche_id, HNORM, HI, heures",
+        "fiche_id",
+        ficheIds
+      );
 
       // Créer un map fiche_id → total heures (normales uniquement, sans intempéries)
       const heuresMap = new Map<string, number>();
@@ -409,23 +410,25 @@ export const useRHFicheDetail = (ficheId: string) => {
 
       const chefIds = new Set(chantiersData?.map(c => c.chef_id).filter(Boolean) || []);
 
-      // Récupérer les rôles des salariés
-      const { data: rolesData } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("user_id", salarieIds);
+      // Récupérer les rôles des salariés (batched)
+      const rolesData = await batchQueryIn<any>(
+        "user_roles",
+        "user_id, role",
+        "user_id",
+        salarieIds
+      );
 
       const rolesMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
 
-      // 3. Récupérer tous les fiches_jours (avec trajet_perso)
+      // 3. Récupérer tous les fiches_jours (avec trajet_perso) (batched)
       const ficheIds = fiches.map(f => f.id);
-      const { data: joursData, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("*")
-        .in("fiche_id", ficheIds)
-        .order("date", { ascending: true });
-
-      if (joursError) throw joursError;
+      const joursData = await batchQueryIn<any>(
+        "fiches_jours",
+        "*",
+        "fiche_id",
+        ficheIds,
+        { order: { column: "date", ascending: true } }
+      );
 
       // 4. Construire le détail jour par jour
       const detailJours = joursData?.map(jour => {
@@ -680,13 +683,13 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         }
       });
 
-      const { data: fichesJoursRaw, error: joursError } = await supabase
-        .from("fiches_jours")
-        .select("*")
-        .in("fiche_id", ficheIds)
-        .order("date", { ascending: true });
-
-      if (joursError) throw joursError;
+      const fichesJoursRaw = await batchQueryIn<any>(
+        "fiches_jours",
+        "*",
+        "fiche_id",
+        ficheIds,
+        { order: { column: "date", ascending: true } }
+      );
 
       // 🔥 CORRECTION: Filtrer les fiches_jours des finisseurs par affectations réelles
       let fichesJours = fichesJoursRaw || [];
