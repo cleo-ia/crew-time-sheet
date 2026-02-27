@@ -174,27 +174,13 @@ export const AddEmployeeToPlanningDialog = ({
 
   // Employés "Non affectés" : permanents (hors intérimaires) pas entièrement affectés sur la semaine
   const unassignedEmployes = useMemo(() => {
-    const weekDateSet = new Set(weekDays.map(d => d.date));
-
     let result = allEmployes.filter(emp => {
       // Exclure les intérimaires
       if (getEmployeType(emp) === "interim") return false;
       // Exclure ceux déjà sur ce chantier
       if (employeIdsOnChantier.has(emp.id)) return false;
 
-      // Vérifier qu'il a au moins 1 jour non affecté dans la semaine
-      const assigned = daysAssignedByEmploye.get(emp.id) || new Set();
-      const absenceDates = absencesLDByEmploye?.get(emp.id)?.dates || new Set();
-      
-      // Compter les jours où l'employé est libre (ni affecté, ni en absence LD)
-      let freeDays = 0;
-      weekDateSet.forEach(date => {
-        if (!assigned.has(date) && !absenceDates.has(date)) {
-          freeDays++;
-        }
-      });
-
-      return freeDays > 0;
+      return true;
     });
 
     // Appliquer filtre type (sans interim)
@@ -210,7 +196,28 @@ export const AddEmployeeToPlanningDialog = ({
       );
     }
 
-    return sortEmployes(result);
+    // Trier : employés avec jours libres d'abord (par nb décroissant), puis ceux à 0 jour libre en dernier
+    const weekDateSet = new Set(weekDays.map(d => d.date));
+    const getFreeDays = (empId: string) => {
+      const assigned = daysAssignedByEmploye.get(empId) || new Set();
+      const absDates = absencesLDByEmploye?.get(empId)?.dates || new Set();
+      let free = 0;
+      weekDateSet.forEach(date => {
+        if (!assigned.has(date) && !absDates.has(date)) free++;
+      });
+      return free;
+    };
+
+    const sorted = sortEmployes(result);
+    return sorted.sort((a, b) => {
+      const freeA = getFreeDays(a.id);
+      const freeB = getFreeDays(b.id);
+      // Ceux avec 0 jours libres en dernier
+      if (freeA === 0 && freeB > 0) return 1;
+      if (freeB === 0 && freeA > 0) return -1;
+      // Sinon, plus de jours libres en premier
+      return freeB - freeA;
+    });
   }, [allEmployes, typeFilter, search, employeIdsOnChantier, daysAssignedByEmploye, weekDays, absencesLDByEmploye]);
 
   // Mode simple : sélection d'un employé
@@ -328,22 +335,32 @@ export const AddEmployeeToPlanningDialog = ({
       : null;
     const absenceDates = absencesLDByEmploye?.get(employe.id)?.dates || new Set();
 
+    // Calculer si l'employé a 0 jour libre (non sélectionnable)
+    const isFullyUnavailable = activeTab === "non-affectes" && (() => {
+      const assigned = daysAssignedByEmploye.get(employe.id) || new Set();
+      const absDates = absencesLDByEmploye?.get(employe.id)?.dates || new Set();
+      return weekDays.every(d => assigned.has(d.date) || absDates.has(d.date));
+    })();
+
     return (
       <div
         key={employe.id}
         className={cn(
           "p-3 rounded-md transition-colors",
-          multiSelectMode 
-            ? (isSelectedMulti ? "bg-primary/10 border border-primary" : "hover:bg-muted/50")
-            : (isSelectedSingle ? "bg-primary/10 border border-primary" : "hover:bg-muted/50 cursor-pointer")
+          isFullyUnavailable 
+            ? "opacity-50 cursor-not-allowed"
+            : multiSelectMode 
+              ? (isSelectedMulti ? "bg-primary/10 border border-primary" : "hover:bg-muted/50")
+              : (isSelectedSingle ? "bg-primary/10 border border-primary" : "hover:bg-muted/50 cursor-pointer")
         )}
-        onClick={() => !multiSelectMode && handleSelectEmploye(employe)}
+        onClick={() => !isFullyUnavailable && !multiSelectMode && handleSelectEmploye(employe)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {multiSelectMode && (
               <Checkbox
                 checked={isSelectedMulti}
+                disabled={isFullyUnavailable}
                 onCheckedChange={() => handleToggleEmployeMulti(employe.id)}
                 onClick={(e) => e.stopPropagation()}
               />
