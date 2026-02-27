@@ -1,20 +1,31 @@
 
 
-## Fix : InterimaireExportDialog dans le bloc early return agence
+## Fix : InterimaireExportDialog doit respecter le filtre agenceInterim
 
-### Fichier : `src/pages/RapprochementInterim.tsx`
+### Problème
+Dans `src/components/rh/InterimaireExportDialog.tsx`, le `useEffect` (lignes 131-199) récupère **toutes** les agences depuis la table `utilisateurs`, puis itère sur chacune pour charger les données. Le filtre `filters.agenceInterim` passé en props est ignoré lors de cette étape de découverte des agences.
 
-**Ligne 226-228** — Ajouter le `InterimaireExportDialog` juste avant `</PageLayout>` dans le bloc `if (selectedAgence)` :
+### Solution
+Dans le `useEffect`, après avoir récupéré les agences uniques (ligne 154), filtrer la liste si `filters.agenceInterim` est défini :
 
-```tsx
-        </div>
-        <InterimaireExportDialog
-          open={showAgenceExportDialog}
-          onOpenChange={setShowAgenceExportDialog}
-          filters={{ ...filters, agenceInterim: selectedAgence ?? undefined }}
-        />
-      </PageLayout>
+**Fichier : `src/components/rh/InterimaireExportDialog.tsx`**
+
+Après la ligne 154 (`const uniqueAgences = [...]`), ajouter :
+
+```ts
+// Si un filtre agence est défini, ne garder que cette agence
+const agencesToProcess = filters.agenceInterim 
+  ? uniqueAgences.filter(a => a === filters.agenceInterim)
+  : uniqueAgences;
 ```
 
-C'est la seule modification nécessaire. Le dialog sera maintenant monté dans le DOM quand la vue agence est affichée, et le bouton fonctionnera.
+Puis remplacer `uniqueAgences` par `agencesToProcess` dans la boucle `for` de la ligne 161 :
+
+```ts
+for (const agence of agencesToProcess) {
+```
+
+### Résultat
+- Depuis la vue détail agence (ex: ADEQUAT), le dialogue ne montrera que ADEQUAT avec le filtre semaine
+- Depuis la vue principale, le dialogue continuera de montrer toutes les agences comme avant
 
