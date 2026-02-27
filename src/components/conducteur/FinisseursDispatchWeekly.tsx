@@ -113,8 +113,7 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
       <Alert className="border-amber-500/30 bg-amber-500/5">
         <Lock className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-700 dark:text-amber-400">
-          <strong>Vue en lecture seule.</strong> Les affectations sont gérées depuis le <strong>Planning</strong> par les conducteurs ou admins.
-          Contactez votre responsable pour toute modification d'équipe.
+          <strong>Vue en lecture seule.</strong> Les affectations sont gérées depuis le <strong>Planning</strong> par les conducteurs. Et oui Chloé, ça veut dire qu'on ne fait plus ses affectations depuis ici 😉
         </AlertDescription>
       </Alert>
 
