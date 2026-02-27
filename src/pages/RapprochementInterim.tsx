@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { format } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw } from "lucide-react";
+import { format, parseISO, startOfWeek } from "date-fns";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -24,6 +24,7 @@ const RapprochementInterim = () => {
   const [periode, setPeriode] = useState(format(now, "yyyy-MM"));
   const [agenceFilter, setAgenceFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [semaineFilter, setSemaineFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showAgenceExportDialog, setShowAgenceExportDialog] = useState(false);
@@ -50,9 +51,66 @@ const RapprochementInterim = () => {
     },
   });
 
-  // Filtrer par recherche nom
-  const filtered = employees.filter((emp) => {
-    // Filtre par agence côté client
+  // Extraire les semaines uniques depuis les données
+  const uniqueWeeks = useMemo(() => {
+    const weekSet = new Set<string>();
+    employees.forEach((emp) => {
+      emp.detailJours.forEach((jour) => {
+        const dateObj = parseISO(jour.date);
+        const lundi = startOfWeek(dateObj, { weekStartsOn: 1 });
+        const weekKey = format(lundi, "RRRR-'S'II");
+        weekSet.add(weekKey);
+      });
+    });
+    return Array.from(weekSet).sort();
+  }, [employees]);
+
+  // Appliquer le filtre semaine sur les données employés (recalcul des totaux)
+  const employeesFiltered = useMemo(() => {
+    if (semaineFilter === "all") return employees;
+
+    return employees.map((emp) => {
+      const filteredDays = emp.detailJours.filter((jour) => {
+        const dateObj = parseISO(jour.date);
+        const lundi = startOfWeek(dateObj, { weekStartsOn: 1 });
+        const weekKey = format(lundi, "RRRR-'S'II");
+        return weekKey === semaineFilter;
+      });
+
+      const heuresNormales = Math.round(filteredDays.reduce((s, d) => s + d.heures, 0) * 100) / 100;
+      const intemperies = Math.round(filteredDays.reduce((s, d) => s + d.intemperie, 0) * 100) / 100;
+      const paniers = filteredDays.filter((d) => d.panier || d.repasType === "PANIER").length;
+      const absences = filteredDays.filter((d) => d.isAbsent).length;
+      const totalJoursTrajets = filteredDays.filter((d) => d.trajet && !d.trajetPerso).length;
+
+      // Recalcul trajets par code
+      const trajetsParCode: Record<string, number> = {};
+      filteredDays.forEach((d) => {
+        if (d.trajet && !d.trajetPerso) {
+          trajetsParCode[d.trajet] = (trajetsParCode[d.trajet] || 0) + 1;
+        }
+      });
+
+      return {
+        ...emp,
+        detailJours: filteredDays,
+        heuresNormales,
+        intemperies,
+        paniers,
+        absences,
+        totalJoursTrajets,
+        trajetsParCode,
+        totalHeures: heuresNormales + intemperies,
+        // On ne recalcule pas heuresSupp25/50 ici car c'est une vue simplifiée par semaine
+        heuresSupp25: semaineFilter !== "all" ? 0 : emp.heuresSupp25,
+        heuresSupp50: semaineFilter !== "all" ? 0 : emp.heuresSupp50,
+        heuresSupp: semaineFilter !== "all" ? 0 : emp.heuresSupp,
+      };
+    }).filter((emp) => emp.detailJours.length > 0);
+  }, [employees, semaineFilter]);
+
+  // Filtrer par recherche nom et agence
+  const filtered = employeesFiltered.filter((emp) => {
     if (agenceFilter !== "all" && emp.agence_interim !== agenceFilter) return false;
     if (!searchQuery) return true;
     const fullName = `${emp.prenom} ${emp.nom}`.toLowerCase();
@@ -77,7 +135,6 @@ const RapprochementInterim = () => {
       groups.get(agence)!.push(emp);
     });
 
-    // Trier les groupes par nom d'agence, "Sans agence" en dernier
     const sorted = Array.from(groups.entries()).sort(([a], [b]) => {
       if (a === "Sans agence") return 1;
       if (b === "Sans agence") return -1;
@@ -262,7 +319,7 @@ const RapprochementInterim = () => {
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Période</label>
-              <Select value={periode} onValueChange={setPeriode}>
+              <Select value={periode} onValueChange={(v) => { setPeriode(v); setSemaineFilter("all"); }}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -288,6 +345,25 @@ const RapprochementInterim = () => {
                       {agence}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">Semaine</label>
+              <Select value={semaineFilter} onValueChange={setSemaineFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Toutes les semaines" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les semaines</SelectItem>
+                  {uniqueWeeks.map((week) => {
+                    const weekNum = week.split("-S")[1];
+                    return (
+                      <SelectItem key={week} value={week}>
+                        Semaine {weekNum}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
