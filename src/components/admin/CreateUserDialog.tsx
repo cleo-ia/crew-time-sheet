@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateUtilisateur } from "@/hooks/useUtilisateurs";
 import { toast } from "sonner";
 
@@ -15,6 +16,7 @@ export const CreateUserDialog = ({ open, onOpenChange }: CreateUserDialogProps) 
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [email, setEmail] = useState("");
+  const [roleMetier, setRoleMetier] = useState<"chef" | "conducteur" | "macon" | "finisseur" | "grutier" | "interimaire" | "">("");
   const createUtilisateur = useCreateUtilisateur();
 
   const handleSubmit = async () => {
@@ -28,11 +30,13 @@ export const CreateUserDialog = ({ open, onOpenChange }: CreateUserDialogProps) 
         nom: nom.trim(),
         prenom: prenom.trim(),
         email: email.trim() || undefined,
+        role_metier: roleMetier || undefined,
       });
       toast.success(`${prenom.trim()} ${nom.trim()} a été créé(e)`);
       setNom("");
       setPrenom("");
       setEmail("");
+      setRoleMetier("");
       onOpenChange(false);
     } catch (error: any) {
       // Le hook gère déjà les doublons, on affiche l'erreur
@@ -77,6 +81,22 @@ export const CreateUserDialog = ({ open, onOpenChange }: CreateUserDialogProps) 
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@groupe-engo.com"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Rôle métier (optionnel)</Label>
+            <Select value={roleMetier} onValueChange={(v) => setRoleMetier(v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Aucun rôle sélectionné" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chef">Chef de chantier</SelectItem>
+                <SelectItem value="conducteur">Conducteur</SelectItem>
+                <SelectItem value="macon">Maçon</SelectItem>
+                <SelectItem value="finisseur">Finisseur</SelectItem>
+                <SelectItem value="grutier">Grutier</SelectItem>
+                <SelectItem value="interimaire">Intérimaire</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
