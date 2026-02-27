@@ -13,6 +13,7 @@ export async function batchQueryIn<T = any>(
   ids: string[],
   options?: {
     order?: { column: string; ascending: boolean };
+    extraFilters?: (query: any) => any;
     limitPerChunk?: number;
   }
 ): Promise<T[]> {
@@ -22,10 +23,16 @@ export async function batchQueryIn<T = any>(
 
   for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
     const chunk = ids.slice(i, i + BATCH_CHUNK_SIZE);
-    const { data, error } = await (supabase
+    let query = supabase
       .from(table as any)
       .select(select)
-      .in(column, chunk) as any);
+      .in(column, chunk) as any;
+
+    if (options?.extraFilters) {
+      query = options.extraFilters(query);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     if (data) results.push(...(data as T[]));
