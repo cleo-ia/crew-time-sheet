@@ -15,6 +15,7 @@ import SignatureFinisseurs from "./pages/SignatureFinisseurs";
 import AdminPanel from "./pages/AdminPanel";
 import ChantierDetail from "./pages/ChantierDetail";
 import ChantiersPage from "./pages/ChantiersPage";
+import RapprochementInterim from "./pages/RapprochementInterim";
 import PlanningMainOeuvre from "./pages/PlanningMainOeuvre";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -131,6 +132,16 @@ const App = () => (
               } 
             />
             
+            {/* Rapprochement Intérimaires - Accessible par: super_admin, gestionnaire (SDER) */}
+            <Route 
+              path="/rapprochement-interim" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "gestionnaire"]}>
+                  <RapprochementInterim />
+                </RequireRole>
+              } 
+            />
+
             {/* Admin Panel - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin" 
@@ -140,7 +151,6 @@ const App = () => (
                 </RequireRole>
               } 
             />
-            
             {/* Chantier Detail - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin/chantiers/:id" 
