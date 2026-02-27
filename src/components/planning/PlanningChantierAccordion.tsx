@@ -444,8 +444,9 @@ export const PlanningChantierAccordion = ({
                 <div className="flex gap-1">
                   {weekDays.map((day, index) => {
                     const lr = countsByCategory.lrByDay[day.date] || 0;
+                    const app = countsByCategory.appByDay[day.date] || 0;
                     const interim = countsByCategory.interimByDay[day.date] || 0;
-                    const total = lr + interim;
+                    const total = lr + app + interim;
                     const dateStr = format(parseISO(day.date), "d/MM");
                     return (
                       <div 
