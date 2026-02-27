@@ -1,24 +1,16 @@
 
 
-## Fix : appliquer le filtre semaine à la vue détail agence
+## Rendre le badge semaine plus visible
 
-**Fichier : `src/pages/RapprochementInterim.tsx`**
+**Fichier : `src/pages/RapprochementInterim.tsx`** (ligne ~209)
 
-**Problème** : Ligne 185, la vue détail agence filtre sur `employees` (données complètes du mois) au lieu de `employeesFiltered` (données filtrées par semaine).
-
-**Correction** : Remplacer `employees` par `employeesFiltered` à la ligne 185 :
+Changer le style du badge pour ajouter une bordure bleue primaire :
 
 ```tsx
 // Avant
-const agenceEmployees = employees.filter(
-  (emp) => (emp.agence_interim || "Sans agence") === selectedAgence
-);
+<Badge variant="outline" className="text-xs">
 
 // Après
-const agenceEmployees = employeesFiltered.filter(
-  (emp) => (emp.agence_interim || "Sans agence") === selectedAgence
-);
+<Badge variant="outline" className="text-xs border-primary text-primary">
 ```
-
-Changement d'un seul mot, une seule ligne. Les totaux, accordéons et export suivront automatiquement.
 
