@@ -1,36 +1,54 @@
 
 
-## Confirmation : zéro risque de régression
+## Plan : Sécuriser la requête signatures + rendre `batchQueryIn` plus flexible
 
-Le fix consiste en **deux changements purement mécaniques** :
+### Problème
+La requête signatures (useRHData.ts L667-671) combine `.in("fiche_id", ficheIds)` avec `.eq("signed_by", salarieId)`. La fonction `batchQueryIn` actuelle ne supporte pas de filtres supplémentaires.
 
-1. **Batching de la requête** (lignes 426-430) : Au lieu d'un seul `.in("fiche_id", ficheIds)`, on découpe en paquets de 100 et on concatène. Le résultat final `joursData` contient **exactement les mêmes données** qu'avant, mais en plus complet (plus de troncature). La logique métier en aval ne change pas d'un seul caractère — elle reçoit juste le même tableau, potentiellement avec plus de lignes qu'avant (celles qui manquaient).
+### Solution
 
-2. **Suppression des console.log** : Ce sont des logs de debug temporaires qui n'ont aucun effet sur le comportement de l'application.
+**1. Enrichir `batchQueryIn` dans `src/lib/supabaseBatch.ts`**
 
-**Pourquoi zéro régression :**
-- Aucune modification de la logique de calcul (heures, trajets, absences, BTP)
-- Aucune modification des types, interfaces, ou signatures de fonctions
-- Aucun changement dans les composants UI
-- Le seul effet observable : des salariés qui avaient des heures manquantes verront maintenant leurs heures correctes
+Ajouter une option `extraFilters` qui applique des filtres additionnels à chaque chunk :
 
-### Modifications dans `src/hooks/rhShared.ts`
-
-**Étape 1** — Remplacer la requête unique (lignes 426-432) par un batching par paquets de 100 :
-```ts
-const CHUNK_SIZE = 100;
-let joursData: any[] = [];
-for (let i = 0; i < ficheIds.length; i += CHUNK_SIZE) {
-  const chunk = ficheIds.slice(i, i + CHUNK_SIZE);
-  const { data, error } = await supabase
-    .from("fiches_jours")
-    .select("fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire")
-    .in("fiche_id", chunk)
-    .limit(10000);
-  if (error) throw error;
-  if (data) joursData.push(...data);
+```typescript
+options?: {
+  order?: { column: string; ascending: boolean };
+  extraFilters?: (query: any) => any;  // ← nouveau
 }
 ```
 
-**Étape 2** — Supprimer les 4 blocs de console.log temporaires (lignes 421-423, 507-510, 585, 598-613).
+Usage dans la boucle :
+```typescript
+let query = supabase.from(table).select(select).in(column, chunk);
+if (options?.extraFilters) query = options.extraFilters(query);
+const { data, error } = await query;
+```
+
+**2. Mettre à jour la requête signatures dans `useRHData.ts` (L667-671)**
+
+Remplacer :
+```typescript
+const { data: signaturesData } = await supabase
+  .from("signatures")
+  .select("fiche_id, signature_data, signed_at, role, signed_by")
+  .in("fiche_id", ficheIds)
+  .eq("signed_by", salarieId);
+```
+
+Par :
+```typescript
+const signaturesData = await batchQueryIn<any>(
+  "signatures",
+  "fiche_id, signature_data, signed_at, role, signed_by",
+  "fiche_id",
+  ficheIds,
+  { extraFilters: (q: any) => q.eq("signed_by", salarieId) }
+);
+```
+
+### Implémentation
+- 2 fichiers modifiés : `src/lib/supabaseBatch.ts` et `src/hooks/useRHData.ts`
+- Zéro régression : même résultat, même structure de données
+- Bonus : `extraFilters` réutilisable pour d'autres cas similaires dans le futur
 
