@@ -1,31 +1,19 @@
 
 
-## Fix : InterimaireExportDialog doit respecter le filtre agenceInterim
+## Ajouter le bouton "Vider le cache" en bas de la page Rapprochement Intérim
 
-### Problème
-Dans `src/components/rh/InterimaireExportDialog.tsx`, le `useEffect` (lignes 131-199) récupère **toutes** les agences depuis la table `utilisateurs`, puis itère sur chacune pour charger les données. Le filtre `filters.agenceInterim` passé en props est ignoré lors de cette étape de découverte des agences.
+**Fichier : `src/pages/RapprochementInterim.tsx`**
 
-### Solution
-Dans le `useEffect`, après avoir récupéré les agences uniques (ligne 154), filtrer la liste si `filters.agenceInterim` est défini :
+1. Importer `clearCacheAndReload` depuis `@/hooks/useClearCache`
+2. Importer l'icône `RefreshCw` depuis `lucide-react`
+3. Ajouter en bas de page (avant la fermeture du `<div>` principal) un bouton centré reprenant le style de la capture :
 
-**Fichier : `src/components/rh/InterimaireExportDialog.tsx`**
-
-Après la ligne 154 (`const uniqueAgences = [...]`), ajouter :
-
-```ts
-// Si un filtre agence est défini, ne garder que cette agence
-const agencesToProcess = filters.agenceInterim 
-  ? uniqueAgences.filter(a => a === filters.agenceInterim)
-  : uniqueAgences;
+```tsx
+<div className="flex justify-center py-6">
+  <Button variant="outline" onClick={clearCacheAndReload} className="text-muted-foreground">
+    <RefreshCw className="h-4 w-4 mr-2" />
+    Problème d'affichage ? Vider le cache
+  </Button>
+</div>
 ```
-
-Puis remplacer `uniqueAgences` par `agencesToProcess` dans la boucle `for` de la ligne 161 :
-
-```ts
-for (const agence of agencesToProcess) {
-```
-
-### Résultat
-- Depuis la vue détail agence (ex: ADEQUAT), le dialogue ne montrera que ADEQUAT avec le filtre semaine
-- Depuis la vue principale, le dialogue continuera de montrer toutes les agences comme avant
 
