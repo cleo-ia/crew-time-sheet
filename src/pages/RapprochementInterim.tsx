@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2 } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
 import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
@@ -25,7 +26,7 @@ const RapprochementInterim = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [selectedSalarieId, setSelectedSalarieId] = useState<string | null>(null);
-
+  const [selectedAgence, setSelectedAgence] = useState<string | null>(null);
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
   const filters = {
@@ -115,6 +116,102 @@ const RapprochementInterim = () => {
             onBack={() => setSelectedSalarieId(null)}
             readOnly
           />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Si une agence est sélectionnée, afficher la vue détail agence
+  if (selectedAgence) {
+    const agenceEmployees = employees.filter(
+      (emp) => (emp.agence_interim || "Sans agence") === selectedAgence
+    );
+    const agenceTotals = getGroupTotals(agenceEmployees);
+
+    return (
+      <PageLayout>
+        <AppNav />
+        <div className="container mx-auto px-4 py-6 space-y-4">
+          {/* Header */}
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedAgence(null)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <Building2 className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold">{selectedAgence}</h1>
+              <Badge variant="secondary">
+                {agenceEmployees.length} intérimaire{agenceEmployees.length > 1 ? "s" : ""}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Récap agence */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Card className="p-3 text-center">
+              <p className="text-xl font-bold">{agenceTotals.heuresNormales}h</p>
+              <p className="text-xs text-muted-foreground">H. Normales</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xl font-bold">{agenceTotals.heuresSupp25}h</p>
+              <p className="text-xs text-muted-foreground">H. Supp 25%</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xl font-bold">{agenceTotals.heuresSupp50}h</p>
+              <p className="text-xs text-muted-foreground">H. Supp 50%</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xl font-bold">{agenceTotals.paniers}</p>
+              <p className="text-xs text-muted-foreground">Paniers</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xl font-bold">{agenceTotals.trajets}</p>
+              <p className="text-xs text-muted-foreground">Trajets</p>
+            </Card>
+          </div>
+
+          {/* Accordéons intérimaires */}
+          <Accordion type="multiple" className="space-y-2">
+            {agenceEmployees.map((emp) => (
+              <AccordionItem
+                key={emp.id}
+                value={emp.id}
+                className="border border-border rounded-lg bg-muted/30 px-3"
+              >
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-4 py-1">
+                    <span className="font-medium text-foreground">
+                      {emp.prenom} {emp.nom}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap gap-1">
+                        {emp.chantier_codes.map((code, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {code}
+                          </Badge>
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {emp.heuresNormales}h
+                        {emp.heuresSupp > 0 && ` + ${emp.heuresSupp}h supp`}
+                      </span>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="pt-2">
+                    <RHEmployeeDetail
+                      salarieId={emp.id}
+                      filters={filters}
+                      onBack={() => {}}
+                      readOnly
+                      hideBackButton
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </PageLayout>
     );
@@ -241,9 +338,13 @@ const RapprochementInterim = () => {
                 {groupedByAgence.map(([agenceName, emps]) => {
                   const totals = getGroupTotals(emps);
                   return (
-                    <>
-                      {/* En-tête agence */}
-                      <TableRow key={`header-${agenceName}`} className="bg-primary/10 border-t-2 border-primary/20">
+                    <React.Fragment key={agenceName}>
+                      {/* En-tête agence cliquable */}
+                      <TableRow
+                        key={`header-${agenceName}`}
+                        className="bg-primary/10 border-t-2 border-primary/20 cursor-pointer hover:bg-primary/15 transition-colors"
+                        onClick={() => setSelectedAgence(agenceName)}
+                      >
                         <TableCell colSpan={9} className="py-3">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-primary" />
@@ -251,6 +352,7 @@ const RapprochementInterim = () => {
                             <Badge variant="secondary" className="text-xs">
                               {emps.length} intérimaire{emps.length > 1 ? "s" : ""}
                             </Badge>
+                            <Eye className="h-4 w-4 text-muted-foreground ml-auto" />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -306,7 +408,7 @@ const RapprochementInterim = () => {
                         <TableCell className="text-center font-bold">{totals.trajets}</TableCell>
                         <TableCell />
                       </TableRow>
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>

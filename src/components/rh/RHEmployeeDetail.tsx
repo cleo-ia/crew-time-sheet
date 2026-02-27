@@ -27,9 +27,10 @@ interface RHEmployeeDetailProps {
   filters: any;
   onBack: () => void;
   readOnly?: boolean;
+  hideBackButton?: boolean;
 }
 
-export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false }: RHEmployeeDetailProps) => {
+export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false, hideBackButton = false }: RHEmployeeDetailProps) => {
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
@@ -124,10 +125,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
+          {!hideBackButton && (
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
+          )}
           <Skeleton className="h-8 w-64" />
         </div>
         <Card className="p-6">
@@ -140,10 +143,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false 
   if (!data) {
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
-        </Button>
+        {!hideBackButton && (
+          <Button variant="outline" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour
+          </Button>
+        )}
         <Card className="p-12">
           <div className="text-center text-muted-foreground">
             <p className="text-lg font-medium">Aucune donnée trouvée</p>
@@ -179,10 +184,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
+          {!hideBackButton && (
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
             <h2 className="text-2xl font-bold text-foreground">
