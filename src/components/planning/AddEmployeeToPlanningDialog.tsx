@@ -447,7 +447,7 @@ export const AddEmployeeToPlanningDialog = ({
 
         {/* Sélection des jours - MODE SIMPLE uniquement */}
         {!multiSelectMode && isSelectedSingle && (
-          <div className="mt-3 pt-3 border-t flex items-center gap-4">
+          <div className="mt-3 pt-3 border-t flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
             <span className="text-sm text-muted-foreground">
               Jours à affecter :
             </span>
