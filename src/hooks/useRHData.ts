@@ -663,12 +663,14 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       // 3. Récupérer tous les fiches_jours pour ces fiches
       const ficheIds = filteredFiches.map(f => f.id);
       
-      // 🔥 Récupérer les signatures pour ces fiches
-      const { data: signaturesData } = await supabase
-        .from("signatures")
-        .select("fiche_id, signature_data, signed_at, role, signed_by")
-        .in("fiche_id", ficheIds)
-        .eq("signed_by", salarieId);
+      // 🔥 Récupérer les signatures pour ces fiches (batched)
+      const signaturesData = await batchQueryIn<any>(
+        "signatures",
+        "fiche_id, signature_data, signed_at, role, signed_by",
+        "fiche_id",
+        ficheIds,
+        { extraFilters: (q: any) => q.eq("signed_by", salarieId) }
+      );
 
       // Créer une map semaine -> signature
       const signaturesBySemaine = new Map<string, { signature_data: string; signed_at: string; role: string | null }>();
