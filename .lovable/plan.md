@@ -1,22 +1,26 @@
 
 
-## Plan : Vue détail agence avec accordéons
+## Plan : Amélioration visuelle de la vue détail agence
 
-### Modification
-**Fichier : `src/pages/RapprochementInterim.tsx`**
+### Fichier modifié : `src/pages/RapprochementInterim.tsx` (lignes 124-217)
 
-1. Ajouter un state `selectedAgence` (string | null) à côté de `selectedSalarieId`
-2. Rendre le bandeau d'agence cliquable (cursor-pointer + hover) avec un onClick qui set `selectedAgence`
-3. Ajouter une condition : si `selectedAgence` est défini, afficher une vue pleine page avec :
-   - Header avec bouton retour, nom de l'agence, badge nombre d'intérimaires
-   - Cards récap (heures normales, supp, absences, paniers, trajets) pour l'agence
-   - Liste des intérimaires de cette agence, chacun dans un `AccordionItem` dépliable
-   - Chaque accordéon contient un `RHEmployeeDetail` en mode `readOnly` (sans le bouton retour propre au composant)
+**1. Header amélioré** (lignes 135-147)
+- Ajouter un fond subtil avec bordure basse : `border-b border-border/50 bg-muted/30 rounded-lg p-4`
+- Bouton retour avec label "Retour" à côté de la flèche
 
-### Détail technique
-- Filtrer `employees` par `agence_interim === selectedAgence` pour obtenir la liste
-- Utiliser le composant `Accordion` existant (type="multiple" pour pouvoir déplier plusieurs à la fois)
-- Chaque `AccordionTrigger` affiche nom + prénom + total heures
-- Chaque `AccordionContent` contient `<RHEmployeeDetail salarieId={emp.id} filters={filters} onBack={() => {}} readOnly />`
-- Le bouton retour principal ramène à la liste (`setSelectedAgence(null)`)
+**2. Cards récap colorées** (lignes 150-171)
+- H. Normales : fond bleu (`bg-blue-50 dark:bg-blue-900/20`, valeur en `text-blue-700`)
+- H. Supp 25% : fond orange (`bg-orange-50`, valeur en `text-orange-700`)
+- H. Supp 50% : fond amber (`bg-amber-50`, valeur en `text-amber-700`)
+- Paniers : fond emerald (`bg-emerald-50`, valeur en `text-emerald-700`)
+- Trajets : fond violet (`bg-violet-50`, valeur en `text-violet-700`)
+
+**3. Accordéons améliorés** (lignes 174-214)
+- Ajouter icône `User` (lucide) à gauche du nom dans le trigger
+- Colorer les badges chantier comme dans la liste principale (`bg-blue-50 text-blue-700 border-blue-200`)
+- Renforcer la séparation : `border border-border rounded-lg` avec `shadow-sm` sur chaque item
+- Réduire le spacing global : `space-y-3` au lieu de `space-y-2`
+
+**4. Import supplémentaire**
+- Ajouter `User` depuis `lucide-react`
 
