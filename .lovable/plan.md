@@ -1,21 +1,12 @@
 
 
-## Objectif
-Ajouter un sélecteur de rôle métier dans le dialog "Créer un utilisateur" pour pouvoir pré-assigner un rôle à l'utilisateur créé.
+## Correction simple : agrandir le dialogue
 
-## Contexte important
-Il y a deux types de rôles dans l'application :
-- **`role_metier`** (table `utilisateurs`) : chef, conducteur, macon, finisseur, grutier, interimaire — rôle opérationnel, stocké directement sur la fiche
-- **Rôle d'accès** (table `user_roles`) : admin, gestionnaire, rh, conducteur, chef — attribué uniquement à l'invitation (quand l'utilisateur a un compte Auth)
+Au lieu de réorganiser le flex interne, on agrandit le `DialogContent` pour qu'il prenne la quasi-totalité de l'écran (style plein écran). Le contenu a alors assez de place pour tout afficher, bouton "Ajouter" inclus.
 
-Pour Carole (gestionnaire), le `role_metier` n'est pas nécessaire — son rôle "gestionnaire" sera attribué au moment de l'invitation lundi. Mais pour d'autres utilisateurs (chefs, conducteurs, maçons...) le `role_metier` est utile dès la pré-création.
+**Fichier** : `src/components/planning/AddEmployeeToPlanningDialog.tsx`
 
-## Modification
+**Changement** : Remplacer `max-h-[80vh]` par `max-h-[95vh]` (ou `h-[95vh]`) sur le `DialogContent`, et éventuellement élargir aussi avec `max-w-3xl` ou `max-w-4xl` pour profiter de l'espace. Le scroll interne existant (`ScrollArea`) continue de gérer la liste si elle dépasse.
 
-### `src/components/admin/CreateUserDialog.tsx`
-- Ajouter un `Select` pour le champ `role_metier` (optionnel)
-- Options : Chef de chantier, Conducteur, Maçon, Finisseur, Grutier, Intérimaire
-- Passer la valeur à `createUtilisateur.mutateAsync({ ..., role_metier })`
-- Réinitialiser le champ à la fermeture
-- Le hook `useCreateUtilisateur` accepte déjà `role_metier` en paramètre
+Un seul changement CSS, une seule ligne.
 
