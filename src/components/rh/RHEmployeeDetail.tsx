@@ -26,9 +26,10 @@ interface RHEmployeeDetailProps {
   salarieId: string;
   filters: any;
   onBack: () => void;
+  readOnly?: boolean;
 }
 
-export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetailProps) => {
+export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false }: RHEmployeeDetailProps) => {
   const { data, isLoading } = useRHEmployeeDetail(salarieId, filters);
   const updateFicheJour = useUpdateFicheJour();
   const batchUpdateTrajet = useUpdateCodeTrajetBatch();
@@ -392,6 +393,9 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                     </div>
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
+                    {readOnly ? (
+                      <span>{day.heuresNormales}h</span>
+                    ) : (
                     <EditableCell
                       value={day.heuresNormales}
                       type="number"
@@ -406,7 +410,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           field: "HNORM",
                           value: newValue as number,
                         });
-                        // Log modification (non-blocking)
                         if (userInfo) {
                           try {
                             await logModification.mutateAsync({
@@ -428,9 +431,13 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         }
                       }}
                     />
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
-                    {day.heuresIntemperies > 0 || day.ficheJourId ? (
+                    {readOnly ? (
+                      <span>{day.heuresIntemperies > 0 ? `${day.heuresIntemperies}h` : "-"}</span>
+                    ) : (
+                    day.heuresIntemperies > 0 || day.ficheJourId ? (
                       <EditableCell
                         value={day.heuresIntemperies}
                         type="number"
@@ -445,7 +452,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                             field: "HI",
                             value: newValue as number,
                           });
-                          // Log modification (non-blocking)
                           if (userInfo) {
                             try {
                               await logModification.mutateAsync({
@@ -469,9 +475,13 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       />
                     ) : (
                       <span className="text-muted-foreground">-</span>
+                    )
                     )}
                   </TableCell>
                   <TableCell className="py-4 px-4">
+                    {readOnly ? (
+                      <span className="text-sm">{(day as any).typeAbsence || (day.heuresNormales === 0 ? "À qualifier" : "-")}</span>
+                    ) : (
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
                       isAbsent={day.heuresNormales === 0}
@@ -490,7 +500,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                           field: "type_absence",
                           value: newValue,
                         });
-                        // Log modification (non-blocking)
                         if (userInfo) {
                           try {
                             await logModification.mutateAsync({
@@ -512,8 +521,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         }
                       }}
                     />
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
+                    {readOnly ? (
+                      <span>{day.panier ? "✓" : "-"}</span>
+                    ) : (
                     <EditableCell
                       value={day.panier}
                       type="checkbox"
@@ -526,9 +539,13 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         });
                       }}
                     />
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
-                    {isAbsent ? (
+                    {readOnly ? (
+                      <span className="font-mono text-xs">{(day as any).codeTrajet || "-"}</span>
+                    ) : (
+                    isAbsent ? (
                       <span className="text-muted-foreground text-sm">-</span>
                     ) : (
                       <CodeTrajetSelector
@@ -540,7 +557,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                             field: "code_trajet",
                             value: value || null,
                           });
-                          // Log modification (non-blocking)
                           if (userInfo) {
                             try {
                               await logModification.mutateAsync({
@@ -566,7 +582,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                             ficheJourIds: batchFicheJourIds,
                             codeTrajet: value,
                           });
-                          // Log batch modification (non-blocking)
                           if (userInfo) {
                             try {
                               await logModification.mutateAsync({
@@ -592,16 +607,19 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         disabled={false}
                         hasHours={day.heuresNormales > 0}
                       />
+                    )
                     )}
                   </TableCell>
                   <TableCell className="text-center py-4 px-4">
+                    {readOnly ? (
+                      <span>{day.trajetPerso ? "✓" : "-"}</span>
+                    ) : (
                     <EditableCell
                       value={day.trajetPerso}
                       type="checkbox"
                       disabled={isAbsent}
                       onSave={async (checked) => {
                         if (checked) {
-                          // Si on coche "Trajet Perso", on décoche "Trajet"
                           await updateFicheJour.mutateAsync({
                             ficheJourId: day.ficheJourId,
                             field: "trajet_perso",
@@ -613,7 +631,6 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                             value: 0,
                           });
                         } else {
-                          // Si on décoche "Trajet Perso", on met juste à false
                           await updateFicheJour.mutateAsync({
                             ficheJourId: day.ficheJourId,
                             field: "trajet_perso",
@@ -622,8 +639,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                         }
                       }}
                     />
+                    )}
                   </TableCell>
                   <TableCell className="py-4 px-4">
+                    {readOnly ? (
+                      <span className="text-sm text-muted-foreground">{(day as any).regularisationM1 || "-"}</span>
+                    ) : (
                     <EditableTextCell
                       value={(day as any).regularisationM1 || ""}
                       onSave={async (newValue) => {
@@ -635,8 +656,12 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                       placeholder="Note de régularisation..."
                     />
+                    )}
                   </TableCell>
                   <TableCell className="py-4 px-4">
+                    {readOnly ? (
+                      <span className="text-sm text-muted-foreground">{(day as any).autresElements || "-"}</span>
+                    ) : (
                     <EditableTextCell
                       value={(day as any).autresElements || ""}
                       onSave={async (newValue) => {
@@ -648,6 +673,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack }: RHEmployeeDetai
                       }}
                       placeholder="Note..."
                     />
+                    )}
                   </TableCell>
                   <TableCell className="py-4 px-4">
                     <div className="text-sm text-muted-foreground max-w-xs">
