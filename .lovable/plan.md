@@ -1,24 +1,21 @@
 
 
 ## Objectif
-Ajouter un bouton "Créer un utilisateur" dans l'onglet Utilisateurs du panel admin, permettant de pré-créer une fiche utilisateur (nom, prénom, email) sans envoyer d'invitation. L'invitation et l'attribution du rôle pourront être faites plus tard.
+Ajouter un sélecteur de rôle métier dans le dialog "Créer un utilisateur" pour pouvoir pré-assigner un rôle à l'utilisateur créé.
+
+## Contexte important
+Il y a deux types de rôles dans l'application :
+- **`role_metier`** (table `utilisateurs`) : chef, conducteur, macon, finisseur, grutier, interimaire — rôle opérationnel, stocké directement sur la fiche
+- **Rôle d'accès** (table `user_roles`) : admin, gestionnaire, rh, conducteur, chef — attribué uniquement à l'invitation (quand l'utilisateur a un compte Auth)
+
+Pour Carole (gestionnaire), le `role_metier` n'est pas nécessaire — son rôle "gestionnaire" sera attribué au moment de l'invitation lundi. Mais pour d'autres utilisateurs (chefs, conducteurs, maçons...) le `role_metier` est utile dès la pré-création.
 
 ## Modification
 
-### 1. Créer un dialog `CreateUserDialog`
-- Nouveau composant `src/components/admin/CreateUserDialog.tsx`
-- Champs : nom, prénom, email (optionnel)
-- Pas de sélection de rôle (le rôle sera attribué à l'invitation)
-- Utilise `useCreateUtilisateur` existant pour insérer dans `utilisateurs`
-- Vérifie les doublons (déjà géré par le hook)
-
-### 2. Modifier `UsersManager.tsx`
-- Ajouter un bouton "Créer un utilisateur" à côté du bouton "Inviter"
-- Ouvrir le `CreateUserDialog` au clic
-- Invalider le cache après création pour rafraîchir la liste
-
-## Détails techniques
-- Le hook `useCreateUtilisateur` gère déjà : insertion avec `entreprise_id`, vérification de doublon, invalidation du cache React Query
-- L'utilisateur créé apparaîtra dans la liste sans `auth_user_id` (pas encore connecté)
-- Lors de l'invitation ultérieure, le trigger `handle_new_user_signup` liera automatiquement le compte Auth à la fiche existante via l'email
+### `src/components/admin/CreateUserDialog.tsx`
+- Ajouter un `Select` pour le champ `role_metier` (optionnel)
+- Options : Chef de chantier, Conducteur, Maçon, Finisseur, Grutier, Intérimaire
+- Passer la valeur à `createUtilisateur.mutateAsync({ ..., role_metier })`
+- Réinitialiser le champ à la fermeture
+- Le hook `useCreateUtilisateur` accepte déjà `role_metier` en paramètre
 
