@@ -420,21 +420,28 @@ export const AddEmployeeToPlanningDialog = ({
             </div>
           ) : (
             /* Jours déjà pris ailleurs (onglet "Tous") */
-            takenDays.size > 0 && (
-              <div className="flex gap-1">
-                {weekDays.map(day => (
-                  takenDays.has(day.date) && (
-                    <Badge 
-                      key={day.date} 
-                      variant="secondary" 
-                      className="text-xs"
-                    >
-                      {day.dayName}
-                    </Badge>
-                  )
-                ))}
-              </div>
-            )
+            <div className="flex gap-1">
+              {weekDays.map(day => {
+                const isTaken = takenDays.has(day.date);
+                const isAbsent = absenceDates.has(day.date);
+                return (
+                  <div
+                    key={day.date}
+                    className={cn(
+                      "w-7 h-7 rounded flex items-center justify-center text-xs font-medium",
+                      isTaken
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : isAbsent
+                          ? "bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500"
+                          : "bg-muted text-muted-foreground"
+                    )}
+                    title={isTaken ? `${day.fullName} — Affecté` : isAbsent ? `${day.fullName} — Absent` : `${day.fullName} — Libre`}
+                  >
+                    {day.dayName}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
