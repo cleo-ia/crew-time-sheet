@@ -1,16 +1,22 @@
 
 
-## Plan : Corriger le filtre agence pour toujours afficher toutes les agences
+## Plan : Vue détail agence avec accordéons
 
-### Problème
-Le filtre `agenceInterim` est envoyé dans la requête serveur (ligne 34). Quand une agence est sélectionnée, seuls les employés de cette agence sont retournés → `uniqueAgences` ne contient plus que cette agence.
+### Modification
+**Fichier : `src/pages/RapprochementInterim.tsx`**
 
-### Solution
-Retirer `agenceInterim` des filtres envoyés à `buildRHConsolidation` et filtrer par agence **côté client** à la place. Ainsi `employees` contient toujours tous les intérimaires de la période, `uniqueAgences` reste complet, et le filtrage visuel se fait localement.
+1. Ajouter un state `selectedAgence` (string | null) à côté de `selectedSalarieId`
+2. Rendre le bandeau d'agence cliquable (cursor-pointer + hover) avec un onClick qui set `selectedAgence`
+3. Ajouter une condition : si `selectedAgence` est défini, afficher une vue pleine page avec :
+   - Header avec bouton retour, nom de l'agence, badge nombre d'intérimaires
+   - Cards récap (heures normales, supp, absences, paniers, trajets) pour l'agence
+   - Liste des intérimaires de cette agence, chacun dans un `AccordionItem` dépliable
+   - Chaque accordéon contient un `RHEmployeeDetail` en mode `readOnly` (sans le bouton retour propre au composant)
 
-### Fichier modifié
-- `src/pages/RapprochementInterim.tsx`
-  - Retirer `agenceInterim` de l'objet `filters` (ligne 34)
-  - Ajouter un filtre client-side sur `agenceFilter` dans le calcul de `filtered` (après le filtre recherche, ligne 46-50)
-  - Conserver `agenceFilter` dans les props passées à `InterimaireExportDialog` pour que l'export PDF reste filtré si besoin
+### Détail technique
+- Filtrer `employees` par `agence_interim === selectedAgence` pour obtenir la liste
+- Utiliser le composant `Accordion` existant (type="multiple" pour pouvoir déplier plusieurs à la fois)
+- Chaque `AccordionTrigger` affiche nom + prénom + total heures
+- Chaque `AccordionContent` contient `<RHEmployeeDetail salarieId={emp.id} filters={filters} onBack={() => {}} readOnly />`
+- Le bouton retour principal ramène à la liste (`setSelectedAgence(null)`)
 
