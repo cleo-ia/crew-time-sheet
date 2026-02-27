@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2 } from "lucide-react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -11,10 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AgenceInterimCombobox } from "@/components/shared/AgenceInterimCombobox";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
-import { useRHConsolidated } from "@/hooks/useRHData";
+import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
+import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
 import { buildRHConsolidation, EmployeeWithDetails } from "@/hooks/rhShared";
 import { useQuery } from "@tanstack/react-query";
 
@@ -24,7 +23,8 @@ const RapprochementInterim = () => {
   const [agenceFilter, setAgenceFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithDetails | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedSalarieId, setSelectedSalarieId] = useState<string | null>(null);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
@@ -49,6 +49,44 @@ const RapprochementInterim = () => {
     return fullName.includes(searchQuery.toLowerCase());
   });
 
+  // Extraire les agences uniques depuis les données chargées
+  const uniqueAgences = useMemo(() => {
+    const agences = [...new Set(employees.map((e) => e.agence_interim).filter(Boolean))] as string[];
+    return agences.sort();
+  }, [employees]);
+
+  // Grouper par agence
+  const groupedByAgence = useMemo(() => {
+    const groups = new Map<string, EmployeeWithDetails[]>();
+    
+    filtered.forEach((emp) => {
+      const agence = emp.agence_interim || "Sans agence";
+      if (!groups.has(agence)) {
+        groups.set(agence, []);
+      }
+      groups.get(agence)!.push(emp);
+    });
+
+    // Trier les groupes par nom d'agence, "Sans agence" en dernier
+    const sorted = Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === "Sans agence") return 1;
+      if (b === "Sans agence") return -1;
+      return a.localeCompare(b);
+    });
+
+    return sorted;
+  }, [filtered]);
+
+  // Calcul des sous-totaux pour un groupe
+  const getGroupTotals = (emps: EmployeeWithDetails[]) => ({
+    heuresNormales: Math.round(emps.reduce((s, e) => s + e.heuresNormales, 0) * 100) / 100,
+    heuresSupp25: Math.round(emps.reduce((s, e) => s + e.heuresSupp25, 0) * 100) / 100,
+    heuresSupp50: Math.round(emps.reduce((s, e) => s + e.heuresSupp50, 0) * 100) / 100,
+    absences: emps.reduce((s, e) => s + e.absences, 0),
+    paniers: emps.reduce((s, e) => s + e.paniers, 0),
+    trajets: emps.reduce((s, e) => s + e.totalJoursTrajets, 0),
+  });
+
   // Générer les options de période (12 derniers mois)
   const periodeOptions = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -57,6 +95,23 @@ const RapprochementInterim = () => {
       label: format(d, "MMMM yyyy"),
     };
   });
+
+  // Si un salarié est sélectionné, afficher le détail RH en lecture seule
+  if (selectedSalarieId) {
+    return (
+      <PageLayout>
+        <AppNav />
+        <div className="container mx-auto px-4 py-6">
+          <RHEmployeeDetail
+            salarieId={selectedSalarieId}
+            filters={filters}
+            onBack={() => setSelectedSalarieId(null)}
+            readOnly
+          />
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
@@ -67,10 +122,16 @@ const RapprochementInterim = () => {
         icon={FileSpreadsheet}
         theme="consultation-rh"
         actions={
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nouvel intérimaire
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
+              <Download className="h-4 w-4 mr-1" />
+              Export PDF
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nouvel intérimaire
+            </Button>
+          </div>
         }
       />
 
@@ -95,10 +156,19 @@ const RapprochementInterim = () => {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Agence</label>
-              <AgenceInterimCombobox
-                value={agenceFilter}
-                onChange={setAgenceFilter}
-              />
+              <Select value={agenceFilter} onValueChange={setAgenceFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Toutes les agences" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les agences</SelectItem>
+                  {uniqueAgences.map((agence) => (
+                    <SelectItem key={agence} value={agence}>
+                      {agence}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1 flex-1 min-w-[200px]">
               <label className="text-sm font-medium text-muted-foreground">Recherche</label>
@@ -135,13 +205,13 @@ const RapprochementInterim = () => {
           </Card>
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold">
-              {[...new Set(filtered.map((e) => e.agence_interim).filter(Boolean))].length}
+              {uniqueAgences.length}
             </p>
             <p className="text-sm text-muted-foreground">Agences</p>
           </Card>
         </div>
 
-        {/* Tableau */}
+        {/* Tableau groupé par agence */}
         {isLoading ? (
           <Card className="p-4"><Skeleton className="h-96 w-full" /></Card>
         ) : (
@@ -150,7 +220,6 @@ const RapprochementInterim = () => {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">Intérimaire</TableHead>
-                  <TableHead className="text-center">Agence</TableHead>
                   <TableHead className="text-center">Chantiers</TableHead>
                   <TableHead className="text-center">H. Normales</TableHead>
                   <TableHead className="text-center">H. Supp 25%</TableHead>
@@ -162,46 +231,77 @@ const RapprochementInterim = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((emp) => (
-                  <TableRow key={emp.id} className="hover:bg-muted/20">
-                    <TableCell className="font-medium">
-                      {emp.prenom} {emp.nom}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {emp.agence_interim ? (
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/30">
-                          {emp.agence_interim}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {emp.chantier_codes.map((code, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30">
-                            {code}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{emp.heuresNormales}h</TableCell>
-                    <TableCell className="text-center">
-                      {emp.heuresSupp25 > 0 ? `${emp.heuresSupp25}h` : "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {emp.heuresSupp50 > 0 ? `${emp.heuresSupp50}h` : "-"}
-                    </TableCell>
-                    <TableCell className="text-center">{emp.absences}j</TableCell>
-                    <TableCell className="text-center">{emp.paniers}</TableCell>
-                    <TableCell className="text-center">{emp.totalJoursTrajets}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedEmployee(emp)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {groupedByAgence.map(([agenceName, emps]) => {
+                  const totals = getGroupTotals(emps);
+                  return (
+                    <>
+                      {/* En-tête agence */}
+                      <TableRow key={`header-${agenceName}`} className="bg-primary/10 border-t-2 border-primary/20">
+                        <TableCell colSpan={9} className="py-3">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            <span className="font-semibold text-primary">{agenceName}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {emps.length} intérimaire{emps.length > 1 ? "s" : ""}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Lignes intérimaires */}
+                      {emps.map((emp) => (
+                        <TableRow key={emp.id} className="hover:bg-muted/20">
+                          <TableCell className="font-medium pl-8">
+                            {emp.prenom} {emp.nom}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {emp.chantier_codes.map((code, idx) => (
+                                <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/30 text-xs">
+                                  {code}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{emp.heuresNormales}h</TableCell>
+                          <TableCell className="text-center">
+                            {emp.heuresSupp25 > 0 ? `${emp.heuresSupp25}h` : "-"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {emp.heuresSupp50 > 0 ? `${emp.heuresSupp50}h` : "-"}
+                          </TableCell>
+                          <TableCell className="text-center">{emp.absences}j</TableCell>
+                          <TableCell className="text-center">{emp.paniers}</TableCell>
+                          <TableCell className="text-center">{emp.totalJoursTrajets}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedSalarieId(emp.id)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+
+                      {/* Sous-total agence */}
+                      <TableRow key={`total-${agenceName}`} className="bg-muted/40 border-b-2 border-border/50">
+                        <TableCell className="font-bold text-sm pl-8 text-muted-foreground">
+                          Sous-total {agenceName}
+                        </TableCell>
+                        <TableCell />
+                        <TableCell className="text-center font-bold">{totals.heuresNormales}h</TableCell>
+                        <TableCell className="text-center font-bold">
+                          {totals.heuresSupp25 > 0 ? `${totals.heuresSupp25}h` : "-"}
+                        </TableCell>
+                        <TableCell className="text-center font-bold">
+                          {totals.heuresSupp50 > 0 ? `${totals.heuresSupp50}h` : "-"}
+                        </TableCell>
+                        <TableCell className="text-center font-bold">{totals.absences}j</TableCell>
+                        <TableCell className="text-center font-bold">{totals.paniers}</TableCell>
+                        <TableCell className="text-center font-bold">{totals.trajets}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -215,69 +315,15 @@ const RapprochementInterim = () => {
         )}
       </div>
 
-      {/* Dialog détail jour par jour */}
-      <Dialog open={!!selectedEmployee} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Détail – {selectedEmployee?.prenom} {selectedEmployee?.nom}
-              {selectedEmployee?.agence_interim && (
-                <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/30">
-                  {selectedEmployee.agence_interim}
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedEmployee && (
-            <div className="rounded-lg border border-border/50 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Chantier</TableHead>
-                    <TableHead className="text-center">Heures</TableHead>
-                    <TableHead className="text-center">Intempérie</TableHead>
-                    <TableHead className="text-center">Panier</TableHead>
-                    <TableHead className="text-center">Trajet</TableHead>
-                    <TableHead className="text-center">Absence</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedEmployee.detailJours
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((jour, idx) => (
-                      <TableRow key={idx} className={jour.isAbsent ? "bg-red-50/50 dark:bg-red-950/20" : ""}>
-                        <TableCell className="text-sm">
-                          {new Date(jour.date).toLocaleDateString("fr-FR", {
-                            weekday: "short",
-                            day: "2-digit",
-                            month: "2-digit",
-                          })}
-                        </TableCell>
-                        <TableCell className="text-sm">{jour.chantierCode || "-"}</TableCell>
-                        <TableCell className="text-center">{jour.heures}h</TableCell>
-                        <TableCell className="text-center">{jour.intemperie > 0 ? `${jour.intemperie}h` : "-"}</TableCell>
-                        <TableCell className="text-center">{jour.panier ? "✓" : "-"}</TableCell>
-                        <TableCell className="text-center">{jour.trajet || "-"}</TableCell>
-                        <TableCell className="text-center">
-                          {jour.isAbsent ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300">
-                              {jour.typeAbsence || "Absent"}
-                            </Badge>
-                          ) : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
       <InterimaireFormDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+      />
+
+      <InterimaireExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        filters={filters}
       />
     </PageLayout>
   );
