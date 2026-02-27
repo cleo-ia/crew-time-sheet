@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw } from "lucide-react";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -456,6 +457,13 @@ const RapprochementInterim = () => {
         onOpenChange={setShowAgenceExportDialog}
         filters={{ ...filters, agenceInterim: selectedAgence ?? undefined }}
       />
+
+      <div className="flex justify-center py-6">
+        <Button variant="outline" onClick={clearCacheAndReload} className="text-muted-foreground">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Problème d'affichage ? Vider le cache
+        </Button>
+      </div>
     </PageLayout>
   );
 };
