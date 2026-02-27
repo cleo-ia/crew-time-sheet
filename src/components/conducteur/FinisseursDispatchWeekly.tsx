@@ -117,14 +117,6 @@ export const FinisseursDispatchWeekly = ({ conducteurId, semaine, onAffectations
         </AlertDescription>
       </Alert>
 
-      {/* Résumé équipe */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">👥 Mon équipe</h3>
-          <Badge variant="secondary">{mesEmployes.length} employé(s)</Badge>
-          <span className="text-sm text-muted-foreground ml-auto">Semaine {semaine}</span>
-        </div>
-      </Card>
 
       {/* Liste en accordéon lecture seule */}
       <Accordion type="multiple" className="space-y-2">
