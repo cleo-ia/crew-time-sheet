@@ -31,6 +31,11 @@ const RapprochementInterim = () => {
   const filters = {
     periode,
     typeSalarie: "interimaire",
+  };
+
+  // Filtres avec agence pour l'export PDF
+  const filtersWithAgence = {
+    ...filters,
     agenceInterim: agenceFilter !== "all" ? agenceFilter : undefined,
   };
 
@@ -44,6 +49,8 @@ const RapprochementInterim = () => {
 
   // Filtrer par recherche nom
   const filtered = employees.filter((emp) => {
+    // Filtre par agence côté client
+    if (agenceFilter !== "all" && emp.agence_interim !== agenceFilter) return false;
     if (!searchQuery) return true;
     const fullName = `${emp.prenom} ${emp.nom}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
@@ -323,7 +330,7 @@ const RapprochementInterim = () => {
       <InterimaireExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
-        filters={filters}
+        filters={filtersWithAgence}
       />
     </PageLayout>
   );
