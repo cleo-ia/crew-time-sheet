@@ -133,7 +133,7 @@ const RapprochementInterim = () => {
         <AppNav />
         <div className="container mx-auto px-4 py-6 space-y-4">
           {/* Header */}
-          <div className="flex items-center gap-4 border-b border-border/50 bg-muted/30 rounded-lg p-4">
+          <div className="flex items-center gap-4 border-b border-primary/15 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4">
             <Button variant="ghost" size="sm" onClick={() => setSelectedAgence(null)} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Retour
