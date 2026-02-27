@@ -1,18 +1,18 @@
 
 
-## Plan : Dégradé bleu subtil sur le header agence
+## Plan : Combiner dégradé + bordure gauche
 
 ### Fichier : `src/pages/RapprochementInterim.tsx` (ligne 136)
 
-Remplacer le style actuel du header :
+Remplacer :
 ```
-bg-muted/30 border-b border-border/50
-```
-
-Par un dégradé bleu très subtil utilisant le `--gradient-primary` du design system, en version très atténuée :
-```
-bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/15
+bg-primary/5 border-l-4 border-primary rounded-lg p-4
 ```
 
-Cela utilisera la couleur primary (bleu 210°) de l'app en version très légère, cohérent avec le style sobre établi.
+Par :
+```
+bg-gradient-to-r from-primary/5 to-primary/10 border-l-4 border-primary rounded-lg p-4
+```
+
+Combine le dégradé bleu subtil avec la bordure gauche épaisse.
 
