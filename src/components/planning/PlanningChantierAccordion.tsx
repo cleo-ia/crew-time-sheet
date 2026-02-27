@@ -466,7 +466,7 @@ export const PlanningChantierAccordion = ({
                   })}
                 </div>
 
-                <Badge className="ml-2 bg-orange-500 text-white text-sm px-3 py-1 hover:bg-orange-600">
+                <Badge className="ml-2 bg-orange-500 text-white text-xs px-2 py-0.5 border border-orange-600/40 hover:bg-orange-600">
                   {totalEmployes} pers.
                 </Badge>
               </div>
