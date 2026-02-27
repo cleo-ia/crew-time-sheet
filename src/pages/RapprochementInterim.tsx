@@ -224,6 +224,11 @@ const RapprochementInterim = () => {
             ))}
           </Accordion>
         </div>
+        <InterimaireExportDialog
+          open={showAgenceExportDialog}
+          onOpenChange={setShowAgenceExportDialog}
+          filters={{ ...filters, agenceInterim: selectedAgence ?? undefined }}
+        />
       </PageLayout>
     );
   }
