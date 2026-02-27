@@ -1,30 +1,17 @@
 
 
-## Plan : 2 fonctionnalités
+## Plan : Bouton Conversation dans le header de la page Rapprochement
 
-### 1. Marquage "rapproché" par agence et par semaine
+Le bouton Conversation est actuellement dans la nav (AppNav) mais l'utilisateur veut le voir dans le header de la page, à côté de "Export PDF" et "Nouvel intérimaire".
 
-**Base de données** : Créer une table `rapprochements_status` :
-- `id` (uuid, PK)
-- `entreprise_id` (uuid, FK entreprises)
-- `agence_name` (text)
-- `semaine` (text, format "2026-S09")
-- `periode` (text, format "2026-02")
-- `rapproche` (boolean, default false)
-- `rapproche_at` (timestamptz)
-- `rapproche_by` (uuid)
-- contrainte unique sur `(entreprise_id, agence_name, semaine)`
-- RLS : accès restreint par `entreprise_id`
+### Modifications
 
-**UI** : Sur chaque ligne d'en-tête agence dans le tableau, ajouter une checkbox (ou icône toggle) à droite. Quand le filtre semaine est actif → toggle le statut pour cette agence + cette semaine. Quand "toutes les semaines" → afficher un résumé (ex: "2/4 semaines rapprochées") et ne pas permettre de cocher directement (il faut filtrer une semaine).
+**`src/pages/RapprochementInterim.tsx`** :
+- Importer `ConversationButton`, `ConversationListSheet`, `useUnreadMessages`, `supabase`, et ajouter les states nécessaires (`showConversation`, `currentUserId`)
+- Ajouter un `useEffect` pour récupérer le `currentUserId`
+- Ajouter le `ConversationButton` dans le bloc `actions` du `PageHeader`, entre "Export PDF" et "Nouvel intérimaire"
+- Ajouter le rendu de `ConversationListSheet` en bas du composant
 
-**Hook** : `useRapprochementStatus(periode, entrepriseId)` qui charge tous les statuts du mois, + mutation pour toggle.
-
-### 2. Ajouter le bouton Conversation pour le gestionnaire
-
-**Fichier `AppNav.tsx`** (lignes 84-120) : Dans la nav isolée gestionnaire, ajouter le `ConversationButton` + `ConversationListSheet` comme sur les autres pages (AdminPanel, ConsultationRH).
-
-**Fichier `RapprochementInterim.tsx`** : Pas besoin de toucher ici puisque la conversation est dans la nav.
-
-Imports nécessaires dans AppNav : `ConversationButton`, `ConversationListSheet`, `useUnreadMessages`, + state `showConversation`.
+**`src/components/navigation/AppNav.tsx`** :
+- Retirer le `ConversationButton` et `ConversationListSheet` de la nav gestionnaire (puisqu'il sera dans la page directement)
 
