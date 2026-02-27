@@ -117,11 +117,6 @@ export const AppNav = () => {
                   Rapprochement Intérim
                 </Link>
               </Button>
-              <ConversationButton
-                onClick={() => setShowConversation(true)}
-                unreadCount={unreadCount}
-                variant="ghost"
-              />
               <Button asChild variant="ghost" size="sm" className="gap-2 border-0 hover:opacity-80">
                 <Link to="/documentation">
                   <BookOpen className="h-4 w-4" />
@@ -136,13 +131,6 @@ export const AppNav = () => {
             </div>
           </div>
         </div>
-        {currentUserId && (
-          <ConversationListSheet
-            open={showConversation}
-            onOpenChange={setShowConversation}
-            currentUserId={currentUserId}
-          />
-        )}
       </nav>
     );
   }

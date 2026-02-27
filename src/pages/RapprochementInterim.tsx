@@ -1,6 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { format, parseISO, startOfWeek } from "date-fns";
 import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays, CheckCircle2 } from "lucide-react";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { supabase } from "@/integrations/supabase/client";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -32,7 +36,18 @@ const RapprochementInterim = () => {
   const [showAgenceExportDialog, setShowAgenceExportDialog] = useState(false);
   const [selectedSalarieId, setSelectedSalarieId] = useState<string | null>(null);
   const [selectedAgence, setSelectedAgence] = useState<string | null>(null);
+  const [showConversation, setShowConversation] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const entrepriseId = localStorage.getItem("current_entreprise_id");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+  }, []);
+
+  const { data: unreadData } = useUnreadMessages(currentUserId);
+  const unreadCount = unreadData?.total ?? 0;
   const { isRapproche, getRapprocheSummary, toggle: toggleRapproche, isToggling } = useRapprochementStatus(periode, entrepriseId);
 
   const filters = {
@@ -313,6 +328,11 @@ const RapprochementInterim = () => {
               <Download className="h-4 w-4 mr-1" />
               Export PDF
             </Button>
+            <ConversationButton
+              onClick={() => setShowConversation(true)}
+              unreadCount={unreadCount}
+              variant="outline"
+            />
             <Button size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Nouvel intérimaire
@@ -580,6 +600,14 @@ const RapprochementInterim = () => {
           Problème d'affichage ? Vider le cache
         </Button>
       </div>
+
+      {currentUserId && (
+        <ConversationListSheet
+          open={showConversation}
+          onOpenChange={setShowConversation}
+          currentUserId={currentUserId}
+        />
+      )}
     </PageLayout>
   );
 };
