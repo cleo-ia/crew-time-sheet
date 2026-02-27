@@ -394,7 +394,7 @@ export const generateInterimaireSimplifiedPdf = async (
     currentY += rowHeight;
 
     // Fonction pour dessiner une ligne de données (sans bordure sur colonne signature)
-    const drawDataRow = (label: string, values: (string | number)[], total: string | number, isLastRow: boolean = false) => {
+    const drawDataRow = (label: string, values: (string | number)[], total: string | number, isLastRow: boolean = false, valueFontSize?: number) => {
       let x = tableX;
       
       // Label avec fond jaune
@@ -407,7 +407,7 @@ export const generateInterimaireSimplifiedPdf = async (
         drawRect(x, currentY, colDay, rowHeight, COLORS.white, false);
         const val = values[i];
         if (val !== "" && val !== 0) {
-          drawText(String(val), x + colDay / 2, currentY + 5, { align: "center" });
+          drawText(String(val), x + colDay / 2, currentY + 5, { align: "center", fontSize: valueFontSize });
         }
         x += colDay;
       }
@@ -433,8 +433,8 @@ export const generateInterimaireSimplifiedPdf = async (
       currentY += rowHeight;
     };
 
-    // Ligne Code
-    drawDataRow("Code", daysData.map(d => d.code), "", false);
+    // Ligne Code (police réduite pour éviter les débordements)
+    drawDataRow("Code", daysData.map(d => d.code), "", false, 6.5);
 
     // Ligne HNORM
     const formatNumber = (n: number) => n > 0 ? n.toFixed(2).replace(".", ",") : "";
