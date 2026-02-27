@@ -1,11 +1,16 @@
 
 
-## Plan : Remplacer le logo SDER
+## Plan : Corriger le filtre agence pour toujours afficher toutes les agences
 
-### Étape unique
-- Copier l'image uploadée (`user-uploads://Plan_de_travail_130@600x-3.png`) vers `src/assets/logo-sder.png` pour remplacer le fichier actuel
-- Le code existant (`pdfExportInterimaire.ts`, `sder.ts`, `RHEmployeeDetail.tsx`) référence déjà ce fichier — aucun changement de code nécessaire
+### Problème
+Le filtre `agenceInterim` est envoyé dans la requête serveur (ligne 34). Quand une agence est sélectionnée, seuls les employés de cette agence sont retournés → `uniqueAgences` ne contient plus que cette agence.
 
-### Fichiers modifiés
-- `src/assets/logo-sder.png` — remplacement de l'image par le bon logo SDER
+### Solution
+Retirer `agenceInterim` des filtres envoyés à `buildRHConsolidation` et filtrer par agence **côté client** à la place. Ainsi `employees` contient toujours tous les intérimaires de la période, `uniqueAgences` reste complet, et le filtrage visuel se fait localement.
+
+### Fichier modifié
+- `src/pages/RapprochementInterim.tsx`
+  - Retirer `agenceInterim` de l'objet `filters` (ligne 34)
+  - Ajouter un filtre client-side sur `agenceFilter` dans le calcul de `filtered` (après le filtre recherche, ligne 46-50)
+  - Conserver `agenceFilter` dans les props passées à `InterimaireExportDialog` pour que l'export PDF reste filtré si besoin
 
