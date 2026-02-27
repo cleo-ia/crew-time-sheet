@@ -149,25 +149,25 @@ const RapprochementInterim = () => {
 
           {/* Récap agence */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Card className="p-3 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{agenceTotals.heuresNormales}h</p>
-              <p className="text-xs text-blue-600/70 dark:text-blue-400/70">H. Normales</p>
+            <Card className="p-3 text-center bg-card border border-border/50 shadow-md rounded-xl">
+              <p className="text-xl font-bold text-primary">{agenceTotals.heuresNormales}h</p>
+              <p className="text-xs text-muted-foreground">H. Normales</p>
             </Card>
-            <Card className="p-3 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
-              <p className="text-xl font-bold text-orange-700 dark:text-orange-300">{agenceTotals.heuresSupp25}h</p>
-              <p className="text-xs text-orange-600/70 dark:text-orange-400/70">H. Supp 25%</p>
+            <Card className="p-3 text-center bg-card border border-border/50 shadow-md rounded-xl">
+              <p className="text-xl font-bold text-foreground">{agenceTotals.heuresSupp25}h</p>
+              <p className="text-xs text-muted-foreground">H. Supp 25%</p>
             </Card>
-            <Card className="p-3 text-center bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-              <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{agenceTotals.heuresSupp50}h</p>
-              <p className="text-xs text-amber-600/70 dark:text-amber-400/70">H. Supp 50%</p>
+            <Card className="p-3 text-center bg-card border border-border/50 shadow-md rounded-xl">
+              <p className="text-xl font-bold text-foreground">{agenceTotals.heuresSupp50}h</p>
+              <p className="text-xs text-muted-foreground">H. Supp 50%</p>
             </Card>
-            <Card className="p-3 text-center bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
-              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{agenceTotals.paniers}</p>
-              <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">Paniers</p>
+            <Card className="p-3 text-center bg-card border border-border/50 shadow-md rounded-xl">
+              <p className="text-xl font-bold text-foreground">{agenceTotals.paniers}</p>
+              <p className="text-xs text-muted-foreground">Paniers</p>
             </Card>
-            <Card className="p-3 text-center bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800">
-              <p className="text-xl font-bold text-violet-700 dark:text-violet-300">{agenceTotals.trajets}</p>
-              <p className="text-xs text-violet-600/70 dark:text-violet-400/70">Trajets</p>
+            <Card className="p-3 text-center bg-card border border-border/50 shadow-md rounded-xl">
+              <p className="text-xl font-bold text-foreground">{agenceTotals.trajets}</p>
+              <p className="text-xs text-muted-foreground">Trajets</p>
             </Card>
           </div>
 
