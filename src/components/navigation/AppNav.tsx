@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2, Receipt } from "lucide-react";
@@ -9,6 +10,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { ConversationButton } from "@/components/chat/ConversationButton";
+import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 // Map des logos par slug d'entreprise
 const LOGOS: Record<string, string> = {
@@ -27,6 +31,17 @@ export const AppNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: userRole, isLoading } = useCurrentUserRole();
+  const [showConversation, setShowConversation] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+  }, []);
+
+  const { data: unreadData } = useUnreadMessages(currentUserId);
+  const unreadCount = unreadData?.total ?? 0;
 
   // Récupérer le logo dynamiquement selon l'entreprise sélectionnée
   const entrepriseSlug = localStorage.getItem("entreprise_slug") || "limoge-revillon";
@@ -102,6 +117,11 @@ export const AppNav = () => {
                   Rapprochement Intérim
                 </Link>
               </Button>
+              <ConversationButton
+                onClick={() => setShowConversation(true)}
+                unreadCount={unreadCount}
+                variant="ghost"
+              />
               <Button asChild variant="ghost" size="sm" className="gap-2 border-0 hover:opacity-80">
                 <Link to="/documentation">
                   <BookOpen className="h-4 w-4" />
@@ -116,6 +136,13 @@ export const AppNav = () => {
             </div>
           </div>
         </div>
+        {currentUserId && (
+          <ConversationListSheet
+            open={showConversation}
+            onOpenChange={setShowConversation}
+            currentUserId={currentUserId}
+          />
+        )}
       </nav>
     );
   }

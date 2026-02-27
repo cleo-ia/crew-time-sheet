@@ -2022,6 +2022,53 @@ export type Database = {
         }
         Relationships: []
       }
+      rapprochements_status: {
+        Row: {
+          agence_name: string
+          created_at: string
+          entreprise_id: string
+          id: string
+          periode: string
+          rapproche: boolean
+          rapproche_at: string | null
+          rapproche_by: string | null
+          semaine: string
+          updated_at: string
+        }
+        Insert: {
+          agence_name: string
+          created_at?: string
+          entreprise_id: string
+          id?: string
+          periode: string
+          rapproche?: boolean
+          rapproche_at?: string | null
+          rapproche_by?: string | null
+          semaine: string
+          updated_at?: string
+        }
+        Update: {
+          agence_name?: string
+          created_at?: string
+          entreprise_id?: string
+          id?: string
+          periode?: string
+          rapproche?: boolean
+          rapproche_at?: string | null
+          rapproche_by?: string | null
+          semaine?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rapprochements_status_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ratios_journaliers: {
         Row: {
           created_at: string
