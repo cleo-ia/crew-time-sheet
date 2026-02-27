@@ -1,14 +1,18 @@
 
 
-## Plan : Cards récap agence — style neutre avec ombre
+## Plan : Dégradé bleu subtil sur le header agence
 
-### Fichier : `src/pages/RapprochementInterim.tsx`
+### Fichier : `src/pages/RapprochementInterim.tsx` (ligne 136)
 
-Modifier les 5 cards récap de la vue détail agence :
+Remplacer le style actuel du header :
+```
+bg-muted/30 border-b border-border/50
+```
 
-1. **Toutes les cards** : remplacer les fonds colorés par `bg-card border border-border/50 shadow-md rounded-xl`
-2. **Icônes** : toutes en `text-muted-foreground` (neutre uniforme), fond icône en `bg-muted/50`
-3. **Valeurs chiffrées** : toutes en `text-foreground font-bold` sauf "H. Normales" en `text-primary font-bold`
-4. **Labels** : tous en `text-muted-foreground text-xs`
-5. **Dark mode** : supprimer les variantes dark spécifiques (les tokens neutres s'adaptent automatiquement)
+Par un dégradé bleu très subtil utilisant le `--gradient-primary` du design system, en version très atténuée :
+```
+bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/15
+```
+
+Cela utilisera la couleur primary (bleu 210°) de l'app en version très légère, cohérent avec le style sobre établi.
 
