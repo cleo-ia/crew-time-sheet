@@ -182,7 +182,7 @@ const RapprochementInterim = () => {
 
   // Si une agence est sélectionnée, afficher la vue détail agence
   if (selectedAgence) {
-    const agenceEmployees = employees.filter(
+    const agenceEmployees = employeesFiltered.filter(
       (emp) => (emp.agence_interim || "Sans agence") === selectedAgence
     );
     const agenceTotals = getGroupTotals(agenceEmployees);
