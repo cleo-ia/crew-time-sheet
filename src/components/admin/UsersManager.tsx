@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, RefreshCw, X, Search } from "lucide-react";
+import { Edit, Trash2, RefreshCw, X, Search, UserPlus } from "lucide-react";
+import { CreateUserDialog } from "./CreateUserDialog";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ export const UsersManager = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "", role: "" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
@@ -297,14 +299,20 @@ export const UsersManager = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Utilisateurs actifs</h3>
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom, email ou rôle..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" />
+              Créer un utilisateur
+            </Button>
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom, email ou rôle..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
         </div>
         <div className="rounded-md border">
@@ -548,6 +556,8 @@ export const UsersManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
     </div>
   );
 };
