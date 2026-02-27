@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2 } from "lucide-react";
+import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2, Receipt } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-engo-bourgogne.png";       // Fichier Engo = logo SDER
@@ -76,8 +76,49 @@ export const AppNav = () => {
   const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire", "rh"].includes(userRole);
   const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
   const canSeeChantiers = userRole && ["super_admin", "conducteur"].includes(userRole);
+  const isGestionnaire = userRole === "gestionnaire";
 
   if (isLoading) return null;
+
+  // Nav isolée pour le rôle gestionnaire
+  if (isGestionnaire) {
+    return (
+      <nav className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-2">
+            <Link to="/rapprochement-interim" className="flex-shrink-0">
+              <img src={logo} alt={entrepriseName} className="h-10 w-auto" />
+            </Link>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/rapprochement-interim", "consultation-rh")}
+                style={getButtonStyle("/rapprochement-interim", "consultation-rh")}
+              >
+                <Link to="/rapprochement-interim">
+                  <Receipt className="h-4 w-4" />
+                  Rapprochement Intérim
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="gap-2 border-0 hover:opacity-80">
+                <Link to="/documentation">
+                  <BookOpen className="h-4 w-4" />
+                  <span className="hidden md:inline">Aide</span>
+                </Link>
+              </Button>
+              <ThemeToggle />
+              <Button variant="ghost" size="sm" className="gap-2 border-0 hover:opacity-80" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                Déconnexion
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-20">

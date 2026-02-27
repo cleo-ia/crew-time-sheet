@@ -37,7 +37,7 @@ export const RequireRole = ({
     } else if (userRole === "rh") {
       fallbackRoute = "/consultation-rh";
     } else if (userRole === "gestionnaire") {
-      fallbackRoute = "/admin";
+      fallbackRoute = "/rapprochement-interim";
     } else if (userRole === "admin") {
       fallbackRoute = "/admin";
     }
