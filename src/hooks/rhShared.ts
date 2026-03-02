@@ -364,7 +364,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   
   let salarieQuery = supabase
     .from("utilisateurs")
-    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, base_horaire, horaire, heures_supp_mensualisees, forfait_jours, salaire")
+    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, base_horaire, horaire, heures_supp_mensualisees, forfait_jours, salaire, exclure_export_paie")
     .in("id", salarieIds);
   
   if (entrepriseId) {
@@ -765,7 +765,13 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
   }
 
-  const result = Array.from(employeeMap.values()).sort((a, b) => {
+  // Filtrer les salariés exclus de l'export paie
+  const filteredMap = Array.from(employeeMap.values()).filter(emp => {
+    const salarie = salarieMap.get(emp.salarieId);
+    return !(salarie as any)?.exclure_export_paie;
+  });
+
+  const result = filteredMap.sort((a, b) => {
     // Tri par métier puis par nom
     const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
     const aOrder = metierOrder[a.metier as keyof typeof metierOrder] ?? 4;

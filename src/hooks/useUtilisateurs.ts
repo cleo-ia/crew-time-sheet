@@ -26,6 +26,7 @@ export interface Utilisateur {
   heures_supp_mensualisees?: number | null;
   forfait_jours?: boolean | null;
   salaire?: number | null;
+  exclure_export_paie?: boolean;
 }
 
 // Get users with a specific role
