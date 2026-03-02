@@ -1,17 +1,20 @@
 
 
-## Plan : Retirer la colonne "Affectation" de l'onglet Intérimaires
+## Plan : Améliorer le tableau Intérimaires
 
-### Approche
-Ajouter une prop optionnelle `showAffectation` (default `true`) au composant `InterimairesManager` pour masquer la colonne Affectation sans casser la vue admin existante.
+### Modifications sur `src/components/admin/InterimairesManager.tsx`
 
-### Modifications
+**1. Rapprocher Nom et Prénom visuellement**
+- Réduire le padding des colonnes Nom et Prénom (classes `pr-1` / `pl-1`) pour qu'elles soient visuellement plus proches.
 
-**`src/components/admin/InterimairesManager.tsx`**
-- Ajouter une prop `showAffectation?: boolean` (défaut `true`)
-- Conditionner l'affichage du `<TableHead>` et `<TableCell>` "Affectation" sur cette prop
-- Ajuster le `colSpan` des lignes vides/loading (5 → 4 quand masqué)
+**2. Ajouter la colonne "Rôle" entre Prénom et Agence**
+- Nouveau `<TableHead>Rôle</TableHead>` après Prénom
+- Nouveau `<TableCell>` affichant un badge avec la couleur turquoise du screenshot (`hsl(180 70% 50%)` — la couleur déjà utilisée pour "Intérimaire" dans `RoleBadge`)
+- Importer `RoleBadge` depuis `@/components/ui/role-badge` et afficher `<RoleBadge role="interimaire" size="sm" />`
+- Ajuster les `colSpan` des lignes loading/vides (+1)
 
-**`src/pages/RapprochementInterim.tsx`**
-- Passer `<InterimairesManager showAffectation={false} />`
+**3. Ajouter un filtre de recherche**
+- Ajouter un state `searchTerm`
+- Ajouter un `<Input>` avec icône `Search` au-dessus du tableau (à côté du compteur et du bouton)
+- Filtrer `interimaires` par nom, prénom ou agence (recherche insensible à la casse)
 
