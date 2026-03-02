@@ -170,15 +170,6 @@ export const ChefsManager = () => {
     return conducteurs.find((c) => c.id === fullChantier.conducteur_id);
   };
 
-  const getMaconsCount = (chefId: string) => {
-    // Compter les employés planifiés sur le même chantier que le chef
-    const planning = (planningAffectations as any)[chefId];
-    if (!planning) return 0;
-    // Compter les autres employés sur le même chantier
-    return Object.entries(planningAffectations as any).filter(
-      ([id, p]: [string, any]) => id !== chefId && p.chantier_id === planning.chantier_id
-    ).length;
-  };
 
   return (
     <div className="space-y-4">
@@ -202,20 +193,20 @@ export const ChefsManager = () => {
               <TableHead>Statut</TableHead>
               <TableHead>Conducteur</TableHead>
               <TableHead>Chantier</TableHead>
-              <TableHead>Maçons</TableHead>
+              
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : chefs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   Aucun chef enregistré
                 </TableCell>
               </TableRow>
@@ -223,7 +214,7 @@ export const ChefsManager = () => {
               chefs.map((chef) => {
                 const chantier = getChantierForChef(chef.id);
                 const conducteur = getConducteurForChef(chef.id);
-                const nbMacons = getMaconsCount(chef.id);
+                
                 const invitationStatus = getInvitationStatus(chef);
                 return (
                   <TableRow key={chef.id}>
@@ -273,9 +264,6 @@ export const ChefsManager = () => {
                         <Building2 className="h-3 w-3 text-muted-foreground" />
                         {chantier?.nom || "-"}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{nbMacons}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
