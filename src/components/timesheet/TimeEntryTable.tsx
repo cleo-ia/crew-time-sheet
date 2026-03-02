@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Loader2, Crown, ChevronDown, Users, UserPlus } from "lucide-react";
+import { Trash2, Loader2, Crown, ChevronDown, Users, UserPlus, Lock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1348,8 +1348,10 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                             </div>
 
                             {/* Heures Intempérie */}
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Intempérie</label>
+                            <div className={mode === "create" ? "opacity-50" : ""}>
+                              <label className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
+                                Intempérie{mode === "create" && <Lock className="h-3 w-3" />}
+                              </label>
                               <div className="flex items-center gap-1">
                                 <EditableNumber
                                   value={dayData.heuresIntemperie}
@@ -1360,7 +1362,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                                   min={0}
                                   max={24}
                                   step={0.5}
-                                  className="h-9 text-center"
+                                  className={`h-9 text-center ${mode === "create" ? "cursor-not-allowed bg-muted" : ""}`}
                                 />
                                 <span className="text-xs text-muted-foreground">h</span>
                               </div>
