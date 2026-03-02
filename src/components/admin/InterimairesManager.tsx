@@ -7,7 +7,11 @@ import { useUtilisateursByRole, useDeleteUtilisateur } from "@/hooks/useUtilisat
 import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 
-export const InterimairesManager = () => {
+interface InterimairesManagerProps {
+  showAffectation?: boolean;
+}
+
+export const InterimairesManager = ({ showAffectation = true }: InterimairesManagerProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingInterimaire, setEditingInterimaire] = useState<any>(null);
   const { data: interimaires = [], isLoading } = useUtilisateursByRole("interimaire");
@@ -48,20 +52,20 @@ export const InterimairesManager = () => {
               <TableHead>Nom</TableHead>
               <TableHead>Prénom</TableHead>
               <TableHead>Agence</TableHead>
-              <TableHead>Affectation</TableHead>
+              {showAffectation && <TableHead>Affectation</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={showAffectation ? 5 : 4} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : interimaires.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={showAffectation ? 5 : 4} className="text-center text-muted-foreground">
                   Aucun intérimaire enregistré
                 </TableCell>
               </TableRow>
@@ -81,20 +85,22 @@ export const InterimairesManager = () => {
                         <span className="text-muted-foreground text-sm">Non renseignée</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {affectation ? (
-                        <div className="space-y-1">
-                          <div className="font-medium">{affectation.chantier_nom}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {affectation.nb_jours}/5 jours planifiés
+                    {showAffectation && (
+                      <TableCell>
+                        {affectation ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">{affectation.chantier_nom}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {affectation.nb_jours}/5 jours planifiés
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400">
-                          Non planifié
-                        </Badge>
-                      )}
-                    </TableCell>
+                        ) : (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400">
+                            Non planifié
+                          </Badge>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button

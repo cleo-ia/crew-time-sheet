@@ -593,7 +593,7 @@ const RapprochementInterim = () => {
           </TabsContent>
 
           <TabsContent value="interimaires">
-            <InterimairesManager />
+            <InterimairesManager showAffectation={false} />
           </TabsContent>
         </Tabs>
       </div>
