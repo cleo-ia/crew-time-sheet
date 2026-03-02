@@ -11,9 +11,10 @@ import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog
 
 interface InterimairesManagerProps {
   showAffectation?: boolean;
+  showCreateButton?: boolean;
 }
 
-export const InterimairesManager = ({ showAffectation = true }: InterimairesManagerProps) => {
+export const InterimairesManager = ({ showAffectation = true, showCreateButton = true }: InterimairesManagerProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingInterimaire, setEditingInterimaire] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,10 +64,12 @@ export const InterimairesManager = ({ showAffectation = true }: InterimairesMana
             className="pl-9"
           />
         </div>
-        <Button onClick={() => setShowDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvel intérimaire
-        </Button>
+        {showCreateButton && (
+          <Button onClick={() => setShowDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel intérimaire
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border border-border/50 overflow-auto">
