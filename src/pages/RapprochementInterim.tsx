@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { format, parseISO, startOfWeek } from "date-fns";
-import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays, CheckCircle2 } from "lucide-react";
+import { FileSpreadsheet, Plus, Search, Eye, Download, Building2, ArrowLeft, User, RefreshCw, CalendarDays, CheckCircle2, Users } from "lucide-react";
 import { ConversationButton } from "@/components/chat/ConversationButton";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
@@ -18,8 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
 import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
+import { InterimairesManager } from "@/components/admin/InterimairesManager";
 import { RHEmployeeDetail } from "@/components/rh/RHEmployeeDetail";
 import { buildRHConsolidation, EmployeeWithDetails } from "@/hooks/rhShared";
 import { useQuery } from "@tanstack/react-query";
@@ -342,6 +344,19 @@ const RapprochementInterim = () => {
       />
 
       <div className="container mx-auto px-4 py-6 space-y-4">
+        <Tabs defaultValue="rapprochement" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="rapprochement" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Rapprochement
+            </TabsTrigger>
+            <TabsTrigger value="interimaires" className="gap-2">
+              <Users className="h-4 w-4" />
+              Intérimaires
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="rapprochement" className="space-y-4">
         {/* Filtres */}
         <Card className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
@@ -575,6 +590,12 @@ const RapprochementInterim = () => {
             <p className="text-sm mt-2">Aucune donnée pour cette période et ces filtres</p>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="interimaires">
+            <InterimairesManager />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <InterimaireFormDialog
