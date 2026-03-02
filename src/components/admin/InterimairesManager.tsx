@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { useUtilisateursByRole, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
@@ -14,6 +16,7 @@ interface InterimairesManagerProps {
 export const InterimairesManager = ({ showAffectation = true }: InterimairesManagerProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingInterimaire, setEditingInterimaire] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { data: interimaires = [], isLoading } = useUtilisateursByRole("interimaire");
   const { data: planningAffectations = {} } = usePlanningAffectationsCurrentWeek();
   const deleteUtilisateur = useDeleteUtilisateur();
@@ -33,12 +36,33 @@ export const InterimairesManager = ({ showAffectation = true }: InterimairesMana
     return (planningAffectations as any)[interimaireId] || null;
   };
 
+  const filteredInterimaires = interimaires.filter((i) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (i.nom?.toLowerCase() || "").includes(term) ||
+      (i.prenom?.toLowerCase() || "").includes(term) ||
+      (i.agence_interim?.toLowerCase() || "").includes(term)
+    );
+  });
+
+  const colCount = showAffectation ? 6 : 5;
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex justify-between items-center gap-4">
+        <p className="text-sm text-muted-foreground whitespace-nowrap">
           {interimaires.length} intérimaire{interimaires.length > 1 ? "s" : ""} enregistré{interimaires.length > 1 ? "s" : ""}
         </p>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un intérimaire..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Button onClick={() => setShowDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvel intérimaire
@@ -49,8 +73,9 @@ export const InterimairesManager = ({ showAffectation = true }: InterimairesMana
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead>Nom</TableHead>
-              <TableHead>Prénom</TableHead>
+              <TableHead className="pr-1">Nom</TableHead>
+              <TableHead className="pl-1">Prénom</TableHead>
+              <TableHead>Rôle</TableHead>
               <TableHead>Agence</TableHead>
               {showAffectation && <TableHead>Affectation</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
@@ -59,23 +84,26 @@ export const InterimairesManager = ({ showAffectation = true }: InterimairesMana
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={showAffectation ? 5 : 4} className="text-center">
+                <TableCell colSpan={colCount} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
-            ) : interimaires.length === 0 ? (
+            ) : filteredInterimaires.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showAffectation ? 5 : 4} className="text-center text-muted-foreground">
-                  Aucun intérimaire enregistré
+                <TableCell colSpan={colCount} className="text-center text-muted-foreground">
+                  {searchTerm ? "Aucun résultat" : "Aucun intérimaire enregistré"}
                 </TableCell>
               </TableRow>
             ) : (
-              interimaires.map((interimaire) => {
+              filteredInterimaires.map((interimaire) => {
                 const affectation = getAffectationForInterimaire(interimaire.id);
                 return (
                   <TableRow key={interimaire.id}>
-                    <TableCell className="font-medium">{interimaire.nom}</TableCell>
-                    <TableCell>{interimaire.prenom}</TableCell>
+                    <TableCell className="font-medium pr-1">{interimaire.nom}</TableCell>
+                    <TableCell className="pl-1">{interimaire.prenom}</TableCell>
+                    <TableCell>
+                      <RoleBadge role="interimaire" size="sm" />
+                    </TableCell>
                     <TableCell>
                       {interimaire.agence_interim ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
