@@ -1,16 +1,12 @@
 
 
-## Correction des logos inversés sur la page Auth
+## Correction du logo Engo Bourgogne
 
-**Problème confirmé** : lignes 10-11 de `src/pages/Auth.tsx`, les imports sont croisés :
-- `logoEngoBourgogne` importe `logo-sder.png`
-- `logoSder` importe `logo-engo-bourgogne.png`
+Le fichier `src/assets/logo-engo-bourgogne.png` contient actuellement le mauvais visuel. Il faut le remplacer par le logo fourni (celui avec le "G" rouge/bleu et "en'go bourgogne").
 
-**Correction** : permuter les deux chemins d'import :
-```ts
-import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
-import logoSder from "@/assets/logo-sder.png";
-```
+**Action :**
+1. Copier `user-uploads://Plan_de_travail_132@600x-2.png` vers `src/assets/logo-engo-bourgogne.png` (écrase l'ancien fichier)
+2. Vérifier que `src/pages/Auth.tsx` et `src/config/enterprises/engo-bourgogne.ts` importent bien `@/assets/logo-engo-bourgogne.png` (déjà corrigé au diff précédent)
 
-Un seul fichier modifié, deux lignes corrigées.
+Un seul fichier à remplacer, les imports sont déjà corrects.
 
