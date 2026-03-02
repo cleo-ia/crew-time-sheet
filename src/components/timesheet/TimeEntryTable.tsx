@@ -1356,7 +1356,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                                   onCommit={(v) =>
                                     updateDayValue(entry.employeeId, day, "heuresIntemperie", v)
                                   }
-                                  disabled={isReadOnly || isDayBlocked}
+                                  disabled={isReadOnly || isDayBlocked || mode === "create"}
                                   min={0}
                                   max={24}
                                   step={0.5}
