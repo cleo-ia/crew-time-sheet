@@ -2561,6 +2561,7 @@ export type Database = {
           echelon: string | null
           email: string | null
           entreprise_id: string
+          exclure_export_paie: boolean
           forfait_jours: boolean | null
           heures_supp_mensualisees: number | null
           horaire: string | null
@@ -2588,6 +2589,7 @@ export type Database = {
           echelon?: string | null
           email?: string | null
           entreprise_id: string
+          exclure_export_paie?: boolean
           forfait_jours?: boolean | null
           heures_supp_mensualisees?: number | null
           horaire?: string | null
@@ -2615,6 +2617,7 @@ export type Database = {
           echelon?: string | null
           email?: string | null
           entreprise_id?: string
+          exclure_export_paie?: boolean
           forfait_jours?: boolean | null
           heures_supp_mensualisees?: number | null
           horaire?: string | null

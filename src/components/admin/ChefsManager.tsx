@@ -227,7 +227,14 @@ export const ChefsManager = () => {
                 const invitationStatus = getInvitationStatus(chef);
                 return (
                   <TableRow key={chef.id}>
-                    <TableCell className="font-medium">{chef.nom}</TableCell>
+                    <TableCell className="font-medium">
+                      {chef.nom}
+                      {chef.exclure_export_paie && (
+                        <Badge variant="outline" className="ml-2 text-xs text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-600">
+                          Exclu paie
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{chef.prenom}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-muted-foreground text-sm">
