@@ -1,12 +1,16 @@
 
 
-## Correction du logo Engo Bourgogne
+## Correction des imports croisés dans AppNav.tsx
 
-Le fichier `src/assets/logo-engo-bourgogne.png` contient actuellement le mauvais visuel. Il faut le remplacer par le logo fourni (celui avec le "G" rouge/bleu et "en'go bourgogne").
+**Problème** : `src/components/navigation/AppNav.tsx` lignes 7-8, les imports sont inversés :
+- `logoSder` importe `logo-engo-bourgogne.png`
+- `logoEngoBourgogne` importe `logo-sder.png`
 
-**Action :**
-1. Copier `user-uploads://Plan_de_travail_132@600x-2.png` vers `src/assets/logo-engo-bourgogne.png` (écrase l'ancien fichier)
-2. Vérifier que `src/pages/Auth.tsx` et `src/config/enterprises/engo-bourgogne.ts` importent bien `@/assets/logo-engo-bourgogne.png` (déjà corrigé au diff précédent)
+**Correction** : permuter les deux chemins (et supprimer les commentaires trompeurs) :
+```ts
+import logoSder from "@/assets/logo-sder.png";
+import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
+```
 
-Un seul fichier à remplacer, les imports sont déjà corrects.
+Un seul fichier, deux lignes.
 
