@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
@@ -698,6 +698,22 @@ const PlanningMainOeuvre = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bouton vider le cache */}
+      <div className="container mx-auto px-4 py-6 flex justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground text-xs gap-2"
+          onClick={async () => {
+            const { clearCacheAndReload } = await import("@/hooks/useClearCache");
+            clearCacheAndReload();
+          }}
+        >
+          <Trash2 className="h-3 w-3" />
+          Problème d'affichage ? Vider le cache
+        </Button>
+      </div>
     </PageLayout>
   );
 };
