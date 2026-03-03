@@ -47,6 +47,7 @@ import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesSheet } from "@/components/conges/CongesSheet";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useNewPlanningItemsCount } from "@/hooks/useNewPlanningItemsCount";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -442,15 +443,11 @@ const Index = () => {
           <>
             <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
+              <PlanningTachesButton
+                chantierId={selectedChantier}
+                userId={authUserId}
                 onClick={() => navigate(`/chantiers/${selectedChantier}?from=chef`)}
-              >
-                <CalendarDays className="h-4 w-4" />
-                Planning tâches
-              </Button>
+              />
             )}
             {selectedChantier && (
               <ConversationButton
@@ -821,6 +818,26 @@ const Index = () => {
         onClose={() => setSelectedFicheId(null)}
       />
     </PageLayout>
+  );
+};
+
+const PlanningTachesButton = ({ chantierId, userId, onClick }: { chantierId: string; userId: string; onClick: () => void }) => {
+  const { data: newCount = 0 } = useNewPlanningItemsCount(chantierId, userId);
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 relative"
+      onClick={onClick}
+    >
+      <CalendarDays className="h-4 w-4" />
+      Planning tâches
+      {newCount > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1 shadow-md">
+          {newCount > 99 ? "99+" : newCount}
+        </span>
+      )}
+    </Button>
   );
 };
 

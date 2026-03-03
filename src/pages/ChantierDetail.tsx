@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,8 @@ import { ChantierTodoTab } from "@/components/chantier/tabs/ChantierTodoTab";
 import { ChantierRentabiliteTab } from "@/components/chantier/tabs/ChantierRentabiliteTab";
 import { ChantierInfosTab } from "@/components/chantier/tabs/ChantierInfosTab";
 import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp } from "lucide-react";
+import { useMarkPlanningAsSeen } from "@/hooks/useMarkPlanningAsSeen";
+import { useAuth } from "@/contexts/AuthProvider";
 
 const ChantierDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,10 +22,20 @@ const ChantierDetail = () => {
   const { data: chantier, isLoading, error } = useChantierDetail(id);
   const { data: userRole } = useCurrentUserRole();
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const { user } = useAuth();
+  const markAsSeen = useMarkPlanningAsSeen();
   
   // Mode lecture seule si vient de la page chef OU si le rôle est chef
   const fromChef = searchParams.get("from") === "chef";
   const isReadOnly = fromChef || userRole === "chef";
+
+  // Mark planning as seen when chef opens the page
+  useEffect(() => {
+    const entrepriseId = localStorage.getItem("current_entreprise_id");
+    if (id && user?.id && entrepriseId) {
+      markAsSeen.mutate({ chantierId: id, entrepriseId });
+    }
+  }, [id, user?.id]);
 
   if (isLoading) {
     return (
