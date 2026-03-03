@@ -1,23 +1,33 @@
 
 
-## Correction S09 - Sébastien BOUILLET : inverser les heures entre MAILLARD et DAVOULT
+## Correction : S09 ne doit pas apparaitre dans Mars
 
-### Problème
+### Le problème
 
-Les heures sont inversées entre les deux chantiers :
-- **DAVOULT** (secondaire) : fiche `1c787ef9` → actuellement **39h** (8/8/8/8/7, PA=true, T=1) → devrait être **0h**
-- **MAILLARD** (principal) : fiche `bde705ab` → actuellement **0h** (PA=false, T=0) → devrait être **39h**
+Quand tu filtres par "Mars 2026", le système vérifie si une semaine **chevauche** le mois. Pour S09 (lundi 23 fév → dimanche 1er mars), le dimanche 1er mars tombe dans le mois, donc S09 apparait.
 
-### Corrections SQL (via insert tool, pas migration)
+Sauf que tes employés ne travaillent **pas le samedi ni le dimanche**. Les jours ouvrés de S09 (lundi-vendredi) sont **tous en février**. Donc S09 n'a rien à faire dans mars.
 
-**1. Remettre DAVOULT à 0h** (fiche `1c787ef9-412e-452b-a56b-baa69a41755e`) :
-- 5 fiches_jours : `heures=0`, `HNORM=0`, `PA=false`, `T=0`, `code_trajet=null`
-- fiche : `total_heures=0`
+### La correction
 
-**2. Mettre MAILLARD à 39h** (fiche `bde705ab-e2da-4bf0-9747-41a840df05f8`) :
-- 4 jours (lun-jeu) : `heures=8`, `HNORM=8`, `PA=true`, `T=1`, `code_trajet='A_COMPLETER'`
-- 1 jour (vendredi) : `heures=7`, `HNORM=7`, `PA=true`, `T=1`, `code_trajet='A_COMPLETER'`
-- fiche : `total_heures=39`
+Actuellement le code regarde **lundi → dimanche** (7 jours). Il faut changer pour regarder **lundi → vendredi** (5 jours ouvrés seulement).
 
-Le trigger `recalculate_fiche_total_heures` recalculera automatiquement le total, mais on force aussi par sécurité.
+**3 endroits à modifier, tous avec le même changement :**
+
+| Fichier | Ligne | Avant | Après |
+|---------|-------|-------|-------|
+| `src/hooks/rhShared.ts` | 347-348 | `fridayOfWeek = monday + 4 jours` | Déjà correct (utilise vendredi) |
+| `src/components/rh/RHFilters.tsx` | 81-84 | `dimanche = lundi + 6 jours` | `vendredi = lundi + 4 jours` |
+| `src/hooks/useRHData.ts` | 217-220 | `dimanche = lundi + 6 jours` | `vendredi = lundi + 4 jours` |
+
+En fait `rhShared.ts` utilise **déjà vendredi** (ligne 348 : `+ 4`). Donc seuls **2 fichiers** sont à corriger :
+
+1. **RHFilters.tsx** (le filtre de semaines dans le dropdown)
+2. **useRHData.ts** (le filtre de fiches dans les détails et la clôture)
+
+Le changement est identique dans les deux : remplacer `addDays(lundi, 6)` (dimanche) par `addDays(lundi, 4)` (vendredi).
+
+### Résultat
+
+Avec le filtre "Mars 2026", S09 disparaitra car son vendredi (27 février) est avant le 1er mars.
 
