@@ -17,6 +17,7 @@ export const useCreateTodo = () => {
   return useMutation({
     // entreprise_id auto-filled by trigger set_entreprise_from_chantier
     mutationFn: async (input: CreateTodoInput) => {
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("todos_chantier")
         .insert({
@@ -27,6 +28,7 @@ export const useCreateTodo = () => {
           date_echeance: input.date_echeance || null,
           afficher_planning: input.afficher_planning ?? false,
           statut: "A_FAIRE",
+          created_by: user?.id || null,
         } as any)
         .select()
         .single();

@@ -1894,6 +1894,30 @@ export type Database = {
           },
         ]
       }
+      planning_last_seen: {
+        Row: {
+          chantier_id: string
+          entreprise_id: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          chantier_id: string
+          entreprise_id: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          chantier_id?: string
+          entreprise_id?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       planning_validations: {
         Row: {
           created_at: string
@@ -2194,6 +2218,7 @@ export type Database = {
           chantier_id: string
           couleur: string | null
           created_at: string
+          created_by: string | null
           date_debut: string
           date_fin: string
           description: string | null
@@ -2211,6 +2236,7 @@ export type Database = {
           chantier_id: string
           couleur?: string | null
           created_at?: string
+          created_by?: string | null
           date_debut: string
           date_fin: string
           description?: string | null
@@ -2228,6 +2254,7 @@ export type Database = {
           chantier_id?: string
           couleur?: string | null
           created_at?: string
+          created_by?: string | null
           date_debut?: string
           date_fin?: string
           description?: string | null
