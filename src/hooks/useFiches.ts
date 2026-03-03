@@ -772,6 +772,8 @@ export const useUpdateFicheStatus = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
+      queryClient.invalidateQueries({ queryKey: ["fiches-en-attente"] });
+      queryClient.invalidateQueries({ queryKey: ["fiches-en-attente-conducteur"] });
       queryClient.invalidateQueries({ queryKey: ["rh-consolidated"] });
       queryClient.invalidateQueries({ queryKey: ["demandes-conges"] });
       toast({
