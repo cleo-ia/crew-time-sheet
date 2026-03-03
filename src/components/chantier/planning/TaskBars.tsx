@@ -6,6 +6,14 @@ import { ZoomLevel, EmptyGanttGridRef } from "./EmptyGanttGrid";
 import { useUpdateTache } from "@/hooks/useUpdateTache";
 import { toast } from "sonner";
 
+export interface EventPosition {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 interface TaskBarsProps {
   taches: TacheChantier[];
   startDate: Date;
@@ -14,6 +22,11 @@ interface TaskBarsProps {
   chantierId: string;
   scrollContainerRef?: RefObject<EmptyGanttGridRef>;
   readOnly?: boolean;
+  eventPositions?: EventPosition[];
+  selectedEventIds?: Set<string>;
+  onSelectedEventIdsChange?: (ids: Set<string>) => void;
+  onGroupDragDayOffset?: (offset: number) => void;
+  onEventsDragEnd?: (dayShift: number) => void;
 }
 
 const getDayWidth = (zoomLevel: ZoomLevel): number => {
@@ -59,6 +72,11 @@ export const TaskBars = ({
   chantierId,
   scrollContainerRef,
   readOnly = false,
+  eventPositions = [],
+  selectedEventIds = new Set(),
+  onSelectedEventIdsChange,
+  onGroupDragDayOffset,
+  onEventsDragEnd,
 }: TaskBarsProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const today = startOfDay(new Date());
@@ -146,6 +164,7 @@ export const TaskBars = ({
     // If this task is not in selection, clear selection and drag individually
     if (!selectedTaskIds.has(tache.id)) {
       setSelectedTaskIds(new Set());
+      onSelectedEventIdsChange?.(new Set());
     }
 
     setDraggedTaskId(tache.id);
@@ -188,6 +207,16 @@ export const TaskBars = ({
         }
       });
       setSelectedTaskIds(newSelected);
+
+      // Live selection: find intersecting events
+      const newSelectedEvents = new Set<string>();
+      eventPositions.forEach(ep => {
+        const eventBox = { left: ep.left, top: ep.top, right: ep.left + ep.width, bottom: ep.top + ep.height };
+        if (rectsIntersect(lassoBox, eventBox)) {
+          newSelectedEvents.add(ep.id);
+        }
+      });
+      onSelectedEventIdsChange?.(newSelectedEvents);
       return;
     }
 
@@ -206,7 +235,11 @@ export const TaskBars = ({
     const snappedY = Math.round(dy / ROW_HEIGHT) * ROW_HEIGHT;
 
     setDragOffset({ x: snappedX, y: snappedY });
-  }, [draggedTaskId, dayWidth, scrollContainerRef, taskPositions]);
+    
+    // Propagate day offset for events
+    const dayOff = Math.round(dx / dayWidth);
+    onGroupDragDayOffset?.(dayOff);
+  }, [draggedTaskId, dayWidth, scrollContainerRef, taskPositions, onGroupDragDayOffset]);
 
   const handleMouseUp = useCallback((e: MouseEvent) => {
     // Handle lasso end
@@ -217,6 +250,7 @@ export const TaskBars = ({
       // If it was just a click (no lasso movement), deselect all
       if (!isLassoingRef.current) {
         setSelectedTaskIds(new Set());
+        onSelectedEventIdsChange?.(new Set());
       }
       isLassoingRef.current = false;
       return;
@@ -233,11 +267,12 @@ export const TaskBars = ({
     const dy = dragOffset.y;
 
     if (isDraggingRef.current) {
-      const isGroupDrag = selectedTaskIds.has(draggedTaskId) && selectedTaskIds.size > 1;
+      const totalSelected = selectedTaskIds.size + selectedEventIds.size;
+      const isGroupDrag = selectedTaskIds.has(draggedTaskId) && totalSelected > 1;
       const dayShift = Math.round(dx / dayWidth);
 
       if (isGroupDrag && dayShift !== 0) {
-        // Grouped horizontal movement
+        // Grouped horizontal movement — tasks
         const tasksToMove = taches.filter(t => selectedTaskIds.has(t.id));
         tasksToMove.forEach(task => {
           const taskStart = parseISO(task.date_debut);
@@ -249,7 +284,12 @@ export const TaskBars = ({
             date_fin: format(addDays(taskEnd, dayShift), "yyyy-MM-dd"),
           });
         });
-        toast.success(`${tasksToMove.length} tâches déplacées`);
+        // Grouped horizontal movement — events
+        if (selectedEventIds.size > 0) {
+          onEventsDragEnd?.(dayShift);
+        }
+        const totalMoved = tasksToMove.length + selectedEventIds.size;
+        toast.success(`${totalMoved} élément${totalMoved > 1 ? 's' : ''} déplacé${totalMoved > 1 ? 's' : ''}`);
       } else if (!isGroupDrag) {
         // Individual drag (existing logic)
         const draggedTask = taches.find(t => t.id === draggedTaskId);
@@ -300,6 +340,7 @@ export const TaskBars = ({
 
     setDraggedTaskId(null);
     setDragOffset({ x: 0, y: 0 });
+    onGroupDragDayOffset?.(0);
     dragStartRef.current = null;
 
     if (isDraggingRef.current) {
@@ -307,7 +348,7 @@ export const TaskBars = ({
       setTimeout(() => { justDraggedRef.current = false; }, 100);
     }
     isDraggingRef.current = false;
-  }, [draggedTaskId, dragOffset, taches, sortedTaches, dayWidth, chantierId, updateTache, selectedTaskIds]);
+  }, [draggedTaskId, dragOffset, taches, sortedTaches, dayWidth, chantierId, updateTache, selectedTaskIds, selectedEventIds, onEventsDragEnd, onGroupDragDayOffset]);
 
   const handleClick = useCallback((e: React.MouseEvent, tache: TacheChantier) => {
     if (!justDraggedRef.current) {
@@ -387,7 +428,8 @@ export const TaskBars = ({
     }
   }, [draggedTaskId, handleMouseMove, handleMouseUp]);
 
-  const isGroupDragging = draggedTaskId && selectedTaskIds.has(draggedTaskId) && selectedTaskIds.size > 1;
+  const totalSelected = selectedTaskIds.size + selectedEventIds.size;
+  const isGroupDragging = draggedTaskId && selectedTaskIds.has(draggedTaskId) && totalSelected > 1;
 
   return (
     <div
