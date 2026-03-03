@@ -79,9 +79,9 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
     
     return semaines.filter((semaine) => {
       const lundi = parseISOWeek(semaine);
-      const dimanche = addDays(lundi, 6);
-      // Une semaine est incluse si elle chevauche le mois
-      return lundi <= finMois && dimanche >= debutMois;
+      const vendredi = addDays(lundi, 4);
+      // Une semaine est incluse si ses jours ouvrés (lun-ven) chevauchent le mois
+      return lundi <= finMois && vendredi >= debutMois;
     });
   }, [filters.periode, semaines]);
 

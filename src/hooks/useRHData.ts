@@ -215,9 +215,9 @@ export const useRHDetails = (filters: any) => {
           if (!fiche.semaine) return false;
           try {
             const lundi = parseISOWeek(fiche.semaine);
-            const dimanche = addDays(lundi, 6);
-            // Inclure si la semaine chevauche le mois
-            return lundi <= dateFin! && dimanche >= dateDebut!;
+            const vendredi = addDays(lundi, 4);
+            // Inclure si les jours ouvrés (lun-ven) chevauchent le mois
+            return lundi <= dateFin! && vendredi >= dateDebut!;
           } catch {
             return false;
           }
