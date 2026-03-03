@@ -1,18 +1,26 @@
 
 
-## Correction du bouton "Vider le cache" sur la page Planning
+## Correction du lasso — suppression du double-comptage scroll
 
-### Problème
-Le bouton actuel utilise `Trash2`, un dynamic import, et des classes différentes des autres pages.
+### Problème identifié
+`getBoundingClientRect()` retourne la position visuelle qui intègre déjà le scroll. Ajouter `container.scrollLeft`/`scrollTop` par-dessus double-compte le décalage, plaçant le rectangle lasso hors écran.
 
-### Correction (1 fichier)
-**`src/pages/PlanningMainOeuvre.tsx`** — Remplacer le bloc du bouton (lignes 702-716) :
+### Modifications — `src/components/chantier/planning/TaskBars.tsx`
 
-- Icône : `Trash2` → `RefreshCw` (déjà importé)
-- Taille icône : `h-3 w-3` → `h-3.5 w-3.5`
-- Variante : `ghost` → `outline`
-- Classes : ajouter `text-muted-foreground` comme les autres pages
-- Container : `container mx-auto px-4 py-6` → `flex justify-center py-6`
-- Comportement : ajouter `confirm(...)` + appel direct `clearCacheAndReload()` (importer depuis `useClearCache`)
-- Retirer l'import `Trash2` devenu inutile
+**1. `handleContainerMouseDown` (lignes 329-330)**
+Supprimer `+ container.scrollLeft` et `+ container.scrollTop` :
+```ts
+const x = e.clientX - containerRect.left;
+const y = e.clientY - containerRect.top;
+```
+
+**2. `handleMouseMove` — section lasso (lignes 163-164)**
+Même correction :
+```ts
+const currentX = e.clientX - containerRect.left;
+const currentY = e.clientY - containerRect.top;
+```
+
+### Rien d'autre à changer
+2 lignes modifiées dans chaque fonction, même fichier.
 
