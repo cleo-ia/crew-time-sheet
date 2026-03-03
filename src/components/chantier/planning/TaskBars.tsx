@@ -160,8 +160,8 @@ export const TaskBars = ({
       if (!container || !containerRef.current) return;
 
       const containerRect = containerRef.current.getBoundingClientRect();
-      const currentX = e.clientX - containerRect.left + container.scrollLeft;
-      const currentY = e.clientY - containerRect.top + container.scrollTop;
+      const currentX = e.clientX - containerRect.left;
+      const currentY = e.clientY - containerRect.top;
 
       const startX = lassoStartRef.current.x;
       const startY = lassoStartRef.current.y;
@@ -326,8 +326,8 @@ export const TaskBars = ({
     if (!container || !containerRef.current) return;
 
     const containerRect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - containerRect.left + container.scrollLeft;
-    const y = e.clientY - containerRect.top + container.scrollTop;
+    const x = e.clientX - containerRect.left;
+    const y = e.clientY - containerRect.top;
 
     lassoStartRef.current = { x, y, scrollLeft: container.scrollLeft, scrollTop: container.scrollTop };
     isLassoingRef.current = false;
