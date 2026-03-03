@@ -17,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
+import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
@@ -700,17 +701,18 @@ const PlanningMainOeuvre = () => {
       </AlertDialog>
 
       {/* Bouton vider le cache */}
-      <div className="container mx-auto px-4 py-6 flex justify-center">
+      <div className="flex justify-center py-6">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           className="text-muted-foreground text-xs gap-2"
-          onClick={async () => {
-            const { clearCacheAndReload } = await import("@/hooks/useClearCache");
-            clearCacheAndReload();
+          onClick={() => {
+            if (confirm("Vider le cache et recharger l'application ?")) {
+              clearCacheAndReload();
+            }
           }}
         >
-          <Trash2 className="h-3 w-3" />
+          <RefreshCw className="h-3.5 w-3.5" />
           Problème d'affichage ? Vider le cache
         </Button>
       </div>
