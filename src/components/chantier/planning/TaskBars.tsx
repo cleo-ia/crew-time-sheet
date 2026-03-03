@@ -318,8 +318,9 @@ export const TaskBars = ({
   // --- LASSO: mousedown on empty area ---
   const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
     if (readOnly) return;
-    // Only start lasso if clicking on the container itself (not a task bar)
-    if (e.target !== containerRef.current) return;
+    // Only start lasso if NOT clicking on a task bar
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-task-bar]')) return;
 
     const container = scrollContainerRef?.current?.getScrollContainer();
     if (!container || !containerRef.current) return;
@@ -351,7 +352,8 @@ export const TaskBars = ({
 
   const handleContainerMouseDownWrapped = useCallback((e: React.MouseEvent) => {
     handleContainerMouseDown(e);
-    if (!readOnly && e.target === containerRef.current) {
+    const target = e.target as HTMLElement;
+    if (!readOnly && !target.closest('[data-task-bar]')) {
       setLassoActive(true);
     }
   }, [handleContainerMouseDown, readOnly]);
@@ -440,6 +442,7 @@ export const TaskBars = ({
         return (
           <div
             key={tache.id}
+            data-task-bar
             className={`absolute rounded-md pointer-events-auto transition-shadow overflow-hidden ${statusInfo.color} ${
               readOnly
                 ? "cursor-pointer hover:brightness-95"
