@@ -11,6 +11,8 @@ interface EventMarkersProps {
   zoomLevel: ZoomLevel;
   onEventClick: (todo: TodoChantier) => void;
   tasksCount: number;
+  selectedEventIds?: Set<string>;
+  groupDragDayOffset?: number;
 }
 
 const ROW_HEIGHT = 48;
@@ -53,7 +55,9 @@ export const EventMarkers = ({
   startDate, 
   zoomLevel, 
   onEventClick,
-  tasksCount 
+  tasksCount,
+  selectedEventIds = new Set(),
+  groupDragDayOffset = 0,
 }: EventMarkersProps) => {
   const dayWidth = getDayWidth(zoomLevel);
   const updateTodo = useUpdateTodo();
@@ -166,27 +170,31 @@ export const EventMarkers = ({
     >
       {events.map((event, idx) => {
         const isDragging = draggedTodoId === event.todo.id;
+        const isSelected = selectedEventIds.has(event.todo.id);
+        const isGroupMember = isSelected && !isDragging && groupDragDayOffset !== 0;
         const currentDragOffset = isDragging ? dragOffset : 0;
-        const leftPosition = event.dayOffset * dayWidth + dayWidth / 2 - 10 + currentDragOffset;
+        const groupOffset = isGroupMember ? groupDragDayOffset * dayWidth : 0;
+        const leftPosition = event.dayOffset * dayWidth + dayWidth / 2 - 10 + currentDragOffset + groupOffset;
         const topPosition = idx * ROW_HEIGHT + (ROW_HEIGHT - 20) / 2;
 
         return (
           <div
             key={event.todo.id}
+            data-event-marker
             className={`absolute pointer-events-auto group ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             style={{
               left: leftPosition,
               top: topPosition,
               height: 20,
-              opacity: isDragging ? 0.8 : 1,
-              transition: isDragging ? 'none' : 'opacity 0.2s'
+              opacity: isDragging || isGroupMember ? 0.8 : 1,
+              transition: isDragging || isGroupMember ? 'none' : 'opacity 0.2s'
             }}
             onMouseDown={(e) => handleMouseDown(e, event.todo.id, event.dayOffset)}
             onClick={(e) => handleClick(e, event.todo)}
           >
             {/* Diamond marker */}
             <div 
-              className={`w-3.5 h-3.5 ${getStatusColor(event.todo)} rotate-45 shadow-md group-hover:scale-110 transition-transform`}
+              className={`w-3.5 h-3.5 ${getStatusColor(event.todo)} rotate-45 shadow-md group-hover:scale-110 transition-transform ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
             />
             
             {/* Event label */}

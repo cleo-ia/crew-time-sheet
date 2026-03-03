@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Plus, Calendar, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyGanttGrid, EmptyGanttGridRef, ZoomLevel } from "@/components/chantier/planning/EmptyGanttGrid";
-import { TaskBars } from "@/components/chantier/planning/TaskBars";
+import { TaskBars, EventPosition } from "@/components/chantier/planning/TaskBars";
 import { EventMarkers } from "@/components/chantier/planning/EventMarkers";
 import { TaskFormDialog } from "@/components/chantier/planning/TaskFormDialog";
 import { TaskDetailDialog } from "@/components/chantier/planning/TaskDetailDialog";
@@ -17,8 +17,9 @@ import { useChantierDetail } from "@/hooks/useChantierDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
-import { format } from "date-fns";
+import { format, differenceInDays, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useUpdateTodo } from "@/hooks/useUpdateTodo";
 
 interface ChantierPlanningTabProps {
   chantierId: string;
@@ -38,10 +39,24 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
   { value: "year", label: "Année" },
 ];
 
+const EVENT_ROW_HEIGHT = 48;
+const EVENT_DIAMOND_SIZE = 14; // w-3.5 h-3.5 = 14px
+
+const getDayWidth = (zoomLevel: ZoomLevel): number => {
+  switch (zoomLevel) {
+    case "month": return 32;
+    case "quarter": return 20;
+    case "semester": return 6;
+    case "year": return 3;
+    default: return 32;
+  }
+};
+
 export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false }: ChantierPlanningTabProps) => {
   const { data: taches = [], isLoading } = useTachesChantier(chantierId);
   const { data: todos = [] } = useTodosChantier(chantierId);
   const { data: chantierDetail } = useChantierDetail(chantierId);
+  const updateTodo = useUpdateTodo();
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("quarter");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTache, setSelectedTache] = useState<TacheChantier | null>(null);
@@ -49,6 +64,8 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false 
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showTodoDetailDialog, setShowTodoDetailDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [groupDragDayOffset, setGroupDragDayOffset] = useState(0);
   // Show dates by default for month and quarter views
   const [showDates, setShowDates] = useState(true);
   const ganttRef = useRef<EmptyGanttGridRef>(null);
@@ -58,6 +75,33 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false 
     todos.filter(t => t.afficher_planning && t.date_echeance), 
     [todos]
   );
+
+  // Compute event positions for lasso intersection (in grid coordinates)
+  const eventPositions: EventPosition[] = useMemo(() => {
+    const dayWidth = getDayWidth(zoomLevel);
+    const tasksCount = taches.length;
+    return planningTodos.map((todo, idx) => {
+      const echeanceDate = new Date(todo.date_echeance!);
+      const dayOffset = differenceInDays(echeanceDate, START_DATE);
+      const left = dayOffset * dayWidth + dayWidth / 2 - 10;
+      const top = tasksCount * EVENT_ROW_HEIGHT + idx * EVENT_ROW_HEIGHT + (EVENT_ROW_HEIGHT - 20) / 2;
+      return { id: todo.id, left, top, width: EVENT_DIAMOND_SIZE, height: EVENT_DIAMOND_SIZE };
+    });
+  }, [planningTodos, zoomLevel, taches.length]);
+
+  // Handle group drag end for events
+  const handleEventsDragEnd = useCallback((dayShift: number) => {
+    planningTodos
+      .filter(t => selectedEventIds.has(t.id))
+      .forEach(todo => {
+        const newDate = addDays(new Date(todo.date_echeance!), dayShift);
+        updateTodo.mutate({
+          id: todo.id,
+          chantier_id: chantierId,
+          date_echeance: format(newDate, "yyyy-MM-dd"),
+        });
+      });
+  }, [planningTodos, selectedEventIds, chantierId, updateTodo]);
 
   // Auto-enable dates for month/quarter zoom levels
   const handleZoomChange = (newZoom: ZoomLevel) => {
@@ -573,17 +617,20 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false 
           zoomLevel={zoomLevel}
           showDates={showDates}
         >
-          {taches.length > 0 && (
-            <TaskBars
-              taches={taches}
-              startDate={START_DATE}
-              zoomLevel={zoomLevel}
-              onTaskClick={handleTaskClick}
-              chantierId={chantierId}
-              scrollContainerRef={ganttRef}
-              readOnly={readOnly}
-            />
-          )}
+          <TaskBars
+            taches={taches}
+            startDate={START_DATE}
+            zoomLevel={zoomLevel}
+            onTaskClick={handleTaskClick}
+            chantierId={chantierId}
+            scrollContainerRef={ganttRef}
+            readOnly={readOnly}
+            eventPositions={eventPositions}
+            selectedEventIds={selectedEventIds}
+            onSelectedEventIdsChange={setSelectedEventIds}
+            onGroupDragDayOffset={setGroupDragDayOffset}
+            onEventsDragEnd={handleEventsDragEnd}
+          />
           {planningTodos.length > 0 && (
             <EventMarkers
               todos={planningTodos}
@@ -591,6 +638,8 @@ export const ChantierPlanningTab = ({ chantierId, chantierNom, readOnly = false 
               zoomLevel={zoomLevel}
               onEventClick={handleEventClick}
               tasksCount={taches.length}
+              selectedEventIds={selectedEventIds}
+              groupDragDayOffset={groupDragDayOffset}
             />
           )}
         </EmptyGanttGrid>
