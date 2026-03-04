@@ -32,6 +32,9 @@ export async function batchQueryIn<T = any>(
       query = options.extraFilters(query);
     }
 
+    const limit = options?.limitPerChunk ?? 10000;
+    query = query.limit(limit);
+
     const { data, error } = await query;
 
     if (error) throw error;
