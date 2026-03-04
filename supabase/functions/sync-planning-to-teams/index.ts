@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { Resend } from 'https://esm.sh/resend@2.0.0'
 import { isTargetParisHour } from '../_shared/timezone.ts'
+import { generateEmailHtml, createAlertBox, createSectionTitle, createListItem, createClosingMessage } from '../_shared/emailTemplate.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -158,6 +160,110 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[sync-planning-to-teams] ${skippedEntreprises} entreprise(s) ignorée(s) (planning non validé)`)
+
+    // ========================================================================
+    // NOTIFICATION CONDUCTEURS PASSIFS (Fabrice → 2CB, Osman → PAM)
+    // ========================================================================
+    const CONDUCTEURS_PASSIFS = [
+      { chantierId: 'b68eac6d-2bce-4081-8087-54a3d0c7d231', chantierNom: '2CB-Atelier', conducteurId: 'f6e2fade-d1cb-4bbf-954d-8845986ade2a' },
+      { chantierId: '5e9f9798-06be-4e70-a9b0-e7d02b22347a', chantierNom: 'PAM', conducteurId: '7be27e87-0429-4403-9789-276e3989f908' },
+    ]
+
+    try {
+      const resendApiKey = Deno.env.get('RESEND_API_KEY')
+      if (!resendApiKey) {
+        console.warn('[sync-planning-to-teams] RESEND_API_KEY non configuré, skip notifications conducteurs passifs')
+      } else {
+        const resend = new Resend(resendApiKey)
+
+        for (const cp of CONDUCTEURS_PASSIFS) {
+          // Vérifier s'il y a des affectations planning sur ce chantier cette semaine
+          const { data: affectations } = await supabase
+            .from('planning_affectations')
+            .select('employe_id, jour, employe:utilisateurs!planning_affectations_employe_id_fkey(prenom, nom)')
+            .eq('chantier_id', cp.chantierId)
+            .eq('semaine', currentWeek)
+
+          if (!affectations || affectations.length === 0) {
+            console.log(`[sync-planning-to-teams] Conducteur passif ${cp.chantierNom}: aucune affectation, pas de mail`)
+            continue
+          }
+
+          // Récupérer l'email du conducteur
+          const { data: conducteur } = await supabase
+            .from('utilisateurs')
+            .select('email, prenom, nom')
+            .eq('id', cp.conducteurId)
+            .maybeSingle()
+
+          if (!conducteur?.email) {
+            console.warn(`[sync-planning-to-teams] Conducteur passif ${cp.conducteurId}: pas d'email trouvé`)
+            continue
+          }
+
+          // Grouper les employés avec leurs jours
+          // deno-lint-ignore no-explicit-any
+          const employeJours = new Map<string, { nom: string; jours: string[] }>()
+          // deno-lint-ignore no-explicit-any
+          for (const aff of affectations as any[]) {
+            const empId = aff.employe_id
+            const empNom = aff.employe ? `${aff.employe.prenom || ''} ${aff.employe.nom || ''}`.trim() : empId
+            if (!employeJours.has(empId)) {
+              employeJours.set(empId, { nom: empNom, jours: [] })
+            }
+            employeJours.get(empId)!.jours.push(aff.jour)
+          }
+
+          // Construire la liste HTML des employés
+          const jourLabels: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Jeu', 5: 'Ven', 6: 'Sam', 0: 'Dim' }
+          let employeListHtml = ''
+          for (const [, emp] of employeJours) {
+            const joursFormatted = emp.jours
+              .sort()
+              .map(j => {
+                const d = new Date(j)
+                return jourLabels[d.getUTCDay()] || j
+              })
+              .join(', ')
+            employeListHtml += createListItem(`<strong>${emp.nom}</strong> — ${joursFormatted}`)
+          }
+
+          const emailContent = `
+            ${createAlertBox(
+              `Vous avez <strong>${employeJours.size} employé(s)</strong> affecté(s) sur votre chantier <strong>${cp.chantierNom}</strong> cette semaine (${currentWeek}).`,
+              'info'
+            )}
+            ${createSectionTitle('Employés affectés')}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+              ${employeListHtml}
+            </table>
+          `
+
+          const emailHtml = generateEmailHtml(
+            conducteur.prenom || 'Conducteur',
+            emailContent,
+            'https://crew-time-sheet.lovable.app/',
+            'Accéder à DIVA',
+            'rappel'
+          )
+
+          try {
+            await resend.emails.send({
+              from: 'DIVA Rappels <rappels-diva-LR@groupe-engo.com>',
+              to: [conducteur.email],
+              subject: `Planning ${currentWeek} - Affectations sur ${cp.chantierNom}`,
+              html: emailHtml,
+            })
+            console.log(`[sync-planning-to-teams] ✅ Mail envoyé à ${conducteur.email} pour ${cp.chantierNom} (${employeJours.size} employés)`)
+          } catch (emailErr) {
+            console.error(`[sync-planning-to-teams] ❌ Erreur envoi mail à ${conducteur.email}:`, emailErr)
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('[sync-planning-to-teams] Erreur notifications conducteurs passifs:', notifErr)
+      // On ne fait pas échouer la sync pour ça
+    }
 
     const endTime = Date.now()
     const duration_ms = endTime - startTime
