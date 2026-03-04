@@ -22,6 +22,7 @@ import Install from "./pages/Install";
 import Bootstrap from "./pages/Bootstrap";
 import NotFound from "./pages/NotFound";
 import Documentation from "./pages/Documentation";
+import EmailPreview from "./pages/EmailPreview";
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
 
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/bootstrap" element={<Bootstrap />} />
           <Route path="/install" element={<Install />} />
+          <Route path="/email-preview" element={<EmailPreview />} />
           <Route element={<RequireAuth />}>
             {/* Saisie Chef - Accessible par: super_admin, chef */}
             <Route 
