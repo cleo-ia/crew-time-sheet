@@ -1,0 +1,1 @@
+ALTER TABLE public.chantiers ADD COLUMN is_ecole boolean NOT NULL DEFAULT false;

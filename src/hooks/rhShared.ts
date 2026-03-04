@@ -26,7 +26,8 @@ export interface EmployeeDetail {
   trajet: string | null;
   trajetPerso: boolean;
   typeAbsence?: string;
-  isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent)
+  isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent) — sauf chantier ECOLE
+  isEcole?: boolean; // true si le jour est sur un chantier is_ecole
   regularisationM1?: string;
   autresElements?: string;
   commentaire?: string;
@@ -392,9 +393,14 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les chefs (via chantiers)
   const { data: chantiersData } = await supabase
     .from("chantiers")
-    .select("id, chef_id");
+    .select("id, chef_id, is_ecole");
 
   const chefIds = new Set(chantiersData?.map(c => c.chef_id).filter(Boolean) || []);
+  
+  // Build map of chantier_id -> is_ecole for absence exclusion
+  const ecoleChantierIds = new Set(
+    chantiersData?.filter(c => (c as any).is_ecole).map(c => c.id) || []
+  );
 
   // Récupérer les affectations finisseurs pour filtrage
   let affectationsQuery = supabase
@@ -658,7 +664,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       intemperies += intemperie;
       totalHeures += heuresDuJour;
       
-      let isAbsent = heuresDuJour === 0 && intemperie === 0;
+      // Check if current day is on an ECOLE chantier
+      // Try to find the chantier ID for this specific day
+      // For single-chantier days, it's fiche.chantier_id
+      // For multi-chantier days, we might only have the code... but we built ecoleChantierIds using IDs.
+      // So we rely on fiche.chantier_id for the main context.
+      // IF code_chantier_du_jour is present, we try to match it?
+      // Actually, ecoleChantierIds is a Set<string> of IDs.
+      
+      // Better approach: Check if the fiche's chantier is ECOLE.
+      // Ideally we should map code_chantier_du_jour back to an ID or have is_ecole in the day data...
+      // But we don't have that yet.
+      // Let's rely on the fiche's chantier ID for now, as ECOLE chantiers are usually separate fiches.
+      const isEcoleChantier = ecoleChantierIds.has(fiche.chantier_id || "");
+      
+      let isAbsent = heuresDuJour === 0 && intemperie === 0 && !isEcoleChantier;
 
       // For chefs with chantier filter: if 0h on filtered site but worked on another site,
       // it's NOT an absence
@@ -698,6 +718,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         trajet: (jourRefTrajet as any).code_trajet || null,
         trajetPerso: (jourRefTrajet as any).code_trajet === "T_PERSO",
         typeAbsence: (jourRef as any).type_absence || null,
+        isEcole: isEcoleChantier,
         isAbsent,
         regularisationM1: (jourRef as any).regularisation_m1 || "",
         autresElements: (jourRef as any).autres_elements || "",

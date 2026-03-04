@@ -31,11 +31,14 @@ export const useAddEmployeeToFiche = () => {
       // 2. Récupérer les informations du chantier pour avoir le code et la ville
       const { data: chantier, error: chantierError } = await supabase
         .from("chantiers")
-        .select("code_chantier, ville")
+        .select("code_chantier, ville, is_ecole")
         .eq("id", chantierId)
         .single();
 
       if (chantierError) throw chantierError;
+
+      // 3. Determine if ECOLE chantier
+      const isEcole = !!(chantier as any).is_ecole;
 
       // 3. Créer la fiche (entreprise_id auto-filled by trigger set_fiche_entreprise_id)
       const { data: newFiche, error: ficheError } = await supabase
@@ -46,7 +49,7 @@ export const useAddEmployeeToFiche = () => {
           salarie_id: salarieId,
           statut: "BROUILLON" as const,
           user_id: conducteurId,
-          total_heures: 39, // 8+8+8+8+7
+          total_heures: isEcole ? 0 : 39, // 8+8+8+8+7 or 0 for ECOLE
         }] as any)
         .select()
         .single();
@@ -56,7 +59,9 @@ export const useAddEmployeeToFiche = () => {
       // 4. Créer les 5 fiches_jours (Lundi-Vendredi) avec valeurs par défaut
       // entreprise_id auto-filled by trigger set_entreprise_from_fiche
       const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"] as const;
-      const heuresParJour = { Lundi: 8, Mardi: 8, Mercredi: 8, Jeudi: 8, Vendredi: 7 };
+      const heuresParJour = isEcole 
+        ? { Lundi: 0, Mardi: 0, Mercredi: 0, Jeudi: 0, Vendredi: 0 }
+        : { Lundi: 8, Mardi: 8, Mercredi: 8, Jeudi: 8, Vendredi: 7 };
 
       const fichesJours = jours.map((jour) => {
         const date = dayNameToDate(semaine, jour);
@@ -66,13 +71,13 @@ export const useAddEmployeeToFiche = () => {
           heures: heuresParJour[jour],
           HNORM: heuresParJour[jour],
           HI: 0,
-          T: 1, // Trajet par défaut
-          PA: true, // Panier repas par défaut
-          repas_type: "PANIER" as const, // Cohérent avec PA: true
+          T: isEcole ? 0 : 1,
+          PA: isEcole ? false : true,
+          repas_type: isEcole ? null : ("PANIER" as const),
           code_chantier_du_jour: chantier.code_chantier,
           ville_du_jour: chantier.ville,
           trajet_perso: false,
-          code_trajet: "A_COMPLETER", // Code à compléter par RH
+          code_trajet: isEcole ? null : "A_COMPLETER",
         };
       });
 

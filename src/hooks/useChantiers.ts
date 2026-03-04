@@ -12,6 +12,7 @@ export interface Chantier {
   adresse: string | null;
   description: string | null;
   actif: boolean | null;
+  is_ecole: boolean | null;
   chef_id: string | null;
   conducteur_id: string | null;
   date_debut: string | null;

@@ -14,6 +14,7 @@ interface DayDetail {
   typeAbsence?: string | null;
   trajetPerso?: boolean;
   siteDetails?: Array<{ code: string; nom: string; heures: number }>;
+  isEcole?: boolean;
 }
 
 interface SignatureData {
@@ -291,7 +292,7 @@ export function generateWeekDetailPdf(
   doc.setTextColor(0, 0, 0);
 
   days.forEach((day, rowIdx) => {
-    const isAbsent = day.heuresNormales === 0;
+    const isAbsent = day.heuresNormales === 0 && !day.isEcole;
     
     // Alternance de couleur
     if (rowIdx % 2 === 0) {
