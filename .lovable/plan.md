@@ -1,31 +1,47 @@
 
 
-## Plan : Renforcer le RLS de `conducteurs_chefs` (Point 2)
+# Plan : Notification email aux conducteurs passifs après sync planning
 
-### Vérifications effectuées
+## Contexte
 
-- **Frontend** : 1 seul fichier utilise cette table (`ChantierSelector.tsx`), via un SELECT filtré par `conducteur_id`. Le header `x-entreprise-id` est déjà envoyé par le client Supabase, donc le nouveau RLS filtrera correctement sans aucun changement de code.
-- **Backend (Edge Functions)** : 0 référence à `conducteurs_chefs` dans aucune Edge Function.
-- **Données existantes** : 1 seule ligne, avec un `entreprise_id` valide (`edd12053-55dc-4f4b-b2ad-5048cb5aa798`).
-- **Trigger** : `tr_conducteurs_chefs_set_entreprise` auto-populate `entreprise_id` sur INSERT — continue de fonctionner normalement.
+Après la synchronisation planning du lundi, Fabrice (conducteur du chantier 2CB) et Osman (conducteur du chantier PAM) doivent recevoir un email s'il y a des affectations sur leur chantier respectif cette semaine.
 
-### Migration SQL
+**Données existantes :**
+- Chantier `CX2CB` (nom: 2CB-Atelier) → `conducteur_id` = Fabrice (`f6e2fade-...`)
+- Chantier `CXPAM` (nom: PAM) → `conducteur_id` = Osman (`7be27e87-...`)
+- Fabrice : `fabrice.froment@groupe-engo.com`
+- Osman : `osman.yagci@groupe-engo.com`
+- Le secret `RESEND_API_KEY` est deja configure.
 
-```sql
-DROP POLICY IF EXISTS "Temporary: allow all access to conducteurs_chefs" ON public.conducteurs_chefs;
+## Modification
 
-CREATE POLICY "Users can access conducteurs_chefs of their company"
-  ON public.conducteurs_chefs
-  FOR ALL
-  USING (entreprise_id = get_selected_entreprise_id())
-  WITH CHECK (entreprise_id = get_selected_entreprise_id());
+**Fichier unique a modifier : `supabase/functions/sync-planning-to-teams/index.ts`**
+
+A la fin du handler principal (apres la boucle de sync par entreprise, vers la ligne 158), ajouter une etape de notification :
+
+1. Definir une liste de "conducteurs passifs" avec leur `conducteur_id` et `code_chantier` associe (hardcode, comme demande)
+2. Pour chaque conducteur passif, verifier s'il y a eu des affectations creees/copiees sur leur chantier pendant la sync (en regardant les `allResults` ou en faisant un simple `SELECT` sur `planning_affectations` pour la semaine courante et le `chantier_id` correspondant)
+3. Si oui, envoyer un email via Resend avec un recapitulatif simple : "Vous avez des affectations sur votre chantier [NOM] cette semaine [SEMAINE]" avec la liste des employes affectes
+4. Utiliser le template email existant (`generateEmailHtml` de `_shared/emailTemplate.ts`) pour garder le meme style
+
+## Detail technique
+
+```text
+Apres la boucle sync (ligne ~158):
+  
+  CONDUCTEURS_PASSIFS = [
+    { conducteurId: "f6e2fade-...", chantierId: "b68eac6d-...", chantierNom: "2CB-Atelier" },
+    { conducteurId: "7be27e87-...", chantierId: "5e9f9798-...", chantierNom: "PAM" }
+  ]
+
+  Pour chaque conducteur passif:
+    1. SELECT planning_affectations + employe info WHERE chantier_id = X AND semaine = currentWeek
+    2. Si count > 0 :
+       - Recuperer email/prenom du conducteur depuis utilisateurs
+       - Construire le HTML avec la liste des employes affectes
+       - Envoyer via Resend
+       - Logger dans la console
 ```
 
-### Fichiers modifiés
-
-Aucun fichier frontend ni backend. Le changement est purement au niveau base de données.
-
-### Résultat attendu
-
-Les 5 warnings du linter Supabase sur `conducteurs_chefs` disparaîtront. L'isolation multi-tenant sera garantie au niveau DB.
+L'email contiendra : le nom du chantier, la semaine, et la liste des employes affectes avec leurs jours.
 
