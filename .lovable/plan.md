@@ -1,85 +1,42 @@
 
 
-## Notification badge "Planning tâches" pour le chef
+## Plan corrigé : Nettoyage sécurité (2 actions sûres)
 
-### Contexte vérifié
-- **`taches_chantier`** : pas de colonne `created_by` → migration nécessaire
-- **`todos_chantier`** : colonne `created_by` existe déjà mais n'est jamais remplie par `useCreateTodo`
-- Le bouton "Planning tâches" est dans `Index.tsx` (ligne 445-453), affiché uniquement quand un chantier est sélectionné
-- Le chef navigue vers `/chantiers/${selectedChantier}?from=chef`
+### Contexte important
 
-### Étape 1 — Migration SQL
+La table `affectations` **ne peut pas être supprimée** : elle alimente la vue `affectations_view` qui est utilisée activement dans le frontend (`useFiches.ts`, `useFicheDetailForEdit.ts`) pour afficher les noms/prénoms des maçons sur les fiches.
 
-**a) Ajouter `created_by` à `taches_chantier`**
+### Ce qui sera fait
+
+**1. Supprimer la table `affectations_backup`**
+- 0 ligne, 0 référence code, 0 vue associée
+- Migration SQL : `DROP TABLE IF EXISTS public.affectations_backup;`
+
+**2. Renforcer le RLS de `affectations`** (au lieu de la supprimer)
+- Remplacer `USING (true) / WITH CHECK (true)` par `USING (entreprise_id = get_selected_entreprise_id()) / WITH CHECK (entreprise_id = get_selected_entreprise_id())`
+- Toutes les lignes existantes ont déjà un `entreprise_id` valide (vérifié précédemment)
+
+### Migration SQL
+
 ```sql
-ALTER TABLE taches_chantier ADD COLUMN created_by uuid DEFAULT NULL;
+-- 1. Supprimer la table obsolète (vide, aucune dépendance)
+DROP TABLE IF EXISTS public.affectations_backup;
+
+-- 2. Renforcer RLS de affectations
+DROP POLICY IF EXISTS "Enable all access for development" ON public.affectations;
+
+CREATE POLICY "Users can access affectations of their company"
+  ON public.affectations
+  FOR ALL
+  USING (entreprise_id = get_selected_entreprise_id())
+  WITH CHECK (entreprise_id = get_selected_entreprise_id());
 ```
 
-**b) Créer la table `planning_last_seen`**
-```sql
-CREATE TABLE planning_last_seen (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  chantier_id uuid NOT NULL,
-  entreprise_id uuid NOT NULL,
-  last_seen_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(user_id, chantier_id)
-);
+### Fichiers modifiés
 
-ALTER TABLE planning_last_seen ENABLE ROW LEVEL SECURITY;
+Aucun fichier frontend à modifier. Le renforcement RLS est transparent car le header `x-entreprise-id` est déjà envoyé par le client Supabase.
 
-CREATE POLICY "Users can manage their own last_seen"
-  ON planning_last_seen FOR ALL TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-```
+### Impact utilisateur
 
-### Étape 2 — Remplir `created_by` à la création
-
-- **`useCreateTache`** : ajouter `const { data: { user } } = await supabase.auth.getUser()` puis `created_by: user?.id || null` dans l'insert
-- **`useCreateTodo`** : idem, ajouter `created_by: user?.id || null` dans l'insert (le champ existe en DB mais le hook ne le remplit pas)
-
-### Étape 3 — Nouveau hook `useNewPlanningItemsCount`
-
-- Paramètres : `chantierId`, `userId` (auth.uid)
-- Requête `planning_last_seen` pour ce chantier/user → obtenir `last_seen_at`
-- Compter les `taches_chantier` où `created_at > last_seen_at` ET `created_by != userId` (ou `created_by IS NOT NULL`)
-- Compter les `todos_chantier` idem
-- Retourner la somme des deux
-- Si pas de `last_seen_at` : compter tout ce qui a un `created_by` différent du chef
-- `refetchInterval: 30000`
-
-### Étape 4 — Nouveau hook `useMarkPlanningAsSeen`
-
-- Mutation qui fait un upsert dans `planning_last_seen` avec `last_seen_at = now()`, `onConflict: "user_id,chantier_id"`
-- Invalide la query `["new-planning-items-count"]`
-
-### Étape 5 — Badge sur le bouton "Planning tâches" (Index.tsx)
-
-Transformer le `<Button>` existant (ligne 445-453) pour y ajouter un badge compteur en position absolute, même style que `CongesButton` et `ConversationButton` :
-```tsx
-<Button variant="outline" size="sm" className="gap-1.5 relative" onClick={...}>
-  <CalendarDays className="h-4 w-4" />
-  Planning tâches
-  {newPlanningCount > 0 && (
-    <span className="absolute -top-1.5 -right-1.5 bg-destructive ...">
-      {newPlanningCount}
-    </span>
-  )}
-</Button>
-```
-
-### Étape 6 — Reset du compteur (ChantierDetail.tsx)
-
-- Appeler `useMarkPlanningAsSeen` au montage du composant avec `chantierId` + `auth.uid()`
-- Cela remet le compteur à zéro dès que le chef ouvre la page planning du chantier
-
-### Fichiers impactés
-1. Migration SQL (nouvelle)
-2. `src/hooks/useCreateTache.ts` — ajouter `created_by`
-3. `src/hooks/useCreateTodo.ts` — ajouter `created_by`
-4. `src/hooks/useNewPlanningItemsCount.ts` — nouveau hook
-5. `src/hooks/useMarkPlanningAsSeen.ts` — nouveau hook
-6. `src/pages/Index.tsx` — badge sur le bouton
-7. `src/pages/ChantierDetail.tsx` — appel mark-as-seen
+Zéro. Les données restent accessibles normalement, mais maintenant isolées par entreprise au niveau base de données.
 
