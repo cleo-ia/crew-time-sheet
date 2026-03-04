@@ -70,7 +70,7 @@ const SignatureFinisseurs = () => {
   const { data: finisseurs = [] } = useFinisseursByConducteur(conducteurId, semaine);
 
   // Map enrichie avec code + nom du chantier
-  const [chantiersInfo, setChantiersInfo] = useState<Map<string, { code: string; nom: string }>>(new Map());
+  const [chantiersInfo, setChantiersInfo] = useState<Map<string, { code: string; nom: string; isEcole: boolean }>>(new Map());
 
   // Charger les codes et noms des chantiers
   useEffect(() => {
@@ -92,14 +92,14 @@ const SignatureFinisseurs = () => {
       // Charger les chantiers correspondants avec code et nom
       const { data: chantiers } = await supabase
         .from("chantiers")
-        .select("id, code_chantier, nom")
+        .select("id, code_chantier, nom, is_ecole")
         .in("id", Array.from(chantierIds));
       
       if (chantiers) {
         // Map pour chantiersMap (legacy - code uniquement)
         const codeMap = new Map<string, string>();
         // Map enrichie avec code + nom
-        const infoMap = new Map<string, { code: string; nom: string }>();
+        const infoMap = new Map<string, { code: string; nom: string; isEcole: boolean }>();
         
         chantiers.forEach(ch => {
           if (ch.code_chantier) {
@@ -107,7 +107,8 @@ const SignatureFinisseurs = () => {
           }
           infoMap.set(ch.id, {
             code: ch.code_chantier || "SANS_CODE",
-            nom: ch.nom || ""
+            nom: ch.nom || "",
+            isEcole: ch.is_ecole === true
           });
         });
         setChantiersMap(codeMap);
@@ -708,11 +709,13 @@ const SignatureFinisseurs = () => {
                           const countTrajetsEntreprise = relevantTransportDays.filter((day: any) => !day.trajet_perso && day.immatriculation).length;
                           
                           // Calculer les absences (jours affectés à CE chantier avec HNORM=0 et pas trajet perso)
-                          const countAbsences = finisseur.ficheJours?.filter(jour => {
+                          // Les chantiers ECOLE ne comptent jamais d'absences
+                          const isEcole = chantiersInfo.get(chantierGroup.chantierId || "")?.isEcole === true;
+                          const countAbsences = isEcole ? 0 : (finisseur.ficheJours?.filter(jour => {
                             return affectedDatesSet.has(jour.date) && 
                               (!chantierGroup.chantierId || jour.source_chantier_id === chantierGroup.chantierId) &&
                               jour.HNORM === 0 && !jour.trajet_perso;
-                          }).length || 0;
+                          }).length || 0);
                           
                           return (
                             <TableRow 
