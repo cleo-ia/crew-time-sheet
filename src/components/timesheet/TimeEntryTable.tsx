@@ -218,7 +218,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
       
       const { data, error } = await supabase
         .from("chantiers")
-        .select("id, nom, code_chantier, ville, actif")
+        .select("id, nom, code_chantier, ville, actif, is_ecole")
         .eq("actif", true)
         .eq("entreprise_id", entrepriseId)
         .order("nom");
@@ -228,6 +228,8 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     },
     enabled: !!entrepriseId,
   });
+
+  const isCurrentChantierEcole = chantiers?.find(c => c.id === chantierId)?.is_ecole === true;
 
   // Récupérer les vrais maçons affectés au chantier (+ le chef si applicable)
   // En mode conducteur, on ne charge QUE les finisseurs affectés (pas le conducteur)
@@ -440,7 +442,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                 trajetPerso: !!j.trajet_perso || j.code_trajet === "T_PERSO",
                 grandDeplacement: (j as any).code_trajet === "GD",
                 heuresIntemperie: HI,
-                absent: hours === 0 && HI === 0,
+                absent: !isCurrentChantierEcole && hours === 0 && HI === 0,
                 // ✅ Mapper le chantier du jour depuis ficheJours (priorité sur affectations)
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
@@ -568,7 +570,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                 // Le chef coche "Absent" manuellement si c'est une vraie absence
                 absent: isChefSelf && (useZeroDefaults || !!chefChantierPrincipalData?.chantier_principal_id) 
                   ? false 
-                  : (hours === 0 && !PA && HI === 0),
+                  : (!isCurrentChantierEcole && hours === 0 && !PA && HI === 0),
                 chantierId: chantierDuJour?.id || chantierId,
                 chantierCode: j.code_chantier_du_jour || null,
                 chantierVille: j.ville_du_jour || null,
