@@ -1,24 +1,28 @@
 
 
-# État de l'implémentation du plan ECOLE
+## Fix: ECOLE sites must not trigger "Absent" badge at 0h
 
-## TOUT EST FAIT ✅
+### Changes in `src/components/timesheet/TimeEntryTable.tsx`
 
-| Fichier | Statut |
-|---------|--------|
-| **Migration DB** (`is_ecole boolean NOT NULL DEFAULT false`) | ✅ Fait |
-| **`useChantiers.ts`** — `is_ecole` dans l'interface | ✅ Fait |
-| **`ChantiersManager.tsx`** — Toggle admin + formData + handleEdit | ✅ Fait |
-| **`useAutoSaveFiche.ts`** — fetch `is_ecole`, skip normalisation 39h, init à 0h | ✅ Fait |
-| **`useAddEmployeeToFiche.ts`** — init à 0h si ECOLE | ✅ Fait |
-| **`useCreateFicheJourForAffectation.ts`** — init à 0h si ECOLE | ✅ Fait |
-| **`rhShared.ts`** — Set ecoleChantierIds + `isAbsent && !isEcole` + propagation `isEcole` dans detailJours | ✅ Fait |
-| **`useRHData.ts`** — `is_ecole` dans chantiersCodeMap + propagation | ✅ Fait |
-| **`RHEmployeeDetail.tsx`** — `!isEcole` dans calcul absence + type absence | ✅ Fait |
-| **`RHWeekDetailDialog.tsx`** — `!day.isEcole` dans calcul absence | ✅ Fait |
-| **`rhWeekDetailPdfExport.ts`** — `!day.isEcole` dans PDF | ✅ Fait |
-| **`rhEmployeePdfExport.ts`** — `!day.isEcole` dans PDF | ✅ Fait |
-| **`FicheDetail.tsx`** — compteur absents exclut ECOLE | ✅ Fait |
-| **`types.ts`** — colonne `is_ecole` dans les types Supabase | ✅ Fait |
-| **`supabase/functions/sync-planning-to-teams/index.ts`** — `is_ecole` dans select + force 0h dans createNewAffectation + override post-copie dans copyFichesFromPreviousWeek | ✅ Fait |
-| **`ConducteurCombobox.tsx`** — prop `isEcole` pour exclure de la détection d'absence | ✅ Fait |
+**1. Add `is_ecole` to chantiers query (line 221)**
+```
+.select("id, nom, code_chantier, ville, actif, is_ecole")
+```
+
+**2. Derive `isCurrentChantierEcole` (after line 230)**
+```typescript
+const isCurrentChantierEcole = chantiers?.find(c => c.id === chantierId)?.is_ecole === true;
+```
+
+**3. Conductor mode absence logic (line 443)**
+```
+absent: !isCurrentChantierEcole && hours === 0 && HI === 0,
+```
+
+**4. Chef mode absence logic (line 571)**
+```
+: (!isCurrentChantierEcole && hours === 0 && !PA && HI === 0),
+```
+
+This is a display-only change. No data is modified. Non-ECOLE sites are unaffected.
+
