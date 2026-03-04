@@ -1,39 +1,37 @@
 
 
-## Fix: Masquer le sélecteur "Type d'absence" pour les chantiers ECOLE dans le détail RH
+## Fix: Ajouter `isEcole` dans le retour de `useRHEmployeeDetail`
 
 ### Diagnostic
 
-Le problème est à la **ligne 494** de `RHEmployeeDetail.tsx` :
+Le fix sur `RHEmployeeDetail.tsx` (ligne 494) est correct : `isAbsent={day.heuresNormales === 0 && !(day as any).isEcole}`.
 
-```typescript
-isAbsent={day.heuresNormales === 0}  // ← Ne vérifie PAS isEcole
-```
+**Mais `isEcole` n'est jamais transmis dans les données.** Dans `useRHData.ts`, le hook `useRHEmployeeDetail` calcule bien `isEcole` (ligne 766) et l'utilise pour `isAbsent` (ligne 791), mais **ne l'inclut pas** dans l'objet retourné (lignes 793-812). Donc `(day as any).isEcole` est toujours `undefined` côté composant.
 
-Le mode **readOnly** (ligne 490) gère déjà correctement le cas ECOLE avec `!(day as any).isEcole`. Mais le mode **édition** passe `isAbsent={day.heuresNormales === 0}` sans exclure les chantiers ECOLE, ce qui affiche le sélecteur "À qualifier".
-
-**Bonne nouvelle** : `rhShared.ts` fournit déjà `isEcole` et `isAbsent` correctement calculés sur chaque jour (lignes 669-712). Il suffit de les utiliser.
+En comparaison, `rhShared.ts` (utilisé pour la vue consolidée) inclut bien `isEcole: isEcoleChantier` à la ligne 711.
 
 ### Changement unique
 
-**Fichier : `src/components/rh/RHEmployeeDetail.tsx`, ligne 494**
+**Fichier : `src/hooks/useRHData.ts`, après la ligne 805**
 
-Remplacer :
+Ajouter `isEcole,` dans l'objet retourné, juste après `isAbsent,` :
+
 ```typescript
-isAbsent={day.heuresNormales === 0}
-```
-Par :
-```typescript
-isAbsent={day.heuresNormales === 0 && !(day as any).isEcole}
+// Avant (lignes 804-806)
+typeAbsence: (jour as any).type_absence || null,
+isAbsent,
+isOnOtherSite: false as boolean,
+
+// Après
+typeAbsence: (jour as any).type_absence || null,
+isAbsent,
+isEcole,
+isOnOtherSite: false as boolean,
 ```
 
-### Robustesse — zéro régression
+### Zéro régression
 
-- **Source de données** : `isEcole` est déjà calculé dans `rhShared.ts` (ligne 711) et transmis dans chaque `detailJours`. Ce n'est pas un nouveau champ, il existe et est testé depuis le fix précédent.
-- **Mode readOnly** : Déjà correct (ligne 490 vérifie `!(day as any).isEcole`). Ce fix aligne le mode édition sur la même logique.
-- **Composant `EditableAbsenceTypeCell`** : Quand `isAbsent=false`, il affiche simplement "-". Aucun changement dans ce composant.
-- **Propagation d'absence** : La propagation ne se déclenche que via le sélecteur, qui ne s'affichera plus pour ECOLE. Aucun effet de bord.
-- **Chantiers non-ECOLE** : `isEcole` est `false`/`undefined` → la condition reste `heuresNormales === 0`, comportement identique.
-- **Exports Excel/PDF** : Utilisent `rhShared.ts` qui calcule déjà `isAbsent` correctement avec le flag ECOLE. Aucun impact.
-- **Aucune requête DB modifiée**, aucune donnée modifiée, changement purement visuel sur 1 ligne.
+- La variable `isEcole` existe déjà (ligne 766), elle est simplement omise du retour. On ajoute un champ supplémentaire à l'objet — aucun champ existant n'est modifié.
+- Le composant `RHEmployeeDetail.tsx` accède déjà à `(day as any).isEcole` — il recevra enfin la valeur correcte au lieu de `undefined`.
+- Aucune requête DB modifiée, aucune logique métier changée.
 
