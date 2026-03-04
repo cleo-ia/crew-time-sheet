@@ -31,6 +31,7 @@ interface ConducteurComboboxProps {
   affectationsJoursChef?: Array<{ macon_id: string; jour: string; chef_id: string }>;
   chefId?: string;
   currentChantierId?: string;
+  isEcole?: boolean;
 }
 
 export const ConducteurCombobox = ({ 
@@ -43,6 +44,7 @@ export const ConducteurCombobox = ({
   affectationsJoursChef,
   chefId,
   currentChantierId,
+  isEcole = false,
 }: ConducteurComboboxProps) => {
   const [open, setOpen] = useState(false);
 
@@ -74,7 +76,8 @@ export const ConducteurCombobox = ({
     
     const isDejaAffecte = otherConducteursIds.includes(macon.id);
     // Le chef peut aussi être marqué absent, cette vérification doit aussi s'appliquer
-    const isAbsent = Number(jourData.heures || 0) === 0;
+    // ✅ ECOLE: Ne pas marquer comme absent si chantier école (0h est normal)
+    const isAbsent = Number(jourData.heures || 0) === 0 && !isEcole;
     
     return { 
       isTrajetPerso: jourData.trajet_perso || jourData.code_trajet === "T_PERSO", 
