@@ -803,6 +803,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           trajetPerso: !!(jour as any).trajet_perso,
           typeAbsence: (jour as any).type_absence || null,
           isAbsent,
+          isEcole,
           isOnOtherSite: false as boolean,
           otherSiteCode: null as string | null,
           otherSiteNom: null as string | null,
