@@ -507,7 +507,7 @@ async function syncEntreprise(
   const chantierIds = [...new Set((planningData || []).map((a: any) => a.chantier_id))]
   const { data: chantiersData } = await supabase
     .from('chantiers')
-    .select('id, chef_id, conducteur_id, entreprise_id, code_chantier, ville')
+    .select('id, chef_id, conducteur_id, entreprise_id, code_chantier, ville, is_ecole')
     .in('id', chantierIds.length > 0 ? chantierIds : ['00000000-0000-0000-0000-000000000000'])
 
   // deno-lint-ignore no-explicit-any
@@ -1699,6 +1699,22 @@ async function copyFichesFromPreviousWeek(
     }
   }
 
+  // ✅ ECOLE: Si le chantier est un chantier école, écraser les heures copiées à 0
+  const isEcole = chantier?.is_ecole === true
+  if (isEcole && ficheIdS) {
+    console.log(`[sync] Chantier ECOLE détecté pour ${employeId} — écrasement des heures à 0`)
+    await supabase
+      .from('fiches_jours')
+      .update({ heures: 0, HNORM: 0, HI: 0, T: 0, PA: false, code_trajet: null, repas_type: null })
+      .eq('fiche_id', ficheIdS)
+      .eq('entreprise_id', entrepriseId)
+    
+    await supabase
+      .from('fiches')
+      .update({ total_heures: 0 })
+      .eq('id', ficheIdS)
+  }
+
   return { copied: true, reason: '' }
 }
 
@@ -1759,14 +1775,17 @@ async function createNewAffectation(
     return { created: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
   }
 
+  // ✅ ECOLE: Si le chantier est un chantier école, forcer 0h
+  const isEcole = chantier?.is_ecole === true
+
   // Calculer les heures par jour spécifiques (L-J: 8h, V: 7h)
   const nbJours = joursPlanning.length
   if (nbJours === 0) {
     return { created: false, reason: 'Aucun jour planifié' }
   }
 
-  // Calculer le total basé sur les jours réels
-  const totalHeures = calculateTotalHeures(joursPlanning)
+  // Calculer le total basé sur les jours réels (0 si ECOLE)
+  const totalHeures = isEcole ? 0 : calculateTotalHeures(joursPlanning)
 
   // Créer ou mettre à jour la fiche
   let ficheId = existingFiche?.id
@@ -1797,7 +1816,7 @@ async function createNewAffectation(
   const chantierVille = chantier?.ville || null
   
   for (const jour of joursPlanning) {
-    const heuresJour = getHeuresForDay(jour)
+    const heuresJour = isEcole ? 0 : getHeuresForDay(jour)
     const { error: jourError } = await supabase
       .from('fiches_jours')
       .upsert({
@@ -1807,14 +1826,14 @@ async function createNewAffectation(
         HNORM: heuresJour,
         // total_jour est une colonne générée, ne pas l'inclure
         HI: 0,
-        T: 1,
-        PA: true,
+        T: isEcole ? 0 : 1,
+        PA: isEcole ? false : true,
         pause_minutes: 0,
         // ✅ Initialiser les champs pour le RH consolidé
-        code_trajet: "A_COMPLETER",
+        code_trajet: isEcole ? null : "A_COMPLETER",
         code_chantier_du_jour: chantierCode,
         ville_du_jour: chantierVille,
-        repas_type: "PANIER",
+        repas_type: isEcole ? null : "PANIER",
         entreprise_id: entrepriseId
       }, { onConflict: 'fiche_id,date' })
     
