@@ -328,6 +328,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   }));
 
   const toutesLesFiches = [...(fichesAvecChantier || []), ...fichesGhostNormalized];
+
+
   const fichesDuMois = toutesLesFiches.filter(fiche => {
     if (!fiche.semaine) return false;
     try {
@@ -351,6 +353,10 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       return false;
     }
   });
+
+  // 🔍 DEBUG SAID - Log après filtrage des fiches du mois
+  const _debugSaidFichesDuMois = fichesDuMois.filter(f => f.salarie_id && toutesLesFiches.some(tf => tf.id === f.id && tf.salarie_id === f.salarie_id));
+  console.log(`[RH DEBUG] Total fiches du mois: ${fichesDuMois.length}, total toutes fiches: ${toutesLesFiches.length}`);
 
   if (fichesDuMois.length === 0) {
     console.log(`[RH Consolidation] Aucune fiche trouvée`);
@@ -376,6 +382,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   if (salarieError) throw salarieError;
 
   const salarieMap = new Map(salarieData?.map(s => [s.id, s]) || []);
+
+  // 🔍 DEBUG SAID - stored for later use after joursData
+  const _debugSaidSalarie = salarieData?.find(s => s.nom?.toUpperCase().includes("GAMINE"));
 
   // Récupérer les rôles système (pour exclure conducteurs et RH)
   const { data: rolesData } = await supabase
@@ -427,6 +436,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     ficheIds,
     { limitPerChunk: 10000 }
   );
+
+  // 🔍 DEBUG SAID - Log complet après joursData
+  if (_debugSaidSalarie) {
+    const saidId = _debugSaidSalarie.id;
+    const saidFiches = fichesDuMois.filter(f => f.salarie_id === saidId);
+    const saidFicheIds = saidFiches.map(f => f.id);
+    const saidJours = joursData?.filter(j => saidFicheIds.includes(j.fiche_id)) || [];
+    console.log(`[RH DEBUG SAID] ✅ Trouvé: ${_debugSaidSalarie.nom} ${_debugSaidSalarie.prenom} (${saidId})`);
+    console.log(`[RH DEBUG SAID] Fiches du mois: ${saidFiches.length}`, saidFiches.map(f => ({ id: f.id, semaine: f.semaine, statut: (f as any).statut, chantier_id: f.chantier_id })));
+    console.log(`[RH DEBUG SAID] Fiches_jours trouvés: ${saidJours.length}`, saidJours.map(j => ({ fiche_id: j.fiche_id, date: j.date, heures: j.heures, HNORM: j.HNORM })));
+    console.log(`[RH DEBUG SAID] role_metier: ${_debugSaidSalarie.role_metier}, agence_interim: ${_debugSaidSalarie.agence_interim}`);
+    console.log(`[RH DEBUG SAID] Total joursData récupérés (toutes fiches): ${joursData?.length || 0}`);
+  } else {
+    console.log(`[RH DEBUG SAID] ❌ GAMINE non trouvé dans salarieData (${salarieData?.length} salariés)`);
+  }
 
   // Construire la map des fiches par salarié
   const fichesBySalarie = new Map<string, typeof fichesDuMois>();
@@ -503,6 +527,10 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
     if (isFinisseur) {
       const datesAff = affectationsMap.get(salarieId);
+      // 🔍 DEBUG SAID
+      if (salarie.nom?.toUpperCase().includes("GAMINE")) {
+        console.log(`[RH DEBUG SAID] isFinisseur: ${isFinisseur}, affectationsMap pour Said:`, datesAff ? [...datesAff] : "AUCUNE", `(affectationsMap.size: ${affectationsMap.size})`);
+      }
     }
     const isInterimaire = !!salarie.agence_interim && !isChef && !isFinisseur && !isGrutier;
     const isMacon = !isChef && !isFinisseur && !isGrutier && !isInterimaire;
@@ -580,9 +608,16 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
           const datesAffectees = affectationsMap.get(salarieId);
           if (datesAffectees && datesAffectees.size > 0) {
             if (!datesAffectees.has(jour.date)) {
-              
+              // 🔍 DEBUG SAID
+              if (salarie.nom?.toUpperCase().includes("GAMINE")) {
+                console.log(`[RH DEBUG SAID] ⛔ Jour ${jour.date} SKIPPED (pas dans affectations finisseurs). datesAffectees:`, [...datesAffectees]);
+              }
               continue; // Ignorer ce jour si non affecté
             }
+          }
+          // 🔍 DEBUG SAID
+          if (salarie.nom?.toUpperCase().includes("GAMINE")) {
+            console.log(`[RH DEBUG SAID] ✅ Jour ${jour.date} PASSÉ filtre finisseur (datesAffectees: ${datesAffectees ? datesAffectees.size : 'null/undefined'}, heures: ${jour.heures})`);
           }
         }
 
@@ -707,6 +742,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         salarie.heures_supp_mensualisees || 0
       );
       const heuresSupp = heuresSupp25 + heuresSupp50;
+
+      // 🔍 DEBUG SAID - Log final des totaux
+      if (salarie.nom?.toUpperCase().includes("GAMINE")) {
+        console.log(`[RH DEBUG SAID] 📊 TOTAUX: heuresNormales=${heuresNormales}, totalHeures=${totalHeures}, intemperies=${intemperies}, paniers=${paniers}, absences=${absences}, detailJours.length=${detailJours.length}, joursParDate.size=${joursParDate.size}`);
+      }
 
       employeeMap.set(salarieId, {
         salarieId,
