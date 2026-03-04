@@ -202,39 +202,6 @@ export type Database = {
           },
         ]
       }
-      affectations_backup: {
-        Row: {
-          chantier_id: string | null
-          chef_id: string | null
-          created_at: string | null
-          date_debut: string | null
-          date_fin: string | null
-          id: string | null
-          macon_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          chantier_id?: string | null
-          chef_id?: string | null
-          created_at?: string | null
-          date_debut?: string | null
-          date_fin?: string | null
-          id?: string | null
-          macon_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          chantier_id?: string | null
-          chef_id?: string | null
-          created_at?: string | null
-          date_debut?: string | null
-          date_fin?: string | null
-          id?: string | null
-          macon_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       affectations_finisseurs_jours: {
         Row: {
           chantier_id: string
