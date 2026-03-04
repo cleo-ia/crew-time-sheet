@@ -746,13 +746,13 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       const entrepriseId = localStorage.getItem("current_entreprise_id");
       const { data: allChantiers } = await supabase
         .from("chantiers")
-        .select("id, nom, code_chantier")
+        .select("id, nom, code_chantier, is_ecole")
         .eq("entreprise_id", entrepriseId || "");
       
-      const chantiersCodeMap = new Map<string, { nom: string; code: string | null }>();
+      const chantiersCodeMap = new Map<string, { nom: string; code: string | null; isEcole: boolean }>();
       (allChantiers || []).forEach(c => {
         if (c.code_chantier) {
-          chantiersCodeMap.set(c.code_chantier, { nom: c.nom, code: c.code_chantier });
+          chantiersCodeMap.set(c.code_chantier, { nom: c.nom, code: c.code_chantier, isEcole: !!c.is_ecole });
         }
       });
 
@@ -763,6 +763,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         // RÉSOUDRE nom et code du chantier
         let chantierNom = "Sans chantier";
         let chantierCode: string | null = null;
+        let isEcole = false;
         
         if (jour.code_chantier_du_jour) {
           // Traduire le code vers le nom via la map
@@ -770,6 +771,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           if (chantierInfo) {
             chantierNom = chantierInfo.nom;
             chantierCode = chantierInfo.code;
+            isEcole = chantierInfo.isEcole;
           } else {
             // Code non trouvé dans la map, afficher le code tel quel
             chantierNom = jour.code_chantier_du_jour;
@@ -786,7 +788,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
 
         const heuresNormales = Number(jour.heures) || Number(jour.HNORM) || 0;
         const heuresIntemperies = Number(jour.HI) || 0;
-        const isAbsent = heuresNormales === 0 && heuresIntemperies === 0;
+        const isAbsent = heuresNormales === 0 && heuresIntemperies === 0 && !isEcole;
 
         return {
           date: jour.date,

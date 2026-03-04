@@ -448,7 +448,8 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
       const totalAbsences = isChef ? 0 : (fiche.fiches_jours?.filter((fj: any) => {
         const heures = Number(fj.HNORM || fj.heures || 0);
         const intemperie = Number(fj.HI || 0);
-        return heures === 0 && intemperie === 0 && fj.trajet_perso !== true;
+        const isEcole = !!(ficheData?.chantier as any)?.is_ecole;
+        return heures === 0 && intemperie === 0 && fj.trajet_perso !== true && !isEcole;
       }).length || 0);
       
       // Récupérer les codes chantiers journaliers

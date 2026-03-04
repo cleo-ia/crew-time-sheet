@@ -56,13 +56,15 @@ export const useAutoSaveFiche = () => {
 
       // Requête unique pour récupérer tous les codes
       const chantierCodeById = new Map<string, string>();
+      const isEcoleById = new Map<string, boolean>();
       if (allChantierIds.size > 0) {
         const { data: chantiers } = await supabase
           .from("chantiers")
-          .select("id, code_chantier")
+          .select("id, code_chantier, is_ecole")
           .in("id", Array.from(allChantierIds));
         
         chantiers?.forEach(c => chantierCodeById.set(c.id, c.code_chantier));
+        chantiers?.forEach(c => isEcoleById.set(c.id, !!(c as any).is_ecole));
       }
 
       // Calculer les dates de la semaine ISO (Lundi à Vendredi) en UTC pour éviter les décalages de fuseau
@@ -190,17 +192,21 @@ export const useAutoSaveFiche = () => {
 
           // Initialiser à 39h UNIQUEMENT si forceNormalize === true (passage à semaine suivante)
           if (forceNormalize) {
-            const workDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
-            const defaultHours = [8, 8, 8, 8, 7];
-            const initialJours = workDays.map((dayName, index) => ({
+            // Check if chantier is ECOLE
+            const ficheChantierIdForEcole = chantierId || Object.values(entry.days).find(d => d.chantierId)?.chantierId;
+            const isEcoleChantier = ficheChantierIdForEcole ? (typeof isEcoleById !== 'undefined' && isEcoleById.get(ficheChantierIdForEcole)) : false;
+            
+            const workDaysInit = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
+            const defaultHoursInit = isEcoleChantier ? [0, 0, 0, 0, 0] : [8, 8, 8, 8, 7];
+            const initialJours = workDaysInit.map((dayName, index) => ({
               fiche_id: ficheId,
               date: dates[dayName],
-              HNORM: defaultHours[index],
-              heures: defaultHours[index],
+              HNORM: defaultHoursInit[index],
+              heures: defaultHoursInit[index],
               HI: 0,
-              T: 1,  // Trajet coché par défaut
-              code_trajet: 'A_COMPLETER',  // RH devra compléter
-              PA: true,
+              T: isEcoleChantier ? 0 : 1,
+              code_trajet: isEcoleChantier ? null : 'A_COMPLETER',
+              PA: isEcoleChantier ? false : true,
               pause_minutes: 0,
             }));
 

@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useChantiers, useCreateChantier, useUpdateChantier, useDeleteChantier } from "@/hooks/useChantiers";
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { ChantierDocumentsUpload } from "./ChantierDocumentsUpload";
+import { Switch } from "@/components/ui/switch";
 
 interface ChantiersManagerProps {
   basePath?: string;
@@ -39,6 +40,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersMan
     conducteur_id: "",
     chef_id: "",
     actif: true,
+    is_ecole: false,
     description: "",
     date_debut: null as Date | null,
     date_fin: null as Date | null,
@@ -87,6 +89,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersMan
       conducteur_id: "",
       chef_id: "",
       actif: true,
+      is_ecole: false,
       description: "",
       date_debut: null,
       date_fin: null,
@@ -114,6 +117,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersMan
       conducteur_id: chantier.conducteur_id || "",
       chef_id: chantier.chef_id || "",
       actif: chantier.actif ?? true,
+      is_ecole: chantier.is_ecole ?? false,
       description: chantier.description || "",
       date_debut: chantier.date_debut ? new Date(chantier.date_debut) : null,
       date_fin: chantier.date_fin ? new Date(chantier.date_fin) : null,
@@ -281,6 +285,16 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersMan
                   value={formData.client}
                   onChange={(e) => setFormData({ ...formData, client: e.target.value })}
                   autoComplete="new-client-name"
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 mt-2">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Chantier école</Label>
+                  <p className="text-xs text-muted-foreground">Fiches initialisées à 0h, 0 panier, 0 trajet (pas considéré comme absence)</p>
+                </div>
+                <Switch
+                  checked={formData.is_ecole}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_ecole: checked })}
                 />
               </div>
             </div>

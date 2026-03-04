@@ -395,6 +395,7 @@ export type Database = {
           id: string
           insertion_date_debut: string | null
           insertion_heures_requises: number | null
+          is_ecole: boolean
           libelle: string | null
           montant_vendu: number | null
           nom: string
@@ -419,6 +420,7 @@ export type Database = {
           id?: string
           insertion_date_debut?: string | null
           insertion_heures_requises?: number | null
+          is_ecole?: boolean
           libelle?: string | null
           montant_vendu?: number | null
           nom: string
@@ -443,6 +445,7 @@ export type Database = {
           id?: string
           insertion_date_debut?: string | null
           insertion_heures_requises?: number | null
+          is_ecole?: boolean
           libelle?: string | null
           montant_vendu?: number | null
           nom?: string

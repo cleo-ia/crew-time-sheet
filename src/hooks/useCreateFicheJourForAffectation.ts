@@ -21,6 +21,14 @@ export const useCreateFicheJourForAffectation = () => {
         throw new Error("chantierId est obligatoire pour créer une fiche");
       }
 
+      // Fetch is_ecole flag
+      const { data: chantierData } = await supabase
+        .from("chantiers")
+        .select("is_ecole")
+        .eq("id", chantierId)
+        .maybeSingle();
+      const isEcole = !!(chantierData as any)?.is_ecole;
+
       // 1. Vérifier/créer la fiche avec chantier_id
       const { data: existingFiche } = await supabase
         .from("fiches")
@@ -68,9 +76,9 @@ export const useCreateFicheJourForAffectation = () => {
       // 3. Déterminer les heures par défaut selon le jour de la semaine
       const dateObj = new Date(date + "T00:00:00");
       const dayOfWeek = dateObj.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi
-      const defaultHours = dayOfWeek === 5 ? 7 : 8; // Vendredi = 7h, autres jours = 8h
+      const defaultHours = isEcole ? 0 : (dayOfWeek === 5 ? 7 : 8);
 
-      console.log(`[CreateFicheJour] Création pour date=${date}, jour=${dayOfWeek}, heures=${defaultHours}`);
+      console.log(`[CreateFicheJour] Création pour date=${date}, jour=${dayOfWeek}, heures=${defaultHours}, isEcole=${isEcole}`);
 
       // 4. Créer le fiche_jour avec les valeurs par défaut harmonisées
       // entreprise_id auto-filled by trigger set_entreprise_from_fiche
@@ -82,10 +90,10 @@ export const useCreateFicheJourForAffectation = () => {
           heures: defaultHours,
           HNORM: defaultHours,
           HI: 0,
-          PA: true, // Panier par défaut (cohérent avec l'UI)
-          repas_type: 'PANIER', // Cohérent avec PA: true
-          T: 1, // 1 trajet par défaut (cohérent avec l'UI)
-          code_trajet: 'A_COMPLETER', // RH devra compléter le code trajet
+          PA: isEcole ? false : true,
+          repas_type: isEcole ? null : 'PANIER',
+          T: isEcole ? 0 : 1,
+          code_trajet: isEcole ? null : 'A_COMPLETER',
           trajet_perso: false,
           heure_debut: null,
           heure_fin: null,

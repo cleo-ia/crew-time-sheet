@@ -13,6 +13,7 @@ interface DayDetail {
   codeTrajet?: string | null;
   trajetPerso?: boolean;
   typeAbsence?: string | null;
+  isEcole?: boolean;
 }
 
 interface SalarieInfo {
@@ -359,7 +360,7 @@ export function generateEmployeePeriodPdf(data: EmployeePdfData): void {
   data.dailyDetails.forEach((day, rowIdx) => {
     checkPageBreak(8);
     
-    const isAbsent = day.heuresNormales === 0;
+    const isAbsent = day.heuresNormales === 0 && !day.isEcole;
     
     // Alternance de couleur
     if (rowIdx % 2 === 0) {
