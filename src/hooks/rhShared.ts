@@ -589,11 +589,12 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
     // Collecter tous les jours avec leur statut de fiche
     // Pour les chefs : on collecte TOUS les jours par date (pour sommer ensuite)
-    const joursParDate = new Map<string, { jour: typeof joursData[0]; ficheStatut: string; ficheId: string }[]>();
+    const joursParDate = new Map<string, { jour: typeof joursData[0]; ficheStatut: string; ficheId: string; chantierId: string | null }[]>();
 
     for (const fiche of fiches) {
       const joursFiche = joursData?.filter(j => j.fiche_id === fiche.id) || [];
       const ficheStatut = (fiche as any).statut || "BROUILLON";
+      const chantierId = (fiche as any).chantier_id || null;
 
       for (const jour of joursFiche) {
         // Filtre par date quand on consolide par mois (sauf si "Toutes" périodes)
@@ -618,7 +619,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         if (!joursParDate.has(jour.date)) {
           joursParDate.set(jour.date, []);
         }
-        joursParDate.get(jour.date)!.push({ jour, ficheStatut, ficheId: fiche.id });
+        joursParDate.get(jour.date)!.push({ jour, ficheStatut, ficheId: fiche.id, chantierId });
       }
     }
 
@@ -665,18 +666,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       totalHeures += heuresDuJour;
       
       // Check if current day is on an ECOLE chantier
-      // Try to find the chantier ID for this specific day
-      // For single-chantier days, it's fiche.chantier_id
-      // For multi-chantier days, we might only have the code... but we built ecoleChantierIds using IDs.
-      // So we rely on fiche.chantier_id for the main context.
-      // IF code_chantier_du_jour is present, we try to match it?
-      // Actually, ecoleChantierIds is a Set<string> of IDs.
-      
-      // Better approach: Check if the fiche's chantier is ECOLE.
-      // Ideally we should map code_chantier_du_jour back to an ID or have is_ecole in the day data...
-      // But we don't have that yet.
-      // Let's rely on the fiche's chantier ID for now, as ECOLE chantiers are usually separate fiches.
-      const isEcoleChantier = ecoleChantierIds.has(fiche.chantier_id || "");
+      const isEcoleChantier = entries.some(e => ecoleChantierIds.has(e.chantierId || ""));
       
       let isAbsent = heuresDuJour === 0 && intemperie === 0 && !isEcoleChantier;
 
