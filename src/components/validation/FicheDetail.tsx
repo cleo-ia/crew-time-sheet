@@ -437,10 +437,11 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
       const totalTrajetsPerso = fiche.fiches_jours?.filter((fj: any) => fj.trajet_perso === true).length || 0;
       
       // Trajets normaux = jours où on a des heures travaillées (heures > 0) ET trajet_perso = false
-      const totalTrajets = fiche.fiches_jours?.filter((fj: any) => {
+      // Pour les chantiers ÉCOLE (is_ecole), forcer à 0 trajet
+      const totalTrajets = (ficheData?.chantier as any)?.is_ecole === true ? 0 : (fiche.fiches_jours?.filter((fj: any) => {
         const heures = Number(fj.HNORM || fj.heures || 0);
         return heures > 0 && fj.trajet_perso !== true;
-      }).length || 0;
+      }).length || 0);
       
       // Absences = jours où HNORM = 0 ET HI = 0 ET trajet_perso = false
       // Pour le chef multi-chantier, ne pas compter les jours à 0h comme absences
