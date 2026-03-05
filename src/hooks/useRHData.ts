@@ -728,8 +728,8 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       // 🔥 CORRECTION: Filtrer les fiches_jours des finisseurs par affectations réelles
       let fichesJours = fichesJoursRaw || [];
       
-      // Vérifier si le salarié est un finisseur (au moins une fiche sans chantier)
-      const isFinisseur = filteredFiches.some(f => f.chantier_id === null);
+      // Vérifier si le salarié est un finisseur par son rôle métier (et non par chantier_id === null qui inclut aussi les absences)
+      const isFinisseur = salarie.role_metier === "finisseur";
       
       if (isFinisseur && fichesJours.length > 0) {
         // Récupérer les affectations avec dates pour ce finisseur
@@ -797,6 +797,19 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         let chantierCode: string | null = null;
         let isEcole = false;
         
+        // Mapping des types d'absence vers libellés lisibles
+        const typeAbsenceLabels: Record<string, string> = {
+          CP: "Congés payés",
+          RTT: "RTT",
+          AM: "Arrêt maladie",
+          AT: "Accident du travail",
+          EF: "Événement familial",
+          CPSS: "Congé sans solde",
+          FO: "Formation",
+          ABS: "Absence",
+          CSS: "Congé sans solde",
+        };
+        
         if (jour.code_chantier_du_jour) {
           // Traduire le code vers le nom via la map
           const chantierInfo = chantiersCodeMap.get(jour.code_chantier_du_jour);
@@ -816,6 +829,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         } else if (fiche?.chantiers) {
           chantierNom = fiche.chantiers.nom;
           chantierCode = fiche.chantiers.code_chantier || null;
+        } else if (!fiche?.chantier_id && jour.type_absence) {
+          // Fiche ghost (absence) : afficher le libellé du type d'absence
+          chantierNom = typeAbsenceLabels[jour.type_absence] || jour.type_absence;
         }
 
         const heuresNormales = Number(jour.heures) || Number(jour.HNORM) || 0;
