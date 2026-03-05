@@ -541,6 +541,12 @@ const PlanningMainOeuvre = () => {
         </div>
       )}
 
+      <div className="container mx-auto px-4 mt-3">
+        <p className="text-sm text-muted-foreground">
+          💡 <strong>Pour info :</strong> un chantier tampon <strong>« ÉCOLE »</strong> a été créé. Il sert à affecter les employés en apprentissage qui ne sont sur aucun chantier réel.
+        </p>
+      </div>
+
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
