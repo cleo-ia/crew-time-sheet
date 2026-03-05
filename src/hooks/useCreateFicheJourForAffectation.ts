@@ -76,7 +76,7 @@ export const useCreateFicheJourForAffectation = () => {
       // 3. Déterminer les heures par défaut selon le jour de la semaine
       const dateObj = new Date(date + "T00:00:00");
       const dayOfWeek = dateObj.getDay(); // 0=Dimanche, 1=Lundi, ..., 5=Vendredi
-      const defaultHours = isEcole ? 0 : (dayOfWeek === 5 ? 7 : 8);
+      const defaultHours = isEcole ? 7 : (dayOfWeek === 5 ? 7 : 8);
 
       console.log(`[CreateFicheJour] Création pour date=${date}, jour=${dayOfWeek}, heures=${defaultHours}, isEcole=${isEcole}`);
 

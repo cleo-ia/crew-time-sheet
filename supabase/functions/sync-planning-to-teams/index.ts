@@ -1699,19 +1699,26 @@ async function copyFichesFromPreviousWeek(
     }
   }
 
-  // ✅ ECOLE: Si le chantier est un chantier école, écraser les heures copiées à 0
+  // ✅ ECOLE: Si le chantier est un chantier école, écraser les heures copiées à 7h/jour (35h/semaine)
   const isEcole = chantier?.is_ecole === true
   if (isEcole && ficheIdS) {
-    console.log(`[sync] Chantier ECOLE détecté pour ${employeId} — écrasement des heures à 0`)
+    console.log(`[sync] Chantier ECOLE détecté pour ${employeId} — écrasement des heures à 7h/jour`)
     await supabase
       .from('fiches_jours')
-      .update({ heures: 0, HNORM: 0, HI: 0, T: 0, PA: false, code_trajet: null, repas_type: null })
+      .update({ heures: 7, HNORM: 7, HI: 0, T: 0, PA: false, code_trajet: null, repas_type: null })
+      .eq('fiche_id', ficheIdS)
+      .eq('entreprise_id', entrepriseId)
+    
+    // Compter les jours pour calculer le total
+    const { count: nbJoursEcole } = await supabase
+      .from('fiches_jours')
+      .select('id', { count: 'exact', head: true })
       .eq('fiche_id', ficheIdS)
       .eq('entreprise_id', entrepriseId)
     
     await supabase
       .from('fiches')
-      .update({ total_heures: 0 })
+      .update({ total_heures: 7 * (nbJoursEcole || 5) })
       .eq('id', ficheIdS)
   }
 
@@ -1785,7 +1792,7 @@ async function createNewAffectation(
   }
 
   // Calculer le total basé sur les jours réels (0 si ECOLE)
-  const totalHeures = isEcole ? 0 : calculateTotalHeures(joursPlanning)
+  const totalHeures = isEcole ? (7 * joursPlanning.length) : calculateTotalHeures(joursPlanning)
 
   // Créer ou mettre à jour la fiche
   let ficheId = existingFiche?.id
@@ -1816,7 +1823,7 @@ async function createNewAffectation(
   const chantierVille = chantier?.ville || null
   
   for (const jour of joursPlanning) {
-    const heuresJour = isEcole ? 0 : getHeuresForDay(jour)
+    const heuresJour = isEcole ? 7 : getHeuresForDay(jour)
     const { error: jourError } = await supabase
       .from('fiches_jours')
       .upsert({

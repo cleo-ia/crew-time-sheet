@@ -197,7 +197,7 @@ export const useAutoSaveFiche = () => {
             const isEcoleChantier = ficheChantierIdForEcole ? (typeof isEcoleById !== 'undefined' && isEcoleById.get(ficheChantierIdForEcole)) : false;
             
             const workDaysInit = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
-            const defaultHoursInit = isEcoleChantier ? [0, 0, 0, 0, 0] : [8, 8, 8, 8, 7];
+            const defaultHoursInit = isEcoleChantier ? [7, 7, 7, 7, 7] : [8, 8, 8, 8, 7];
             const initialJours = workDaysInit.map((dayName, index) => ({
               fiche_id: ficheId,
               date: dates[dayName],
