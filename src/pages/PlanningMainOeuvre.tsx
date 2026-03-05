@@ -542,7 +542,7 @@ const PlanningMainOeuvre = () => {
       )}
 
       <div className="container mx-auto px-4 mt-3">
-        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
+        <div className="inline-flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
           <span className="text-xl leading-none mt-0.5">💡</span>
           <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
             <strong>Pour info :</strong> un chantier tampon <strong>« ÉCOLE »</strong> a été créé. Il sert à affecter les employés en apprentissage qui ne sont sur aucun chantier réel.
