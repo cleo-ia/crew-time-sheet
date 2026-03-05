@@ -177,7 +177,8 @@ export const useRHDetails = (filters: any) => {
           semaine,
           total_heures,
           salarie_id,
-          chantier:chantiers!inner(
+          entreprise_id,
+          chantier:chantiers(
             id,
             nom,
             conducteur_id,
@@ -187,16 +188,16 @@ export const useRHDetails = (filters: any) => {
         `)
         .in("statut", ["ENVOYE_RH", "AUTO_VALIDE"]);
       
-      // Filtre par entreprise
+      // Filtre par entreprise (directement sur la fiche, pas sur le chantier)
       if (entrepriseId) {
-        query = query.eq("chantier.entreprise_id", entrepriseId);
+        query = query.eq("entreprise_id", entrepriseId);
       }
 
       if (filters.semaine && filters.semaine !== "all") {
         query = query.eq("semaine", filters.semaine);
       }
       if (filters.conducteur && filters.conducteur !== "all") {
-        query = query.eq("chantier.conducteur_id", filters.conducteur);
+        query = query.not("chantier_id", "is", null).eq("chantier.conducteur_id", filters.conducteur);
       }
       if (filters.chantier && filters.chantier !== "all") {
         query = query.eq("chantier_id", filters.chantier);
@@ -224,34 +225,65 @@ export const useRHDetails = (filters: any) => {
         });
       }
 
-      // 3. Récupérer tous les fiches_jours pour calculer les heures totales (batched)
+      // 3. Récupérer tous les fiches_jours pour calculer les heures totales + type_absence (batched)
       const ficheIds = fichesFiltered.map(f => f.id) || [];
       const allFichesJours = await batchQueryIn<any>(
         "fiches_jours",
-        "fiche_id, HNORM, HI, heures",
+        "fiche_id, HNORM, HI, heures, type_absence",
         "fiche_id",
         ficheIds
       );
 
       // Créer un map fiche_id → total heures (normales uniquement, sans intempéries)
       const heuresMap = new Map<string, number>();
+      // Créer un map fiche_id → type_absence (pour les ghost fiches)
+      const absenceTypeMap = new Map<string, string | null>();
       allFichesJours?.forEach(fj => {
         const current = heuresMap.get(fj.fiche_id) || 0;
         const normales = Number((fj as any).heures) || Number(fj.HNORM) || 0;
         heuresMap.set(fj.fiche_id, current + normales);
+        // Stocker le type d'absence s'il existe
+        if (fj.type_absence && !absenceTypeMap.has(fj.fiche_id)) {
+          absenceTypeMap.set(fj.fiche_id, fj.type_absence);
+        }
       });
 
       const groupMap = new Map<string, RHDetail>();
 
       fichesFiltered.forEach(fiche => {
-        const key = `${fiche.chantier.id}___${fiche.semaine}`;
+        const chantier = fiche.chantier as any;
+        const isGhostFiche = !chantier || !chantier.id;
+        
+        let key: string;
+        let chantierLabel: string;
+        let chefLabel: string;
+        
+        if (isGhostFiche) {
+          // Fiche fantôme (absence longue durée / congé)
+          const typeAbsence = absenceTypeMap.get(fiche.id);
+          const absenceLabels: Record<string, string> = {
+            CP: "Congés payés",
+            MALADIE: "Maladie",
+            AT: "Accident du travail",
+            SANS_SOLDE: "Sans solde",
+            FORMATION: "Formation",
+            AUTRE: "Autre absence",
+          };
+          chantierLabel = typeAbsence ? (absenceLabels[typeAbsence] || typeAbsence) : "Absence longue durée";
+          chefLabel = "";
+          key = `ghost_${chantierLabel}___${fiche.semaine}`;
+        } else {
+          key = `${chantier.id}___${fiche.semaine}`;
+          chantierLabel = chantier.nom;
+          chefLabel = `${chantier.chef?.prenom || ''} ${chantier.chef?.nom || ''}`.trim();
+        }
         
         if (!groupMap.has(key)) {
           groupMap.set(key, {
             id: key,
-            chantier: fiche.chantier.nom,
+            chantier: chantierLabel,
             semaine: fiche.semaine || '',
-            chef: `${fiche.chantier.chef?.prenom || ''} ${fiche.chantier.chef?.nom || ''}`.trim(),
+            chef: chefLabel,
             macons: 0,
             totalHeures: 0,
             anomalies: 0,
