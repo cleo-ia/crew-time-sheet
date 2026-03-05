@@ -541,7 +541,7 @@ const PlanningMainOeuvre = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 mt-3">
+      <div className="container mx-auto px-4 mt-3 flex justify-center">
         <div className="inline-flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
           <span className="text-xl leading-none mt-0.5">💡</span>
           <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
