@@ -49,7 +49,7 @@ export const useAddEmployeeToFiche = () => {
           salarie_id: salarieId,
           statut: "BROUILLON" as const,
           user_id: conducteurId,
-          total_heures: isEcole ? 0 : 39, // 8+8+8+8+7 or 0 for ECOLE
+          total_heures: isEcole ? 35 : 39, // 7*5=35 for ECOLE, 8+8+8+8+7=39 for normal
         }] as any)
         .select()
         .single();
@@ -60,7 +60,7 @@ export const useAddEmployeeToFiche = () => {
       // entreprise_id auto-filled by trigger set_entreprise_from_fiche
       const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"] as const;
       const heuresParJour = isEcole 
-        ? { Lundi: 0, Mardi: 0, Mercredi: 0, Jeudi: 0, Vendredi: 0 }
+        ? { Lundi: 7, Mardi: 7, Mercredi: 7, Jeudi: 7, Vendredi: 7 }
         : { Lundi: 8, Mardi: 8, Mercredi: 8, Jeudi: 8, Vendredi: 7 };
 
       const fichesJours = jours.map((jour) => {
