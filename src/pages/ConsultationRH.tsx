@@ -60,7 +60,6 @@ const ConsultationRH = () => {
   const [filters, setFilters] = useState({
     periode: format(new Date(), "yyyy-MM"),
     semaine: "all",
-    conducteur: "all",
     chantier: "all",
     chef: "all",
     salarie: "all",

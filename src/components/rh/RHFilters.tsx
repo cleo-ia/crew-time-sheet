@@ -1,7 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Building2, User, Briefcase } from "lucide-react";
-import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
+import { Calendar, Building2, User } from "lucide-react";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +14,6 @@ interface RHFiltersProps {
   filters: {
     periode: string;
     semaine: string;
-    conducteur: string;
     chantier: string;
     chef: string;
     salarie: string;
@@ -25,7 +23,6 @@ interface RHFiltersProps {
 }
 
 export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
-  const { data: conducteurs = [] } = useUtilisateursByRole("conducteur");
   const { data: chantiers = [] } = useChantiers();
   
   const { data: semaines = [] } = useQuery({
@@ -94,7 +91,7 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
 
   return (
     <Card className="p-4 shadow-md border-border/50">
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         {/* Période (mois) */}
         <div>
           <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
@@ -136,30 +133,6 @@ export const RHFilters = ({ filters, onFiltersChange }: RHFiltersProps) => {
               <SelectItem value="all">Toutes</SelectItem>
               {semainesFiltrees.map((sem) => (
                 <SelectItem key={sem} value={sem}>{sem}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Conducteur */}
-        <div>
-          <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-primary" />
-            Conducteur
-          </label>
-          <Select
-            value={filters.conducteur}
-            onValueChange={(value) => onFiltersChange({ ...filters, conducteur: value })}
-          >
-            <SelectTrigger className="h-10">
-              <SelectValue placeholder="Tous" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              {conducteurs.map((cond) => (
-                <SelectItem key={cond.id} value={cond.id}>
-                  {cond.prenom} {cond.nom}
-                </SelectItem>
               ))}
             </SelectContent>
           </Select>
