@@ -23,9 +23,10 @@ import { Switch } from "@/components/ui/switch";
 
 interface ChantiersManagerProps {
   basePath?: string;
+  showEcoleToggle?: boolean;
 }
 
-export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersManagerProps) => {
+export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggle = true }: ChantiersManagerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
@@ -287,16 +288,18 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers" }: ChantiersMan
                   autoComplete="new-client-name"
                 />
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 mt-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Chantier école</Label>
-                  <p className="text-xs text-muted-foreground">Fiches initialisées à 0h, 0 panier, 0 trajet (pas considéré comme absence)</p>
+              {showEcoleToggle && (
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 mt-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Chantier école</Label>
+                    <p className="text-xs text-muted-foreground">Fiches initialisées à 0h, 0 panier, 0 trajet (pas considéré comme absence)</p>
+                  </div>
+                  <Switch
+                    checked={formData.is_ecole}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_ecole: checked })}
+                  />
                 </div>
-                <Switch
-                  checked={formData.is_ecole}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_ecole: checked })}
-                />
-              </div>
+              )}
             </div>
 
             <Separator className="bg-border/50" />

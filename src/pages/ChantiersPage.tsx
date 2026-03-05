@@ -14,7 +14,7 @@ const ChantiersPage = () => {
         theme="validation-conducteur"
       />
       <main className="container mx-auto px-4 py-6">
-        <ChantiersManager basePath="/chantiers" />
+        <ChantiersManager basePath="/chantiers" showEcoleToggle={false} />
       </main>
     </div>
   );
