@@ -1,20 +1,22 @@
 
 
-## Correction : vue détail employé RH pour les absences
+## Retrait du filtre Conducteur de la vue RH
 
-### Problème
-Ligne 732 de `useRHData.ts` : le code détecte les finisseurs en cherchant `chantier_id === null`. Les fiches d'absence (congés, maladie...) ont aussi `chantier_id = null`, donc **tout employé en absence est traité comme un finisseur**. Le filtrage par affectations finisseurs supprime ensuite tous ses jours → "Aucune donnée à afficher".
+### Modifications
 
-### Correction (fichier unique : `src/hooks/useRHData.ts`)
+**1. `src/components/rh/RHFilters.tsx`**
+- Supprimer l'import `Briefcase` de lucide-react
+- Supprimer l'import `useUtilisateursByRole` et le hook `const { data: conducteurs } = useUtilisateursByRole("conducteur")`
+- Supprimer le bloc JSX du filtre Conducteur (lignes 129-155)
+- Ajuster la grille : `lg:grid-cols-6` → `lg:grid-cols-5`
+- Supprimer `conducteur` de l'interface `RHFiltersProps.filters`
 
-**1. Ligne 732 — Détection finisseur par rôle métier**
-Remplacer `filteredFiches.some(f => f.chantier_id === null)` par `salarie.role_metier === "finisseur"`. Le champ `role_metier` est déjà chargé ligne 627.
+**2. `src/pages/ConsultationRH.tsx`**
+- Supprimer `conducteur: "all"` de l'état initial des filtres (ligne 63)
 
-**2. Lignes 780-850 — Mapping chantier pour fiches sans chantier_id**
-Quand `chantier_id` est null, récupérer le `type_absence` depuis `fiches_jours` et afficher le libellé correspondant (Congés payés, Maladie, AT, etc.) au lieu d'un chantier vide.
-
-### Zéro régression
-- Les vrais finisseurs (`role_metier = "finisseur"`) gardent exactement le même comportement
-- Les fiches normales avec chantier ne sont pas touchées
-- Seuls les employés en absence voient leurs données s'afficher correctement au lieu de "Aucune donnée"
+### Pas touché (zéro régression)
+- `rhShared.ts` : le guard `if (filters.conducteur && filters.conducteur !== "all")` ne s'exécutera jamais → aucun changement de comportement
+- `useRHData.ts` : idem, les guards protègent déjà
+- `useFiches.ts` : utilise ses propres filtres (page Validation), pas les filtres RH
+- Export Excel, clôture, vue consolidée : tous passent par les mêmes guards
 
