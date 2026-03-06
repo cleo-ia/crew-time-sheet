@@ -1033,7 +1033,7 @@ export const useCloturePeriode = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ filters, motif, fichierExcel, consolidatedData }: ClotureData) => {
+    mutationFn: async ({ filters, motif, fichierExcel, snapshotEstimations, consolidatedData }: ClotureData) => {
       const entrepriseId = localStorage.getItem("current_entreprise_id");
       const { data: userData } = await supabase.auth.getUser();
       
