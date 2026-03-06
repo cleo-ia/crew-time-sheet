@@ -87,7 +87,8 @@ export interface RHExportEmployee {
     trajet: string | null;
     trajetPerso: boolean;
     typeAbsence?: string;
-    isAbsent: boolean; // true si heures=0 ET intemperie=0
+    isAbsent: boolean;
+    is_estimated?: boolean;
    regularisationM1?: string;
    autresElements?: string;
    absences_export_override?: Record<string, number> | null;
