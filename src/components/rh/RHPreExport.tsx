@@ -678,10 +678,15 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                     {data.nom}
                   </div>
                   <div 
-                    className="flex items-center text-sm px-2 truncate"
+                    className="flex items-center text-sm px-2 truncate gap-1"
                     style={{ width: 120 }}
                   >
                     {data.prenom}
+                    {estimatedCount > 0 && (
+                      <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded px-1 flex-shrink-0" title={`${estimatedCount} jour(s) estimé(s) par la paie prévisionnelle`}>
+                        ~{estimatedCount}j
+                      </span>
+                    )}
                   </div>
                 </div>
                 
