@@ -652,6 +652,8 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
             const realIndex = rows.indexOf(row);
             const data = { ...row.original, ...row.modified };
             
+            const estimatedCount = row.original.detailJours?.filter((j: any) => j.is_estimated).length || 0;
+            
             return (
               <div 
                 key={realIndex} 
