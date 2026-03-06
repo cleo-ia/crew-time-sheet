@@ -515,8 +515,8 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
     const roleFromUser = rolesMap.get(salarieId);
 
-    // Exclure les conducteurs et RH (forfait cadre)
-    if (roleFromUser === "conducteur" || roleFromUser === "rh") {
+    // Exclure les rôles applicatifs (non concernés par l'export paie)
+    if (["conducteur", "rh", "admin", "super_admin", "gestionnaire"].includes(roleFromUser ?? "")) {
       continue;
     }
 
