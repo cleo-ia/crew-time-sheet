@@ -223,23 +223,23 @@ export async function calculateRegularisationM1Batch(
   });
 
   // 2. Charger en batch toutes les fiches + fiches_jours concernées (2 requêtes)
-  const { data: fichesData } = await batchQueryIn("fiches", "id, salarie_id", "salarie_id", salariesAvecEstimations, {
+  const fichesData = await batchQueryIn<{ id: string; salarie_id: string }>("fiches", "id, salarie_id", "salarie_id", salariesAvecEstimations, {
     extraFilters: (q: any) => q.eq("entreprise_id", entrepriseId).in("statut", ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]),
   });
 
-  if (!fichesData || fichesData.length === 0) return result;
+  if (fichesData.length === 0) return result;
 
-  const ficheIds = fichesData.map((f: any) => f.id);
+  const ficheIds = fichesData.map(f => f.id);
   // Map fiche_id -> salarie_id
   const ficheSalarieMap = new Map<string, string>();
-  fichesData.forEach((f: any) => { ficheSalarieMap.set(f.id, f.salarie_id); });
+  fichesData.forEach(f => { ficheSalarieMap.set(f.id, f.salarie_id); });
 
   const allDates = [...allEstimatedDates];
-  const { data: joursReels } = await batchQueryIn(
+  const joursReels = await batchQueryIn<any>(
     "fiches_jours",
     "fiche_id, date, heures, PA, code_trajet, HI, type_absence",
     "fiche_id",
-    ficheIds as string[],
+    ficheIds,
     {
       extraFilters: (q: any) => q.in("date", allDates),
     }
