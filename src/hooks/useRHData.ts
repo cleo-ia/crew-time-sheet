@@ -1043,7 +1043,7 @@ export const useCloturePeriode = () => {
         .eq("auth_user_id", userData?.user?.id)
         .maybeSingle();
 
-      // 1. Insérer la période clôturée avec toutes les stats
+      // 1. Insérer la période clôturée avec toutes les stats + snapshot estimations
       const { data: periode, error: periodeError } = await supabase
         .from("periodes_cloturees")
         .insert({
@@ -1066,6 +1066,7 @@ export const useCloturePeriode = () => {
           trajets_par_code: consolidatedData.trajetsParCode,
           fichier_excel: fichierExcel,
           motif,
+          snapshot_estimations: snapshotEstimations || null,
         })
         .select()
         .single();

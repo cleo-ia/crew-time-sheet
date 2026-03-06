@@ -196,11 +196,15 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
       const exportData = await fetchRHExportData(filters.periode, filters);
       const fichierExcel = await generateRHExcel(exportData, filters.periode);
 
+      // 🆕 Construire le snapshot des estimations pour la paie prévisionnelle
+      const snapshotEstimations = buildSnapshotEstimations(consolidatedData);
+
       // 5. Clôturer la période
       await clotureMutation.mutateAsync({
         filters,
         motif,
         fichierExcel,
+        snapshotEstimations,
         consolidatedData: {
           salaries: consolidatedData.length,
           fiches: fichesCount,
