@@ -1691,6 +1691,7 @@ export type Database = {
           periode: string
           semaine_debut: string
           semaine_fin: string | null
+          snapshot_estimations: Json | null
           total_absences: number | null
           total_heures: number | null
           total_heures_normales: number | null
@@ -1717,6 +1718,7 @@ export type Database = {
           periode: string
           semaine_debut: string
           semaine_fin?: string | null
+          snapshot_estimations?: Json | null
           total_absences?: number | null
           total_heures?: number | null
           total_heures_normales?: number | null
@@ -1743,6 +1745,7 @@ export type Database = {
           periode?: string
           semaine_debut?: string
           semaine_fin?: string | null
+          snapshot_estimations?: Json | null
           total_absences?: number | null
           total_heures?: number | null
           total_heures_normales?: number | null
