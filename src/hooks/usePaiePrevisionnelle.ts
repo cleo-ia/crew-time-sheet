@@ -183,21 +183,21 @@ function createOptimisticDay(date: Date, defaultTrajetCode?: string | null): Est
 }
 
 /**
- * Calcule la régularisation M-1 en comparant le snapshot des estimations
- * avec les données réelles saisies a posteriori
+ * Calcule la régularisation M-1 en batch pour TOUS les salariés.
+ * 2 requêtes Supabase au lieu de N*2.
  */
-export async function calculateRegularisationM1(
-  salarieId: string,
+export async function calculateRegularisationM1Batch(
+  salarieIds: string[],
   moisActuel: string,
   entrepriseId: string | null
-): Promise<string | null> {
-  if (!moisActuel || moisActuel === "all" || !entrepriseId) return null;
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (!moisActuel || moisActuel === "all" || !entrepriseId || salarieIds.length === 0) return result;
 
-  // Calculer le mois M-1
+  // 1. Charger le snapshot du mois M-1 (1 requête)
   const [year, month] = moisActuel.split("-").map(Number);
   const moisPrecedent = format(subMonths(new Date(year, month - 1, 1), 1), "yyyy-MM");
 
-  // Charger le snapshot du mois M-1
   const { data: periodes } = await supabase
     .from("periodes_cloturees")
     .select("snapshot_estimations")
@@ -206,108 +206,107 @@ export async function calculateRegularisationM1(
     .order("date_cloture", { ascending: false })
     .limit(1);
 
-  if (!periodes || periodes.length === 0) return null;
-  
+  if (!periodes || periodes.length === 0) return result;
+
   const snapshot = periodes[0].snapshot_estimations as Record<string, any[]> | null;
-  if (!snapshot || !snapshot[salarieId]) return null;
+  if (!snapshot) return result;
 
-  const estimatedDays = snapshot[salarieId];
-  if (!estimatedDays || estimatedDays.length === 0) return null;
+  // Filtrer uniquement les salariés présents dans le snapshot
+  const salariesAvecEstimations = salarieIds.filter(id => snapshot[id] && snapshot[id].length > 0);
+  if (salariesAvecEstimations.length === 0) return result;
 
-  // Récupérer les fiches réelles pour ce salarié sur les dates estimées
-  const estimatedDates = estimatedDays.map((d: any) => d.date);
-  
-  // Chercher les fiches_jours réels pour ces dates
-  const { data: fichesData } = await supabase
-    .from("fiches")
-    .select("id")
-    .eq("salarie_id", salarieId)
-    .eq("entreprise_id", entrepriseId)
-    .in("statut", ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]);
+  // Collecter toutes les dates estimées et tous les salarié IDs concernés
+  const allEstimatedDates = new Set<string>();
+  salariesAvecEstimations.forEach(id => {
+    snapshot[id].forEach((d: any) => allEstimatedDates.add(d.date));
+  });
 
-  if (!fichesData || fichesData.length === 0) return null;
+  // 2. Charger en batch toutes les fiches + fiches_jours concernées (2 requêtes)
+  const { data: fichesData } = await batchQueryIn("fiches", "id, salarie_id", "salarie_id", salariesAvecEstimations, {
+    extraFilters: (q: any) => q.eq("entreprise_id", entrepriseId).in("statut", ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]),
+  });
 
-  const ficheIds = fichesData.map(f => f.id);
-  
-  const { data: joursReels } = await supabase
-    .from("fiches_jours")
-    .select("date, heures, PA, code_trajet, HI, type_absence")
-    .in("fiche_id", ficheIds)
-    .in("date", estimatedDates);
+  if (!fichesData || fichesData.length === 0) return result;
 
-  // Créer une map date -> jour réel
-  const reelMap = new Map<string, any>();
-  (joursReels || []).forEach(j => {
-    // Si doublon par date, garder celui avec le plus d'heures
-    const existing = reelMap.get(j.date);
+  const ficheIds = fichesData.map((f: any) => f.id);
+  // Map fiche_id -> salarie_id
+  const ficheSalarieMap = new Map<string, string>();
+  fichesData.forEach((f: any) => { ficheSalarieMap.set(f.id, f.salarie_id); });
+
+  const allDates = [...allEstimatedDates];
+  const { data: joursReels } = await batchQueryIn(
+    "fiches_jours",
+    "fiche_id, date, heures, PA, code_trajet, HI, type_absence",
+    "fiche_id",
+    ficheIds as string[],
+    {
+      extraFilters: (q: any) => q.in("date", allDates),
+    }
+  );
+
+  // Indexer les jours réels par salarié + date
+  const reelBySalarie = new Map<string, Map<string, any>>();
+  (joursReels || []).forEach((j: any) => {
+    const salarieId = ficheSalarieMap.get(j.fiche_id);
+    if (!salarieId) return;
+    if (!reelBySalarie.has(salarieId)) reelBySalarie.set(salarieId, new Map());
+    const dateMap = reelBySalarie.get(salarieId)!;
+    const existing = dateMap.get(j.date);
     if (!existing || (Number(j.heures) || 0) > (Number(existing.heures) || 0)) {
-      reelMap.set(j.date, j);
+      dateMap.set(j.date, j);
     }
   });
 
-  // Calculer les deltas
-  let deltaHeures = 0;
-  let deltaPaniers = 0;
-  const deltaTrajetsCodes: string[] = [];
-  const detailsJours: string[] = [];
+  // 3. Calculer les deltas pour chaque salarié (en mémoire, 0 requête)
+  for (const salarieId of salariesAvecEstimations) {
+    const estimatedDays = snapshot[salarieId];
+    const reelMap = reelBySalarie.get(salarieId) || new Map();
 
-  for (const estDay of estimatedDays) {
-    const reel = reelMap.get(estDay.date);
-    const dateFormatted = format(parseISO(estDay.date), "dd/MM");
+    let deltaHeures = 0;
+    let deltaPaniers = 0;
+    const deltaTrajetsCodes: string[] = [];
 
-    const estHeures = estDay.heures || 0;
-    const estPanier = estDay.panier ? 1 : 0;
-    const estTrajet = estDay.code_trajet || null;
+    for (const estDay of estimatedDays) {
+      const reel = reelMap.get(estDay.date);
+      const dateFormatted = format(parseISO(estDay.date), "dd/MM");
+      const estHeures = estDay.heures || 0;
+      const estPanier = estDay.panier ? 1 : 0;
+      const estTrajet = estDay.code_trajet || null;
 
-    if (reel) {
-      const reelHeures = Number(reel.heures) || 0;
-      const reelPanier = reel.PA ? 1 : 0;
-      const reelTrajet = reel.code_trajet || null;
-      
-      deltaHeures += reelHeures - estHeures;
-      deltaPaniers += reelPanier - estPanier;
-      
-      if (estTrajet !== reelTrajet) {
-        deltaTrajetsCodes.push(`${dateFormatted}: ${estTrajet || '∅'}→${reelTrajet || '∅'}`);
+      if (reel) {
+        const reelHeures = Number(reel.heures) || 0;
+        const reelPanier = reel.PA ? 1 : 0;
+        const reelTrajet = reel.code_trajet || null;
+        deltaHeures += reelHeures - estHeures;
+        deltaPaniers += reelPanier - estPanier;
+        if (estTrajet !== reelTrajet) {
+          deltaTrajetsCodes.push(`${dateFormatted}: ${estTrajet || '∅'}→${reelTrajet || '∅'}`);
+        }
+      } else {
+        deltaHeures -= estHeures;
+        deltaPaniers -= estPanier;
       }
-
-      // Détail si différence significative
-      if (Math.abs(reelHeures - estHeures) >= 1 || reelPanier !== estPanier || estTrajet !== reelTrajet) {
-        const parts: string[] = [];
-        if (reelHeures !== estHeures) parts.push(`${estHeures}h→${reelHeures}h`);
-        if (reelPanier !== estPanier) parts.push(reelPanier ? "+PA" : "-PA");
-        if (estTrajet !== reelTrajet) parts.push(`${estTrajet || '∅'}→${reelTrajet || '∅'}`);
-        if (reel.type_absence) parts.push(`(${reel.type_absence})`);
-        detailsJours.push(`${dateFormatted}: ${parts.join(" ")}`);
-      }
-    } else {
-      // Pas de données réelles → la personne n'a pas travaillé (absent)
-      deltaHeures -= estHeures;
-      deltaPaniers -= estPanier;
-      detailsJours.push(`${dateFormatted}: Est ${estHeures}h → Réel 0h (non saisi)`);
     }
+
+    if (deltaHeures === 0 && deltaPaniers === 0 && deltaTrajetsCodes.length === 0) continue;
+
+    const parts: string[] = [];
+    if (deltaHeures !== 0) {
+      const sign = deltaHeures > 0 ? "+" : "";
+      parts.push(`H: ${sign}${Math.round(deltaHeures * 100) / 100}h`);
+    }
+    if (deltaPaniers !== 0) {
+      const sign = deltaPaniers > 0 ? "+" : "";
+      parts.push(`PA: ${sign}${deltaPaniers}`);
+    }
+    if (deltaTrajetsCodes.length > 0) {
+      parts.push(`Trajets: ${deltaTrajetsCodes.length} modif(s)`);
+    }
+
+    result.set(salarieId, parts.join(" | "));
   }
 
-  // Ne rien afficher si les deltas sont nuls
-  if (deltaHeures === 0 && deltaPaniers === 0 && deltaTrajetsCodes.length === 0) {
-    return null;
-  }
-
-  // Construire le résumé
-  const parts: string[] = [];
-  if (deltaHeures !== 0) {
-    const sign = deltaHeures > 0 ? "+" : "";
-    parts.push(`H: ${sign}${Math.round(deltaHeures * 100) / 100}h`);
-  }
-  if (deltaPaniers !== 0) {
-    const sign = deltaPaniers > 0 ? "+" : "";
-    parts.push(`PA: ${sign}${deltaPaniers}`);
-  }
-  if (deltaTrajetsCodes.length > 0) {
-    parts.push(`Trajets: ${deltaTrajetsCodes.length} modif(s)`);
-  }
-
-  return parts.join(" | ");
+  return result;
 }
 
 /**
