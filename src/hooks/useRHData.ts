@@ -1011,6 +1011,7 @@ export interface ClotureData {
   filters: any;
   motif: string;
   fichierExcel: string;
+  snapshotEstimations?: Record<string, any[]> | null;
   consolidatedData: {
     salaries: number;
     fiches: number;
