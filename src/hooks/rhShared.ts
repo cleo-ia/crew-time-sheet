@@ -29,6 +29,7 @@ export interface EmployeeDetail {
   typeAbsence?: string;
   isAbsent: boolean; // true si heures=0 ET intemperie=0 (employé pas présent) — sauf chantier ECOLE
   isEcole?: boolean; // true si le jour est sur un chantier is_ecole
+  is_estimated?: boolean; // true si jour généré par la paie prévisionnelle
   regularisationM1?: string;
   autresElements?: string;
   commentaire?: string;
