@@ -711,6 +711,50 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       });
     }
 
+    // 🆕 PAIE PRÉVISIONNELLE : générer les jours estimés pour les dates manquantes du mois
+    if (!isAllPeriodes && mois) {
+      // Déterminer si le salarié est un apprenti (affecté à un chantier is_ecole)
+      const isApprentice = detailJours.some(j => j.isEcole) || 
+        fiches.some(f => ecoleChantierIds.has((f as any).chantier_id || ""));
+
+      // Trouver le code trajet par défaut (via chantier principal)
+      let defaultTrajetCode: string | null = null;
+      if ((salarie as any).chantier_principal_id) {
+        const chantierPrincipal = chantiersData?.find(c => c.id === (salarie as any).chantier_principal_id);
+        if (chantierPrincipal) {
+          // Utiliser le code trajet le plus fréquent des jours réels, sinon T1
+          const trajetCounts: Record<string, number> = {};
+          detailJours.forEach(j => {
+            if (j.trajet && j.trajet !== "A_COMPLETER" && !j.isAbsent) {
+              trajetCounts[j.trajet] = (trajetCounts[j.trajet] || 0) + 1;
+            }
+          });
+          const mostFrequentTrajet = Object.entries(trajetCounts).sort((a, b) => b[1] - a[1])[0];
+          defaultTrajetCode = mostFrequentTrajet ? mostFrequentTrajet[0] : "T1";
+        }
+      }
+
+      const estimatedDays = generateEstimatedDays(detailJours, mois, {
+        isEcole: isApprentice,
+        defaultTrajetCode,
+      });
+
+      if (estimatedDays.length > 0) {
+        // Ajouter les jours estimés aux détails et recalculer les totaux
+        for (const estDay of estimatedDays) {
+          detailJours.push(estDay);
+          heuresNormales += estDay.heures;
+          totalHeures += estDay.heures;
+          if (estDay.panier) paniers++;
+          if (estDay.trajet) {
+            trajetsParCode[estDay.trajet] = (trajetsParCode[estDay.trajet] || 0) + 1;
+            totalJoursTrajets++;
+          }
+        }
+        console.log(`[Paie Prévisionnelle] ${salarie.prenom} ${salarie.nom}: +${estimatedDays.length} jours estimés`);
+      }
+    }
+
     // Ne créer l'entrée que si le salarié a des données OU une fiche transmise au RH
     const hasRHFiche = fiches.some(f => ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"].includes(f.statut));
     if (totalHeures > 0 || absences > 0 || paniers > 0 || hasRHFiche) {
@@ -724,9 +768,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       // Déterminer le role sans accent pour la UI
       const role = isChef ? "chef" : isFinisseur ? "finisseur" : isGrutier ? "grutier" : isInterimaire ? "interimaire" : "macon";
 
-      // Détecter les absences non qualifiées
+      // Détecter les absences non qualifiées (exclure les jours estimés)
       const hasUnqualifiedAbsences = detailJours.some(
-        jour => jour.isAbsent && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
+        jour => jour.isAbsent && !jour.is_estimated && (!jour.typeAbsence || jour.typeAbsence === "A_QUALIFIER")
       );
 
       // Calculer les heures supplémentaires BTP (avec seuil dynamique si heures mensualisées)
