@@ -6,6 +6,7 @@ import { AlertTriangle, Lock, Download, Loader2, Users, FileText, Clock, Buildin
 import { useToast } from "@/hooks/use-toast";
 import { useCloturePeriode } from "@/hooks/useRHData";
 import { buildRHConsolidation } from "@/hooks/rhShared";
+import { buildSnapshotEstimations } from "@/hooks/usePaiePrevisionnelle";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
 import { format } from "date-fns";
