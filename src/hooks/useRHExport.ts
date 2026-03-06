@@ -210,6 +210,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
         trajetPerso: jour.trajetPerso,
         typeAbsence: jour.typeAbsence,
         isAbsent: jour.isAbsent,
+        is_estimated: jour.is_estimated || false,
         regularisationM1: jour.regularisationM1,
         autresElements: jour.autresElements,
       })),
