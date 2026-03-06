@@ -1,0 +1,1 @@
+ALTER TABLE public.periodes_cloturees ADD COLUMN snapshot_estimations jsonb DEFAULT NULL;

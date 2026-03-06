@@ -1011,6 +1011,7 @@ export interface ClotureData {
   filters: any;
   motif: string;
   fichierExcel: string;
+  snapshotEstimations?: Record<string, any[]> | null;
   consolidatedData: {
     salaries: number;
     fiches: number;
@@ -1032,7 +1033,7 @@ export const useCloturePeriode = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ filters, motif, fichierExcel, consolidatedData }: ClotureData) => {
+    mutationFn: async ({ filters, motif, fichierExcel, snapshotEstimations, consolidatedData }: ClotureData) => {
       const entrepriseId = localStorage.getItem("current_entreprise_id");
       const { data: userData } = await supabase.auth.getUser();
       
@@ -1042,7 +1043,7 @@ export const useCloturePeriode = () => {
         .eq("auth_user_id", userData?.user?.id)
         .maybeSingle();
 
-      // 1. Insérer la période clôturée avec toutes les stats
+      // 1. Insérer la période clôturée avec toutes les stats + snapshot estimations
       const { data: periode, error: periodeError } = await supabase
         .from("periodes_cloturees")
         .insert({
@@ -1065,6 +1066,7 @@ export const useCloturePeriode = () => {
           trajets_par_code: consolidatedData.trajetsParCode,
           fichier_excel: fichierExcel,
           motif,
+          snapshot_estimations: snapshotEstimations || null,
         })
         .select()
         .single();

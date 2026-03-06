@@ -6,6 +6,7 @@ import { AlertTriangle, Lock, Download, Loader2, Users, FileText, Clock, Buildin
 import { useToast } from "@/hooks/use-toast";
 import { useCloturePeriode } from "@/hooks/useRHData";
 import { buildRHConsolidation } from "@/hooks/rhShared";
+import { buildSnapshotEstimations } from "@/hooks/usePaiePrevisionnelle";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
 import { format } from "date-fns";
@@ -195,11 +196,15 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
       const exportData = await fetchRHExportData(filters.periode, filters);
       const fichierExcel = await generateRHExcel(exportData, filters.periode);
 
+      // 🆕 Construire le snapshot des estimations pour la paie prévisionnelle
+      const snapshotEstimations = buildSnapshotEstimations(consolidatedData);
+
       // 5. Clôturer la période
       await clotureMutation.mutateAsync({
         filters,
         motif,
         fichierExcel,
+        snapshotEstimations,
         consolidatedData: {
           salaries: consolidatedData.length,
           fiches: fichesCount,
