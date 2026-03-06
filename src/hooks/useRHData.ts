@@ -196,9 +196,6 @@ export const useRHDetails = (filters: any) => {
       if (filters.semaine && filters.semaine !== "all") {
         query = query.eq("semaine", filters.semaine);
       }
-      if (filters.conducteur && filters.conducteur !== "all") {
-        query = query.not("chantier_id", "is", null).eq("chantier.conducteur_id", filters.conducteur);
-      }
       if (filters.chantier && filters.chantier !== "all") {
         query = query.eq("chantier_id", filters.chantier);
       }
@@ -663,27 +660,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       const { data: fiches, error: fichesError } = await fichesQuery;
       if (fichesError) throw fichesError;
 
-      // 🔥 CORRECTION: Filtre Conducteur post-requête avec vérification finisseurs
       let filteredFiches = fiches || [];
-      if (filters.conducteur && filters.conducteur !== "all") {
-        // Récupérer les affectations finisseurs pour ce conducteur
-        const { data: affectationsFinisseurs } = await supabase
-          .from("affectations_finisseurs_jours")
-          .select("finisseur_id")
-          .eq("conducteur_id", filters.conducteur)
-          .eq("finisseur_id", salarieId);
-
-        const finisseurAffected = (affectationsFinisseurs && affectationsFinisseurs.length > 0);
-
-        filteredFiches = filteredFiches.filter(f => {
-          // Fiches avec chantier: vérifier conducteur_id du chantier
-          if (f.chantier_id && f.chantiers) {
-            return f.chantiers.conducteur_id === filters.conducteur;
-          }
-          // Fiches sans chantier (finisseurs): vérifier si affecté à ce conducteur
-          return finisseurAffected;
-        });
-      }
 
       // Pour les non-chefs, appliquer le filtre chantier côté client
       // Pour les chefs, on garde toutes les fiches pour sommer les heures multi-sites
@@ -741,9 +718,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
         if (filters.semaine && filters.semaine !== "all") {
           affQueryDates = affQueryDates.eq("semaine", filters.semaine);
         }
-        if (filters.conducteur && filters.conducteur !== "all") {
-          affQueryDates = affQueryDates.eq("conducteur_id", filters.conducteur);
-        }
+
 
         const { data: affectationsAvecDates } = await affQueryDates;
 

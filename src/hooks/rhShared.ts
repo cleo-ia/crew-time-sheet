@@ -248,10 +248,6 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     fichesQuery = fichesQuery.eq("chantier_id", filters.chantier);
   }
 
-  // Filtre par conducteur (via chantier)
-  if (filters.conducteur && filters.conducteur !== "all") {
-    fichesQuery = fichesQuery.eq("chantiers.conducteur_id", filters.conducteur);
-  }
 
   // Filtre par chef : chercher les chantiers où ce chef a des affectations_jours_chef
   // (permet de retrouver les fiches gérées par un chef secondaire en multi-chef)
@@ -414,10 +410,6 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       .lte("date", format(dateFin, "yyyy-MM-dd"));
   }
 
-  // Filtre par conducteur pour finisseurs
-  if (filters.conducteur && filters.conducteur !== "all") {
-    affectationsQuery = affectationsQuery.eq("conducteur_id", filters.conducteur);
-  }
 
   const { data: affectationsData } = await affectationsQuery.limit(10000);
   const affectationsMap = new Map<string, Set<string>>();
