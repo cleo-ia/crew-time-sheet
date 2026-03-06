@@ -845,6 +845,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     return !(salarie as any)?.exclure_export_paie;
   });
 
+  // 🆕 RÉGULARISATION M-1 : calculer automatiquement les deltas pour chaque salarié
+  if (!isAllPeriodes && mois && entrepriseId) {
+    const regPromises = filteredMap.map(async (emp) => {
+      try {
+        const regul = await calculateRegularisationM1(emp.salarieId, mois, entrepriseId);
+        if (regul) {
+          emp.regularisation_m1_export = regul;
+        }
+      } catch (e) {
+        console.warn(`[Régul M-1] Erreur pour ${emp.prenom} ${emp.nom}:`, e);
+      }
+    });
+    await Promise.all(regPromises);
+  }
+
   const result = filteredMap.sort((a, b) => {
     // Tri par métier puis par nom
     const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
