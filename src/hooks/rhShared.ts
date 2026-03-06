@@ -366,7 +366,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   
   let salarieQuery = supabase
     .from("utilisateurs")
-    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, base_horaire, horaire, heures_supp_mensualisees, forfait_jours, salaire, exclure_export_paie")
+    .select("id, nom, prenom, agence_interim, role_metier, libelle_emploi, matricule, echelon, niveau, degre, statut, type_contrat, base_horaire, horaire, heures_supp_mensualisees, forfait_jours, salaire, exclure_export_paie, chantier_principal_id")
     .in("id", salarieIds);
   
   if (entrepriseId) {
