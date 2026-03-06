@@ -45,7 +45,7 @@ const ExportPaie = () => {
     chantier: "all",
     chef: "all",
     salarie: "all",
-    typeSalarie: "all",
+    typeSalarie: "non_interimaire",
   }), [periode]);
 
   const { data: summary, isLoading: summaryLoading } = useRHSummary(filters);
