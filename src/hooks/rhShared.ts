@@ -533,6 +533,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       if (filters.typeSalarie === "macon" && !isMacon) continue;
       if (filters.typeSalarie === "interimaire" && !isInterimaire) continue;
       if (filters.typeSalarie === "finisseur" && !isFinisseur) continue;
+      if (filters.typeSalarie === "non_interimaire" && isInterimaire) continue;
     }
 
     // Filtre par agence d'intérim spécifique
