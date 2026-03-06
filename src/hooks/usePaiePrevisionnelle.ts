@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, startOfMonth, endOfMonth, getDay, eachDayOfInterval, subMonths, addDays } from "date-fns";
+import { batchQueryIn } from "@/lib/supabaseBatch";
 import { EmployeeDetail, EmployeeWithDetails } from "./rhShared";
 
 /**
