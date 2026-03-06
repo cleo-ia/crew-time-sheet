@@ -1388,12 +1388,10 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
       .maybeSingle()
 
-    if (existingGhost) {
-      console.log(`[sync-planning-to-teams] Fiche absence LD déjà existante pour ${salarieNom} (${typeAbsence})`)
-      continue
-    }
+    // Réutiliser la fiche ghost existante ou en créer une nouvelle
+    let ghostFicheId: string | null = existingGhost?.id || null
 
-    // Calculer les jours d'absence dans la semaine (Lun-Ven)
+    // Calculer les jours d'absence dans la semaine (Lun-Ven) AVANT la création
     const joursAbsence: string[] = []
     for (let i = 0; i < 5; i++) {
       const d = new Date(mondayOfCurrentWeek)
@@ -1410,26 +1408,34 @@ async function syncEntreprise(
       continue
     }
 
-    console.log(`[sync-planning-to-teams] Création fiche absence LD: ${salarieNom} (${typeAbsence}) - ${joursAbsence.length} jour(s)`)
+    if (!ghostFicheId) {
+      console.log(`[sync-planning-to-teams] Création fiche absence LD: ${salarieNom} (${typeAbsence}) - ${joursAbsence.length} jour(s)`)
 
-    // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
-    const { data: newFiche, error: ficheError } = await supabase
-      .from('fiches')
-      .insert({
-        salarie_id: salarieId,
-        chantier_id: null,
-        semaine: currentWeek,
-        user_id: null,
-        statut: 'ENVOYE_RH',
-        total_heures: 0,
-        entreprise_id: entrepriseId
-      })
-      .select('id')
-      .single()
+      // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
+      const { data: newFiche, error: ficheError } = await supabase
+        .from('fiches')
+        .insert({
+          salarie_id: salarieId,
+          chantier_id: null,
+          semaine: currentWeek,
+          user_id: null,
+          statut: 'ENVOYE_RH',
+          total_heures: 0,
+          entreprise_id: entrepriseId
+        })
+        .select('id')
+        .single()
 
-    if (ficheError) {
-      console.error(`[sync-planning-to-teams] Erreur création fiche absence LD pour ${salarieNom}:`, ficheError)
-      continue
+      if (ficheError) {
+        console.error(`[sync-planning-to-teams] Erreur création fiche absence LD pour ${salarieNom}:`, ficheError)
+        continue
+      }
+
+      ghostFicheId = newFiche.id
+      absLDCreated++
+      stats.created++
+    } else {
+      console.log(`[sync-planning-to-teams] Réutilisation fiche ghost existante pour ${salarieNom} (${typeAbsence})`)
     }
 
     // Créer les fiches_jours avec 0h et type_absence pré-qualifié
@@ -1437,7 +1443,7 @@ async function syncEntreprise(
       const { error: jourError } = await supabase
         .from('fiches_jours')
         .upsert({
-          fiche_id: newFiche.id,
+          fiche_id: ghostFicheId,
           date: jour,
           heures: 0,
           HNORM: 0,
@@ -1451,7 +1457,7 @@ async function syncEntreprise(
           ville_du_jour: null,
           repas_type: null,
           entreprise_id: entrepriseId
-        }, { onConflict: 'fiche_id,date' })
+        }, { onConflict: 'fiche_id,date', ignoreDuplicates: true })
 
       if (jourError) {
         console.error(`[sync-planning-to-teams] Erreur création fiche_jour absence LD:`, jourError)
@@ -1461,11 +1467,9 @@ async function syncEntreprise(
     results.push({
       employe_id: salarieId,
       employe_nom: salarieNom,
-      action: 'created',
+      action: existingGhost ? 'merged' : 'created',
       details: `Absence longue durée (${typeAbsence}) - ${joursAbsence.length} jour(s)`
     })
-    absLDCreated++
-    stats.created++
   }
 
   console.log(`[sync-planning-to-teams] ${absLDCreated} fiche(s) absence longue durée créée(s)`)
@@ -1518,12 +1522,10 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
       .maybeSingle()
 
-    if (existingGhost) {
-      console.log(`[sync-planning-to-teams] Fiche congé déjà existante pour ${salarieNom} (${conge.type_conge})`)
-      continue
-    }
+    // Réutiliser la fiche ghost existante ou en créer une nouvelle
+    let ghostFicheId: string | null = existingGhost?.id || null
 
-    // Calculer les jours de congé dans la semaine (Lun-Ven)
+    // Calculer les jours de congé dans la semaine (Lun-Ven) AVANT la création
     const joursConge: string[] = []
     for (let i = 0; i < 5; i++) {
       const d = new Date(mondayOfCurrentWeek)
@@ -1539,26 +1541,34 @@ async function syncEntreprise(
       continue
     }
 
-    console.log(`[sync-planning-to-teams] Création fiche congé: ${salarieNom} (${conge.type_conge} → ${typeAbsence}) - ${joursConge.length} jour(s)`)
+    if (!ghostFicheId) {
+      console.log(`[sync-planning-to-teams] Création fiche congé: ${salarieNom} (${conge.type_conge} → ${typeAbsence}) - ${joursConge.length} jour(s)`)
 
-    // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
-    const { data: newFicheConge, error: ficheCongeError } = await supabase
-      .from('fiches')
-      .insert({
-        salarie_id: salarieId,
-        chantier_id: null,
-        semaine: currentWeek,
-        user_id: null,
-        statut: 'ENVOYE_RH',
-        total_heures: 0,
-        entreprise_id: entrepriseId
-      })
-      .select('id')
-      .single()
+      // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
+      const { data: newFicheConge, error: ficheCongeError } = await supabase
+        .from('fiches')
+        .insert({
+          salarie_id: salarieId,
+          chantier_id: null,
+          semaine: currentWeek,
+          user_id: null,
+          statut: 'ENVOYE_RH',
+          total_heures: 0,
+          entreprise_id: entrepriseId
+        })
+        .select('id')
+        .single()
 
-    if (ficheCongeError) {
-      console.error(`[sync-planning-to-teams] Erreur création fiche congé pour ${salarieNom}:`, ficheCongeError)
-      continue
+      if (ficheCongeError) {
+        console.error(`[sync-planning-to-teams] Erreur création fiche congé pour ${salarieNom}:`, ficheCongeError)
+        continue
+      }
+
+      ghostFicheId = newFicheConge.id
+      congesCreated++
+      stats.created++
+    } else {
+      console.log(`[sync-planning-to-teams] Réutilisation fiche ghost existante pour congé ${salarieNom} (${conge.type_conge})`)
     }
 
     // Créer les fiches_jours avec 0h et type_absence pré-qualifié
@@ -1566,7 +1576,7 @@ async function syncEntreprise(
       const { error: jourCongeError } = await supabase
         .from('fiches_jours')
         .upsert({
-          fiche_id: newFicheConge.id,
+          fiche_id: ghostFicheId,
           date: jour,
           heures: 0,
           HNORM: 0,
@@ -1580,7 +1590,7 @@ async function syncEntreprise(
           ville_du_jour: null,
           repas_type: null,
           entreprise_id: entrepriseId
-        }, { onConflict: 'fiche_id,date' })
+        }, { onConflict: 'fiche_id,date', ignoreDuplicates: true })
 
       if (jourCongeError) {
         console.error(`[sync-planning-to-teams] Erreur création fiche_jour congé:`, jourCongeError)
@@ -1590,11 +1600,9 @@ async function syncEntreprise(
     results.push({
       employe_id: salarieId,
       employe_nom: salarieNom,
-      action: 'created',
+      action: existingGhost ? 'merged' : 'created',
       details: `Congé validé (${conge.type_conge} → ${typeAbsence}) - ${joursConge.length} jour(s)`
     })
-    congesCreated++
-    stats.created++
   }
 
   console.log(`[sync-planning-to-teams] ${congesCreated} fiche(s) congé validé créée(s)`)
