@@ -88,6 +88,7 @@ export const AppNav = () => {
   const canSeeConducteur = userRole && ["super_admin", "conducteur"].includes(userRole);
   const canSeeValidation = userRole && ["super_admin", "rh", "conducteur"].includes(userRole);
   const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
+  const canSeeExportPaie = userRole && ["super_admin", "rh", "admin"].includes(userRole);
   const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire", "rh"].includes(userRole);
   const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
   const canSeeChantiers = userRole && ["super_admin", "conducteur"].includes(userRole);
