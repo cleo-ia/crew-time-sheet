@@ -1470,6 +1470,135 @@ async function syncEntreprise(
 
   console.log(`[sync-planning-to-teams] ${absLDCreated} fiche(s) absence longue durée créée(s)`)
 
+  // ========================================================================
+  // CONGÉS VALIDÉS: Générer automatiquement des fiches "ghost"
+  // pour les salariés ayant des demandes de congés validées (VALIDEE_CONDUCTEUR ou VALIDEE_RH)
+  // Même pattern que les absences longue durée ci-dessus
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase congés validés...`)
+
+  const typeCongeToAbsence: Record<string, string> = {
+    'CP': 'CP',
+    'RTT': 'RTT',
+    'MALADIE': 'AM',
+    'AUTRE': 'CPSS',
+    'DECES': 'EF',
+    'NAISSANCE': 'EF',
+    'MARIAGE': 'EF',
+  }
+
+  const { data: congesValides, error: congesError } = await supabase
+    .from('demandes_conges')
+    .select('*, demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, prenom, nom)')
+    .eq('entreprise_id', entrepriseId)
+    .in('statut', ['VALIDEE_CONDUCTEUR', 'VALIDEE_RH'])
+    .lte('date_debut', fridayStr)
+    .gte('date_fin', mondayStr)
+
+  if (congesError) {
+    console.error(`[sync-planning-to-teams] Erreur récupération congés validés:`, congesError)
+  }
+
+  let congesCreated = 0
+  // deno-lint-ignore no-explicit-any
+  for (const conge of (congesValides || []) as any[]) {
+    const salarieId = conge.demandeur_id
+    const salarieNom = `${conge.demandeur?.prenom || ''} ${conge.demandeur?.nom || ''}`.trim() || salarieId
+    const typeAbsence = typeCongeToAbsence[conge.type_conge] || 'CPSS'
+    const congeDateDebut = new Date(conge.date_debut)
+    const congeDateFin = new Date(conge.date_fin)
+
+    // Vérifier si une fiche ghost existe déjà pour ce salarié cette semaine (chantier_id = NULL)
+    const { data: existingGhost } = await supabase
+      .from('fiches')
+      .select('id')
+      .eq('salarie_id', salarieId)
+      .is('chantier_id', null)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .maybeSingle()
+
+    if (existingGhost) {
+      console.log(`[sync-planning-to-teams] Fiche congé déjà existante pour ${salarieNom} (${conge.type_conge})`)
+      continue
+    }
+
+    // Calculer les jours de congé dans la semaine (Lun-Ven)
+    const joursConge: string[] = []
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mondayOfCurrentWeek)
+      d.setDate(mondayOfCurrentWeek.getDate() + i)
+      const dateStr = d.toISOString().split('T')[0]
+      if (d >= congeDateDebut && d <= congeDateFin) {
+        joursConge.push(dateStr)
+      }
+    }
+
+    if (joursConge.length === 0) {
+      console.log(`[sync-planning-to-teams] Aucun jour de congé pour ${salarieNom} cette semaine`)
+      continue
+    }
+
+    console.log(`[sync-planning-to-teams] Création fiche congé: ${salarieNom} (${conge.type_conge} → ${typeAbsence}) - ${joursConge.length} jour(s)`)
+
+    // Créer la fiche ghost (sans chantier, statut ENVOYE_RH)
+    const { data: newFicheConge, error: ficheCongeError } = await supabase
+      .from('fiches')
+      .insert({
+        salarie_id: salarieId,
+        chantier_id: null,
+        semaine: currentWeek,
+        user_id: null,
+        statut: 'ENVOYE_RH',
+        total_heures: 0,
+        entreprise_id: entrepriseId
+      })
+      .select('id')
+      .single()
+
+    if (ficheCongeError) {
+      console.error(`[sync-planning-to-teams] Erreur création fiche congé pour ${salarieNom}:`, ficheCongeError)
+      continue
+    }
+
+    // Créer les fiches_jours avec 0h et type_absence pré-qualifié
+    for (const jour of joursConge) {
+      const { error: jourCongeError } = await supabase
+        .from('fiches_jours')
+        .upsert({
+          fiche_id: newFicheConge.id,
+          date: jour,
+          heures: 0,
+          HNORM: 0,
+          HI: 0,
+          T: 0,
+          PA: false,
+          pause_minutes: 0,
+          type_absence: typeAbsence,
+          code_trajet: null,
+          code_chantier_du_jour: null,
+          ville_du_jour: null,
+          repas_type: null,
+          entreprise_id: entrepriseId
+        }, { onConflict: 'fiche_id,date' })
+
+      if (jourCongeError) {
+        console.error(`[sync-planning-to-teams] Erreur création fiche_jour congé:`, jourCongeError)
+      }
+    }
+
+    results.push({
+      employe_id: salarieId,
+      employe_nom: salarieNom,
+      action: 'created',
+      details: `Congé validé (${conge.type_conge} → ${typeAbsence}) - ${joursConge.length} jour(s)`
+    })
+    congesCreated++
+    stats.created++
+  }
+
+  console.log(`[sync-planning-to-teams] ${congesCreated} fiche(s) congé validé créée(s)`)
+
   return { results, stats }
 }
 
