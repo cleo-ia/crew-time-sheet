@@ -145,6 +145,16 @@ const App = () => (
               } 
             />
 
+            {/* Export Paie - Accessible par: super_admin, admin, rh */}
+            <Route 
+              path="/export-paie" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "admin", "rh"]}>
+                  <ExportPaie />
+                </RequireRole>
+              } 
+            />
+
             {/* Admin Panel - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin" 
