@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { batchQueryIn } from "@/lib/supabaseBatch";
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
-import { generateEstimatedDays, calculateRegularisationM1 } from "./usePaiePrevisionnelle";
+import { generateEstimatedDays, calculateRegularisationM1Batch } from "./usePaiePrevisionnelle";
 
 export interface RHFilters {
   periode?: string;
