@@ -225,6 +225,21 @@ export const AppNav = () => {
                 </Link>
               </Button>
             )}
+
+            {canSeeExportPaie && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/export-paie", "consultation-rh")}
+                style={getButtonStyle("/export-paie", "consultation-rh")}
+              >
+                <Link to="/export-paie">
+                  <FileOutput className="h-4 w-4" />
+                  Export Paie
+                </Link>
+              </Button>
+            )}
             
             {canSeeAdmin && (
               <Button
