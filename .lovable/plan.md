@@ -1,22 +1,21 @@
 
 
-## Retrait du filtre Conducteur de la vue RH
+## Nettoyage du code mort `filters.conducteur` dans rhShared.ts et useRHData.ts
 
-### Modifications
+### Fichiers modifiés
 
-**1. `src/components/rh/RHFilters.tsx`**
-- Supprimer l'import `Briefcase` de lucide-react
-- Supprimer l'import `useUtilisateursByRole` et le hook `const { data: conducteurs } = useUtilisateursByRole("conducteur")`
-- Supprimer le bloc JSX du filtre Conducteur (lignes 129-155)
-- Ajuster la grille : `lg:grid-cols-6` → `lg:grid-cols-5`
-- Supprimer `conducteur` de l'interface `RHFiltersProps.filters`
+**1. `src/hooks/rhShared.ts`** — 2 blocs à supprimer
+- **Lignes 251-254** : supprimer le bloc `// Filtre par conducteur (via chantier)`
+- **Lignes 417-420** : supprimer le bloc `// Filtre par conducteur pour finisseurs`
 
-**2. `src/pages/ConsultationRH.tsx`**
-- Supprimer `conducteur: "all"` de l'état initial des filtres (ligne 63)
+**2. `src/hooks/useRHData.ts`** — 3 blocs à supprimer
+- **Lignes 199-201** : supprimer le bloc `if (filters.conducteur ...)` dans `useRHDetails`
+- **Lignes 666-686** : supprimer tout le bloc `// 🔥 CORRECTION: Filtre Conducteur post-requête` dans `useRHEmployeeDetail`, et remplacer par `let filteredFiches = fiches || [];` (qui existe déjà ligne 667)
+- **Lignes 744-746** : supprimer le bloc `if (filters.conducteur ...)` sur `affQueryDates`
 
-### Pas touché (zéro régression)
-- `rhShared.ts` : le guard `if (filters.conducteur && filters.conducteur !== "all")` ne s'exécutera jamais → aucun changement de comportement
-- `useRHData.ts` : idem, les guards protègent déjà
-- `useFiches.ts` : utilise ses propres filtres (page Validation), pas les filtres RH
-- Export Excel, clôture, vue consolidée : tous passent par les mêmes guards
+### Fichier NON touché
+- `useFiches.ts` — son filtre conducteur sert à la page Validation Conducteur, indépendant de la vue RH.
+
+### Sécurité
+Aucune régression : ces blocs ne s'exécutaient déjà plus car `filters.conducteur` n'est plus jamais défini depuis le retrait du filtre UI. On supprime uniquement du code mort.
 
