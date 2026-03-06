@@ -1,68 +1,39 @@
 
 
-# Plan : Page dediee Export Paie (`/export-paie`)
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-## Objectif
+### Fichier modifie
 
-Creer une page `/export-paie` dediee a Tanguy (role `rh`) et aux `admin`/`super_admin`, avec un workflow lineaire et epure pour l'export de paie. Cette page ne remplace pas `ConsultationRH` -- elle extrait les fonctionnalites d'export/cloture dans un environnement dedie et securise.
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-## Ce qui sera construit
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-### 1. Nouvelle page `src/pages/ExportPaie.tsx`
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-Page avec workflow en etapes visuelles :
-- **Etape 1 -- Selection periode** : selecteur de mois (identique a RHFilters mais simplifie, juste le mois)
-- **Etape 2 -- Recap** : resume consolide de la periode (nb salaries, heures, absences, paniers, trajets, warnings). Reutilise `buildRHConsolidation`.
-- **Etape 3 -- Pre-export** : tableau editable identique a `RHPreExport` (absences, trajets, heures supp). Permet les ajustements finaux.
-- **Etape 4 -- Export & Cloture** : boutons d'export (Excel complet, Chefs 2CB, Interimaires, Ventilation PDF) + bouton cloture avec confirmation.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-Le tout dans une interface etape par etape (stepper ou tabs lineaires), pas un dashboard multi-onglets.
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-### 2. Route et securite
+Meme pattern exact :
 
-- Route : `/export-paie`
-- Roles autorises : `super_admin`, `admin`, `rh`
-- Ajout dans `App.tsx` avec `RequireRole`
-- Ajout du lien dans `AppNav.tsx` pour les roles concernes
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-### 3. Reutilisation du code existant
+### Ce qui ne change pas
 
-Aucune duplication -- la page importe directement :
-- `buildRHConsolidation` et `fetchRHExportData` (hooks existants)
-- `RHPreExport` (composant existant, passe en props `filters`)
-- `generateRHExcel` (lib existante)
-- `ClotureDialog` (composant existant)
-- `InterimaireExportDialog` (composant existant)
-- `exportVentilationCompletePdf` (lib existante)
-
-### 4. Navigation
-
-- Lien "Export Paie" visible dans `AppNav` pour `rh`, `admin`, `super_admin`
-- Icone : `FileOutput` ou `Send` (lucide)
-- Theme : `consultation-rh` (reutilise le meme theme couleur)
-
-## Structure technique
-
-```text
-/export-paie
-+------------------------------------------------------+
-| PageHeader: "Export de paie"                         |
-+------------------------------------------------------+
-| [Selecteur mois]                                     |
-+------------------------------------------------------+
-| Stepper: 1.Recap > 2.Ajustements > 3.Export&Cloture  |
-|                                                       |
-| Etape 1: Cards recap (salaries, heures, warnings)    |
-| Etape 2: <RHPreExport filters={...} />               |
-| Etape 3: Boutons export + <ClotureDialog />          |
-+------------------------------------------------------+
-```
-
-## Fichiers touches
-
-| Fichier | Action |
-|---|---|
-| `src/pages/ExportPaie.tsx` | Creer |
-| `src/App.tsx` | Ajouter route `/export-paie` avec RequireRole |
-| `src/components/navigation/AppNav.tsx` | Ajouter lien nav pour rh/admin/super_admin |
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 

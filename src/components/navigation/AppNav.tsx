@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2, Receipt } from "lucide-react";
+import { FileText, FileCheck, FileSpreadsheet, Settings, LogOut, BookOpen, CalendarDays, Building2, Receipt, FileOutput } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-sder.png";
@@ -88,6 +88,7 @@ export const AppNav = () => {
   const canSeeConducteur = userRole && ["super_admin", "conducteur"].includes(userRole);
   const canSeeValidation = userRole && ["super_admin", "rh", "conducteur"].includes(userRole);
   const canSeeRH = userRole && ["super_admin", "rh"].includes(userRole);
+  const canSeeExportPaie = userRole && ["super_admin", "rh", "admin"].includes(userRole);
   const canSeeAdmin = userRole && ["super_admin", "admin", "gestionnaire", "rh"].includes(userRole);
   const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
   const canSeeChantiers = userRole && ["super_admin", "conducteur"].includes(userRole);
@@ -221,6 +222,21 @@ export const AppNav = () => {
                 <Link to="/consultation-rh">
                   <FileSpreadsheet className="h-4 w-4" />
                   Consultation RH
+                </Link>
+              </Button>
+            )}
+
+            {canSeeExportPaie && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/export-paie", "consultation-rh")}
+                style={getButtonStyle("/export-paie", "consultation-rh")}
+              >
+                <Link to="/export-paie">
+                  <FileOutput className="h-4 w-4" />
+                  Export Paie
                 </Link>
               </Button>
             )}

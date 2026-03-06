@@ -22,6 +22,7 @@ import Install from "./pages/Install";
 import Bootstrap from "./pages/Bootstrap";
 import NotFound from "./pages/NotFound";
 import Documentation from "./pages/Documentation";
+import ExportPaie from "./pages/ExportPaie";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
@@ -140,6 +141,16 @@ const App = () => (
               element={
                 <RequireRole allowedRoles={["super_admin", "gestionnaire"]}>
                   <RapprochementInterim />
+                </RequireRole>
+              } 
+            />
+
+            {/* Export Paie - Accessible par: super_admin, admin, rh */}
+            <Route 
+              path="/export-paie" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "admin", "rh"]}>
+                  <ExportPaie />
                 </RequireRole>
               } 
             />
