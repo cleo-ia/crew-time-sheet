@@ -1,34 +1,39 @@
 
 
-# Revert : Annuler le SET NULL sur les FK de fiches_transport_finisseurs_jours
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-## Probleme
+### Fichier modifie
 
-La migration precedente a change les FK `conducteur_matin_id` et `conducteur_soir_id` de `NO ACTION` vers `SET NULL`, ce qui cree un conflit entre le chemin CASCADE (qui supprime les lignes) et le SET NULL (qui tente de les UPDATE en meme temps).
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-## Solution
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-Une nouvelle migration SQL qui remet les deux FK en `NO ACTION` (comportement par defaut, comme avant) :
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-```sql
-ALTER TABLE fiches_transport_finisseurs_jours
-  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey;
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey
-  FOREIGN KEY (conducteur_matin_id) REFERENCES utilisateurs(id);
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey;
+Meme pattern exact :
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey
-  FOREIGN KEY (conducteur_soir_id) REFERENCES utilisateurs(id);
-```
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-## Impact
+### Ce qui ne change pas
 
-- Retour a l'etat exact d'avant le fix
-- 1 seul fichier : migration SQL
-- Aucun code modifie
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
