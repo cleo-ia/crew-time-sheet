@@ -1,37 +1,39 @@
 
 
-# Fix : Permettre la suppression des finisseurs/utilisateurs
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-## Probleme
+### Fichier modifie
 
-La suppression de "Chetail David" echoue car il est reference comme `conducteur_matin_id` ou `conducteur_soir_id` dans `fiches_transport_finisseurs_jours`. Les FK actuelles sont en `NO ACTION`, ce qui bloque le DELETE.
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-## Solution
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-Une seule migration SQL qui :
-1. Drop les 2 contraintes existantes
-2. Les recree avec `ON DELETE SET NULL`
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-```sql
-ALTER TABLE fiches_transport_finisseurs_jours
-  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey;
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey
-  FOREIGN KEY (conducteur_matin_id) REFERENCES utilisateurs(id) ON DELETE SET NULL;
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey;
+Meme pattern exact :
 
-ALTER TABLE fiches_transport_finisseurs_jours
-  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey
-  FOREIGN KEY (conducteur_soir_id) REFERENCES utilisateurs(id) ON DELETE SET NULL;
-```
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-## Impact
+### Ce qui ne change pas
 
-- Les colonnes `conducteur_matin_id` et `conducteur_soir_id` sont deja **nullable** → compatible
-- **Aucune donnee supprimee** : seules les references sont mises a NULL
-- **Aucun code a modifier** : le front gere deja les valeurs null pour ces champs
-- **1 seul fichier** : migration SQL
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
