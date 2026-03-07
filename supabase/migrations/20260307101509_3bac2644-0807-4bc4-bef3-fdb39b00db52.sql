@@ -1,0 +1,13 @@
+ALTER TABLE fiches_transport_finisseurs_jours
+  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey;
+
+ALTER TABLE fiches_transport_finisseurs_jours
+  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_matin_id_fkey
+  FOREIGN KEY (conducteur_matin_id) REFERENCES utilisateurs(id) ON DELETE SET NULL;
+
+ALTER TABLE fiches_transport_finisseurs_jours
+  DROP CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey;
+
+ALTER TABLE fiches_transport_finisseurs_jours
+  ADD CONSTRAINT fiches_transport_finisseurs_jours_conducteur_soir_id_fkey
+  FOREIGN KEY (conducteur_soir_id) REFERENCES utilisateurs(id) ON DELETE SET NULL;
