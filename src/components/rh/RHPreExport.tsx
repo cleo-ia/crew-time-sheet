@@ -702,15 +702,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           ref={dataContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden"
         >
-          {filteredRows.map((row) => {
-            const realIndex = rows.indexOf(row);
+          {rows.map((row, rowIndex) => {
             const data = { ...row.original, ...row.modified };
             
             const estimatedCount = row.original.detailJours?.filter((j: any) => j.is_estimated).length || 0;
             
             return (
               <div 
-                key={realIndex} 
+                key={rowIndex} 
                 className={`flex border-b ${row.isModified ? "bg-blue-50/30" : ""}`}
                 style={{ height: ROW_HEIGHT }}
               >
