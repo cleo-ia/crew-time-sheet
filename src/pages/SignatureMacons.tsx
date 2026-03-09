@@ -43,6 +43,9 @@ const SignatureMacons = () => {
   );
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: currentUserRole } = useCurrentUserRole();
   // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
   // ✅ Chef multi-chantier : plus d'indicateur chantier secondaire
