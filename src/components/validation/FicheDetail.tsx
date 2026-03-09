@@ -120,6 +120,9 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   // Autres hooks
   const updateStatus = useUpdateFicheStatus();
   const saveFicheJours = useSaveFicheJours();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: currentUserRole } = useCurrentUserRole();
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
 
   if (isLoading) {
