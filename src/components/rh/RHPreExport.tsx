@@ -366,7 +366,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     setIsLoading(true);
     try {
       // Merge original + modified data
-      const mergedData: RHExportEmployee[] = filteredRows.map(row => ({
+      const mergedData: RHExportEmployee[] = rows.map(row => ({
         ...row.original,
         ...row.modified
       }));
