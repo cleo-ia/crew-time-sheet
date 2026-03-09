@@ -1781,15 +1781,13 @@ async function copyFichesFromPreviousWeek(
   // R3 FIX: Pour les chantiers conducteur, filtrer joursS1 par joursPlanning (après nettoyage des jours fantômes)
   // Pour les chantiers chef, garder le calcul d'origine (5 jours intacts)
   // deno-lint-ignore no-explicit-any
-  const totalHeures = chantier?.conducteur_id
-    ? (joursS1 as any[])
-        .filter((j: any) => {
-          const oldDate = new Date(j.date)
-          const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
-          return joursPlanning.includes(newDate.toISOString().split('T')[0])
-        })
-        .reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
-    : (joursS1 as any[]).reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+  const totalHeures = (joursS1 as any[])
+    .filter((j: any) => {
+      const oldDate = new Date(j.date)
+      const newDate = new Date(oldDate.getTime() + daysDiff * 24 * 60 * 60 * 1000)
+      return joursPlanning.includes(newDate.toISOString().split('T')[0])
+    })
+    .reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
   await supabase
     .from('fiches')
     .update({ total_heures: totalHeures, statut: 'BROUILLON' })
