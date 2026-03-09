@@ -14,6 +14,7 @@ export interface RHFilters {
   typeSalarie?: string;
   includeCloture?: boolean;
   agenceInterim?: string; // Filtre par agence d'intérim spécifique
+  includeEstimations?: boolean; // true = inclure les jours estimés (paie prévisionnelle)
 }
 
 export interface EmployeeDetail {
