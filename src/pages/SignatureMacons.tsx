@@ -160,6 +160,25 @@ const SignatureMacons = () => {
         signatureData,
       });
 
+      // Log signature (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            ficheId: selectedMacon.ficheId,
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "signature_chef",
+            userRole: currentUserRole || null,
+            details: {
+              salarie: `${selectedMacon.prenom} ${selectedMacon.nom}`,
+              semaine,
+              chantier: chantierId,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
+
       // Update local state
       const updatedMacons = macons.map((m) =>
         m.id === selectedMacon.id ? { ...m, signed: true } : m
