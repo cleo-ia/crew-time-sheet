@@ -62,7 +62,8 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
     try {
       const consolidatedData = await buildRHConsolidation({ 
         ...filters, 
-        periode: filters.periode 
+        periode: filters.periode,
+        includeEstimations: true,
       });
 
       if (consolidatedData.length === 0) {
