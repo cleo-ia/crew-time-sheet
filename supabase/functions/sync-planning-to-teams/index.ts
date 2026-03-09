@@ -1637,7 +1637,6 @@ async function copyFichesFromPreviousWeek(
   if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
     // Créer les affectations malgré tout
     if (chantier?.chef_id) {
-      const mondayS = parseISOWeek(currentWeek)
       for (const jour of joursPlanning) {
         await supabase
           .from('affectations_jours_chef')
