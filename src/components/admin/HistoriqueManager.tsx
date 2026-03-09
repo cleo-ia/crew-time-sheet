@@ -134,7 +134,7 @@ export function HistoriqueManager() {
   };
 
   const handleExportCSV = () => {
-    if (filteredModifications.length === 0) return;
+    if (modifications.length === 0) return;
 
     const headers = ["Date", "Heure", "Utilisateur", "Rôle", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
     const rows = filteredModifications.map((mod) => {
