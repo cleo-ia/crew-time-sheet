@@ -375,6 +375,24 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
         entrepriseNom: enterpriseConfig?.nom,
         dossierRef: enterpriseConfig?.dossierRef,
       });
+
+      // Log export (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            details: {
+              periode: filters.periode,
+              nbSalaries: mergedData.length,
+              filename,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
+
       toast.success(`Excel généré : ${filename}`);
     } catch (error) {
       console.error("Erreur export Excel:", error);

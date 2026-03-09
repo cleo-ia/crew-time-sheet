@@ -276,6 +276,26 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         status: "ENVOYE_RH",
       });
     }
+
+    // Log validation (fire-and-forget, non-blocking)
+    if (userInfo) {
+      try {
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "validation_conducteur",
+          ancienneValeur: fiche.status,
+          nouvelleValeur: "ENVOYE_RH",
+          userRole: currentUserRole || null,
+          details: {
+            semaine: ficheData.semaine,
+            chantier: chantierNom,
+            nbSalaries: allFiches.length,
+          },
+        });
+      } catch (e) { console.error("Log error:", e); }
+    }
     
     setTimeout(onBack, 1000);
   };

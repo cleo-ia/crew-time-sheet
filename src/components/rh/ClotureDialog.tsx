@@ -228,6 +228,25 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
         },
       });
 
+      // Log clôture (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "cloture_periode",
+            userRole: "rh",
+            details: {
+              periode: filters.periode,
+              nbSalaries: consolidatedData.length,
+              nbFiches: fichesCount,
+              totalHeures: Math.round((totalHeuresNormales + totalHeuresSupp) * 100) / 100,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
+
       onOpenChange(false);
       setMotif("");
     } catch (error) {

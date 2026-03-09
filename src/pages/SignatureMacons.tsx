@@ -207,6 +207,26 @@ const SignatureMacons = () => {
         status: "VALIDE_CHEF",
       });
 
+      // Log transmission (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "transmission_conducteur",
+            ancienneValeur: "BROUILLON",
+            nouvelleValeur: "VALIDE_CHEF",
+            userRole: currentUserRole || null,
+            details: {
+              semaine,
+              chantier: chantierId,
+              nbSalaries: macons.length,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
+
       // 2. Calculer la semaine suivante
       const nextWeek = getNextWeek(semaine);
 
