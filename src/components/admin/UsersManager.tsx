@@ -561,7 +561,9 @@ export const UsersManager = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      {userRole !== 'gestionnaire' && (
+        <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      )}
     </div>
   );
 };
