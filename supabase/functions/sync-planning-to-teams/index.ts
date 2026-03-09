@@ -1777,9 +1777,6 @@ async function copyFichesFromPreviousWeek(
 
   // Mettre à jour le total_heures de la fiche
   // deno-lint-ignore no-explicit-any
-  // R3 FIX: Pour les chantiers conducteur, filtrer joursS1 par joursPlanning (après nettoyage des jours fantômes)
-  // Pour les chantiers chef, garder le calcul d'origine (5 jours intacts)
-  // deno-lint-ignore no-explicit-any
   const totalHeures = (joursS1 as any[])
     .filter((j: any) => {
       const oldDate = new Date(j.date)
