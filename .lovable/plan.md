@@ -1,16 +1,39 @@
 
 
-## Retrait du bouton "Créer un utilisateur" pour le rôle gestionnaire
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Modification unique
+### Fichier modifie
 
-**Fichier :** `src/components/admin/UsersManager.tsx`
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-Le bouton "Créer un utilisateur" et le `<CreateUserDialog>` associé sont actuellement affichés sans condition de rôle. Il faut :
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-1. Importer `useCurrentUserRole` dans `UsersManager.tsx`
-2. Récupérer le rôle courant via `const { data: userRole } = useCurrentUserRole()`
-3. Conditionner l'affichage du bouton et du dialog avec `userRole !== 'gestionnaire'`
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-Aucune autre modification nécessaire — le bouton "Inviter un utilisateur" dans le header de `AdminPanel.tsx` est déjà masqué pour les gestionnaires.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
+
+Meme pattern exact :
+
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 

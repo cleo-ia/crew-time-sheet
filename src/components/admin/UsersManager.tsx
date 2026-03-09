@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +20,7 @@ import { toast } from "sonner";
 
 export const UsersManager = () => {
   const queryClient = useQueryClient();
+  const { data: userRole } = useCurrentUserRole();
   const [editDialog, setEditDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "", role: "" });
@@ -300,10 +302,12 @@ export const UsersManager = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Utilisateurs actifs</h3>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-1" />
-              Créer un utilisateur
-            </Button>
+            {userRole !== 'gestionnaire' && (
+              <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" />
+                Créer un utilisateur
+              </Button>
+            )}
             <div className="relative w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -557,7 +561,9 @@ export const UsersManager = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      {userRole !== 'gestionnaire' && (
+        <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      )}
     </div>
   );
 };
