@@ -14,6 +14,7 @@ export interface RHFilters {
   typeSalarie?: string;
   includeCloture?: boolean;
   agenceInterim?: string; // Filtre par agence d'intérim spécifique
+  includeEstimations?: boolean; // true = inclure les jours estimés (paie prévisionnelle)
 }
 
 export interface EmployeeDetail {
@@ -712,7 +713,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
 
     // 🆕 PAIE PRÉVISIONNELLE : générer les jours estimés pour les dates manquantes du mois
-    if (!isAllPeriodes && mois) {
+    if (filters.includeEstimations && !isAllPeriodes && mois) {
       // Déterminer si le salarié est un apprenti (affecté à un chantier is_ecole)
       const isApprentice = detailJours.some(j => j.isEcole) || 
         fiches.some(f => ecoleChantierIds.has((f as any).chantier_id || ""));
