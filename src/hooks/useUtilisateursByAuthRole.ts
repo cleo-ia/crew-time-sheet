@@ -19,7 +19,7 @@ export function useUtilisateursByAuthRole(
       const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", role)
+        .eq("role", role as any)
         .eq("entreprise_id", entrepriseId);
 
       if (roleError) throw roleError;
