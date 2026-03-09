@@ -55,6 +55,7 @@ const ROLE_OPTIONS = [
 export function HistoriqueManager() {
   const [period, setPeriod] = useState("30days");
   const [actionFilter, setActionFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [userFilter, setUserFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
