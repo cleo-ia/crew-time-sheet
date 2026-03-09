@@ -50,6 +50,7 @@ export const RHPeriodeDetail = ({ periodeId, onBack, onSelectEmployee }: RHPerio
         salarie: "all",
         typeSalarie: "all",
         includeCloture: true,
+        includeEstimations: true,
       });
       return result;
     }

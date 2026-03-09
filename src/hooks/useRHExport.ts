@@ -109,6 +109,7 @@ export const fetchRHExportData = async (mois: string, filters: RHFilters = {}): 
   const consolidatedData = await buildRHConsolidation({
     ...filters,
     periode: mois,
+    includeEstimations: true,
   });
 
   // Convertir vers le format RHExportEmployee

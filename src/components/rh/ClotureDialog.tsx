@@ -133,7 +133,8 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
       // 1. Récupérer les données consolidées via buildRHConsolidation
       const consolidatedData = await buildRHConsolidation({ 
         ...filters, 
-        periode: filters.periode 
+        periode: filters.periode,
+        includeEstimations: true,
       });
 
       if (consolidatedData.length === 0) {
