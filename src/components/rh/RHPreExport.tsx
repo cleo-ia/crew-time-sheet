@@ -409,11 +409,17 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
       const jours = r.original.detailJours?.filter(j => j.isAbsent)?.length ?? 0;
       return sum + jours;
     }, 0);
-    const chantiers = new Set(rows.map(r => r.original.chantier).filter(Boolean)).size;
-    const trajetsACompleter = rows.filter(r => {
-      const codeTrajet = r.original.codeTrajet;
-      return codeTrajet === "A_COMPLETER" || codeTrajet === "a_completer";
-    }).length;
+    const chantierCodes = new Set<string>();
+    rows.forEach(r => {
+      r.original.detailJours?.forEach(j => {
+        if (j.chantierCode) chantierCodes.add(j.chantierCode);
+      });
+    });
+    const chantiers = chantierCodes.size;
+    const trajetsACompleter = rows.reduce((sum, r) => {
+      const count = r.original.detailJours?.filter(j => j.trajet === "A_COMPLETER" || j.trajet === "a_completer")?.length ?? 0;
+      return sum + count;
+    }, 0);
     return { salaries, heuresNormales, heuresSupp, absences, chantiers, trajetsACompleter };
   }, [rows]);
 
