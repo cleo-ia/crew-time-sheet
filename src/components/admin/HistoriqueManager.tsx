@@ -43,9 +43,19 @@ const ACTION_OPTIONS = [
   { value: "sync_planning", label: "Sync planning" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "all", label: "Tous les rôles" },
+  { value: "admin", label: "Admin" },
+  { value: "gestionnaire", label: "Gestionnaire" },
+  { value: "rh", label: "RH" },
+  { value: "conducteur", label: "Conducteur" },
+  { value: "chef", label: "Chef" },
+];
+
 export function HistoriqueManager() {
   const [period, setPeriod] = useState("30days");
   const [actionFilter, setActionFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [userFilter, setUserFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
@@ -92,6 +102,12 @@ export function HistoriqueManager() {
     limit: 500,
   });
 
+  // Client-side role filter
+  const filteredModifications = useMemo(() => {
+    if (roleFilter === "all") return modifications;
+    return modifications.filter((mod) => mod.user_role === roleFilter);
+  }, [modifications, roleFilter]);
+
   // Extract unique users for filter dropdown
   const uniqueUsers = useMemo(() => {
     const usersMap = new Map<string, string>();
@@ -110,10 +126,10 @@ export function HistoriqueManager() {
   };
 
   const handleExportCSV = () => {
-    if (modifications.length === 0) return;
+    if (filteredModifications.length === 0) return;
 
     const headers = ["Date", "Heure", "Utilisateur", "Rôle", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
-    const rows = modifications.map((mod) => {
+    const rows = filteredModifications.map((mod) => {
       const date = new Date(mod.created_at);
       const details = mod.details as Record<string, unknown>;
       const detailsStr = Object.entries(details)
@@ -149,11 +165,11 @@ export function HistoriqueManager() {
 
   // Stats
   const stats = {
-    total: modifications.length,
-    today: modifications.filter(
+    total: filteredModifications.length,
+    today: filteredModifications.filter(
       (m) => format(new Date(m.created_at), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
     ).length,
-    uniqueUsers: new Set(modifications.map((m) => m.user_id)).size,
+    uniqueUsers: new Set(filteredModifications.map((m) => m.user_id)).size,
   };
 
   return (
@@ -215,6 +231,22 @@ export function HistoriqueManager() {
         </div>
 
         <div className="space-y-1.5">
+          <Label>Rôle</Label>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
           <Label>Utilisateur</Label>
           <Select value={userFilter} onValueChange={setUserFilter}>
             <SelectTrigger className="w-[180px]">
@@ -253,7 +285,7 @@ export function HistoriqueManager() {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={modifications.length === 0}
+            disabled={filteredModifications.length === 0}
           >
             <Download className="h-4 w-4 mr-2" />
             Export CSV
@@ -263,7 +295,7 @@ export function HistoriqueManager() {
 
       {/* Table */}
       <ModificationHistoryTable
-        modifications={modifications}
+        modifications={filteredModifications}
         isLoading={isLoading}
       />
     </div>
