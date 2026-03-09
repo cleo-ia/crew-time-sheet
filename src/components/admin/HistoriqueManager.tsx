@@ -285,7 +285,7 @@ export function HistoriqueManager() {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={modifications.length === 0}
+            disabled={filteredModifications.length === 0}
           >
             <Download className="h-4 w-4 mr-2" />
             Export CSV
