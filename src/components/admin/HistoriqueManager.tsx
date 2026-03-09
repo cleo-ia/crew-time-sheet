@@ -43,6 +43,15 @@ const ACTION_OPTIONS = [
   { value: "sync_planning", label: "Sync planning" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "all", label: "Tous les rôles" },
+  { value: "admin", label: "Admin" },
+  { value: "gestionnaire", label: "Gestionnaire" },
+  { value: "rh", label: "RH" },
+  { value: "conducteur", label: "Conducteur" },
+  { value: "chef", label: "Chef" },
+];
+
 export function HistoriqueManager() {
   const [period, setPeriod] = useState("30days");
   const [actionFilter, setActionFilter] = useState("all");
