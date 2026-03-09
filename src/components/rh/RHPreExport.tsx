@@ -386,11 +386,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   const modifiedCount = useMemo(() => rows.filter(r => r.isModified).length, [rows]);
 
-  // Filtrer les lignes par métier
-  const filteredRows = useMemo(() => {
-    if (filterMetier === "all") return rows;
-    return rows.filter(row => row.original.metier === filterMetier);
-  }, [rows, filterMetier]);
 
   // Dashboard stats computed from rows (live updates)
   const dashboardStats = useMemo(() => {
