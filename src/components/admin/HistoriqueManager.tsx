@@ -80,7 +80,7 @@ export function HistoriqueManager() {
     }
   };
 
-  const dateRange = getDateRange();
+  const dateRange = useMemo(() => getDateRange(), [period]);
 
   const { data: modifications = [], isLoading } = useModificationsHistory({
     entrepriseId,
