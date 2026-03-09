@@ -287,6 +287,27 @@ Deno.serve(async (req) => {
       }
     })
 
+    // Log dans fiches_modifications pour chaque entreprise traitée
+    for (const entrepriseId of uniqueEntreprises) {
+      try {
+        await supabase.from('fiches_modifications').insert({
+          entreprise_id: entrepriseId,
+          user_id: triggered_by || '00000000-0000-0000-0000-000000000000',
+          user_name: 'Système (sync automatique)',
+          action: 'sync_planning',
+          user_role: 'system',
+          page_source: 'edge-function/sync-planning-to-teams',
+          details: {
+            semaine: currentWeek,
+            semaine_precedente: previousWeek,
+            stats: { copied: totalCopied, created: totalCreated, deleted: totalDeleted, protected: totalProtected },
+          }
+        })
+      } catch (logErr) {
+        console.error(`[sync-planning-to-teams] Erreur log fiches_modifications pour ${entrepriseId}:`, logErr)
+      }
+    }
+
     console.log(`[sync-planning-to-teams] Terminé: ${totalCopied} copiés, ${totalCreated} créés, ${totalDeleted} supprimés, ${totalProtected} protégés`)
 
     return new Response(
