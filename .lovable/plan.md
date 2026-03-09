@@ -1,39 +1,34 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+# Plan : Fusion "Récapitulatif + Ajustements" en une seule étape
 
-### Fichier modifie
+## Résumé
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+Passer de 4 étapes à 3 : **Période > Ajustements & Dashboard > Export & Clôture**. Les widgets de synthèse sont intégrés directement en haut de `RHPreExport.tsx`, calculés en temps réel depuis les `rows` chargées (pas un second appel API). L'alerte trajets reste juste en dessous.
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+## Modifications
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+### 1. `src/pages/ExportPaie.tsx`
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+- Réduire `STEPS` à 3 entrées : `{ id:1, label:"Période" }`, `{ id:2, label:"Ajustements & Dashboard" }`, `{ id:3, label:"Export & Clôture" }`
+- Supprimer le bloc `currentStep === 2` (ancien récapitulatif)
+- Renommer `currentStep === 3` en `currentStep === 2` (ajustements) et `currentStep === 4` en `currentStep === 3` (export)
+- Adapter `canGoNext()` et les boutons de navigation pour 3 étapes au lieu de 4
+- Supprimer l'import de `useRHSummary` (plus utilisé ici) et les variables `summary`/`summaryLoading`
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+### 2. `src/components/rh/RHPreExport.tsx`
 
-Meme pattern exact :
+- Ajouter un `useMemo` qui calcule les stats live depuis `filteredRows` (ou `rows`) :
+  - **Salariés** : `rows.length`
+  - **Heures normales** : somme de `heuresNormales` par row (avec modified pris en compte)
+  - **Heures supp** : somme `heuresSupp25 + heuresSupp50` par row
+  - **Absences** : somme totale des jours d'absence par row
+  - **Chantiers** : `new Set(rows.map(r => r.original.chantier))`.size
+- Rendre un bandeau compact de 5 widgets (taille réduite : `p-3`, texte `text-xl` au lieu de `text-2xl`) en haut du composant, avant le tableau
+- Placer l'alerte "X trajet(s) à compléter" juste en dessous des widgets (calculée depuis les rows ayant des trajets `A_COMPLETER`)
+- Ces compteurs se mettent à jour automatiquement puisqu'ils dérivent du state `rows` local, qui est modifié par `handleCellChange`
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+### Synchronisation des données
 
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+Les widgets ne font pas d'appel API séparé. Ils sont un `useMemo` sur `rows`, donc toute modification dans le tableau met immédiatement à jour les compteurs sans rechargement.
 
