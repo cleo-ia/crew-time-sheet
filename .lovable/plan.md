@@ -1,32 +1,39 @@
 
 
-# Contrainte UNIQUE anti-doublons sur `utilisateurs`
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-## Objectif
-Ajouter une contrainte UNIQUE en base sur `(LOWER(nom), LOWER(prenom), entreprise_id)` pour que PostgreSQL refuse tout doublon, indépendamment du front.
+### Fichier modifie
 
-## Étapes
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-### 1. Vérifier les doublons existants
-Avant d'ajouter la contrainte, exécuter une requête de détection pour s'assurer qu'aucun doublon ne bloque la migration.
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-### 2. Créer la migration SQL
-Ajouter un **unique index** (plutôt qu'une simple contrainte) sur `LOWER(nom), LOWER(prenom), entreprise_id` pour gérer la casse :
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-```sql
-CREATE UNIQUE INDEX idx_utilisateurs_nom_prenom_entreprise 
-ON utilisateurs (LOWER(nom), LOWER(prenom), entreprise_id);
-```
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-Cela empêchera d'insérer "chetail / david" si "Chetail / David" existe déjà pour la même entreprise.
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-### 3. Adapter le hook `useCreateUtilisateur`
-Ajouter un `catch` qui détecte l'erreur PostgreSQL `23505` (unique_violation) et affiche un message clair : *"Un employé avec ce nom et prénom existe déjà."*
+Meme pattern exact :
 
-La vérification JavaScript existante reste en place comme garde rapide, mais la base de données a le dernier mot.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-## Impact
-- Aucune modification de structure des tables existantes
-- Aucun impact sur les données actuelles (plus de doublons après le nettoyage de Chetail)
-- Protection définitive côté serveur
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 

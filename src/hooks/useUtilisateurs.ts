@@ -251,7 +251,12 @@ export const useCreateUtilisateur = () => {
         .select()
         .single();
       
-      if (userError) throw userError;
+      if (userError) {
+        if (userError.code === '23505') {
+          throw new Error(`Un employé "${user.prenom} ${user.nom}" existe déjà pour cette entreprise.`);
+        }
+        throw userError;
+      }
       
       return utilisateur;
     },
