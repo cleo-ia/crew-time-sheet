@@ -20,6 +20,9 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
 const SignatureMacons = () => {
