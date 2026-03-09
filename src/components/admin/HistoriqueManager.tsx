@@ -295,7 +295,7 @@ export function HistoriqueManager() {
 
       {/* Table */}
       <ModificationHistoryTable
-        modifications={modifications}
+        modifications={filteredModifications}
         isLoading={isLoading}
       />
     </div>
