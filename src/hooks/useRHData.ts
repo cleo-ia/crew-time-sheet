@@ -1067,7 +1067,7 @@ export const useCloturePeriode = () => {
           fichier_excel: fichierExcel,
           motif,
           snapshot_estimations: snapshotEstimations || null,
-        })
+        }, { onConflict: 'periode,entreprise_id' })
         .select()
         .single();
 

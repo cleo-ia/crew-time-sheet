@@ -451,7 +451,7 @@ export const generateRHExcel = async (
     10,
     15, // BA-BC (saisies)
     15,
-    15, // BD-BE (régularisation et autres)
+    25, // BD-BE (régularisation et autres)
   ];
   sheet.columns = colWidths.map((w) => ({ width: w }));
 
