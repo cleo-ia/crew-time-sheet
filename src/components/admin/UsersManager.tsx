@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 export const UsersManager = () => {
   const queryClient = useQueryClient();
+  const { data: userRole } = useCurrentUserRole();
   const [editDialog, setEditDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; profile?: any }>({ open: false });
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "", role: "" });
