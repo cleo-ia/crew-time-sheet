@@ -2,7 +2,9 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Download, RotateCcw, AlertCircle, Save, Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { generateRHExcel } from "@/lib/excelExport";
 import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
@@ -683,9 +685,30 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                   >
                     {data.prenom}
                     {estimatedCount > 0 && (
-                      <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded px-1 flex-shrink-0" title={`${estimatedCount} jour(s) estimé(s) par la paie prévisionnelle`}>
-                        ~{estimatedCount}j
-                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded px-1 flex-shrink-0 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors" title={`${estimatedCount} jour(s) estimé(s) par la paie prévisionnelle`}>
+                            ~{estimatedCount}j
+                          </span>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto max-w-xs p-2 text-xs" align="start">
+                          <p className="font-semibold mb-1 text-foreground">Jours estimés ({estimatedCount})</p>
+                          <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                            {data.detailJours
+                              .filter((j: any) => j.is_estimated)
+                              .sort((a: any, b: any) => a.date.localeCompare(b.date))
+                              .map((j: any) => (
+                                <div key={j.date} className="flex gap-2 text-muted-foreground">
+                                  <span className="font-medium text-foreground">{format(parseISO(j.date), "dd/MM")}</span>
+                                  <span>{j.heures}h</span>
+                                  {j.trajet && <span>{j.trajet}</span>}
+                                  {j.panier && <span>Panier</span>}
+                                  {j.chantierCode && <span className="truncate max-w-[80px]">{j.chantierCode}</span>}
+                                </div>
+                              ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     )}
                   </div>
                 </div>

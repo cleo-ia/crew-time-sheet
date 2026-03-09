@@ -301,7 +301,25 @@ export async function calculateRegularisationM1Batch(
       parts.push(`PA: ${sign}${deltaPaniers}`);
     }
     if (deltaTrajetsCodes.length > 0) {
-      parts.push(`Trajets: ${deltaTrajetsCodes.length} modif(s)`);
+      // Aggregate travel changes by pair (old→new)
+      const pairCounts = new Map<string, number>();
+      deltaTrajetsCodes.forEach(change => {
+        // Extract the transition part (after the date)
+        const match = change.match(/: (.+)/);
+        if (match) {
+          const key = match[1];
+          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+        }
+      });
+      const pairEntries = [...pairCounts.entries()];
+      const MAX_PAIRS = 4;
+      const displayed = pairEntries.slice(0, MAX_PAIRS).map(([pair, count]) => 
+        count > 1 ? `${pair} (x${count})` : pair
+      );
+      const remaining = pairEntries.length - MAX_PAIRS;
+      let trajetText = `T: ${displayed.join(", ")}`;
+      if (remaining > 0) trajetText += ` + ${remaining} autre(s)`;
+      parts.push(trajetText);
     }
 
     result.set(salarieId, parts.join(" | "));

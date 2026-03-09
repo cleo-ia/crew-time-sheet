@@ -1043,10 +1043,10 @@ export const useCloturePeriode = () => {
         .eq("auth_user_id", userData?.user?.id)
         .maybeSingle();
 
-      // 1. Insérer la période clôturée avec toutes les stats + snapshot estimations
+      // 1. Upsert la période clôturée (écrase si reclôture du même mois)
       const { data: periode, error: periodeError } = await supabase
         .from("periodes_cloturees")
-        .insert({
+        .upsert({
           periode: filters.periode,
           semaine_debut: filters.periode, // Format YYYY-MM
           entreprise_id: entrepriseId,
@@ -1067,7 +1067,7 @@ export const useCloturePeriode = () => {
           fichier_excel: fichierExcel,
           motif,
           snapshot_estimations: snapshotEstimations || null,
-        })
+        }, { onConflict: 'periode,entreprise_id' })
         .select()
         .single();
 
