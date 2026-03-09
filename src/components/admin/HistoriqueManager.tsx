@@ -111,7 +111,7 @@ export function HistoriqueManager() {
   // Extract unique users for filter dropdown
   const uniqueUsers = useMemo(() => {
     const usersMap = new Map<string, string>();
-    modifications.forEach((mod) => {
+    filteredModifications.forEach((mod) => {
       if (!usersMap.has(mod.user_id)) {
         usersMap.set(mod.user_id, mod.user_name);
       }
