@@ -126,10 +126,10 @@ export function HistoriqueManager() {
   };
 
   const handleExportCSV = () => {
-    if (modifications.length === 0) return;
+    if (filteredModifications.length === 0) return;
 
     const headers = ["Date", "Heure", "Utilisateur", "Rôle", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
-    const rows = modifications.map((mod) => {
+    const rows = filteredModifications.map((mod) => {
       const date = new Date(mod.created_at);
       const details = mod.details as Record<string, unknown>;
       const detailsStr = Object.entries(details)
