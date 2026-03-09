@@ -303,7 +303,7 @@ export function HistoriqueManager() {
 
       {/* Table */}
       <ModificationHistoryTable
-        modifications={filteredModifications}
+        modifications={modifications}
         isLoading={isLoading}
       />
     </div>
