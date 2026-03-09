@@ -1638,10 +1638,7 @@ async function copyFichesFromPreviousWeek(
     // Créer les affectations malgré tout
     if (chantier?.chef_id) {
       const mondayS = parseISOWeek(currentWeek)
-      for (let i = 0; i < 5; i++) {
-        const d = new Date(mondayS)
-        d.setDate(mondayS.getDate() + i)
-        const jour = d.toISOString().split('T')[0]
+      for (const jour of joursPlanning) {
         await supabase
           .from('affectations_jours_chef')
           .upsert({
