@@ -1803,7 +1803,7 @@ async function copyFichesFromPreviousWeek(
 
   if (chantier?.chef_id) {
     // Router vers affectations_jours_chef avec le chef COURANT
-    for (const jour of jours) {
+    for (const jour of joursPlanning) {
       await supabase
         .from('affectations_jours_chef')
         .upsert({
