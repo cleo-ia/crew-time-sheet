@@ -1078,8 +1078,10 @@ export type Database = {
           fiche_id: string | null
           id: string
           nouvelle_valeur: string | null
+          page_source: string | null
           user_id: string
           user_name: string
+          user_role: string | null
         }
         Insert: {
           action: string
@@ -1091,8 +1093,10 @@ export type Database = {
           fiche_id?: string | null
           id?: string
           nouvelle_valeur?: string | null
+          page_source?: string | null
           user_id: string
           user_name: string
+          user_role?: string | null
         }
         Update: {
           action?: string
@@ -1104,8 +1108,10 @@ export type Database = {
           fiche_id?: string | null
           id?: string
           nouvelle_valeur?: string | null
+          page_source?: string | null
           user_id?: string
           user_name?: string
+          user_role?: string | null
         }
         Relationships: [
           {

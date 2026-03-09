@@ -29,6 +29,9 @@ import { useTransportValidation } from "@/hooks/useTransportValidation";
 import { TransportSummaryV2 } from "@/components/transport/TransportSummaryV2";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { dayNameToDate } from "@/lib/date";
@@ -117,6 +120,9 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
   // Autres hooks
   const updateStatus = useUpdateFicheStatus();
   const saveFicheJours = useSaveFicheJours();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: currentUserRole } = useCurrentUserRole();
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
 
   if (isLoading) {
@@ -269,6 +275,26 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
         ficheId: ficheId,
         status: "ENVOYE_RH",
       });
+    }
+
+    // Log validation (fire-and-forget, non-blocking)
+    if (userInfo) {
+      try {
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "validation_conducteur",
+          ancienneValeur: fiche.status,
+          nouvelleValeur: "ENVOYE_RH",
+          userRole: currentUserRole || null,
+          details: {
+            semaine: ficheData.semaine,
+            chantier: chantierNom,
+            nbSalaries: allFiches.length,
+          },
+        });
+      } catch (e) { console.error("Log error:", e); }
     }
     
     setTimeout(onBack, 1000);

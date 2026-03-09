@@ -11,6 +11,8 @@ import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface ClotureDialogProps {
   open: boolean;
@@ -39,6 +41,8 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const clotureMutation = useCloturePeriode();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
 
   // Formater le nom du mois pour l'affichage
   const getMonthLabel = () => {
@@ -223,6 +227,25 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
           trajetsParCode,
         },
       });
+
+      // Log clôture (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "cloture_periode",
+            userRole: "rh",
+            details: {
+              periode: filters.periode,
+              nbSalaries: consolidatedData.length,
+              nbFiches: fichesCount,
+              totalHeures: Math.round((totalHeuresNormales + totalHeuresSupp) * 100) / 100,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
 
       onOpenChange(false);
       setMotif("");

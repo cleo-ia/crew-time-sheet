@@ -20,6 +20,9 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getNextWeek } from "@/lib/weekUtils";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
 const SignatureMacons = () => {
@@ -40,6 +43,9 @@ const SignatureMacons = () => {
   );
   const saveSignature = useSaveSignature();
   const updateStatus = useUpdateFicheStatus();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: currentUserRole } = useCurrentUserRole();
   // La copie S→S+1 est désormais gérée par la sync Planning (lundi 5h)
 
   // ✅ Chef multi-chantier : plus d'indicateur chantier secondaire
@@ -154,6 +160,25 @@ const SignatureMacons = () => {
         signatureData,
       });
 
+      // Log signature (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            ficheId: selectedMacon.ficheId,
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "signature_chef",
+            userRole: currentUserRole || null,
+            details: {
+              salarie: `${selectedMacon.prenom} ${selectedMacon.nom}`,
+              semaine,
+              chantier: chantierId,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
+
       // Update local state
       const updatedMacons = macons.map((m) =>
         m.id === selectedMacon.id ? { ...m, signed: true } : m
@@ -181,6 +206,26 @@ const SignatureMacons = () => {
         semaine,
         status: "VALIDE_CHEF",
       });
+
+      // Log transmission (fire-and-forget, non-blocking)
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "transmission_conducteur",
+            ancienneValeur: "BROUILLON",
+            nouvelleValeur: "VALIDE_CHEF",
+            userRole: currentUserRole || null,
+            details: {
+              semaine,
+              chantier: chantierId,
+              nbSalaries: macons.length,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
 
       // 2. Calculer la semaine suivante
       const nextWeek = getNextWeek(semaine);
