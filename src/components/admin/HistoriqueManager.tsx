@@ -102,6 +102,12 @@ export function HistoriqueManager() {
     limit: 500,
   });
 
+  // Client-side role filter
+  const filteredModifications = useMemo(() => {
+    if (roleFilter === "all") return modifications;
+    return modifications.filter((mod) => mod.user_role === roleFilter);
+  }, [modifications, roleFilter]);
+
   // Extract unique users for filter dropdown
   const uniqueUsers = useMemo(() => {
     const usersMap = new Map<string, string>();
