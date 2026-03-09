@@ -150,7 +150,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [filterMetier, setFilterMetier] = useState<string>("all");
+  
   const savePreExportMutation = usePreExportSave();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
@@ -358,7 +358,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   };
 
   const handleExport = async () => {
-    if (filteredRows.length === 0) {
+    if (rows.length === 0) {
       toast.error("Aucune donnée à exporter");
       return;
     }
@@ -366,7 +366,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     setIsLoading(true);
     try {
       // Merge original + modified data
-      const mergedData: RHExportEmployee[] = filteredRows.map(row => ({
+      const mergedData: RHExportEmployee[] = rows.map(row => ({
         ...row.original,
         ...row.modified
       }));
@@ -386,11 +386,6 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   const modifiedCount = useMemo(() => rows.filter(r => r.isModified).length, [rows]);
 
-  // Filtrer les lignes par métier
-  const filteredRows = useMemo(() => {
-    if (filterMetier === "all") return rows;
-    return rows.filter(row => row.original.metier === filterMetier);
-  }, [rows, filterMetier]);
 
   // Dashboard stats computed from rows (live updates)
   const dashboardStats = useMemo(() => {
@@ -646,25 +641,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           )}
         </div>
         <div className="flex items-center gap-4">
-          <Select value={filterMetier} onValueChange={setFilterMetier}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrer par métier" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les métiers</SelectItem>
-              <SelectItem value="Chef">Chefs</SelectItem>
-              <SelectItem value="Maçon">Maçons</SelectItem>
-              <SelectItem value="Grutier">Grutiers</SelectItem>
-              <SelectItem value="Finisseur">Finisseurs</SelectItem>
-              <SelectItem value="Intérimaire">Intérimaires</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleExport} variant="outline" size="sm" disabled={isLoading || filteredRows.length === 0}>
+          <Button onClick={handleExport} variant="outline" size="sm" disabled={isLoading || rows.length === 0}>
             <Download className="h-4 w-4 mr-2" />
             Exporter Excel
           </Button>
           <p className="text-sm text-muted-foreground">
-            {filteredRows.length} / {rows.length} salarié{rows.length > 1 ? 's' : ''}
+            {rows.length} salarié{rows.length > 1 ? 's' : ''}
           </p>
         </div>
       </div>
@@ -720,15 +702,14 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           ref={dataContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden"
         >
-          {filteredRows.map((row) => {
-            const realIndex = rows.indexOf(row);
+          {rows.map((row, rowIndex) => {
             const data = { ...row.original, ...row.modified };
             
             const estimatedCount = row.original.detailJours?.filter((j: any) => j.is_estimated).length || 0;
             
             return (
               <div 
-                key={realIndex} 
+                key={rowIndex} 
                 className={`flex border-b ${row.isModified ? "bg-blue-50/30" : ""}`}
                 style={{ height: ROW_HEIGHT }}
               >
@@ -809,7 +790,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                             <Input
                               type={cellType}
                               value={value}
-                              onChange={(e) => handleCellChange(realIndex, col.key, e.target.value)}
+                              onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
                               className={`h-8 text-xs text-center ${isModified ? 'border-blue-500 border-2' : ''}`}
                             />
                           </div>

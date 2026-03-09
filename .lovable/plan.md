@@ -1,38 +1,39 @@
 
 
-## Analyse de risque : Retrait du filtre métier
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Vérification effectuée
+### Fichier modifie
 
-`filterMetier` et `filteredRows` n'existent que dans `RHPreExport.tsx` — aucun autre fichier n'y fait référence. Le changement est entièrement contenu dans un seul composant.
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-### Points de remplacement (tous dans `RHPreExport.tsx`)
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-| Ligne | Actuel | Nouveau |
-|-------|--------|---------|
-| 153 | `const [filterMetier, setFilterMetier] = useState("all")` | Supprimé |
-| 389-393 | `const filteredRows = useMemo(...)` | Supprimé |
-| 361 | `filteredRows.length === 0` | `rows.length === 0` |
-| 369 | `filteredRows.map(row => ...)` | `rows.map(row => ...)` |
-| 649-661 | Bloc `<Select>` filtre métier | Supprimé |
-| 662 | `disabled={... filteredRows.length === 0}` | `disabled={... rows.length === 0}` |
-| 667 | `{filteredRows.length} / {rows.length}` | `{rows.length} salarié(s)` |
-| 723 | `filteredRows.map((row) => {` | `rows.map((row) => {` |
-| 724 | `const realIndex = rows.indexOf(row)` | Simplifié en index direct du `.map` |
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-### Risque de régression : aucun
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-- Le `dashboardStats` utilise déjà `rows`, pas `filteredRows` — pas impacté
-- Le `handleSaveModifications` utilise `rows` — pas impacté
-- Le `handleCellChange` utilise `rows[rowIndex]` — pas impacté, et le `realIndex` hack (ligne 724) disparaît car `rows.map` donne directement le bon index
-- L'export Excel utilisera `rows` (tous les salariés) ce qui est le comportement souhaité pour l'export de paie complet
-- Aucun composant parent ne passe ou ne lit `filterMetier`
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-### Ce qui est supprimé
-- 1 state (`filterMetier`)
-- 1 useMemo (`filteredRows`)
-- 1 composant Select (6 lignes de JSX)
-- Le compteur "X / Y" simplifié en "X salariés"
+Meme pattern exact :
 
-C'est un changement purement soustractif, sans effet de bord.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
