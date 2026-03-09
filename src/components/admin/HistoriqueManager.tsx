@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useModificationsHistory } from "@/hooks/useModificationsHistory";
+import { useUtilisateursByAuthRole } from "@/hooks/useUtilisateursByAuthRole";
 import { ModificationHistoryTable } from "@/components/shared/ModificationHistoryTable";
 import {
   Select,
