@@ -41,6 +41,8 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const clotureMutation = useCloturePeriode();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
 
   // Formater le nom du mois pour l'affichage
   const getMonthLabel = () => {
