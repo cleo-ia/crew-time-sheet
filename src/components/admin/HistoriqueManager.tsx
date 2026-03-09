@@ -262,7 +262,7 @@ export function HistoriqueManager() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les utilisateurs</SelectItem>
-              {uniqueUsers.map((u) => (
+              {displayUsers.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name}
                 </SelectItem>
