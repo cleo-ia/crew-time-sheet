@@ -173,11 +173,11 @@ export function HistoriqueManager() {
 
   // Stats
   const stats = {
-    total: filteredModifications.length,
-    today: filteredModifications.filter(
+    total: modifications.length,
+    today: modifications.filter(
       (m) => format(new Date(m.created_at), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
     ).length,
-    uniqueUsers: new Set(filteredModifications.map((m) => m.user_id)).size,
+    uniqueUsers: new Set(modifications.map((m) => m.user_id)).size,
   };
 
   return (
