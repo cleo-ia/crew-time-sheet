@@ -641,25 +641,12 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
           )}
         </div>
         <div className="flex items-center gap-4">
-          <Select value={filterMetier} onValueChange={setFilterMetier}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrer par métier" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les métiers</SelectItem>
-              <SelectItem value="Chef">Chefs</SelectItem>
-              <SelectItem value="Maçon">Maçons</SelectItem>
-              <SelectItem value="Grutier">Grutiers</SelectItem>
-              <SelectItem value="Finisseur">Finisseurs</SelectItem>
-              <SelectItem value="Intérimaire">Intérimaires</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleExport} variant="outline" size="sm" disabled={isLoading || filteredRows.length === 0}>
+          <Button onClick={handleExport} variant="outline" size="sm" disabled={isLoading || rows.length === 0}>
             <Download className="h-4 w-4 mr-2" />
             Exporter Excel
           </Button>
           <p className="text-sm text-muted-foreground">
-            {filteredRows.length} / {rows.length} salarié{rows.length > 1 ? 's' : ''}
+            {rows.length} salarié{rows.length > 1 ? 's' : ''}
           </p>
         </div>
       </div>
