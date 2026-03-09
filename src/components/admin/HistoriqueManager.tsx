@@ -119,7 +119,7 @@ export function HistoriqueManager() {
     return Array.from(usersMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [modifications]);
+  }, [filteredModifications]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["fiches-modifications"] });
