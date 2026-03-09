@@ -107,16 +107,16 @@ export function HistoriqueManager() {
     limit: 500,
   });
 
-  // Client-side role filter
-  const filteredModifications = useMemo(() => {
-    if (roleFilter === "all") return modifications;
-    return modifications.filter((mod) => mod.user_role === roleFilter);
-  }, [modifications, roleFilter]);
+  // Fetch users by auth role from DB
+  const { data: usersByRole = [] } = useUtilisateursByAuthRole(
+    roleFilter !== "all" ? roleFilter : null,
+    entrepriseId
+  );
 
-  // Extract unique users for filter dropdown
-  const uniqueUsers = useMemo(() => {
+  // Extract unique users from modifications (fallback when no role selected)
+  const uniqueUsersFromLogs = useMemo(() => {
     const usersMap = new Map<string, string>();
-    filteredModifications.forEach((mod) => {
+    modifications.forEach((mod) => {
       if (!usersMap.has(mod.user_id)) {
         usersMap.set(mod.user_id, mod.user_name);
       }
@@ -124,7 +124,10 @@ export function HistoriqueManager() {
     return Array.from(usersMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredModifications]);
+  }, [modifications]);
+
+  // Choose which user list to display
+  const displayUsers = roleFilter !== "all" ? usersByRole : uniqueUsersFromLogs;
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["fiches-modifications"] });
