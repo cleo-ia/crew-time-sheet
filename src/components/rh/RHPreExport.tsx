@@ -790,7 +790,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
                             <Input
                               type={cellType}
                               value={value}
-                              onChange={(e) => handleCellChange(realIndex, col.key, e.target.value)}
+                              onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
                               className={`h-8 text-xs text-center ${isModified ? 'border-blue-500 border-2' : ''}`}
                             />
                           </div>
