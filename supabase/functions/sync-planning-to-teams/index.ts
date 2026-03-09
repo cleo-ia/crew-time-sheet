@@ -1757,7 +1757,7 @@ async function copyFichesFromPreviousWeek(
   }
 
   // ✅ CORRECTIF: Nettoyer les jours fantômes copiés de S-1 qui ne sont pas dans le planning actuel
-  if (chantier?.conducteur_id) {
+  {
     const mondayOfWeek = parseISOWeek(currentWeek)
     const allWeekDates: string[] = []
     for (let i = 0; i < 5; i++) {
