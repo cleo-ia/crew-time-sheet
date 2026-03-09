@@ -1,39 +1,41 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+# Plan : Séparer les estimations paie prévisionnelle de la consolidation RH
 
-### Fichier modifie
+## Problème
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+`buildRHConsolidation()` génère **systématiquement** les jours estimés (paie prévisionnelle) pour compléter la fin de mois. Toutes les pages qui l'appellent (Consolidation RH, Export Paie, Rapprochement Intérim, Clôture) reçoivent donc les mêmes données gonflées avec les jours virtuels.
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+Résultat : la page **Consolidation RH** affiche des totaux incluant des jours qui n'existent pas encore.
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+## Solution
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+Ajouter un flag `includeEstimations?: boolean` dans `RHFilters`. Par défaut `false` (pas d'estimations). Seuls les appelants qui en ont besoin (export paie, clôture) le passent à `true`.
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+## Fichier modifié
 
-Meme pattern exact :
+**`src/hooks/rhShared.ts`**
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+1. Ajouter `includeEstimations?: boolean` dans l'interface `RHFilters` (ligne 16)
+2. Conditionner le bloc paie prévisionnelle (lignes 714-755) avec `if (filters.includeEstimations && !isAllPeriodes && mois)`
 
-### Ce qui ne change pas
+## Appelants à mettre à jour (passer `includeEstimations: true`)
 
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+| Fichier | Contexte |
+|---|---|
+| `src/hooks/useRHExport.ts` (ligne 109) | `fetchRHExportData` — export Excel |
+| `src/components/rh/ClotureDialog.tsx` (lignes 63 + 133) | Preview + clôture |
+| `src/components/rh/RHPeriodeDetail.tsx` (ligne 44) | Détail période clôturée |
+
+## Appelants qui restent SANS estimations (aucun changement)
+
+- `useRHSummary` (useRHData.ts ligne 77) — stats consolidation
+- `useRHConsolidated` (useRHData.ts ligne 126) — tableau consolidé
+- `RapprochementInterim.tsx` (ligne 69) — rapprochement agences
+
+## Impact
+
+- La consolidation RH affichera uniquement les heures/paniers/trajets réellement transmis
+- L'export paie et la clôture continueront d'inclure les estimations
+- Aucune modification de base de données nécessaire
 
