@@ -55,7 +55,11 @@ const ROLE_OPTIONS = [
 export function HistoriqueManager() {
   const [period, setPeriod] = useState("30days");
   const [actionFilter, setActionFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [roleFilter, setRoleFilterState] = useState("all");
+  const setRoleFilter = (value: string) => {
+    setRoleFilterState(value);
+    setUserFilter("all");
+  };
   const [userFilter, setUserFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
@@ -111,7 +115,7 @@ export function HistoriqueManager() {
   // Extract unique users for filter dropdown
   const uniqueUsers = useMemo(() => {
     const usersMap = new Map<string, string>();
-    modifications.forEach((mod) => {
+    filteredModifications.forEach((mod) => {
       if (!usersMap.has(mod.user_id)) {
         usersMap.set(mod.user_id, mod.user_name);
       }
@@ -119,7 +123,7 @@ export function HistoriqueManager() {
     return Array.from(usersMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [modifications]);
+  }, [filteredModifications]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["fiches-modifications"] });
