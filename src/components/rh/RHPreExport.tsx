@@ -392,6 +392,31 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     return rows.filter(row => row.original.metier === filterMetier);
   }, [rows, filterMetier]);
 
+  // Dashboard stats computed from rows (live updates)
+  const dashboardStats = useMemo(() => {
+    if (rows.length === 0) return null;
+    const salaries = rows.length;
+    const heuresNormales = rows.reduce((sum, r) => {
+      const val = r.modified.heuresNormales ?? r.original.heuresNormales ?? 0;
+      return sum + (typeof val === 'number' ? val : 0);
+    }, 0);
+    const heuresSupp = rows.reduce((sum, r) => {
+      const s25 = r.modified.heuresSupp25 ?? r.original.heuresSupp25 ?? 0;
+      const s50 = r.modified.heuresSupp50 ?? r.original.heuresSupp50 ?? 0;
+      return sum + s25 + s50;
+    }, 0);
+    const absences = rows.reduce((sum, r) => {
+      const jours = r.original.detailJours?.filter(j => j.isAbsent)?.length ?? 0;
+      return sum + jours;
+    }, 0);
+    const chantiers = new Set(rows.map(r => r.original.chantier).filter(Boolean)).size;
+    const trajetsACompleter = rows.filter(r => {
+      const codeTrajet = r.original.codeTrajet;
+      return codeTrajet === "A_COMPLETER" || codeTrajet === "a_completer";
+    }).length;
+    return { salaries, heuresNormales, heuresSupp, absences, chantiers, trajetsACompleter };
+  }, [rows]);
+
   // Helper : résoudre override vs baseline vs calculé
   const resolveOverride = (
     localEdit: number | undefined,
