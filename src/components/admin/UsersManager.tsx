@@ -302,10 +302,12 @@ export const UsersManager = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Utilisateurs actifs</h3>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-1" />
-              Créer un utilisateur
-            </Button>
+            {userRole !== 'gestionnaire' && (
+              <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" />
+                Créer un utilisateur
+              </Button>
+            )}
             <div className="relative w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
