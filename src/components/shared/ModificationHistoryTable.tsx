@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { FicheModification } from "@/hooks/useModificationsHistory";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RoleBadge } from "@/components/ui/role-badge";
 
 interface ModificationHistoryTableProps {
   modifications: FicheModification[];
@@ -25,7 +26,32 @@ const ACTION_CONFIG: Record<string, { label: string; variant: "default" | "secon
   transmission: { label: "Transmission", variant: "secondary" },
   modification_trajet: { label: "Trajet", variant: "outline" },
   modification_absence: { label: "Absence", variant: "destructive" },
+  modification_pre_export: { label: "Pré-export", variant: "secondary" },
+  signature_chef: { label: "Signature chef", variant: "default" },
+  transmission_conducteur: { label: "Envoi conducteur", variant: "secondary" },
+  validation_conducteur: { label: "Validation conducteur", variant: "default" },
+  export_paie: { label: "Export paie", variant: "outline" },
+  cloture_periode: { label: "Clôture", variant: "destructive" },
+  sync_planning: { label: "Sync planning", variant: "outline" },
 };
+
+const PAGE_LABELS: Record<string, string> = {
+  "/": "Saisie heures",
+  "/signature-macons": "Signatures",
+  "/validation-conducteur": "Validation",
+  "/consultation-rh": "Consultation RH",
+  "/export-paie": "Export paie",
+  "/admin": "Administration",
+  "/planning": "Planning",
+};
+
+function getPageLabel(pageSource: string | null): string | null {
+  if (!pageSource) return null;
+  const path = pageSource.split("?")[0];
+  return PAGE_LABELS[path] || path;
+}
+
+const VALID_ROLES = ["super_admin", "admin", "gestionnaire", "chef", "macon", "finisseur", "interimaire", "conducteur", "rh", "grutier"] as const;
 
 export function ModificationHistoryTable({
   modifications,
@@ -55,8 +81,8 @@ export function ModificationHistoryTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[140px]">Date/Heure</TableHead>
-            <TableHead className="w-[150px]">Utilisateur</TableHead>
-            <TableHead className="w-[120px]">Action</TableHead>
+            <TableHead className="w-[180px]">Utilisateur</TableHead>
+            <TableHead className="w-[140px]">Action</TableHead>
             <TableHead>Détails</TableHead>
           </TableRow>
         </TableHeader>
@@ -67,6 +93,7 @@ export function ModificationHistoryTable({
               variant: "outline" as const,
             };
             const details = mod.details as Record<string, unknown>;
+            const pageLabel = getPageLabel(mod.page_source);
 
             return (
               <TableRow key={mod.id}>
@@ -75,13 +102,25 @@ export function ModificationHistoryTable({
                     locale: fr,
                   })}
                 </TableCell>
-                <TableCell className="font-medium text-sm">
-                  {mod.user_name}
+                <TableCell className="text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{mod.user_name}</span>
+                    {mod.user_role && VALID_ROLES.includes(mod.user_role as any) && (
+                      <RoleBadge role={mod.user_role as any} size="sm" />
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={actionConfig.variant}>
-                    {actionConfig.label}
-                  </Badge>
+                  <div className="flex flex-col gap-1">
+                    <Badge variant={actionConfig.variant}>
+                      {actionConfig.label}
+                    </Badge>
+                    {pageLabel && (
+                      <span className="text-xs text-muted-foreground">
+                        {pageLabel}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-sm">
                   <div className="flex flex-col gap-0.5">
@@ -98,6 +137,16 @@ export function ModificationHistoryTable({
                     {details.salarie && (
                       <span className="text-muted-foreground">
                         Salarié: {String(details.salarie)}
+                      </span>
+                    )}
+                    {details.periode && (
+                      <span className="text-muted-foreground">
+                        Période: {String(details.periode)}
+                      </span>
+                    )}
+                    {details.nbSalaries && (
+                      <span className="text-muted-foreground">
+                        {String(details.nbSalaries)} salarié(s)
                       </span>
                     )}
                     {mod.champ_modifie && (

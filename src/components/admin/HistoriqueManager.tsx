@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useModificationsHistory } from "@/hooks/useModificationsHistory";
 import { ModificationHistoryTable } from "@/components/shared/ModificationHistoryTable";
 import {
@@ -8,9 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, Search } from "lucide-react";
 import { startOfMonth, endOfMonth, subDays, format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,12 +33,21 @@ const ACTION_OPTIONS = [
   { value: "modification_absence", label: "Absences" },
   { value: "modification_statut", label: "Statuts" },
   { value: "signature", label: "Signatures" },
+  { value: "signature_chef", label: "Signatures chef" },
   { value: "transmission", label: "Transmissions" },
+  { value: "transmission_conducteur", label: "Envoi conducteur" },
+  { value: "validation_conducteur", label: "Validation conducteur" },
+  { value: "modification_pre_export", label: "Pré-export" },
+  { value: "export_paie", label: "Export paie" },
+  { value: "cloture_periode", label: "Clôture période" },
+  { value: "sync_planning", label: "Sync planning" },
 ];
 
 export function HistoriqueManager() {
   const [period, setPeriod] = useState("30days");
   const [actionFilter, setActionFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
 
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -77,8 +87,23 @@ export function HistoriqueManager() {
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     action: actionFilter !== "all" ? actionFilter : undefined,
+    userId: userFilter !== "all" ? userFilter : undefined,
+    searchTerm: searchTerm || undefined,
     limit: 500,
   });
+
+  // Extract unique users for filter dropdown
+  const uniqueUsers = useMemo(() => {
+    const usersMap = new Map<string, string>();
+    modifications.forEach((mod) => {
+      if (!usersMap.has(mod.user_id)) {
+        usersMap.set(mod.user_id, mod.user_name);
+      }
+    });
+    return Array.from(usersMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [modifications]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["fiches-modifications"] });
@@ -87,7 +112,7 @@ export function HistoriqueManager() {
   const handleExportCSV = () => {
     if (modifications.length === 0) return;
 
-    const headers = ["Date", "Heure", "Utilisateur", "Action", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
+    const headers = ["Date", "Heure", "Utilisateur", "Rôle", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
     const rows = modifications.map((mod) => {
       const date = new Date(mod.created_at);
       const details = mod.details as Record<string, unknown>;
@@ -99,7 +124,9 @@ export function HistoriqueManager() {
         format(date, "dd/MM/yyyy", { locale: fr }),
         format(date, "HH:mm", { locale: fr }),
         mod.user_name,
+        mod.user_role || "",
         mod.action,
+        mod.page_source || "",
         mod.champ_modifie || "",
         mod.ancienne_valeur || "",
         mod.nouvelle_valeur || "",
@@ -185,6 +212,36 @@ export function HistoriqueManager() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Utilisateur</Label>
+          <Select value={userFilter} onValueChange={setUserFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tous" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les utilisateurs</SelectItem>
+              {uniqueUsers.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Recherche</Label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Salarié, chantier..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-[200px] pl-8"
+            />
+          </div>
         </div>
 
         <div className="flex gap-2 ml-auto">

@@ -13,6 +13,8 @@ export interface FicheModification {
   nouvelle_valeur: string | null;
   details: Record<string, unknown>;
   created_at: string;
+  user_role: string | null;
+  page_source: string | null;
 }
 
 interface UseModificationsHistoryParams {
@@ -21,6 +23,7 @@ interface UseModificationsHistoryParams {
   endDate?: string;
   action?: string;
   userId?: string;
+  searchTerm?: string;
   limit?: number;
 }
 
@@ -30,10 +33,11 @@ export function useModificationsHistory({
   endDate,
   action,
   userId,
+  searchTerm,
   limit = 100,
 }: UseModificationsHistoryParams) {
   return useQuery({
-    queryKey: ["fiches-modifications", entrepriseId, startDate, endDate, action, userId, limit],
+    queryKey: ["fiches-modifications", entrepriseId, startDate, endDate, action, userId, searchTerm, limit],
     queryFn: async () => {
       if (!entrepriseId) return [];
 
@@ -64,7 +68,21 @@ export function useModificationsHistory({
         throw error;
       }
 
-      return (data || []) as FicheModification[];
+      let results = (data || []) as FicheModification[];
+
+      // Client-side search filter
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        results = results.filter((mod) => {
+          const details = mod.details as Record<string, unknown>;
+          const salarie = String(details.salarie || "").toLowerCase();
+          const chantier = String(details.chantier || "").toLowerCase();
+          const userName = mod.user_name.toLowerCase();
+          return salarie.includes(term) || chantier.includes(term) || userName.includes(term);
+        });
+      }
+
+      return results;
     },
     enabled: !!entrepriseId,
   });
