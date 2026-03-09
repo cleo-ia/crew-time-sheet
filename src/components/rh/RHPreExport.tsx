@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Download, RotateCcw, AlertCircle, Save, Loader2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Download, RotateCcw, AlertCircle, Save, Loader2, Users, Clock, TrendingUp, UserX, Building2, AlertTriangle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { generateRHExcel } from "@/lib/excelExport";
@@ -391,6 +392,37 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
     return rows.filter(row => row.original.metier === filterMetier);
   }, [rows, filterMetier]);
 
+  // Dashboard stats computed from rows (live updates)
+  const dashboardStats = useMemo(() => {
+    if (rows.length === 0) return null;
+    const salaries = rows.length;
+    const heuresNormales = rows.reduce((sum, r) => {
+      const val = r.modified.heuresNormales ?? r.original.heuresNormales ?? 0;
+      return sum + (typeof val === 'number' ? val : 0);
+    }, 0);
+    const heuresSupp = rows.reduce((sum, r) => {
+      const s25 = r.modified.heuresSupp25 ?? r.original.heuresSupp25 ?? 0;
+      const s50 = r.modified.heuresSupp50 ?? r.original.heuresSupp50 ?? 0;
+      return sum + s25 + s50;
+    }, 0);
+    const absences = rows.reduce((sum, r) => {
+      const jours = r.original.detailJours?.filter(j => j.isAbsent)?.length ?? 0;
+      return sum + jours;
+    }, 0);
+    const chantierCodes = new Set<string>();
+    rows.forEach(r => {
+      r.original.detailJours?.forEach(j => {
+        if (j.chantierCode) chantierCodes.add(j.chantierCode);
+      });
+    });
+    const chantiers = chantierCodes.size;
+    const trajetsACompleter = rows.reduce((sum, r) => {
+      const count = r.original.detailJours?.filter(j => j.trajet === "A_COMPLETER" || j.trajet === "a_completer")?.length ?? 0;
+      return sum + count;
+    }, 0);
+    return { salaries, heuresNormales, heuresSupp, absences, chantiers, trajetsACompleter };
+  }, [rows]);
+
   // Helper : résoudre override vs baseline vs calculé
   const resolveOverride = (
     localEdit: number | undefined,
@@ -551,7 +583,45 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Actions */}
+      {/* Dashboard widgets */}
+      {dashboardStats && (
+        <>
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+            {[
+              { label: "Salariés", value: dashboardStats.salaries, icon: Users },
+              { label: "Heures normales", value: `${Math.round(dashboardStats.heuresNormales)}h`, icon: Clock },
+              { label: "Heures supp.", value: `${Math.round(dashboardStats.heuresSupp)}h`, icon: TrendingUp },
+              { label: "Absences", value: `${dashboardStats.absences}j`, icon: UserX },
+              { label: "Chantiers", value: dashboardStats.chantiers, icon: Building2 },
+            ].map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={idx} className="p-3 shadow-sm border-border/50">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-muted/50 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold text-foreground">{stat.value}</p>
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {dashboardStats.trajetsACompleter > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {dashboardStats.trajetsACompleter} trajet(s) à compléter. Corrigez-les avant l'export.
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           {modifiedCount > 0 && (

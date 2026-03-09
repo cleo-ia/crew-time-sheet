@@ -1,19 +1,16 @@
 import { useState, useMemo } from "react";
 import { format, subMonths, addMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileOutput, ChevronRight, ChevronLeft, Users, Clock, TrendingUp, UserX, Building2, Utensils, Car, Route, Download, Lock, Loader2, AlertTriangle, FileSpreadsheet, PieChart } from "lucide-react";
+import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RHPreExport } from "@/components/rh/RHPreExport";
 import { ClotureDialog } from "@/components/rh/ClotureDialog";
 import { InterimaireExportDialog } from "@/components/rh/InterimaireExportDialog";
-import { useRHSummary } from "@/hooks/useRHData";
 import { fetchRHExportData } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
 import { useRecapChantier, useVentilationOuvrier, useVentilationInterim } from "@/hooks/useVentilationAnalytique";
@@ -23,9 +20,8 @@ import { toast } from "sonner";
 
 const STEPS = [
   { id: 1, label: "Période", icon: Clock },
-  { id: 2, label: "Récapitulatif", icon: Users },
-  { id: 3, label: "Ajustements", icon: FileSpreadsheet },
-  { id: 4, label: "Export & Clôture", icon: Lock },
+  { id: 2, label: "Ajustements & Dashboard", icon: FileSpreadsheet },
+  { id: 3, label: "Export & Clôture", icon: Lock },
 ];
 
 const ExportPaie = () => {
@@ -47,8 +43,6 @@ const ExportPaie = () => {
     salarie: "all",
     typeSalarie: "non_interimaire",
   }), [periode]);
-
-  const { data: summary, isLoading: summaryLoading } = useRHSummary(filters);
 
   // Ventilation data for PDF export
   const { data: recapChantierData } = useRecapChantier(periode);
@@ -123,7 +117,6 @@ const ExportPaie = () => {
 
   const canGoNext = () => {
     if (currentStep === 1) return !!periode;
-    if (currentStep === 2) return (summary?.salaries || 0) > 0;
     return true;
   };
 
@@ -192,73 +185,11 @@ const ExportPaie = () => {
           </Card>
         )}
 
-        {/* Step 2: Récapitulatif */}
+        {/* Step 2: Ajustements & Dashboard */}
         {currentStep === 2 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground capitalize">
-              Récapitulatif — {periodeLabel}
-            </h2>
-            {summaryLoading ? (
-              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="p-4"><Skeleton className="h-20 w-full" /></Card>
-                ))}
-              </div>
-            ) : (
-              <>
-                <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                  {[
-                    { label: "Salariés", value: summary?.salaries || 0, icon: Users, color: "text-primary" },
-                    { label: "Heures normales", value: `${summary?.heuresNormales || 0}h`, icon: Clock, color: "text-primary" },
-                    { label: "Heures supp.", value: `${summary?.heuresSupp || 0}h`, icon: TrendingUp, color: "text-accent" },
-                    { label: "Absences", value: `${summary?.absences || 0}j`, icon: UserX, color: "text-warning" },
-                    { label: "Chantiers", value: summary?.chantiers || 0, icon: Building2, color: "text-primary" },
-                    { label: "Trajets à compléter", value: summary?.trajetsACompleter || 0, icon: Route, color: (summary?.trajetsACompleter || 0) > 0 ? "text-orange-500" : "text-muted-foreground" },
-                  ].map((stat, idx) => {
-                    const Icon = stat.icon;
-                    return (
-                      <Card key={idx} className="p-4 shadow-md border-border/50">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg bg-muted/50 ${stat.color}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                            <p className="text-xs text-muted-foreground">{stat.label}</p>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                {(summary?.trajetsACompleter || 0) > 0 && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {summary?.trajetsACompleter} trajet(s) à compléter. Corrigez-les avant l'export.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {(summary?.salaries || 0) === 0 && (
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      Aucune donnée trouvée pour cette période. Vérifiez que les fiches ont bien été transmises.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 3: Ajustements (Pré-export) */}
-        {currentStep === 3 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground capitalize">
-              Ajustements pré-export — {periodeLabel}
+              Ajustements & Dashboard — {periodeLabel}
             </h2>
             <p className="text-sm text-muted-foreground">
               Vérifiez et ajustez les données avant l'export final. Les modifications sont enregistrées en base.
@@ -267,8 +198,8 @@ const ExportPaie = () => {
           </div>
         )}
 
-        {/* Step 4: Export & Clôture */}
-        {currentStep === 4 && (
+        {/* Step 3: Export & Clôture */}
+        {currentStep === 3 && (
           <div className="space-y-6">
             <h2 className="text-lg font-semibold text-foreground capitalize">
               Export & Clôture — {periodeLabel}
@@ -345,9 +276,9 @@ const ExportPaie = () => {
             <ChevronLeft className="h-4 w-4 mr-2" />
             Précédent
           </Button>
-          {currentStep < 4 && (
+          {currentStep < 3 && (
             <Button
-              onClick={() => setCurrentStep(prev => Math.min(4, prev + 1))}
+              onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
               disabled={!canGoNext()}
             >
               Suivant
