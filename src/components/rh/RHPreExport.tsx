@@ -358,7 +358,7 @@ export const RHPreExport = ({ filters }: RHPreExportProps) => {
   };
 
   const handleExport = async () => {
-    if (filteredRows.length === 0) {
+    if (rows.length === 0) {
       toast.error("Aucune donnée à exporter");
       return;
     }
