@@ -11,6 +11,8 @@ import { fetchRHExportData, RHExportEmployee } from "@/hooks/useRHExport";
 import { generateRHExcel } from "@/lib/excelExport";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface ClotureDialogProps {
   open: boolean;
