@@ -1,20 +1,39 @@
 
 
-## Plan : Bordures colorées sur les cartes KPI
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-Remplacer les fonds pastel par des bordures gauches colorées (`border-l-4`) en gardant le fond neutre par défaut (`bg-card`). Conserver les couleurs d'icônes.
+### Fichier modifie
 
-### Modifications dans `src/pages/ExportPaie.tsx` (lignes 292-328)
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-| Carte | Avant | Après |
-|-------|-------|-------|
-| Salariés | `bg-[hsl(210_90%_96%)]...` | `border-l-4 border-[hsl(210_85%_50%)]` |
-| Fiches validées | `bg-[hsl(142_70%_96%)]...` | `border-l-4 border-[hsl(142_71%_45%)]` |
-| Chantiers | `bg-[hsl(25_90%_96%)]...` | `border-l-4 border-[hsl(25_95%_53%)]` |
-| Statut | `bg-[hsl(270_40%_96%)]...` | `border-l-4 border-[hsl(270_60%_55%)]` |
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-Les icônes gardent leurs couleurs actuelles. Le fond redevient neutre (pas de classe `bg-*` custom).
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-### Fichier modifié
-- `src/pages/ExportPaie.tsx`
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
+
+Meme pattern exact :
+
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
