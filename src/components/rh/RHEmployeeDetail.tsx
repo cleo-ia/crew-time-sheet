@@ -516,15 +516,16 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                               entrepriseId: userInfo.entrepriseId,
                               userId: userInfo.userId,
                               userName: userInfo.userName,
-                              action: "modification_type_absence",
-                              champModifie: "type_absence",
-                              ancienneValeur: oldValue,
-                              nouvelleValeur: newValue,
-                              details: {
-                                salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
-                                date: day.date,
-                                chantier: day.chantier,
-                              },
+                               action: "correction_rh",
+                               champModifie: "type_absence",
+                               ancienneValeur: oldValue,
+                               nouvelleValeur: newValue,
+                               details: {
+                                 salarie: `${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                                 date: day.date,
+                                 chantier: day.chantier,
+                                 message: `Correction administrative : Type absence modifié pour ${data?.salarie?.prenom || ""} ${data?.salarie?.nom || ""}`.trim(),
+                               },
                             });
                           } catch (e) { console.error("Log error:", e); }
                         }
