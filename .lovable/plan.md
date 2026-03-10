@@ -1,39 +1,33 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Plan: Instrumentation des créations/suppressions (Intérimaires + Véhicules)
 
-### Fichier modifie
+### Fichiers modifiés
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+**1. `src/components/shared/InterimaireFormDialog.tsx`**
+- Importer `useLogModification` et `useCurrentUserInfo`
+- Après création réussie : appeler `logModification.mutate` avec `action: 'creation_interimaire'` et `details: { message: "Ajout de l'intérimaire [Nom] [Prénom] (Agence: [Agence])" }`
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+**2. `src/components/admin/InterimairesManager.tsx`**
+- Importer `useLogModification` et `useCurrentUserInfo`
+- Avant/après suppression réussie : appeler `logModification.mutate` avec `action: 'suppression_interimaire'` et `details: { message: "Suppression définitive de l'intérimaire [Nom] [Prénom]" }`
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+**3. `src/components/admin/VehiculesManager.tsx`**
+- Importer `useLogModification` et `useCurrentUserInfo`
+- Après création réussie dans `handleSubmit` : `action: 'creation_vehicule'`, `details: { message: "Ajout du véhicule [Marque/Modèle] - Immatriculation: [Plaque]" }`
+- Après suppression réussie dans `handleDelete` : `action: 'suppression_vehicule'`, `details: { message: "Retrait du véhicule [Marque/Modèle] ([Plaque])" }` (stocker les infos du véhicule avant suppression)
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+**4. `src/components/shared/ModificationHistoryTable.tsx`**
+- Ajouter 4 entrées dans `ACTION_CONFIG` :
+  - `creation_interimaire: { label: "Création intérimaire", variant: "default" }`
+  - `suppression_interimaire: { label: "Suppression intérimaire", variant: "destructive" }`
+  - `creation_vehicule: { label: "Création véhicule", variant: "default" }`
+  - `suppression_vehicule: { label: "Suppression véhicule", variant: "destructive" }`
+- Le fallback `details.message` est **déjà géré** (ligne 167-169), donc si `champ_modifie` est vide, le message dans `details` s'affiche automatiquement.
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
-
-Meme pattern exact :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+### Points techniques
+- On utilise `useCurrentUserInfo()` pour obtenir `userId`, `userName`, `entrepriseId` (pattern existant)
+- On utilise `useCurrentUserRole()` pour passer `userRole` au log
+- `fiche_id` sera `null` car ces actions ne concernent pas une fiche
+- Aucune migration DB nécessaire — la table `fiches_modifications` accepte déjà ces champs
 
