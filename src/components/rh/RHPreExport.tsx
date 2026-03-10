@@ -147,7 +147,7 @@ const RIGHT_COLUMNS = [
 const FIXED_WIDTH = 340; // Largeur zone fixe gauche
 const ROW_HEIGHT = 40; // Hauteur de ligne unifiée
 
-export const RHPreExport = ({ filters }: RHPreExportProps) => {
+export const RHPreExport = ({ filters, autoLoad = false }: RHPreExportProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
