@@ -89,6 +89,17 @@ export const VehiculesManager = () => {
       });
     } else {
       await createVehicule.mutateAsync(formData);
+      if (userInfo) {
+        const label = [formData.marque, formData.modele].filter(Boolean).join(" ") || "Véhicule";
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "creation_vehicule",
+          details: { message: `Ajout du véhicule ${label} - Immatriculation: ${formData.immatriculation}` },
+          userRole: userRole || null,
+        });
+      }
     }
     handleCloseDialog();
   };
