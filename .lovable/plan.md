@@ -1,34 +1,39 @@
 
 
-## Correction du crash `useExportPaieReadiness`
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Problème
+### Fichier modifie
 
-La colonne `periode` dans `periodes_cloturees` contient **deux formats différents** :
-- `"Décembre 2025"` (texte français)
-- `"2025-11"` (format yyyy-MM)
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-Le hook a deux bugs liés :
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-1. **Ligne 88** — `.eq("periode", periode)` compare avec `"2026-03"` mais la DB peut contenir `"Mars 2026"`. La clôture du mois courant n'est donc jamais trouvée si le format est français.
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-2. **Lignes 128-129** — `derniereCloture.periode.split("-")` crashe sur `"Décembre 2025"` car le split produit des valeurs non numériques → `NaN` → `Invalid Date` → le hook throw → React Query passe en erreur → les cartes disparaissent.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-### Correction dans `src/hooks/useExportPaieReadiness.ts`
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-**1. Vérification de clôture (ligne ~85-90)** : ne plus chercher par `.eq("periode", periode)` seul. Chercher les deux formats possibles avec `.or()` :
-- `periode.eq.2026-03` (format yyyy-MM)  
-- `periode.eq.Mars 2026` (format français)
+Meme pattern exact :
 
-On génère le label français du mois avec `format(date, "MMMM yyyy", { locale: fr })` et on cherche les deux.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-**2. Dernière clôture (lignes 126-130)** : parser `periode` de manière robuste :
-- Si ça matche `yyyy-MM` → parser normalement
-- Sinon → utiliser directement la valeur telle quelle comme `moisDerniereCloture` (c'est déjà un label lisible comme "Décembre 2025")
+### Ce qui ne change pas
 
-### Fichier modifié
-
-| Fichier | Changement |
-|---------|-----------|
-| `src/hooks/useExportPaieReadiness.ts` | Corriger la requête clôture pour chercher les 2 formats + parser `periode` de manière défensive |
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 

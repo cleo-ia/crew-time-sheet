@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear } from "date-fns";
+import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export interface ExportPaieReadiness {
@@ -82,11 +82,15 @@ export const useExportPaieReadiness = (periode: string) => {
         .filter((w) => w !== derniereSemaine)
         .filter((w) => !semainesAvecFiches.has(w));
 
-      // Check clôture for this period
+      // Generate French label for the period to match both formats in DB
+      const [pYear, pMonth] = periode.split("-").map(Number);
+      const periodeFrLabel = format(new Date(pYear, pMonth - 1), "MMMM yyyy", { locale: fr });
+
+      // Check clôture for this period (search both yyyy-MM and French label formats)
       const { data: cloture } = await supabase
         .from("periodes_cloturees")
         .select("periode, date_cloture")
-        .eq("periode", periode)
+        .or(`periode.eq.${periode},periode.eq.${periodeFrLabel}`)
         .maybeSingle();
 
       // Dernière clôture globale
@@ -125,8 +129,15 @@ export const useExportPaieReadiness = (periode: string) => {
       let moisDerniereCloture: string | null = null;
       if (derniereCloture) {
         dateDerniereCloture = format(new Date(derniereCloture.date_cloture), "dd/MM/yyyy", { locale: fr });
-        const [y, m] = derniereCloture.periode.split("-");
-        moisDerniereCloture = format(new Date(Number(y), Number(m) - 1), "MMMM yyyy", { locale: fr });
+        // Robust parsing: if periode matches yyyy-MM, parse it; otherwise use as-is
+        const p = derniereCloture.periode;
+        if (/^\d{4}-\d{2}$/.test(p)) {
+          const [y, m] = p.split("-");
+          moisDerniereCloture = format(new Date(Number(y), Number(m) - 1), "MMMM yyyy", { locale: fr });
+        } else {
+          // Already a human-readable label like "Décembre 2025"
+          moisDerniereCloture = p;
+        }
       }
 
       return {
