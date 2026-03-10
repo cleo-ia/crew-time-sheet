@@ -40,6 +40,8 @@ import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesRHSheet } from "@/components/conges/CongesRHSheet";
 import { AbsencesLongueDureeSheet } from "@/components/conges/AbsencesLongueDureeSheet";
 import { useDemandesEnAttenteRH } from "@/hooks/useDemandesCongesRH";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { VentilationRecapChantier } from "@/components/rh/VentilationRecapChantier";
 import { VentilationOuvrier } from "@/components/rh/VentilationOuvrier";
 import { VentilationInterim } from "@/components/rh/VentilationInterim";
