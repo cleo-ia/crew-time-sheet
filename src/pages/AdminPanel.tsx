@@ -194,7 +194,7 @@ const AdminPanel = () => {
             </TabsContent>
 
             <TabsContent value="chantiers" className="p-6">
-              <ChantiersManager />
+              <ChantiersManager readOnly={isGestionnaire} />
             </TabsContent>
 
             {!isGestionnaire && (

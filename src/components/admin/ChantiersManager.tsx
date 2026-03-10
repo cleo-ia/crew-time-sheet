@@ -218,7 +218,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
                       {chantier.actif ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  {!readOnly && <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
