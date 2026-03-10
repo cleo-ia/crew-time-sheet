@@ -1,39 +1,23 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Ajouter des couleurs pastel aux 4 cartes KPI
 
-### Fichier modifie
+Appliquer un fond pastel subtil à chaque carte, cohérent avec le design system existant (variables CSS HSL du thème).
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+### Modifications dans `src/pages/ExportPaie.tsx`
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+| Carte | Couleur | Classe ajoutée |
+|-------|---------|----------------|
+| Salariés (Users) | Bleu pastel | `bg-[hsl(210_90%_96%)] dark:bg-[hsl(210_50%_18%)]` |
+| Fiches validées | Vert pastel | `bg-[hsl(142_70%_96%)] dark:bg-[hsl(142_40%_18%)]` |
+| Chantiers | Orange pastel | `bg-[hsl(25_90%_96%)] dark:bg-[hsl(25_50%_18%)]` |
+| Statut | Gris/violet pastel | `bg-[hsl(270_40%_96%)] dark:bg-[hsl(270_25%_18%)]` |
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+Également colorer les icônes pour matcher : bleu, vert, orange, violet.
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+### Fichier modifié
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
-
-Meme pattern exact :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+| Fichier | Action |
+|---------|--------|
+| `src/pages/ExportPaie.tsx` | Ajouter les classes de fond pastel + couleur d'icône sur chaque `Card` |
 
