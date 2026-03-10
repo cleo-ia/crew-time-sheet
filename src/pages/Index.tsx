@@ -48,6 +48,8 @@ import { CongesSheet } from "@/components/conges/CongesSheet";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useNewPlanningItemsCount } from "@/hooks/useNewPlanningItemsCount";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 const Index = () => {
   const navigate = useNavigate();
