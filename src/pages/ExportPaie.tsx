@@ -22,6 +22,7 @@ import { useExportPaieReadiness } from "@/hooks/useExportPaieReadiness";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { FichesNonValideesDialog } from "@/components/rh/FichesNonValideesDialog";
 
 const STEPS = [
   { id: 1, label: "Période", icon: Clock },
