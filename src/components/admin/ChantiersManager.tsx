@@ -20,6 +20,9 @@ import { useChantiers, useCreateChantier, useUpdateChantier, useDeleteChantier }
 import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { ChantierDocumentsUpload } from "./ChantierDocumentsUpload";
 import { Switch } from "@/components/ui/switch";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 interface ChantiersManagerProps {
   basePath?: string;
