@@ -215,25 +215,120 @@ const ExportPaie = () => {
 
         {/* Step 1: Sélection période */}
         {currentStep === 1 && (
-          <Card className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Sélection de la période</h2>
-            <p className="text-sm text-muted-foreground">
-              Choisissez le mois pour lequel vous souhaitez préparer l'export de paie.
-            </p>
-            <div className="max-w-sm">
-              <Select value={periode} onValueChange={setPeriode}>
-                <SelectTrigger className="h-12 text-base">
-                  <SelectValue placeholder="Sélectionner un mois" />
-                </SelectTrigger>
-                <SelectContent>
-                  {derniersMois.map((mois) => (
-                    <SelectItem key={mois.value} value={mois.value}>
-                      <span className="capitalize">{mois.label}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <Card className="p-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Sélection de la période</h2>
+              <p className="text-sm text-muted-foreground">
+                Choisissez le mois pour lequel vous souhaitez préparer l'export de paie.
+              </p>
             </div>
+
+            {/* Month navigation */}
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="w-64">
+                <Select value={periode} onValueChange={setPeriode}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Sélectionner un mois" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {derniersMois.map((mois) => (
+                      <SelectItem key={mois.value} value={mois.value}>
+                        <span className="capitalize">{mois.label}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Readiness badge */}
+            {readiness.isLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : readiness.data && (
+              <div className={`rounded-lg border p-4 flex items-start gap-3 ${
+                readiness.data.status === "closed"
+                  ? "bg-destructive/10 border-destructive/30"
+                  : readiness.data.status === "incomplete"
+                  ? "bg-orange-500/10 border-orange-500/30"
+                  : "bg-green-500/10 border-green-500/30"
+              }`}>
+                {readiness.data.status === "closed" ? (
+                  <ShieldX className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                ) : readiness.data.status === "incomplete" ? (
+                  <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 shrink-0" />
+                ) : (
+                  <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  <p className={`font-semibold ${
+                    readiness.data.status === "closed"
+                      ? "text-destructive"
+                      : readiness.data.status === "incomplete"
+                      ? "text-orange-600"
+                      : "text-green-700"
+                  }`}>
+                    {readiness.data.label}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{readiness.data.sublabel}</p>
+                </div>
+              </div>
+            )}
+
+            {/* KPI cards */}
+            {readiness.isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+              </div>
+            ) : readiness.data && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span className="text-xs font-medium">Salariés</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{readiness.data.nbSalaries}</p>
+                </Card>
+                <Card className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Fiches validées</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {readiness.data.nbFichesValidees}
+                    <span className="text-sm font-normal text-muted-foreground"> / {readiness.data.nbFichesTotal}</span>
+                  </p>
+                </Card>
+                <Card className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Chantiers</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{readiness.data.nbChantiers}</p>
+                </Card>
+                <Card className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <CircleDot className="h-4 w-4" />
+                    <span className="text-xs font-medium">Statut</span>
+                  </div>
+                  <Badge variant={readiness.data.status === "closed" ? "destructive" : "outline"} className="mt-1">
+                    {readiness.data.status === "closed" ? "Clôturée" : "Ouverte"}
+                  </Badge>
+                </Card>
+              </div>
+            )}
+
+            {/* Dernière clôture */}
+            {readiness.data?.dateDerniereCloture && (
+              <p className="text-xs text-muted-foreground text-center">
+                Dernière clôture : <span className="capitalize">{readiness.data.moisDerniereCloture}</span> — le {readiness.data.dateDerniereCloture}
+              </p>
+            )}
           </Card>
         )}
 
