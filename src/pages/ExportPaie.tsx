@@ -289,40 +289,51 @@ const ExportPaie = () => {
               </div>
             ) : readiness.data && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4 space-y-1 border-l-4 border-[hsl(210_85%_50%)]">
+                <Card className="p-4 space-y-1 border border-border shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4 text-[hsl(210_85%_50%)]" />
+                    <Users className="h-4 w-4 text-blue-500" />
                     <span className="text-xs font-medium">Salariés</span>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{readiness.data.nbSalaries}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{readiness.data.nbSalaries}</p>
                 </Card>
                 <Card
-                  className="p-4 space-y-1 cursor-pointer transition-colors border-l-4 border-[hsl(142_71%_45%)] hover:bg-muted/50"
+                  className={`p-4 space-y-1 cursor-pointer transition-shadow shadow-sm hover:shadow-md border border-border ${
+                    readiness.data.nbFichesValidees === readiness.data.nbFichesTotal && readiness.data.nbFichesTotal > 0
+                      ? "border-l-4 border-l-green-500"
+                      : "border-l-4 border-l-orange-400"
+                  }`}
                   onClick={() => setShowFichesDetail(true)}
                 >
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <CheckCircle2 className="h-4 w-4 text-[hsl(142_71%_45%)]" />
+                    {readiness.data.nbFichesValidees === readiness.data.nbFichesTotal && readiness.data.nbFichesTotal > 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-orange-400" />
+                    )}
                     <span className="text-xs font-medium">Fiches validées</span>
-                    <Info className="h-3 w-3 ml-auto opacity-50" />
+                    <Info className="h-3 w-3 ml-auto text-muted-foreground/40" />
                   </div>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-foreground">
                     {readiness.data.nbFichesValidees}
                     <span className="text-sm font-normal text-muted-foreground"> / {readiness.data.nbFichesTotal}</span>
                   </p>
                 </Card>
-                <Card className="p-4 space-y-1 border-l-4 border-[hsl(25_95%_53%)]">
+                <Card className="p-4 space-y-1 border border-border shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4 text-[hsl(25_95%_53%)]" />
+                    <Building2 className="h-4 w-4 text-orange-500" />
                     <span className="text-xs font-medium">Chantiers</span>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{readiness.data.nbChantiers}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{readiness.data.nbChantiers}</p>
                 </Card>
-                <Card className="p-4 space-y-1 border-l-4 border-[hsl(270_60%_55%)]">
+                <Card className="p-4 space-y-1 border border-border shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <CircleDot className="h-4 w-4 text-[hsl(270_60%_55%)]" />
+                    <CircleDot className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium">Statut</span>
                   </div>
-                  <Badge variant={readiness.data.status === "closed" ? "destructive" : "outline"} className="mt-1">
+                  <Badge
+                    variant={readiness.data.status === "closed" ? "destructive" : "outline"}
+                    className={readiness.data.status !== "closed" ? "mt-1 border-blue-500 text-blue-600" : "mt-1"}
+                  >
                     {readiness.data.status === "closed" ? "Clôturée" : "Ouverte"}
                   </Badge>
                 </Card>
