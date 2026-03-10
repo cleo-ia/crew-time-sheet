@@ -148,6 +148,32 @@ export const useExportPaieReadiness = (periode: string) => {
         }
       }
 
+      // Build fichesNonValidees: group unvalidated fiches by salarie
+      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string> }>();
+      for (const f of allFiches) {
+        if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
+          const existing = nonValideesMap.get(f.salarie_id);
+          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string } | null;
+          if (existing) {
+            if (f.semaine) existing.semaines.add(f.semaine);
+          } else {
+            nonValideesMap.set(f.salarie_id, {
+              nom: utilisateur?.nom || "—",
+              prenom: utilisateur?.prenom || "",
+              semaines: new Set(f.semaine ? [f.semaine] : []),
+            });
+          }
+        }
+      }
+      const fichesNonValidees: FicheNonValidee[] = Array.from(nonValideesMap.entries())
+        .map(([salarieId, v]) => ({
+          salarieId,
+          nom: v.nom,
+          prenom: v.prenom,
+          semaines: Array.from(v.semaines).sort(),
+        }))
+        .sort((a, b) => a.nom.localeCompare(b.nom));
+
       return {
         status,
         label,
@@ -160,6 +186,7 @@ export const useExportPaieReadiness = (periode: string) => {
         derniereSemaineMois: derniereSemaine,
         dateDerniereCloture,
         moisDerniereCloture,
+        fichesNonValidees,
       };
     },
   });

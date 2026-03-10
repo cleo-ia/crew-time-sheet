@@ -452,6 +452,12 @@ const ExportPaie = () => {
         onOpenChange={setShowInterimaireExport}
         filters={filters}
       />
+      <FichesNonValideesDialog
+        open={showFichesDetail}
+        onOpenChange={setShowFichesDetail}
+        fichesNonValidees={readiness.data?.fichesNonValidees || []}
+        periodeLabel={periodeLabel}
+      />
     </PageLayout>
   );
 };
