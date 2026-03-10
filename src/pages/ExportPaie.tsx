@@ -89,6 +89,22 @@ const ExportPaie = () => {
         dossierRef: enterpriseConfig?.dossierRef,
       });
       toast.success(`Excel généré : ${filename}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: {
+              periode,
+              type: "excel",
+              message: `Export paie Excel généré pour ${periodeLabel}`,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("Erreur export Excel:", error);
       toast.error("Erreur lors de la génération de l'Excel");
