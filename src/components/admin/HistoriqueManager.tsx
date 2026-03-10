@@ -32,6 +32,32 @@ const ROLE_FILTERS = [
   { value: "chef", label: "Chef" },
 ];
 
+const ROLE_ORDER: Record<string, number> = {
+  super_admin: 0,
+  admin: 1,
+  gestionnaire: 2,
+  rh: 3,
+  conducteur: 4,
+  chef: 5,
+  grutier: 6,
+  macon: 7,
+  finisseur: 8,
+  interimaire: 9,
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  gestionnaire: "Gestionnaires",
+  rh: "RH",
+  conducteur: "Conducteurs",
+  chef: "Chefs de chantier",
+  grutier: "Grutiers",
+  macon: "Maçons",
+  finisseur: "Finisseurs",
+  interimaire: "Intérimaires",
+};
+
 const PERIOD_OPTIONS = [
   { value: "7days", label: "7 derniers jours" },
   { value: "30days", label: "30 derniers jours" },
