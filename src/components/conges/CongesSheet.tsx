@@ -105,6 +105,8 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
   
   const markAsRead = useMarkDemandesAsRead();
   const createDemande = useCreateDemandeConge();
+  const logModification = useLogModification();
+  const currentUserInfo = useCurrentUserInfo();
 
   // Marquer les demandes comme lues à l'ouverture du panneau
   useEffect(() => {
