@@ -40,6 +40,8 @@ import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesRHSheet } from "@/components/conges/CongesRHSheet";
 import { AbsencesLongueDureeSheet } from "@/components/conges/AbsencesLongueDureeSheet";
 import { useDemandesEnAttenteRH } from "@/hooks/useDemandesCongesRH";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { VentilationRecapChantier } from "@/components/rh/VentilationRecapChantier";
 import { VentilationOuvrier } from "@/components/rh/VentilationOuvrier";
 import { VentilationInterim } from "@/components/rh/VentilationInterim";
@@ -69,6 +71,8 @@ const ConsultationRH = () => {
   const { data: summary } = useRHSummary(filters);
   const { data: unreadData } = useUnreadMessages(currentUserId);
   const { data: nbCongesEnAttente = 0 } = useDemandesEnAttenteRH(entrepriseId);
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
   
   // Ventilation data hooks for combined export
   const { data: recapChantierData } = useRecapChantier(filters.periode);
@@ -133,6 +137,18 @@ const ConsultationRH = () => {
         console.log(`[Export Excel] Validation OK, génération de l'export...`);
         const fileName = await generateRHExcel(data, mois);
         toast.success(`Export Excel généré : ${fileName}`);
+        if (userInfo) {
+          try {
+            logModification.mutate({
+              entrepriseId: userInfo.entrepriseId,
+              userId: userInfo.userId,
+              userName: userInfo.userName,
+              action: "export_paie",
+              userRole: "rh",
+              details: { periode: mois, type: "excel", message: `Export paie Excel généré pour ${mois}` },
+            });
+          } catch (e) { console.error("Log error:", e); }
+        }
       } catch (error) {
         console.error("[Export Excel] Erreur:", error);
         toast.error("Erreur lors de la génération de l'export Excel");
@@ -183,6 +199,18 @@ const ConsultationRH = () => {
       // Générer le fichier avec préfixe "2CB-Chefs"
       const fileName = await generateRHExcel(data, mois, "2CB-Chefs");
       toast.success(`Export Chefs 2CB généré : ${fileName}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: { periode: mois, type: "excel_chefs_2cb", message: `Export Chefs 2CB généré pour ${mois}` },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("[Export Chefs 2CB] Erreur:", error);
       toast.error("Erreur lors de la génération de l'export Chefs 2CB");
@@ -212,6 +240,18 @@ const ConsultationRH = () => {
         mois
       );
       toast.success(`Export Ventilation Analytique PDF généré : ${fileName}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: { periode: mois, type: "ventilation_pdf", message: `Export Ventilation PDF généré pour ${mois}` },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("[Export Ventilation] Erreur:", error);
       toast.error("Erreur lors de la génération de l'export Ventilation");

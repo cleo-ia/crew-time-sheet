@@ -1,41 +1,39 @@
 
 
-## Plan : Brancher les logs d'activité RH
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Etat des lieux
+### Fichier modifie
 
-Après inspection du code, voici ce qui existe déjà et ce qui reste à faire :
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-| Action | Etat actuel | A faire |
-|--------|------------|---------|
-| `cloture_periode` | Déjà logué dans `ClotureDialog.tsx` (L234) + dans `ACTION_CONFIG` | Ajouter `details.message` lisible |
-| `export_paie` | Logué dans `RHPreExport.tsx` (L382) + dans `ACTION_CONFIG` | Ajouter le log dans `ExportPaie.tsx` et `ConsultationRH.tsx` + `details.message` |
-| `correction_rh` | Des logs existent dans `RHEmployeeDetail.tsx` mais avec des actions variées (`modification_heures_normales`, `modification_heures_intemperies`, `modification_type_absence`) qui ne sont PAS dans `ACTION_CONFIG` | Unifier sous `correction_rh` + ajouter à `ACTION_CONFIG` |
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
----
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-### Fichiers modifiés
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-**1. `src/components/rh/ClotureDialog.tsx`** (ajustement mineur)
-- Ajouter `message: "Clôture de la période [Période] effectuée."` dans le champ `details` du log existant (L234-247).
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-**2. `src/pages/ExportPaie.tsx`**
-- Importer `useLogModification` et `useCurrentUserInfo`.
-- Dans `handleExportExcel` : après succès, appeler `logModification.mutate` avec `action: 'export_paie'` et `details.message: "Export paie généré pour [Période]"`.
-- Dans `handleExportVentilation` : idem avec `action: 'export_paie'` et message adapté "Export ventilation PDF généré pour [Période]".
+Meme pattern exact :
 
-**3. `src/pages/ConsultationRH.tsx`**
-- Importer `useLogModification` et `useCurrentUserInfo`.
-- Dans `handleExport` (L94) : après génération Excel réussie, log `export_paie` avec message.
-- Dans `handleExportChefs2CB` (L145) : idem.
-- Dans `handleExportVentilation` : idem.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-**4. `src/components/rh/RHEmployeeDetail.tsx`**
-- Remplacer les actions `modification_heures_normales`, `modification_heures_intemperies`, `modification_type_absence` par `correction_rh`.
-- Adapter le `details` pour inclure `message: "Correction administrative : [Champ] modifié pour [Salarié]"`.
+### Ce qui ne change pas
 
-**5. `src/components/shared/ModificationHistoryTable.tsx`**
-- Ajouter dans `ACTION_CONFIG` :
-  - `correction_rh: { label: "Correction RH", variant: "secondary" }`
-- Le `details.message` sera affiché automatiquement par le fallback existant quand `champ_modifie` contient la valeur technique.
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 

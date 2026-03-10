@@ -16,6 +16,8 @@ import { generateRHExcel } from "@/lib/excelExport";
 import { useRecapChantier, useVentilationOuvrier, useVentilationInterim } from "@/hooks/useVentilationAnalytique";
 import { exportVentilationCompletePdf } from "@/lib/ventilationExport";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { toast } from "sonner";
 
 const STEPS = [
@@ -33,6 +35,8 @@ const ExportPaie = () => {
   const [isExportingVentilation, setIsExportingVentilation] = useState(false);
 
   const enterpriseConfig = useEnterpriseConfig();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
 
   // Filters object compatible with existing hooks
   const filters = useMemo(() => ({
@@ -85,6 +89,22 @@ const ExportPaie = () => {
         dossierRef: enterpriseConfig?.dossierRef,
       });
       toast.success(`Excel généré : ${filename}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: {
+              periode,
+              type: "excel",
+              message: `Export paie Excel généré pour ${periodeLabel}`,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("Erreur export Excel:", error);
       toast.error("Erreur lors de la génération de l'Excel");
@@ -107,6 +127,22 @@ const ExportPaie = () => {
         periode
       );
       toast.success("PDF ventilation généré");
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: {
+              periode,
+              type: "ventilation_pdf",
+              message: `Export ventilation PDF généré pour ${periodeLabel}`,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("Erreur export ventilation:", error);
       toast.error("Erreur lors de l'export ventilation");
