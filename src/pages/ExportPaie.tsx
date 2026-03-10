@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, subMonths, addMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart, Users, CheckCircle2, Building2, CircleDot, AlertTriangle, ShieldCheck, ShieldX, Info, Database, Truck, BarChart3 } from "lucide-react";
