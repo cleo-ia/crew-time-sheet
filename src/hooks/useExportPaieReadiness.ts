@@ -129,8 +129,15 @@ export const useExportPaieReadiness = (periode: string) => {
       let moisDerniereCloture: string | null = null;
       if (derniereCloture) {
         dateDerniereCloture = format(new Date(derniereCloture.date_cloture), "dd/MM/yyyy", { locale: fr });
-        const [y, m] = derniereCloture.periode.split("-");
-        moisDerniereCloture = format(new Date(Number(y), Number(m) - 1), "MMMM yyyy", { locale: fr });
+        // Robust parsing: if periode matches yyyy-MM, parse it; otherwise use as-is
+        const p = derniereCloture.periode;
+        if (/^\d{4}-\d{2}$/.test(p)) {
+          const [y, m] = p.split("-");
+          moisDerniereCloture = format(new Date(Number(y), Number(m) - 1), "MMMM yyyy", { locale: fr });
+        } else {
+          // Already a human-readable label like "Décembre 2025"
+          moisDerniereCloture = p;
+        }
       }
 
       return {
