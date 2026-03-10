@@ -351,7 +351,47 @@ const ExportPaie = () => {
         )}
 
         {/* Step 2: Ajustements & Dashboard */}
-        {currentStep === 2 && (
+        {currentStep === 2 && !dataLoaded && (
+          <Card className="max-w-lg mx-auto text-center p-8 space-y-6 shadow-sm border border-border">
+            <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-500 flex items-center justify-center mx-auto">
+              <Database className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">
+                Prêt à analyser les données de <span className="capitalize">{periodeLabel}</span>
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Le système va compiler les heures, paniers et trajets pour préparer votre export.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 py-4">
+              {[
+                { icon: Clock, label: "Heures & Paniers" },
+                { icon: Truck, label: "Trajets & Zones" },
+                { icon: BarChart3, label: "Totaux par Chantier" },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <Icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
+            <Button
+              size="lg"
+              className="group bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-900"
+              onClick={() => setDataLoaded(true)}
+            >
+              Charger les données
+              <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <p className="text-xs text-muted-foreground/60">
+              L'analyse prend généralement moins de 3 secondes.
+            </p>
+          </Card>
+        )}
+        {currentStep === 2 && dataLoaded && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground capitalize">
               Ajustements & Dashboard — {periodeLabel}
