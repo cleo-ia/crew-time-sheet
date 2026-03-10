@@ -8,6 +8,9 @@ import { RoleBadge } from "@/components/ui/role-badge";
 import { useUtilisateursByRole, useDeleteUtilisateur } from "@/hooks/useUtilisateurs";
 import { usePlanningAffectationsCurrentWeek } from "@/hooks/usePlanningAffectationsCurrentWeek";
 import { InterimaireFormDialog } from "@/components/shared/InterimaireFormDialog";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 interface InterimairesManagerProps {
   showAffectation?: boolean;
