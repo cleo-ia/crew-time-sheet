@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { useMarkDemandesAsRead } from "@/hooks/useMarkDemandesAsRead";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface CongesSheetProps {
   open: boolean;
