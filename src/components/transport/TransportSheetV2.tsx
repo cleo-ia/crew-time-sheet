@@ -13,6 +13,8 @@ import { useCopyPreviousWeekTransport } from "@/hooks/useCopyPreviousWeekTranspo
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface FinisseurEquipe {
   id: string;
@@ -71,6 +73,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   
   const queryClient = useQueryClient();
   const saveTransport = useSaveTransportV2();
+  const logModification = useLogModification();
+  const currentUserInfo = useCurrentUserInfo();
   const autoSave = useAutoSaveTransportV2();
   const { data: existingTransport, isLoading } = useTransportDataV2(ficheId || null, conducteurId);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -353,7 +357,26 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       title: "Données dupliquées",
       description: "Les informations du Lundi ont été appliquées à toute la semaine.",
     });
-  }, [transportDays, ficheId, selectedWeekString, chantierId, chefId, autoSave]);
+
+    // 📝 Log saisie_transport (duplication)
+    if (currentUserInfo) {
+      const vehiculesInfo = monday.vehicules
+        .filter(v => v.immatriculation)
+        .map(v => v.immatriculation)
+        .join(", ");
+      logModification.mutate({
+        entrepriseId: currentUserInfo.entrepriseId,
+        userId: currentUserInfo.userId,
+        userName: currentUserInfo.userName,
+        action: "saisie_transport",
+        userRole: mode === "conducteur" ? "conducteur" : "chef",
+        details: {
+          message: `Fiche trajet dupliquée (Lundi → Semaine) : Véhicule(s) ${vehiculesInfo}`,
+          semaine: selectedWeekString,
+        },
+      });
+    }
+  }, [transportDays, ficheId, selectedWeekString, chantierId, chefId, autoSave, currentUserInfo, logModification, mode]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -372,6 +395,27 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       
       // La fiche a été validée manuellement: considérer l'état comme non modifié
       isDirty.current = false;
+
+      // 📝 Log saisie_transport (save manuel)
+      if (currentUserInfo) {
+        const vehiculesInfo = transportDays
+          .flatMap(d => d.vehicules)
+          .filter(v => v.immatriculation)
+          .map(v => v.immatriculation)
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", ");
+        logModification.mutate({
+          entrepriseId: currentUserInfo.entrepriseId,
+          userId: currentUserInfo.userId,
+          userName: currentUserInfo.userName,
+          action: "saisie_transport",
+          userRole: mode === "conducteur" ? "conducteur" : "chef",
+          details: {
+            message: `Fiche trajet validée : Véhicule(s) ${vehiculesInfo}`,
+            semaine: selectedWeekString,
+          },
+        });
+      }
     } catch (error) {
       console.error("Erreur lors de la validation:", error);
     } finally {

@@ -48,6 +48,8 @@ import { CongesSheet } from "@/components/conges/CongesSheet";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useNewPlanningItemsCount } from "@/hooks/useNewPlanningItemsCount";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -89,6 +91,8 @@ const Index = () => {
   const [weekInitialized, setWeekInitialized] = useState(false);
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
+  const logModification = useLogModification();
+  const currentUserInfo = useCurrentUserInfo();
   
   // Récupérer les messages non lus pour ce chantier (utiliser auth.uid() pour cohérence avec RLS)
   const { data: unreadData } = useUnreadMessages(authUserId, selectedChantier ? [selectedChantier] : undefined);
@@ -405,6 +409,23 @@ const Index = () => {
         chantierId: selectedChantier,
         chefId: selectedChef,
       });
+
+      // 📝 Log verrouillage_fiche
+      if (currentUserInfo) {
+        logModification.mutate({
+          entrepriseId: currentUserInfo.entrepriseId,
+          userId: currentUserInfo.userId,
+          userName: currentUserInfo.userName,
+          action: "verrouillage_fiche",
+          userRole: "chef",
+          pageSource: "/",
+          details: {
+            message: `Fiche envoyée pour signature (Données verrouillées) - Semaine ${selectedWeek}`,
+            semaine: selectedWeek,
+            chantier: chantierNom,
+          },
+        });
+      }
 
       // 2. Invalider manuellement le cache React Query pour forcer le rechargement
       queryClient.invalidateQueries({ queryKey: ["macons-chantier"] });
