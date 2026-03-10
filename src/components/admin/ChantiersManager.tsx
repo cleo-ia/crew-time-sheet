@@ -24,9 +24,10 @@ import { Switch } from "@/components/ui/switch";
 interface ChantiersManagerProps {
   basePath?: string;
   showEcoleToggle?: boolean;
+  readOnly?: boolean;
 }
 
-export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggle = true }: ChantiersManagerProps) => {
+export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggle = true, readOnly = false }: ChantiersManagerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
