@@ -147,6 +147,9 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const refuseMutation = useRefuseDemandeConge();
   const createDemande = useCreateDemandeConge();
   const markAsRead = useMarkDemandesAsRead();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   // Marquer les demandes comme lues à l'ouverture du panneau
   useEffect(() => {
