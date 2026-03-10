@@ -106,7 +106,19 @@ export const VehiculesManager = () => {
 
   const handleDelete = async () => {
     if (deletingVehicule) {
+      const vehicule = vehicules?.find((v) => v.id === deletingVehicule);
       await deleteVehicule.mutateAsync(deletingVehicule);
+      if (userInfo && vehicule) {
+        const label = [vehicule.marque, vehicule.modele].filter(Boolean).join(" ") || "Véhicule";
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "suppression_vehicule",
+          details: { message: `Retrait du véhicule ${label} (${vehicule.immatriculation})` },
+          userRole: userRole || null,
+        });
+      }
       setDeletingVehicule(null);
     }
   };

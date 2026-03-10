@@ -34,8 +34,19 @@ export const InterimairesManager = ({ showAffectation = true, showCreateButton =
   };
 
   const handleDelete = async (id: string) => {
+    const interimaire = interimaires.find((i) => i.id === id);
     if (confirm("Êtes-vous sûr de vouloir supprimer cet intérimaire ?")) {
       await deleteUtilisateur.mutateAsync(id);
+      if (userInfo && interimaire) {
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "suppression_interimaire",
+          details: { message: `Suppression définitive de l'intérimaire ${interimaire.nom || ""} ${interimaire.prenom || ""}`.trim() },
+          userRole: userRole || null,
+        });
+      }
     }
   };
 

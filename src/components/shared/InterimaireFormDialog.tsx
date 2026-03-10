@@ -74,6 +74,16 @@ export const InterimaireFormDialog = ({
           ...formData,
           role_metier: 'interimaire',
         });
+        if (userInfo) {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "creation_interimaire",
+            details: { message: `Ajout de l'intérimaire ${formData.nom} ${formData.prenom} (Agence: ${formData.agence_interim})` },
+            userRole: userRole || null,
+          });
+        }
         onSuccess?.(result);
       }
       // Invalider le cache des agences pour que la nouvelle agence apparaisse immédiatement
