@@ -402,7 +402,7 @@ const ExportPaie = () => {
             <p className="text-sm text-muted-foreground">
               Vérifiez et ajustez les données avant l'export final. Les modifications sont enregistrées en base.
             </p>
-            <RHPreExport filters={filters} />
+            <RHPreExport filters={filters} autoLoad />
           </div>
         )}
 

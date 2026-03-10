@@ -405,6 +405,13 @@ export const RHPreExport = ({ filters, autoLoad = false }: RHPreExportProps) => 
 
   const modifiedCount = useMemo(() => rows.filter(r => r.isModified).length, [rows]);
 
+  // Auto-load si demandé par le parent
+  useEffect(() => {
+    if (autoLoad && !isDataLoaded && !isLoading) {
+      loadData();
+    }
+  }, [autoLoad]);
+
 
   // Dashboard stats computed from rows (live updates)
   const dashboardStats = useMemo(() => {
