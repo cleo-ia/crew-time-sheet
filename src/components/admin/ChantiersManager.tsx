@@ -148,10 +148,12 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={() => setShowDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau chantier
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau chantier
+          </Button>
+        )}
       </div>
 
       {/* Table */}
