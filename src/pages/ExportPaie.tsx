@@ -38,6 +38,7 @@ const ExportPaie = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingVentilation, setIsExportingVentilation] = useState(false);
   const [showFichesDetail, setShowFichesDetail] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const enterpriseConfig = useEnterpriseConfig();
   const logModification = useLogModification();
