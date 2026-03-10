@@ -18,6 +18,9 @@ import { exportVentilationCompletePdf } from "@/lib/ventilationExport";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useExportPaieReadiness } from "@/hooks/useExportPaieReadiness";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 const STEPS = [
