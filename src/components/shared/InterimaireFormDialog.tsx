@@ -8,6 +8,9 @@ import { useCreateUtilisateur, useUpdateUtilisateur } from "@/hooks/useUtilisate
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from "lucide-react";
 import { AgenceInterimCombobox } from "./AgenceInterimCombobox";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 interface InterimaireFormDialogProps {
   open: boolean;
