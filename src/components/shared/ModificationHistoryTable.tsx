@@ -38,6 +38,10 @@ const ACTION_CONFIG: Record<string, { label: string; variant: "default" | "secon
   creation_vehicule: { label: "Création véhicule", variant: "default" },
   suppression_vehicule: { label: "Suppression véhicule", variant: "destructive" },
   correction_rh: { label: "Correction RH", variant: "secondary" },
+  saisie_chef: { label: "Saisie chef", variant: "default" },
+  verrouillage_fiche: { label: "Verrouillage", variant: "outline" },
+  saisie_transport: { label: "Transport", variant: "secondary" },
+  demande_absence: { label: "Demande absence", variant: "destructive" },
 };
 
 const PAGE_LABELS: Record<string, string> = {

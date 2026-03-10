@@ -139,6 +139,24 @@ export const CongesSheet: React.FC<CongesSheetProps> = ({
       motif: data.motif,
       signature_data: data.signature_data,
     });
+
+    // 📝 Log demande_absence
+    if (currentUserInfo) {
+      const demandeurName = employees.find(e => e.id === data.demandeur_id);
+      const nomDemandeur = demandeurName ? `${demandeurName.prenom} ${demandeurName.nom}` : "Inconnu";
+      logModification.mutate({
+        entrepriseId: currentUserInfo.entrepriseId,
+        userId: currentUserInfo.userId,
+        userName: currentUserInfo.userName,
+        action: "demande_absence",
+        userRole: "chef",
+        details: {
+          message: `Demande d'absence déposée pour ${nomDemandeur} du ${data.date_debut} au ${data.date_fin} (${data.type_conge})`,
+          salarie: nomDemandeur,
+        },
+      });
+    }
+
     setShowForm(false);
   };
 

@@ -395,6 +395,27 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       
       // La fiche a été validée manuellement: considérer l'état comme non modifié
       isDirty.current = false;
+
+      // 📝 Log saisie_transport (save manuel)
+      if (currentUserInfo) {
+        const vehiculesInfo = transportDays
+          .flatMap(d => d.vehicules)
+          .filter(v => v.immatriculation)
+          .map(v => v.immatriculation)
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", ");
+        logModification.mutate({
+          entrepriseId: currentUserInfo.entrepriseId,
+          userId: currentUserInfo.userId,
+          userName: currentUserInfo.userName,
+          action: "saisie_transport",
+          userRole: mode === "conducteur" ? "conducteur" : "chef",
+          details: {
+            message: `Fiche trajet validée : Véhicule(s) ${vehiculesInfo}`,
+            semaine: selectedWeekString,
+          },
+        });
+      }
     } catch (error) {
       console.error("Erreur lors de la validation:", error);
     } finally {

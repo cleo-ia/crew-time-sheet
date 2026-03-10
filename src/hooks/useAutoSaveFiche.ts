@@ -444,13 +444,73 @@ export const useAutoSaveFiche = () => {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       // Invalider les queries pour rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ["macons-chantier"] });
       queryClient.invalidateQueries({ queryKey: ["fiche-id"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       queryClient.invalidateQueries({ queryKey: ["finisseurs-conducteur"] });
       // PAS de toast (sauvegarde silencieuse)
+
+      // 📝 Log saisie_chef : un log par salarié sauvegardé
+      // Fire-and-forget (pas de await) pour ne pas bloquer l'UI
+      (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const entrepriseId = localStorage.getItem("current_entreprise_id");
+          if (!entrepriseId) return;
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("id", user.id)
+            .single();
+          const userName = profile
+            ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || user.email || "Utilisateur"
+            : user.email || "Utilisateur";
+
+          // Récupérer le nom du chantier
+          let chantierNom = "";
+          if (variables.chantierId) {
+            const { data: ch } = await supabase
+              .from("chantiers")
+              .select("nom")
+              .eq("id", variables.chantierId)
+              .single();
+            chantierNom = ch?.nom || "";
+          }
+
+          for (const entry of variables.timeEntries) {
+            const totalHeures = Object.values(entry.days).reduce(
+              (sum: number, d: any) => sum + (d?.absent ? 0 : (d?.hours ?? 0)),
+              0
+            );
+            const repasInfo = Object.values(entry.days).some((d: any) => d?.repasType === "RESTO")
+              ? "Resto"
+              : Object.values(entry.days).some((d: any) => d?.panierRepas)
+              ? "Panier"
+              : "—";
+
+            await supabase.from("fiches_modifications").insert([{
+              entreprise_id: entrepriseId,
+              user_id: user.id,
+              user_name: userName,
+              action: "saisie_chef",
+              user_role: "chef",
+              page_source: "/",
+              details: {
+                message: `Saisie d'activité pour ${entry.employeeName} : ${totalHeures}h, ${repasInfo}`,
+                salarie: entry.employeeName,
+                semaine: variables.weekId,
+                chantier: chantierNom,
+              },
+            } as any]);
+          }
+        } catch (e) {
+          console.error("[saisie_chef] Log error:", e);
+        }
+      })();
     },
     onError: (error) => {
       console.error("Auto-save fiche failed:", error);

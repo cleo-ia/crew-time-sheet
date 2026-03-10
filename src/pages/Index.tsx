@@ -410,6 +410,23 @@ const Index = () => {
         chefId: selectedChef,
       });
 
+      // 📝 Log verrouillage_fiche
+      if (currentUserInfo) {
+        logModification.mutate({
+          entrepriseId: currentUserInfo.entrepriseId,
+          userId: currentUserInfo.userId,
+          userName: currentUserInfo.userName,
+          action: "verrouillage_fiche",
+          userRole: "chef",
+          pageSource: "/",
+          details: {
+            message: `Fiche envoyée pour signature (Données verrouillées) - Semaine ${selectedWeek}`,
+            semaine: selectedWeek,
+            chantier: chantierNom,
+          },
+        });
+      }
+
       // 2. Invalider manuellement le cache React Query pour forcer le rechargement
       queryClient.invalidateQueries({ queryKey: ["macons-chantier"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
