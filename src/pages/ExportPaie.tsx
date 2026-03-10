@@ -37,6 +37,7 @@ const ExportPaie = () => {
   const [showInterimaireExport, setShowInterimaireExport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingVentilation, setIsExportingVentilation] = useState(false);
+  const [showFichesDetail, setShowFichesDetail] = useState(false);
 
   const enterpriseConfig = useEnterpriseConfig();
   const logModification = useLogModification();
