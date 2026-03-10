@@ -43,7 +43,7 @@ export function WeatherSheet({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const radarLayer = useRef<L.TileLayer | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const weatherInfo = getWeatherInfo(weather.weatherCode);
   const WeatherIcon = weatherInfo.icon;
