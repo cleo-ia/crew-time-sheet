@@ -82,11 +82,15 @@ export const useExportPaieReadiness = (periode: string) => {
         .filter((w) => w !== derniereSemaine)
         .filter((w) => !semainesAvecFiches.has(w));
 
-      // Check clôture for this period
+      // Generate French label for the period to match both formats in DB
+      const [pYear, pMonth] = periode.split("-").map(Number);
+      const periodeFrLabel = format(new Date(pYear, pMonth - 1), "MMMM yyyy", { locale: fr });
+
+      // Check clôture for this period (search both yyyy-MM and French label formats)
       const { data: cloture } = await supabase
         .from("periodes_cloturees")
         .select("periode, date_cloture")
-        .eq("periode", periode)
+        .or(`periode.eq.${periode},periode.eq.${periodeFrLabel}`)
         .maybeSingle();
 
       // Dernière clôture globale
