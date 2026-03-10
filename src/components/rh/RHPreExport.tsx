@@ -15,6 +15,7 @@ import { usePreExportSave } from "@/hooks/usePreExportSave";
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import RHPreExportSkeleton from "@/components/rh/RHPreExportSkeleton";
 interface RHPreExportProps {
   filters: RHFilters;
   autoLoad?: boolean;
