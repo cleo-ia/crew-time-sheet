@@ -357,7 +357,26 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
       title: "Données dupliquées",
       description: "Les informations du Lundi ont été appliquées à toute la semaine.",
     });
-  }, [transportDays, ficheId, selectedWeekString, chantierId, chefId, autoSave]);
+
+    // 📝 Log saisie_transport (duplication)
+    if (currentUserInfo) {
+      const vehiculesInfo = monday.vehicules
+        .filter(v => v.immatriculation)
+        .map(v => v.immatriculation)
+        .join(", ");
+      logModification.mutate({
+        entrepriseId: currentUserInfo.entrepriseId,
+        userId: currentUserInfo.userId,
+        userName: currentUserInfo.userName,
+        action: "saisie_transport",
+        userRole: mode === "conducteur" ? "conducteur" : "chef",
+        details: {
+          message: `Fiche trajet dupliquée (Lundi → Semaine) : Véhicule(s) ${vehiculesInfo}`,
+          semaine: selectedWeekString,
+        },
+      });
+    }
+  }, [transportDays, ficheId, selectedWeekString, chantierId, chefId, autoSave, currentUserInfo, logModification, mode]);
 
   const handleSave = async () => {
     setIsSaving(true);
