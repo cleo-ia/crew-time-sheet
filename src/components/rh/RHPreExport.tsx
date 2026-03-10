@@ -17,6 +17,7 @@ import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 interface RHPreExportProps {
   filters: RHFilters;
+  autoLoad?: boolean;
 }
 
 type EditableRow = {
