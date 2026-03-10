@@ -1,39 +1,33 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Design Épuré & Sémantique — Dashboard Export Paie
 
-### Fichier modifie
+### 1. Cartes uniformes et sobres
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+Supprimer toutes les `border-l-4 border-[hsl(...)]` des 4 cartes. Appliquer un style neutre uniforme :
+- `border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow`
+- Chiffres en `text-slate-900 dark:text-foreground`
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+### 2. Couleur = signal uniquement
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+**Salariés** : Icône `text-blue-500` (informationnelle)
+**Chantiers** : Icône `text-orange-500` (informationnelle)
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+**Fiches validées (dynamique)** :
+- Si `nbFichesValidees === nbFichesTotal` → bordure `border-l-4 border-green-500` + icône `CheckCircle2` verte
+- Sinon → bordure `border-l-4 border-orange-400` + icône `AlertTriangle` orange
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+**Statut (dynamique)** :
+- "Ouverte" → `Badge variant="outline"` avec `border-blue-500 text-blue-600`
+- "Clôturée" → `Badge variant="destructive"`
 
-Meme pattern exact :
+### 3. Détails discrets
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+- Icône `Info` : `h-3 w-3 text-muted-foreground/40` (plus petite, plus grise)
+- Texte "Dernière clôture" : conserver `text-xs text-muted-foreground` (déjà discret)
 
-### Ce qui ne change pas
+### Fichier modifié
+- `src/pages/ExportPaie.tsx` (lignes 292-328)
 
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+Import à ajouter : `AlertTriangle` depuis lucide-react.
 
