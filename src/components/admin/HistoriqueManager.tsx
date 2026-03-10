@@ -1,7 +1,17 @@
 import { useState, useMemo } from "react";
+import { useEncadrementUsers, EncadrementUser } from "@/hooks/useEncadrementUsers";
 import { useModificationsHistory } from "@/hooks/useModificationsHistory";
-import { useUtilisateursByAuthRole } from "@/hooks/useUtilisateursByAuthRole";
 import { ModificationHistoryTable } from "@/components/shared/ModificationHistoryTable";
+import { RoleBadge } from "@/components/ui/role-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -9,146 +19,139 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Search } from "lucide-react";
-import { startOfMonth, endOfMonth, subDays, format } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Download, Eye, Users } from "lucide-react";
+import { format, formatDistanceToNow, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 
-const PERIOD_OPTIONS = [
-  { value: "7days", label: "7 derniers jours" },
-  { value: "30days", label: "30 derniers jours" },
-  { value: "thisMonth", label: "Ce mois" },
-  { value: "90days", label: "3 derniers mois" },
-  { value: "all", label: "Tout" },
-];
-
-const ACTION_OPTIONS = [
-  { value: "all", label: "Toutes les actions" },
-  { value: "creation", label: "Créations" },
-  { value: "modification_heures", label: "Heures" },
-  { value: "modification_trajet", label: "Trajets" },
-  { value: "modification_absence", label: "Absences" },
-  { value: "modification_statut", label: "Statuts" },
-  { value: "signature", label: "Signatures" },
-  { value: "signature_chef", label: "Signatures chef" },
-  { value: "transmission", label: "Transmissions" },
-  { value: "transmission_conducteur", label: "Envoi conducteur" },
-  { value: "validation_conducteur", label: "Validation conducteur" },
-  { value: "modification_pre_export", label: "Pré-export" },
-  { value: "export_paie", label: "Export paie" },
-  { value: "cloture_periode", label: "Clôture période" },
-  { value: "sync_planning", label: "Sync planning" },
-];
-
-const ROLE_OPTIONS = [
-  { value: "all", label: "Tous les rôles" },
-  { value: "admin", label: "Admin" },
+const ROLE_FILTERS = [
+  { value: "all", label: "Tous" },
   { value: "gestionnaire", label: "Gestionnaire" },
   { value: "rh", label: "RH" },
   { value: "conducteur", label: "Conducteur" },
   { value: "chef", label: "Chef" },
 ];
 
-export function HistoriqueManager() {
+const PERIOD_OPTIONS = [
+  { value: "7days", label: "7 derniers jours" },
+  { value: "30days", label: "30 derniers jours" },
+  { value: "thisMonth", label: "Mois en cours" },
+];
+
+const VALID_ROLES = ["super_admin", "admin", "gestionnaire", "chef", "macon", "finisseur", "interimaire", "conducteur", "rh", "grutier"] as const;
+
+const getRoleColor = (role: string) => {
+  switch (role) {
+    case "admin": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    case "gestionnaire": return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+    case "rh": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+    case "conducteur": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+    case "chef": return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function UserCard({
+  user,
+  onSelect,
+}: {
+  user: EncadrementUser;
+  onSelect: () => void;
+}) {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div
+            className={`h-11 w-11 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${getRoleColor(user.role)}`}
+          >
+            {getInitials(user.name)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{user.name}</p>
+            {VALID_ROLES.includes(user.role as any) && (
+              <div className="mt-1">
+                <RoleBadge role={user.role as any} size="sm" />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {user.lastActivity
+                ? `Dernière activité : ${formatDistanceToNow(new Date(user.lastActivity), { addSuffix: true, locale: fr })}`
+                : "Aucune activité enregistrée"}
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3"
+          onClick={onSelect}
+        >
+          <Eye className="h-3.5 w-3.5 mr-1.5" />
+          Consulter l'activité
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UserDetailSheet({
+  user,
+  open,
+  onOpenChange,
+  entrepriseId,
+}: {
+  user: EncadrementUser | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  entrepriseId: string | null;
+}) {
   const [period, setPeriod] = useState("30days");
-  const [actionFilter, setActionFilter] = useState("all");
-  const [roleFilter, setRoleFilterState] = useState("all");
-  const setRoleFilter = (value: string) => {
-    setRoleFilterState(value);
-    setUserFilter("all");
-  };
-  const [userFilter, setUserFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const queryClient = useQueryClient();
 
-  const entrepriseId = localStorage.getItem("current_entreprise_id");
-
-  const getDateRange = () => {
+  const dateRange = useMemo(() => {
     const now = new Date();
     switch (period) {
       case "7days":
-        return {
-          startDate: subDays(now, 7).toISOString(),
-          endDate: now.toISOString(),
-        };
+        return { startDate: subDays(now, 7).toISOString(), endDate: now.toISOString() };
       case "30days":
-        return {
-          startDate: subDays(now, 30).toISOString(),
-          endDate: now.toISOString(),
-        };
+        return { startDate: subDays(now, 30).toISOString(), endDate: now.toISOString() };
       case "thisMonth":
-        return {
-          startDate: startOfMonth(now).toISOString(),
-          endDate: endOfMonth(now).toISOString(),
-        };
-      case "90days":
-        return {
-          startDate: subDays(now, 90).toISOString(),
-          endDate: now.toISOString(),
-        };
+        return { startDate: startOfMonth(now).toISOString(), endDate: endOfMonth(now).toISOString() };
       default:
-        return {};
+        return { startDate: subDays(now, 30).toISOString(), endDate: now.toISOString() };
     }
-  };
-
-  const dateRange = useMemo(() => getDateRange(), [period]);
+  }, [period]);
 
   const { data: modifications = [], isLoading } = useModificationsHistory({
     entrepriseId,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
-    action: actionFilter !== "all" ? actionFilter : undefined,
-    userId: userFilter !== "all" ? userFilter : undefined,
-    searchTerm: searchTerm || undefined,
+    userId: user?.id || undefined,
     limit: 500,
   });
 
-  // Fetch users by auth role from DB
-  const { data: usersByRole = [] } = useUtilisateursByAuthRole(
-    roleFilter !== "all" ? roleFilter : null,
-    entrepriseId
-  );
-
-  // Extract unique users from modifications (fallback when no role selected)
-  const uniqueUsersFromLogs = useMemo(() => {
-    const usersMap = new Map<string, string>();
-    modifications.forEach((mod) => {
-      if (!usersMap.has(mod.user_id)) {
-        usersMap.set(mod.user_id, mod.user_name);
-      }
-    });
-    return Array.from(usersMap.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [modifications]);
-
-  // Choose which user list to display
-  const displayUsers = roleFilter !== "all" ? usersByRole : uniqueUsersFromLogs;
-
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["fiches-modifications"] });
-  };
-
   const handleExportCSV = () => {
-    if (modifications.length === 0) return;
+    if (modifications.length === 0 || !user) return;
 
-    const headers = ["Date", "Heure", "Utilisateur", "Rôle", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
+    const headers = ["Date", "Heure", "Action", "Page", "Champ modifié", "Ancienne valeur", "Nouvelle valeur", "Détails"];
     const rows = modifications.map((mod) => {
       const date = new Date(mod.created_at);
       const details = mod.details as Record<string, unknown>;
       const detailsStr = Object.entries(details)
         .map(([k, v]) => `${k}: ${v}`)
         .join("; ");
-
       return [
         format(date, "dd/MM/yyyy", { locale: fr }),
         format(date, "HH:mm", { locale: fr }),
-        mod.user_name,
-        mod.user_role || "",
         mod.action,
         mod.page_source || "",
         mod.champ_modifie || "",
@@ -166,48 +169,39 @@ export function HistoriqueManager() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `historique-modifications-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `activite-${user.name.replace(/\s+/g, "-")}-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
-  // Stats
-  const stats = {
-    total: modifications.length,
-    today: modifications.filter(
-      (m) => format(new Date(m.created_at), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-    ).length,
-    uniqueUsers: new Set(modifications.map((m) => m.user_id)).size,
-  };
+  if (!user) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <div className="text-sm text-muted-foreground">Modifications totales</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.today}</div>
-            <div className="text-sm text-muted-foreground">Aujourd'hui</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.uniqueUsers}</div>
-            <div className="text-sm text-muted-foreground">Utilisateurs actifs</div>
-          </CardContent>
-        </Card>
-      </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-[50vw] p-0 flex flex-col h-full">
+        {/* Header */}
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <div className="flex items-center gap-4">
+            <div
+              className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${getRoleColor(user.role)}`}
+            >
+              {getInitials(user.name)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-lg font-semibold truncate">
+                {user.name}
+              </SheetTitle>
+              {VALID_ROLES.includes(user.role as any) && (
+                <div className="mt-1">
+                  <RoleBadge role={user.role as any} size="sm" />
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetHeader>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-end">
-        <div className="space-y-1.5">
-          <Label>Période</Label>
+        {/* Filters */}
+        <div className="px-6 py-3 border-b flex items-center gap-3 shrink-0 flex-wrap">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
@@ -220,91 +214,93 @@ export function HistoriqueManager() {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        <div className="space-y-1.5">
-          <Label>Type d'action</Label>
-          <Select value={actionFilter} onValueChange={setActionFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACTION_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Rôle</Label>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Utilisateur</Label>
-          <Select value={userFilter} onValueChange={setUserFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Tous" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les utilisateurs</SelectItem>
-              {displayUsers.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Recherche</Label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Salarié, chantier..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-[200px] pl-8"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
             disabled={modifications.length === 0}
+            className="ml-auto"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+            <Download className="h-4 w-4 mr-1.5" />
+            CSV
           </Button>
         </div>
+
+        {/* Content */}
+        <ScrollArea className="flex-1 px-6 py-4">
+          <div className="text-sm text-muted-foreground mb-3">
+            {modifications.length} modification{modifications.length !== 1 ? "s" : ""}
+          </div>
+          <ModificationHistoryTable
+            modifications={modifications}
+            isLoading={isLoading}
+          />
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function HistoriqueManager() {
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [selectedUser, setSelectedUser] = useState<EncadrementUser | null>(null);
+
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+
+  const { data: users = [], isLoading } = useEncadrementUsers(
+    entrepriseId,
+    roleFilter !== "all" ? roleFilter : null
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Role filter tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Users className="h-5 w-5 text-muted-foreground" />
+        {ROLE_FILTERS.map((rf) => (
+          <Button
+            key={rf.value}
+            variant={roleFilter === rf.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setRoleFilter(rf.value)}
+          >
+            {rf.label}
+          </Button>
+        ))}
       </div>
 
-      {/* Table */}
-      <ModificationHistoryTable
-        modifications={modifications}
-        isLoading={isLoading}
+      {/* Users grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-[160px] rounded-xl" />
+          ))}
+        </div>
+      ) : users.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Aucun utilisateur trouvé pour ce filtre.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {users.map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              onSelect={() => setSelectedUser(user)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Detail sheet */}
+      <UserDetailSheet
+        user={selectedUser}
+        open={!!selectedUser}
+        onOpenChange={(open) => {
+          if (!open) setSelectedUser(null);
+        }}
+        entrepriseId={entrepriseId}
       />
     </div>
   );
