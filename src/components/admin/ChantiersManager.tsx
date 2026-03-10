@@ -62,6 +62,9 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
   const createChantier = useCreateChantier();
   const updateChantier = useUpdateChantier();
   const deleteChantier = useDeleteChantier();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   const handleSave = async () => {
     const payload = {
