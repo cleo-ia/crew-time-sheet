@@ -73,6 +73,8 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   
   const queryClient = useQueryClient();
   const saveTransport = useSaveTransportV2();
+  const logModification = useLogModification();
+  const currentUserInfo = useCurrentUserInfo();
   const autoSave = useAutoSaveTransportV2();
   const { data: existingTransport, isLoading } = useTransportDataV2(ficheId || null, conducteurId);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
