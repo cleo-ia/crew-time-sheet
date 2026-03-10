@@ -167,7 +167,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
               <TableHead>Conducteur</TableHead>
               <TableHead>Chef</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {!readOnly && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
