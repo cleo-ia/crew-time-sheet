@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 
+export interface FicheNonValidee {
+  salarieId: string;
+  nom: string;
+  prenom: string;
+  semaines: string[];
+}
+
 export interface ExportPaieReadiness {
   status: "ready" | "ready_complete" | "incomplete" | "closed";
   label: string;
@@ -15,6 +22,7 @@ export interface ExportPaieReadiness {
   derniereSemaineMois: string;
   dateDerniereCloture: string | null;
   moisDerniereCloture: string | null;
+  fichesNonValidees: FicheNonValidee[];
 }
 
 /**
