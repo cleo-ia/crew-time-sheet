@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subMonths, addMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart, Users, CheckCircle2, Building2, CircleDot, AlertTriangle, ShieldCheck, ShieldX, Info } from "lucide-react";
+import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart, Users, CheckCircle2, Building2, CircleDot, AlertTriangle, ShieldCheck, ShieldX, Info, Database, Truck, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
