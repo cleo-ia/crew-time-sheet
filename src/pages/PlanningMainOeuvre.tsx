@@ -39,6 +39,9 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlanningValidation } from "@/hooks/usePlanningValidation";
 import { useSyncPlanningToTeams } from "@/hooks/useSyncPlanningToTeams";
 import { useAbsencesLongueDureePlanning } from "@/hooks/useAbsencesLongueDureePlanning";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
