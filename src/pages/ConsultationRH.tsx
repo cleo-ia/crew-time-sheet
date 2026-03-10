@@ -71,6 +71,8 @@ const ConsultationRH = () => {
   const { data: summary } = useRHSummary(filters);
   const { data: unreadData } = useUnreadMessages(currentUserId);
   const { data: nbCongesEnAttente = 0 } = useDemandesEnAttenteRH(entrepriseId);
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
   
   // Ventilation data hooks for combined export
   const { data: recapChantierData } = useRecapChantier(filters.periode);
