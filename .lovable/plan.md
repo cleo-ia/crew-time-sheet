@@ -1,39 +1,21 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Correction : Supprimer le double "Charger les données"
 
-### Fichier modifie
+### Problème
+La Hero Card dans `ExportPaie.tsx` masque `<RHPreExport>` derrière un état `dataLoaded`. Mais `RHPreExport` a son propre état interne `isDataLoaded` avec son propre bouton "Charger les données" (lignes 581-594). Résultat : double étape inutile.
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+### Solution
+Ajouter une prop `autoLoad` à `RHPreExport`. Quand elle est `true`, le composant déclenche `loadData()` automatiquement au montage, sans afficher son écran intermédiaire.
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+### Modifications
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+**`src/components/rh/RHPreExport.tsx`**
+- Ajouter `autoLoad?: boolean` à `RHPreExportProps`
+- Ajouter un `useEffect` : si `autoLoad` est `true` et `!isDataLoaded && !isLoading`, appeler `loadData()`
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+**`src/pages/ExportPaie.tsx`**
+- Passer `<RHPreExport filters={filters} autoLoad />` quand `dataLoaded` est `true`
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
-
-Meme pattern exact :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+Ainsi : Hero Card (clic) → `dataLoaded=true` → `RHPreExport` monte avec `autoLoad` → charge immédiatement les données → affiche le tableau directement.
 
