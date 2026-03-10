@@ -91,6 +91,8 @@ const Index = () => {
   const [weekInitialized, setWeekInitialized] = useState(false);
   const autoSaveFiche = useAutoSaveFiche();
   const queryClient = useQueryClient();
+  const logModification = useLogModification();
+  const currentUserInfo = useCurrentUserInfo();
   
   // Récupérer les messages non lus pour ce chantier (utiliser auth.uid() pour cohérence avec RLS)
   const { data: unreadData } = useUnreadMessages(authUserId, selectedChantier ? [selectedChantier] : undefined);
