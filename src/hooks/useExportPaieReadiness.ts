@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 
+export interface FicheNonValidee {
+  salarieId: string;
+  nom: string;
+  prenom: string;
+  semaines: string[];
+}
+
 export interface ExportPaieReadiness {
   status: "ready" | "ready_complete" | "incomplete" | "closed";
   label: string;
@@ -15,6 +22,7 @@ export interface ExportPaieReadiness {
   derniereSemaineMois: string;
   dateDerniereCloture: string | null;
   moisDerniereCloture: string | null;
+  fichesNonValidees: FicheNonValidee[];
 }
 
 /**
@@ -55,7 +63,7 @@ export const useExportPaieReadiness = (periode: string) => {
       // Fetch fiches for these weeks
       const { data: fiches, error: fichesError } = await supabase
         .from("fiches")
-        .select("id, semaine, statut, salarie_id, chantier_id")
+        .select("id, semaine, statut, salarie_id, chantier_id, utilisateurs!salarie_id(nom, prenom)")
         .in("semaine", weeks);
 
       if (fichesError) throw fichesError;
@@ -140,6 +148,32 @@ export const useExportPaieReadiness = (periode: string) => {
         }
       }
 
+      // Build fichesNonValidees: group unvalidated fiches by salarie
+      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string> }>();
+      for (const f of allFiches) {
+        if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
+          const existing = nonValideesMap.get(f.salarie_id);
+          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string } | null;
+          if (existing) {
+            if (f.semaine) existing.semaines.add(f.semaine);
+          } else {
+            nonValideesMap.set(f.salarie_id, {
+              nom: utilisateur?.nom || "—",
+              prenom: utilisateur?.prenom || "",
+              semaines: new Set(f.semaine ? [f.semaine] : []),
+            });
+          }
+        }
+      }
+      const fichesNonValidees: FicheNonValidee[] = Array.from(nonValideesMap.entries())
+        .map(([salarieId, v]) => ({
+          salarieId,
+          nom: v.nom,
+          prenom: v.prenom,
+          semaines: Array.from(v.semaines).sort(),
+        }))
+        .sort((a, b) => a.nom.localeCompare(b.nom));
+
       return {
         status,
         label,
@@ -152,6 +186,7 @@ export const useExportPaieReadiness = (periode: string) => {
         derniereSemaineMois: derniereSemaine,
         dateDerniereCloture,
         moisDerniereCloture,
+        fichesNonValidees,
       };
     },
   });

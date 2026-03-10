@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subMonths, addMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart, Users, CheckCircle2, Building2, CircleDot, AlertTriangle, ShieldCheck, ShieldX } from "lucide-react";
+import { FileOutput, ChevronRight, ChevronLeft, Clock, Download, Lock, Loader2, FileSpreadsheet, PieChart, Users, CheckCircle2, Building2, CircleDot, AlertTriangle, ShieldCheck, ShieldX, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +22,7 @@ import { useExportPaieReadiness } from "@/hooks/useExportPaieReadiness";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { FichesNonValideesDialog } from "@/components/rh/FichesNonValideesDialog";
 
 const STEPS = [
   { id: 1, label: "Période", icon: Clock },
@@ -36,6 +37,7 @@ const ExportPaie = () => {
   const [showInterimaireExport, setShowInterimaireExport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingVentilation, setIsExportingVentilation] = useState(false);
+  const [showFichesDetail, setShowFichesDetail] = useState(false);
 
   const enterpriseConfig = useEnterpriseConfig();
   const logModification = useLogModification();
@@ -294,10 +296,14 @@ const ExportPaie = () => {
                   </div>
                   <p className="text-2xl font-bold text-foreground">{readiness.data.nbSalaries}</p>
                 </Card>
-                <Card className="p-4 space-y-1">
+                <Card
+                  className="p-4 space-y-1 cursor-pointer transition-colors hover:bg-accent"
+                  onClick={() => setShowFichesDetail(true)}
+                >
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-xs font-medium">Fiches validées</span>
+                    <Info className="h-3 w-3 ml-auto opacity-50" />
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     {readiness.data.nbFichesValidees}
@@ -445,6 +451,12 @@ const ExportPaie = () => {
         open={showInterimaireExport}
         onOpenChange={setShowInterimaireExport}
         filters={filters}
+      />
+      <FichesNonValideesDialog
+        open={showFichesDetail}
+        onOpenChange={setShowFichesDetail}
+        fichesNonValidees={readiness.data?.fichesNonValidees || []}
+        periodeLabel={periodeLabel}
       />
     </PageLayout>
   );
