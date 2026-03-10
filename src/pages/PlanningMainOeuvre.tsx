@@ -504,7 +504,19 @@ const PlanningMainOeuvre = () => {
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => syncPlanningToTeams(semaine)}
+                  onClick={async () => {
+                    await syncPlanningToTeams(semaine);
+                    if (userInfo) {
+                      logModification.mutate({
+                        entrepriseId: userInfo.entrepriseId,
+                        userId: userInfo.userId,
+                        userName: userInfo.userName,
+                        action: "sync_planning",
+                        details: { message: `Synchronisation du planning envoyée aux chefs (Semaine ${semaine})`, semaine },
+                        userRole: userRole || null,
+                      });
+                    }
+                  }}
                   disabled={isSyncing}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >
