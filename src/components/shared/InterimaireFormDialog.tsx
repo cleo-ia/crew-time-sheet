@@ -8,6 +8,9 @@ import { useCreateUtilisateur, useUpdateUtilisateur } from "@/hooks/useUtilisate
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from "lucide-react";
 import { AgenceInterimCombobox } from "./AgenceInterimCombobox";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 interface InterimaireFormDialogProps {
   open: boolean;
@@ -32,6 +35,9 @@ export const InterimaireFormDialog = ({
   const createUtilisateur = useCreateUtilisateur();
   const updateUtilisateur = useUpdateUtilisateur();
   const { toast } = useToast();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   // Remplir le formulaire si on édite un intérimaire
   useEffect(() => {
@@ -68,6 +74,16 @@ export const InterimaireFormDialog = ({
           ...formData,
           role_metier: 'interimaire',
         });
+        if (userInfo) {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "creation_interimaire",
+            details: { message: `Ajout de l'intérimaire ${formData.nom} ${formData.prenom} (Agence: ${formData.agence_interim})` },
+            userRole: userRole || null,
+          });
+        }
         onSuccess?.(result);
       }
       // Invalider le cache des agences pour que la nouvelle agence apparaisse immédiatement

@@ -36,6 +36,9 @@ import {
   useDeleteVehicule,
   type Vehicule,
 } from "@/hooks/useVehicules";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 export const VehiculesManager = () => {
   const [showDialog, setShowDialog] = useState(false);
@@ -52,6 +55,9 @@ export const VehiculesManager = () => {
   const createVehicule = useCreateVehicule();
   const updateVehicule = useUpdateVehicule();
   const deleteVehicule = useDeleteVehicule();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   const handleOpenDialog = (vehicule?: Vehicule) => {
     if (vehicule) {
@@ -83,13 +89,36 @@ export const VehiculesManager = () => {
       });
     } else {
       await createVehicule.mutateAsync(formData);
+      if (userInfo) {
+        const label = [formData.marque, formData.modele].filter(Boolean).join(" ") || "Véhicule";
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "creation_vehicule",
+          details: { message: `Ajout du véhicule ${label} - Immatriculation: ${formData.immatriculation}` },
+          userRole: userRole || null,
+        });
+      }
     }
     handleCloseDialog();
   };
 
   const handleDelete = async () => {
     if (deletingVehicule) {
+      const vehicule = vehicules?.find((v) => v.id === deletingVehicule);
       await deleteVehicule.mutateAsync(deletingVehicule);
+      if (userInfo && vehicule) {
+        const label = [vehicule.marque, vehicule.modele].filter(Boolean).join(" ") || "Véhicule";
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "suppression_vehicule",
+          details: { message: `Retrait du véhicule ${label} (${vehicule.immatriculation})` },
+          userRole: userRole || null,
+        });
+      }
       setDeletingVehicule(null);
     }
   };

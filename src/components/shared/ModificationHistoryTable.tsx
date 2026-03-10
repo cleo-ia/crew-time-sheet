@@ -33,6 +33,10 @@ const ACTION_CONFIG: Record<string, { label: string; variant: "default" | "secon
   export_paie: { label: "Export paie", variant: "outline" },
   cloture_periode: { label: "Clôture", variant: "destructive" },
   sync_planning: { label: "Sync planning", variant: "outline" },
+  creation_interimaire: { label: "Création intérimaire", variant: "default" },
+  suppression_interimaire: { label: "Suppression intérimaire", variant: "destructive" },
+  creation_vehicule: { label: "Création véhicule", variant: "default" },
+  suppression_vehicule: { label: "Suppression véhicule", variant: "destructive" },
 };
 
 const PAGE_LABELS: Record<string, string> = {
