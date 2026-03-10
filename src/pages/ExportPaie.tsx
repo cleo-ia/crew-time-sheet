@@ -40,6 +40,7 @@ const ExportPaie = () => {
   const enterpriseConfig = useEnterpriseConfig();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
+  const readiness = useExportPaieReadiness(periode);
 
   // Filters object compatible with existing hooks
   const filters = useMemo(() => ({
