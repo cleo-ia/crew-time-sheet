@@ -39,6 +39,9 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlanningValidation } from "@/hooks/usePlanningValidation";
 import { useSyncPlanningToTeams } from "@/hooks/useSyncPlanningToTeams";
 import { useAbsencesLongueDureePlanning } from "@/hooks/useAbsencesLongueDureePlanning";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
@@ -98,6 +101,9 @@ const PlanningMainOeuvre = () => {
 
   // Hook de synchronisation manuelle
   const { syncPlanningToTeams, isSyncing } = useSyncPlanningToTeams();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
@@ -266,6 +272,32 @@ const PlanningMainOeuvre = () => {
         jour: date,
         semaine,
         entreprise_id: entrepriseId,
+      });
+    }
+
+    // Logger l'affectation
+    if (userInfo && filteredDays.length > 0) {
+      const { data: empInfo } = await supabase
+        .from("utilisateurs")
+        .select("nom, prenom")
+        .eq("id", employeId)
+        .maybeSingle();
+      const chantierInfo = chantiers.find(c => c.id === chantierId);
+      const nomSalarie = empInfo ? `${empInfo.prenom} ${empInfo.nom}`.trim() : employeId;
+      const nomChantier = chantierInfo?.nom || chantierId;
+
+      logModification.mutate({
+        entrepriseId: userInfo.entrepriseId,
+        userId: userInfo.userId,
+        userName: userInfo.userName,
+        action: "affectation_planning",
+        details: {
+          message: `Affectation : ${nomSalarie} affecté au chantier ${nomChantier} (${filteredDays.length} jour${filteredDays.length > 1 ? "s" : ""})`,
+          salarie: nomSalarie,
+          chantier: nomChantier,
+          semaine,
+        },
+        userRole: userRole || null,
       });
     }
 
@@ -498,7 +530,19 @@ const PlanningMainOeuvre = () => {
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => syncPlanningToTeams(semaine)}
+                  onClick={async () => {
+                    await syncPlanningToTeams(semaine);
+                    if (userInfo) {
+                      logModification.mutate({
+                        entrepriseId: userInfo.entrepriseId,
+                        userId: userInfo.userId,
+                        userName: userInfo.userName,
+                        action: "sync_planning",
+                        details: { message: `Synchronisation du planning envoyée aux chefs (Semaine ${semaine})`, semaine },
+                        userRole: userRole || null,
+                      });
+                    }
+                  }}
                   disabled={isSyncing}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >

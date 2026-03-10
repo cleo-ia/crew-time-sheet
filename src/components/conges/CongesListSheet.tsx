@@ -34,6 +34,11 @@ import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { getCurrentWeek } from "@/lib/weekUtils";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { useMarkDemandesAsRead } from "@/hooks/useMarkDemandesAsRead";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface CongesListSheetProps {
   open: boolean;
@@ -142,6 +147,9 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const refuseMutation = useRefuseDemandeConge();
   const createDemande = useCreateDemandeConge();
   const markAsRead = useMarkDemandesAsRead();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   // Marquer les demandes comme lues à l'ouverture du panneau
   useEffect(() => {
@@ -200,11 +208,34 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   }, [conducteurInfo, finisseurs, employesSansAffectation]);
 
   const handleValidate = (demandeId: string) => {
-    validateMutation.mutate({
-      demandeId,
-      valideurId: conducteurId,
-      role: "conducteur",
-    });
+    const demande = demandesEnAttente.find(d => d.id === demandeId);
+    validateMutation.mutate(
+      {
+        demandeId,
+        valideurId: conducteurId,
+        role: "conducteur",
+      },
+      {
+        onSuccess: () => {
+          if (userInfo && demande) {
+            const nomDemandeur = demande.demandeur
+              ? `${demande.demandeur.prenom} ${demande.demandeur.nom}`.trim()
+              : "Inconnu";
+            logModification.mutate({
+              entrepriseId: userInfo.entrepriseId,
+              userId: userInfo.userId,
+              userName: userInfo.userName,
+              action: "decision_conge",
+              details: {
+                message: `Acceptation de la demande de congé pour ${nomDemandeur} du ${format(new Date(demande.date_debut), "dd/MM/yyyy")} au ${format(new Date(demande.date_fin), "dd/MM/yyyy")}`,
+                salarie: nomDemandeur,
+              },
+              userRole: userRole || null,
+            });
+          }
+        },
+      }
+    );
   };
 
   const handleRefuseClick = (demandeId: string) => {
@@ -215,12 +246,36 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
 
   const handleConfirmRefuse = () => {
     if (!selectedDemandeId || !motifRefus.trim()) return;
+
+    const demande = demandesEnAttente.find(d => d.id === selectedDemandeId);
     
-    refuseMutation.mutate({
-      demandeId: selectedDemandeId,
-      refuseurId: conducteurId,
-      motifRefus: motifRefus.trim(),
-    });
+    refuseMutation.mutate(
+      {
+        demandeId: selectedDemandeId,
+        refuseurId: conducteurId,
+        motifRefus: motifRefus.trim(),
+      },
+      {
+        onSuccess: () => {
+          if (userInfo && demande) {
+            const nomDemandeur = demande.demandeur
+              ? `${demande.demandeur.prenom} ${demande.demandeur.nom}`.trim()
+              : "Inconnu";
+            logModification.mutate({
+              entrepriseId: userInfo.entrepriseId,
+              userId: userInfo.userId,
+              userName: userInfo.userName,
+              action: "decision_conge",
+              details: {
+                message: `Refus de la demande de congé pour ${nomDemandeur} du ${format(new Date(demande.date_debut), "dd/MM/yyyy")} au ${format(new Date(demande.date_fin), "dd/MM/yyyy")}`,
+                salarie: nomDemandeur,
+              },
+              userRole: userRole || null,
+            });
+          }
+        },
+      }
+    );
     
     setRefuseDialogOpen(false);
     setSelectedDemandeId(null);
