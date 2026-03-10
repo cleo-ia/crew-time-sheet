@@ -32,6 +32,32 @@ const ROLE_FILTERS = [
   { value: "chef", label: "Chef" },
 ];
 
+const ROLE_ORDER: Record<string, number> = {
+  super_admin: 0,
+  admin: 1,
+  gestionnaire: 2,
+  rh: 3,
+  conducteur: 4,
+  chef: 5,
+  grutier: 6,
+  macon: 7,
+  finisseur: 8,
+  interimaire: 9,
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  gestionnaire: "Gestionnaires",
+  rh: "RH",
+  conducteur: "Conducteurs",
+  chef: "Chefs de chantier",
+  grutier: "Grutiers",
+  macon: "Maçons",
+  finisseur: "Finisseurs",
+  interimaire: "Intérimaires",
+};
+
 const PERIOD_OPTIONS = [
   { value: "7days", label: "7 derniers jours" },
   { value: "30days", label: "30 derniers jours" },
@@ -253,6 +279,26 @@ export function HistoriqueManager() {
     roleFilter !== "all" ? roleFilter : null
   );
 
+  const groupedUsers = useMemo(() => {
+    const groups: Record<string, EncadrementUser[]> = {};
+    for (const user of users) {
+      const role = user.role || "unknown";
+      if (!groups[role]) groups[role] = [];
+      groups[role].push(user);
+    }
+    // Sort each group alphabetically
+    for (const role of Object.keys(groups)) {
+      groups[role].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    }
+    // Sort groups by ROLE_ORDER
+    const sortedEntries = Object.entries(groups).sort(
+      ([a], [b]) => (ROLE_ORDER[a] ?? 99) - (ROLE_ORDER[b] ?? 99)
+    );
+    return sortedEntries;
+  }, [users]);
+
+  const showGroupHeaders = roleFilter === "all";
+
   return (
     <div className="space-y-6">
       {/* Role filter tabs */}
@@ -282,13 +328,31 @@ export function HistoriqueManager() {
           Aucun utilisateur trouvé pour ce filtre.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {users.map((user) => (
-            <UserCard
-              key={user.id}
-              user={user}
-              onSelect={() => setSelectedUser(user)}
-            />
+        <div className="space-y-6">
+          {groupedUsers.map(([role, roleUsers]) => (
+            <div key={role}>
+              {showGroupHeaders && (
+                <div className="flex items-center gap-2 mb-3">
+                  {VALID_ROLES.includes(role as any) ? (
+                    <RoleBadge role={role as any} size="sm" />
+                  ) : (
+                    <span className="text-sm font-medium text-muted-foreground">{role}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    ({roleUsers.length})
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {roleUsers.map((user) => (
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onSelect={() => setSelectedUser(user)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
