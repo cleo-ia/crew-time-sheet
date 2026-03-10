@@ -1,39 +1,53 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Plan : Brancher les logs d'activité Conducteurs
 
-### Fichier modifie
+### Constat
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+- **`validation_conducteur`** existe deja dans `FicheDetail.tsx` (L283-297) et `ACTION_CONFIG` (L32). Rien a faire.
+- **`sync_planning`** existe deja dans `ACTION_CONFIG` (L35) mais aucun log n'est emis. A brancher.
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+### 4 fichiers a modifier
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+**1. `src/components/admin/ChantiersManager.tsx`** — Action `gestion_chantier`
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+Dans `handleSave` (L63-103), apres le `createChantier.mutateAsync` ou `updateChantier.mutateAsync` reussi :
+- Importer `useLogModification`, `useCurrentUserInfo`
+- Logger avec `action: "gestion_chantier"`, message : `"Ouverture du chantier [Nom]"` (creation) ou `"Modification du chantier [Nom]"` (edition)
+- Pour l'archivage via toggle `actif`, detecter le changement et logger `"Archivage du chantier [Nom]"`
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+**2. `src/pages/PlanningMainOeuvre.tsx`** — Actions `sync_planning` + `affectation_planning`
 
-Meme pattern exact :
+- Importer `useLogModification`, `useCurrentUserInfo`
+- **Sync** : Dans le `onClick` du bouton "Synchroniser maintenant" (L501), wrapper pour logger apres succes : `"Synchronisation du planning envoyee aux chefs (Semaine [X])"`
+- **Affectation** : Dans `handleAddEmploye` (L250-331), apres les upserts reussis, logger `"Affectation : [Nom Salarie] affecte au chantier [Nom] ([Nb] jours)"`. Recuperer le nom du salarie via une requete Supabase rapide ou depuis les donnees deja chargees (`affectations` contient `employe`).
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+**3. `src/components/conges/CongesListSheet.tsx`** — Action `decision_conge`
 
-### Ce qui ne change pas
+- Importer `useLogModification`, `useCurrentUserInfo`
+- Dans `handleValidate` (L202-208), apres `validateMutation.mutate`, utiliser le callback `onSuccess` pour logger : `"Acceptation de la demande de conge pour [Nom] du [Date] au [Date]"`
+- Dans `handleConfirmRefuse` (L216-228), apres `refuseMutation.mutate`, logger : `"Refus de la demande de conge pour [Nom] du [Date] au [Date]"`
+- Recuperer le nom du demandeur depuis `demandesAValider` (deja charge, contient les infos).
 
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+**4. `src/components/shared/ModificationHistoryTable.tsx`** — UI
+
+Ajouter dans `ACTION_CONFIG` :
+```
+gestion_chantier: { label: "Chantier", variant: "default" }
+affectation_planning: { label: "Affectation", variant: "secondary" }
+decision_conge: { label: "Decision conge", variant: "outline" }
+```
+(`sync_planning` et `validation_conducteur` existent deja)
+
+---
+
+### Resume
+
+| Fichier | Action | Deja fait ? |
+|---------|--------|-------------|
+| ChantiersManager.tsx | `gestion_chantier` | Non |
+| PlanningMainOeuvre.tsx | `sync_planning` + `affectation_planning` | Non |
+| CongesListSheet.tsx | `decision_conge` | Non |
+| FicheDetail.tsx | `validation_conducteur` | Oui - skip |
+| ModificationHistoryTable.tsx | 3 entrees ACTION_CONFIG | Non |
 
