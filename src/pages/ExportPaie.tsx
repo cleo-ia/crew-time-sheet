@@ -80,6 +80,18 @@ const ExportPaie = () => {
     return match?.label || periode;
   }, [periode, derniersMois]);
 
+  const handlePrevMonth = () => {
+    const [y, m] = periode.split("-").map(Number);
+    const prev = subMonths(new Date(y, m - 1), 1);
+    setPeriode(format(prev, "yyyy-MM"));
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = periode.split("-").map(Number);
+    const next = addMonths(new Date(y, m - 1), 1);
+    setPeriode(format(next, "yyyy-MM"));
+  };
+
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
