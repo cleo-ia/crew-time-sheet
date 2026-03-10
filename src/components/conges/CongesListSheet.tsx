@@ -34,6 +34,11 @@ import { useFinisseursByConducteur } from "@/hooks/useFinisseursByConducteur";
 import { getCurrentWeek } from "@/lib/weekUtils";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { useMarkDemandesAsRead } from "@/hooks/useMarkDemandesAsRead";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface CongesListSheetProps {
   open: boolean;
