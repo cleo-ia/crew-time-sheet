@@ -13,6 +13,8 @@ import { useCopyPreviousWeekTransport } from "@/hooks/useCopyPreviousWeekTranspo
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 
 interface FinisseurEquipe {
   id: string;
