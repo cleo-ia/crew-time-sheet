@@ -101,6 +101,9 @@ const PlanningMainOeuvre = () => {
 
   // Hook de synchronisation manuelle
   const { syncPlanningToTeams, isSyncing } = useSyncPlanningToTeams();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { data: userRole } = useCurrentUserRole();
 
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
