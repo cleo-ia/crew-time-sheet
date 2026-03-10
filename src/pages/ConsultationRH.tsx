@@ -199,6 +199,18 @@ const ConsultationRH = () => {
       // Générer le fichier avec préfixe "2CB-Chefs"
       const fileName = await generateRHExcel(data, mois, "2CB-Chefs");
       toast.success(`Export Chefs 2CB généré : ${fileName}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: { periode: mois, type: "excel_chefs_2cb", message: `Export Chefs 2CB généré pour ${mois}` },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("[Export Chefs 2CB] Erreur:", error);
       toast.error("Erreur lors de la génération de l'export Chefs 2CB");
