@@ -36,6 +36,9 @@ import {
   useDeleteVehicule,
   type Vehicule,
 } from "@/hooks/useVehicules";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 export const VehiculesManager = () => {
   const [showDialog, setShowDialog] = useState(false);
