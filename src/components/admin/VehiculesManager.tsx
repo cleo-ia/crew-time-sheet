@@ -55,6 +55,9 @@ export const VehiculesManager = () => {
   const createVehicule = useCreateVehicule();
   const updateVehicule = useUpdateVehicule();
   const deleteVehicule = useDeleteVehicule();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
+  const { role: userRole } = useCurrentUserRole();
 
   const handleOpenDialog = (vehicule?: Vehicule) => {
     if (vehicule) {
