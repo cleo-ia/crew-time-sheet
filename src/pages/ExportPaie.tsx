@@ -296,10 +296,14 @@ const ExportPaie = () => {
                   </div>
                   <p className="text-2xl font-bold text-foreground">{readiness.data.nbSalaries}</p>
                 </Card>
-                <Card className="p-4 space-y-1">
+                <Card
+                  className="p-4 space-y-1 cursor-pointer transition-colors hover:bg-accent"
+                  onClick={() => setShowFichesDetail(true)}
+                >
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-xs font-medium">Fiches validées</span>
+                    <Info className="h-3 w-3 ml-auto opacity-50" />
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     {readiness.data.nbFichesValidees}
