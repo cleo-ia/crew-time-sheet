@@ -45,6 +45,9 @@ const ExportPaie = () => {
   const userInfo = useCurrentUserInfo();
   const readiness = useExportPaieReadiness(periode);
 
+  // Reset dataLoaded when periode changes
+  useEffect(() => { setDataLoaded(false); }, [periode]);
+
   // Filters object compatible with existing hooks
   const filters = useMemo(() => ({
     periode,
