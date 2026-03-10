@@ -242,6 +242,7 @@ export const ClotureDialog = ({ open, onOpenChange, filters }: ClotureDialogProp
               nbSalaries: consolidatedData.length,
               nbFiches: fichesCount,
               totalHeures: Math.round((totalHeuresNormales + totalHeuresSupp) * 100) / 100,
+              message: `Clôture de la période ${filters.periode} effectuée.`,
             },
           });
         } catch (e) { console.error("Log error:", e); }

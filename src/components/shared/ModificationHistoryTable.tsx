@@ -37,6 +37,7 @@ const ACTION_CONFIG: Record<string, { label: string; variant: "default" | "secon
   suppression_interimaire: { label: "Suppression intérimaire", variant: "destructive" },
   creation_vehicule: { label: "Création véhicule", variant: "default" },
   suppression_vehicule: { label: "Suppression véhicule", variant: "destructive" },
+  correction_rh: { label: "Correction RH", variant: "secondary" },
 };
 
 const PAGE_LABELS: Record<string, string> = {

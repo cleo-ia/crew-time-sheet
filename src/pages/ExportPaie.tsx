@@ -127,6 +127,22 @@ const ExportPaie = () => {
         periode
       );
       toast.success("PDF ventilation généré");
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: {
+              periode,
+              type: "ventilation_pdf",
+              message: `Export ventilation PDF généré pour ${periodeLabel}`,
+            },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("Erreur export ventilation:", error);
       toast.error("Erreur lors de l'export ventilation");

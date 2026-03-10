@@ -240,6 +240,18 @@ const ConsultationRH = () => {
         mois
       );
       toast.success(`Export Ventilation Analytique PDF généré : ${fileName}`);
+      if (userInfo) {
+        try {
+          logModification.mutate({
+            entrepriseId: userInfo.entrepriseId,
+            userId: userInfo.userId,
+            userName: userInfo.userName,
+            action: "export_paie",
+            userRole: "rh",
+            details: { periode: mois, type: "ventilation_pdf", message: `Export Ventilation PDF généré pour ${mois}` },
+          });
+        } catch (e) { console.error("Log error:", e); }
+      }
     } catch (error) {
       console.error("[Export Ventilation] Erreur:", error);
       toast.error("Erreur lors de la génération de l'export Ventilation");
