@@ -79,12 +79,44 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
     };
 
     if (editingChantier) {
+      // Détecter archivage (changement actif → inactif)
+      const wasArchived = editingChantier.actif && !payload.actif;
+      const wasReactivated = !editingChantier.actif && payload.actif;
+      
       await updateChantier.mutateAsync({
         id: editingChantier.id,
         ...payload,
       });
+
+      if (userInfo) {
+        const message = wasArchived
+          ? `Archivage du chantier ${payload.nom}`
+          : wasReactivated
+          ? `Réactivation du chantier ${payload.nom}`
+          : `Modification du chantier ${payload.nom}`;
+
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "gestion_chantier",
+          details: { message, chantier: payload.nom },
+          userRole: userRole || null,
+        });
+      }
     } else {
       await createChantier.mutateAsync(payload);
+      
+      if (userInfo) {
+        logModification.mutate({
+          entrepriseId: userInfo.entrepriseId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          action: "gestion_chantier",
+          details: { message: `Ouverture du chantier ${payload.nom}`, chantier: payload.nom },
+          userRole: userRole || null,
+        });
+      }
     }
     setShowDialog(false);
     setEditingChantier(null);

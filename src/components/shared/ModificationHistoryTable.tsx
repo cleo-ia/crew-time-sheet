@@ -42,6 +42,9 @@ const ACTION_CONFIG: Record<string, { label: string; variant: "default" | "secon
   verrouillage_fiche: { label: "Verrouillage", variant: "outline" },
   saisie_transport: { label: "Transport", variant: "secondary" },
   demande_absence: { label: "Demande absence", variant: "destructive" },
+  gestion_chantier: { label: "Chantier", variant: "default" },
+  affectation_planning: { label: "Affectation", variant: "secondary" },
+  decision_conge: { label: "Décision congé", variant: "outline" },
 };
 
 const PAGE_LABELS: Record<string, string> = {

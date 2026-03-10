@@ -275,6 +275,32 @@ const PlanningMainOeuvre = () => {
       });
     }
 
+    // Logger l'affectation
+    if (userInfo && filteredDays.length > 0) {
+      const { data: empInfo } = await supabase
+        .from("utilisateurs")
+        .select("nom, prenom")
+        .eq("id", employeId)
+        .maybeSingle();
+      const chantierInfo = chantiers.find(c => c.id === chantierId);
+      const nomSalarie = empInfo ? `${empInfo.prenom} ${empInfo.nom}`.trim() : employeId;
+      const nomChantier = chantierInfo?.nom || chantierId;
+
+      logModification.mutate({
+        entrepriseId: userInfo.entrepriseId,
+        userId: userInfo.userId,
+        userName: userInfo.userName,
+        action: "affectation_planning",
+        details: {
+          message: `Affectation : ${nomSalarie} affecté au chantier ${nomChantier} (${filteredDays.length} jour${filteredDays.length > 1 ? "s" : ""})`,
+          salarie: nomSalarie,
+          chantier: nomChantier,
+          semaine,
+        },
+        userRole: userRole || null,
+      });
+    }
+
     // Vérifier si c'est un chef (via une requête)
     const { data: empData } = await supabase
       .from("utilisateurs")
