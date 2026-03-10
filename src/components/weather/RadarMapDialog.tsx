@@ -33,7 +33,7 @@ export function RadarMapDialog({
   const [isPlaying, setIsPlaying] = useState(true);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);

@@ -77,7 +77,7 @@ export const TransportSheetV2 = forwardRef<TransportSheetV2Ref, TransportSheetV2
   const currentUserInfo = useCurrentUserInfo();
   const autoSave = useAutoSaveTransportV2();
   const { data: existingTransport, isLoading } = useTransportDataV2(ficheId || null, conducteurId);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirty = useRef<boolean>(false);
   
   // Fonction pour gérer l'ouverture/fermeture de l'accordéon

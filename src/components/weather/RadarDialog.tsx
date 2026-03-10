@@ -19,7 +19,7 @@ export function RadarDialog({ open, onOpenChange, latitude, longitude, ville }: 
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const size = 256;
   const zoom = 6;

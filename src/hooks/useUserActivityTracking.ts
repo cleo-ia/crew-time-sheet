@@ -64,7 +64,7 @@ export const useUserActivityTracking = (options: UseUserActivityTrackingOptions 
   const sessionIdRef = useRef<string | null>(null);
   const pagesVisitedRef = useRef<number>(0);
   const lastPageRef = useRef<string | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /**
    * Récupérer l'entreprise_id avec fallback sur user_roles

@@ -31,7 +31,7 @@ export const TransportSheet = ({ selectedWeek, selectedWeekString, chantierId, c
   const { data: macons = [] } = useMaconsByChantier(chantierId, selectedWeekString, chefId);
   const { isMultiChantier, allMacons } = useMaconsAllChantiersByChef(chefId, selectedWeekString);
   const maconsForCombobox = isMultiChantier ? allMacons : macons;
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Générer les 5 jours de la semaine (lundi à vendredi) si pas de données existantes OU si fiche vide
   useEffect(() => {

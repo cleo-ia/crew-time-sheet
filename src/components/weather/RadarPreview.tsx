@@ -14,7 +14,7 @@ export function RadarPreview({ latitude, longitude, onClick }: RadarPreviewProps
   const { data: radarData, isLoading, error } = useRadarData();
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const size = 256;
   const zoom = 6;

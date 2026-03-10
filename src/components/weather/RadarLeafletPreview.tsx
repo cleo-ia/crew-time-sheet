@@ -17,7 +17,7 @@ export function RadarLeafletPreview({ latitude, longitude, onClick }: RadarLeafl
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const radarLayer = useRef<L.TileLayer | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);

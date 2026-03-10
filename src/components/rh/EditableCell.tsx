@@ -29,7 +29,7 @@ export const EditableCell = ({
   const [localValue, setLocalValue] = useState(value);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setLocalValue(value);
