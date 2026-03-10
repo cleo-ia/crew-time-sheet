@@ -289,19 +289,19 @@ const ExportPaie = () => {
               </div>
             ) : readiness.data && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4 space-y-1">
+                <Card className="p-4 space-y-1 bg-[hsl(210_90%_96%)] dark:bg-[hsl(210_50%_18%)]">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4" />
+                    <Users className="h-4 w-4 text-[hsl(210_85%_50%)]" />
                     <span className="text-xs font-medium">Salariés</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground">{readiness.data.nbSalaries}</p>
                 </Card>
                 <Card
-                  className="p-4 space-y-1 cursor-pointer transition-colors hover:bg-accent"
+                  className="p-4 space-y-1 cursor-pointer transition-colors bg-[hsl(142_70%_96%)] dark:bg-[hsl(142_40%_18%)] hover:bg-[hsl(142_70%_93%)] dark:hover:bg-[hsl(142_40%_22%)]"
                   onClick={() => setShowFichesDetail(true)}
                 >
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <CheckCircle2 className="h-4 w-4" />
+                    <CheckCircle2 className="h-4 w-4 text-[hsl(142_71%_45%)]" />
                     <span className="text-xs font-medium">Fiches validées</span>
                     <Info className="h-3 w-3 ml-auto opacity-50" />
                   </div>
@@ -310,16 +310,16 @@ const ExportPaie = () => {
                     <span className="text-sm font-normal text-muted-foreground"> / {readiness.data.nbFichesTotal}</span>
                   </p>
                 </Card>
-                <Card className="p-4 space-y-1">
+                <Card className="p-4 space-y-1 bg-[hsl(25_90%_96%)] dark:bg-[hsl(25_50%_18%)]">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
+                    <Building2 className="h-4 w-4 text-[hsl(25_95%_53%)]" />
                     <span className="text-xs font-medium">Chantiers</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground">{readiness.data.nbChantiers}</p>
                 </Card>
-                <Card className="p-4 space-y-1">
+                <Card className="p-4 space-y-1 bg-[hsl(270_40%_96%)] dark:bg-[hsl(270_25%_18%)]">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <CircleDot className="h-4 w-4" />
+                    <CircleDot className="h-4 w-4 text-[hsl(270_60%_55%)]" />
                     <span className="text-xs font-medium">Statut</span>
                   </div>
                   <Badge variant={readiness.data.status === "closed" ? "destructive" : "outline"} className="mt-1">
