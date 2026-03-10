@@ -586,7 +586,10 @@ export const RHPreExport = ({ filters, autoLoad = false }: RHPreExportProps) => 
     return textColumns.includes(colKey) ? "text" : "number";
   };
 
-  if (!isDataLoaded) {
+  if (!isDataLoaded || isLoading) {
+    if (autoLoad || isLoading) {
+      return <RHPreExportSkeleton />;
+    }
     return (
       <div className="space-y-4 py-8">
         <Alert>
@@ -595,8 +598,8 @@ export const RHPreExport = ({ filters, autoLoad = false }: RHPreExportProps) => 
             Cliquez sur "Charger les données" pour visualiser et modifier les données avant export Excel.
           </AlertDescription>
         </Alert>
-        <Button onClick={loadData} disabled={isLoading}>
-          {isLoading ? "Chargement..." : "Charger les données"}
+        <Button onClick={loadData}>
+          Charger les données
         </Button>
       </div>
     );
