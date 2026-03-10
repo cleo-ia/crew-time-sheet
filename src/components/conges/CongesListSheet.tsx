@@ -208,11 +208,34 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   }, [conducteurInfo, finisseurs, employesSansAffectation]);
 
   const handleValidate = (demandeId: string) => {
-    validateMutation.mutate({
-      demandeId,
-      valideurId: conducteurId,
-      role: "conducteur",
-    });
+    const demande = demandesEnAttente.find(d => d.id === demandeId);
+    validateMutation.mutate(
+      {
+        demandeId,
+        valideurId: conducteurId,
+        role: "conducteur",
+      },
+      {
+        onSuccess: () => {
+          if (userInfo && demande) {
+            const nomDemandeur = demande.demandeur
+              ? `${demande.demandeur.prenom} ${demande.demandeur.nom}`.trim()
+              : "Inconnu";
+            logModification.mutate({
+              entrepriseId: userInfo.entrepriseId,
+              userId: userInfo.userId,
+              userName: userInfo.userName,
+              action: "decision_conge",
+              details: {
+                message: `Acceptation de la demande de congé pour ${nomDemandeur} du ${format(new Date(demande.date_debut), "dd/MM/yyyy")} au ${format(new Date(demande.date_fin), "dd/MM/yyyy")}`,
+                salarie: nomDemandeur,
+              },
+              userRole: userRole || null,
+            });
+          }
+        },
+      }
+    );
   };
 
   const handleRefuseClick = (demandeId: string) => {
