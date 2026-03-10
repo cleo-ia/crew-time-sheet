@@ -26,7 +26,7 @@ export const InterimairesManager = ({ showAffectation = true, showCreateButton =
   const deleteUtilisateur = useDeleteUtilisateur();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
-  const { role: userRole } = useCurrentUserRole();
+  const { data: userRole } = useCurrentUserRole();
 
   const handleEdit = (interimaire: any) => {
     setEditingInterimaire(interimaire);

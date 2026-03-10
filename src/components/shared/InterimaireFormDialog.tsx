@@ -37,7 +37,7 @@ export const InterimaireFormDialog = ({
   const { toast } = useToast();
   const logModification = useLogModification();
   const userInfo = useCurrentUserInfo();
-  const { role: userRole } = useCurrentUserRole();
+  const { data: userRole } = useCurrentUserRole();
 
   // Remplir le formulaire si on édite un intérimaire
   useEffect(() => {
