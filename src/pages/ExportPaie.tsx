@@ -35,6 +35,8 @@ const ExportPaie = () => {
   const [isExportingVentilation, setIsExportingVentilation] = useState(false);
 
   const enterpriseConfig = useEnterpriseConfig();
+  const logModification = useLogModification();
+  const userInfo = useCurrentUserInfo();
 
   // Filters object compatible with existing hooks
   const filters = useMemo(() => ({
