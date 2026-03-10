@@ -16,6 +16,8 @@ import { generateRHExcel } from "@/lib/excelExport";
 import { useRecapChantier, useVentilationOuvrier, useVentilationInterim } from "@/hooks/useVentilationAnalytique";
 import { exportVentilationCompletePdf } from "@/lib/ventilationExport";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
+import { useLogModification } from "@/hooks/useLogModification";
+import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { toast } from "sonner";
 
 const STEPS = [
