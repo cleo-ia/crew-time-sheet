@@ -33,29 +33,19 @@ const ROLE_FILTERS = [
 ];
 
 const ROLE_ORDER: Record<string, number> = {
-  super_admin: 0,
-  admin: 1,
-  gestionnaire: 2,
-  rh: 3,
-  conducteur: 4,
-  chef: 5,
-  grutier: 6,
-  macon: 7,
-  finisseur: 8,
-  interimaire: 9,
+  rh: 0,
+  conducteur: 1,
+  chef: 2,
+  gestionnaire: 3,
+  admin: 4,
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-  gestionnaire: "Gestionnaires",
   rh: "RH",
   conducteur: "Conducteurs",
   chef: "Chefs de chantier",
-  grutier: "Grutiers",
-  macon: "Maçons",
-  finisseur: "Finisseurs",
-  interimaire: "Intérimaires",
+  gestionnaire: "Gestionnaires",
+  admin: "Admin",
 };
 
 const PERIOD_OPTIONS = [

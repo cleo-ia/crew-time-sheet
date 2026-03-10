@@ -1,24 +1,39 @@
 
 
-## Plan : Nettoyer ROLE_ORDER
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Fichier
-`src/components/admin/HistoriqueManager.tsx`
+### Fichier modifie
 
-### Changement
-Réduire `ROLE_ORDER` aux 5 rôles concernés uniquement :
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-```typescript
-const ROLE_ORDER: Record<string, number> = {
-  rh: 0,
-  conducteur: 1,
-  chef: 2,
-  gestionnaire: 3,
-  admin: 4,
-};
-```
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-Supprimer `super_admin`, `grutier`, `macon`, `finisseur`, `interimaire` qui n'ont rien à faire dans cet écran d'historique.
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-Nettoyer aussi `ROLE_LABELS` pour ne garder que ces 5 rôles.
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
+
+Meme pattern exact :
+
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
