@@ -24,9 +24,10 @@ import { Switch } from "@/components/ui/switch";
 interface ChantiersManagerProps {
   basePath?: string;
   showEcoleToggle?: boolean;
+  readOnly?: boolean;
 }
 
-export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggle = true }: ChantiersManagerProps) => {
+export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggle = true, readOnly = false }: ChantiersManagerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
@@ -147,10 +148,12 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={() => setShowDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau chantier
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau chantier
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -164,7 +167,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
               <TableHead>Conducteur</TableHead>
               <TableHead>Chef</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {!readOnly && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -215,24 +218,26 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
                       {chantier.actif ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(chantier)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(chantier.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {!readOnly && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(chantier)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(chantier.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

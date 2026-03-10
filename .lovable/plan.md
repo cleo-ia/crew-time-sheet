@@ -1,29 +1,39 @@
 
 
-## Restreindre le gestionnaire en lecture seule sur les chantiers
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Approche
+### Fichier modifie
 
-Ajouter une prop `readOnly` au composant `ChantiersManager`, puis la passer à `true` quand le rôle est `gestionnaire`.
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-### Modifications
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-**1. `src/components/admin/ChantiersManager.tsx`**
-- Ajouter `readOnly?: boolean` dans `ChantiersManagerProps`
-- Quand `readOnly` est `true` :
-  - Masquer le bouton "Nouveau chantier"
-  - Masquer les boutons Edit et Delete sur chaque ligne du tableau
-  - Garder la navigation en double-clic vers le détail (lecture seule)
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-**2. `src/pages/AdminPanel.tsx`**
-- Importer `useCurrentUserRole` (déjà utilisé)
-- Passer `readOnly={userRole === "gestionnaire"}` au `<ChantiersManager />` dans l'onglet chantiers
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-**3. `src/pages/ChantierDetail.tsx`**
-- Ajouter `"gestionnaire"` à la condition `isReadOnly` pour que le détail soit aussi en lecture seule :
-  ```
-  const isReadOnly = from === "chef" || userRole === "chef" || userRole === "gestionnaire";
-  ```
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-Cela désactive création, modification et suppression pour le gestionnaire tout en préservant la consultation.
+Meme pattern exact :
+
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
