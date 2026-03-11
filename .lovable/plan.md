@@ -1,39 +1,23 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Plan : Tri par date et filtre par mois pour les congés conducteur
 
-### Fichier modifie
+### Fichier : `src/components/conges/CongesListSheet.tsx`
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+#### 1. Tri par date de début
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+- Ligne 135 : changer `.order("created_at", { ascending: false })` en `.order("date_debut", { ascending: true })` pour `mesDemandes`
+- Le hook `useDemandesConges` (ligne 121) trie déjà par `created_at desc` — modifier dans `src/hooks/useDemandesConges.ts` ligne 48 : `.order("date_debut", { ascending: true })`
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+#### 2. Filtre par mois
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+- Ajouter un state `selectedMonth` (défaut `"all"`)
+- Calculer `availableMonths` via `useMemo` à partir des `date_debut` de toutes les demandes (`demandesAValider` + `mesDemandes`), triés chronologiquement
+- Ajouter un `Select` avec icône `CalendarDays` entre le bouton "Nouvelle demande" et les tabs (visible si `availableMonths.length > 0`)
+- Filtrer `demandesEnAttente`, `demandesTraitees` et `mesDemandes` selon le mois sélectionné avant le rendu
+- Les compteurs (badge "À valider") reflètent les données filtrées
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+Imports à ajouter : `CalendarDays` (déjà disponible via lucide), `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue`, `format` et `fr` (déjà importés).
 
-Meme pattern exact :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+3 fichiers modifiés (`CongesListSheet.tsx`, `useDemandesConges.ts`), environ 35 lignes ajoutées.
 
