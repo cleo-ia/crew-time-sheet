@@ -709,30 +709,47 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       const isFinisseur = salarie.role_metier === "finisseur";
       
       if (isFinisseur && fichesJours.length > 0) {
-        // Récupérer les affectations avec dates pour ce finisseur
-        let affQueryDates = supabase
+        // 1. Récupérer affectations finisseurs (conducteur direct)
+        let affQuery1 = supabase
           .from("affectations_finisseurs_jours")
-          .select("date, semaine")
+          .select("date")
           .eq("finisseur_id", salarieId);
-
         if (filters.semaine && filters.semaine !== "all") {
-          affQueryDates = affQueryDates.eq("semaine", filters.semaine);
+          affQuery1 = affQuery1.eq("semaine", filters.semaine);
         }
 
+        // 2. Récupérer affectations chef (finisseur géré par un chef)
+        let affQuery2 = supabase
+          .from("affectations_jours_chef")
+          .select("jour")
+          .eq("macon_id", salarieId);
+        if (filters.semaine && filters.semaine !== "all") {
+          affQuery2 = affQuery2.eq("semaine", filters.semaine);
+        }
 
-        const { data: affectationsAvecDates } = await affQueryDates;
+        const [{ data: aff1 }, { data: aff2 }] = await Promise.all([affQuery1, affQuery2]);
 
-        // Créer un Set des dates affectées
-        const datesAffectees = new Set(affectationsAvecDates?.map(a => a.date) || []);
+        // 3. Fusionner les dates des deux sources
+        const datesAffectees = new Set([
+          ...(aff1?.map(a => a.date) || []),
+          ...(aff2?.map(a => a.jour) || []),
+        ]);
 
-        // Filtrer les fiches_jours pour ne garder que les dates affectées
-        // SEULEMENT s'il existe des affectations journalières (finisseur autonome)
+        // 4. Construire Set des fiche_id transmis (source de vérité)
+        const fichesTransmises = new Set(
+          filteredFiches
+            .filter(f => ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"].includes(f.statut))
+            .map(f => f.id)
+        );
+
+        // 5. Filtrer seulement les jours des fiches NON transmises
         if (datesAffectees.size > 0) {
-          fichesJours = fichesJours.filter(jour => datesAffectees.has(jour.date));
+          fichesJours = fichesJours.filter(jour =>
+            fichesTransmises.has(jour.fiche_id) || datesAffectees.has(jour.date)
+          );
         }
-        // Sinon (pas d'affectations journalières), traiter comme un maçon (aucun filtre)
 
-        console.debug(`[RH Employee Detail] Finisseur ${salarieId}: ${fichesJoursRaw?.length || 0} → ${fichesJours.length} jours`);
+        console.debug(`[RH Employee Detail] Finisseur ${salarieId}: ${fichesJoursRaw?.length || 0} → ${fichesJours.length} jours (transmises bypass: ${fichesTransmises.size})`);
       }
 
       // 🔥 NOUVEAU : Filtrer les jours par mois calendaire

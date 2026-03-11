@@ -602,12 +602,13 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         }
 
         // ✅ CORRECTION : Pour les finisseurs, vérifier l'affectation par leurs dates planifiées
-        // La map contient les dates de affectations_finisseurs_jours ET affectations_jours_chef
+        // Mais ne PAS filtrer les fiches déjà transmises (source de vérité)
         if (isFinisseur) {
           const datesAffectees = affectationsMap.get(salarieId);
           if (datesAffectees && datesAffectees.size > 0) {
-            if (!datesAffectees.has(jour.date)) {
-              continue; // Ignorer ce jour si non affecté
+            const ficheTransmise = ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"].includes(ficheStatut);
+            if (!ficheTransmise && !datesAffectees.has(jour.date)) {
+              continue; // Ignorer ce jour si non affecté ET fiche non transmise
             }
           }
         }
