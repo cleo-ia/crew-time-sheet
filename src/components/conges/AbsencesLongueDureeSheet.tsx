@@ -187,6 +187,24 @@ export const AbsencesLongueDureeSheet = ({
           </SheetHeader>
 
           <div className="mt-4">
+            {availableMonths.length > 1 && (
+              <div className="mb-3">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full">
+                    <CalendarDays className="h-4 w-4 mr-2 shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les mois</SelectItem>
+                    {availableMonths.map((month) => (
+                      <SelectItem key={month} value={month}>
+                        {format(new Date(month + "-01"), "MMMM yyyy", { locale: fr })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Tabs defaultValue="en-cours">
               <TabsList className="w-full mb-3">
                 <TabsTrigger value="en-cours" className="flex-1">
