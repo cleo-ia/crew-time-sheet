@@ -8,7 +8,14 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { CalendarOff, Plus, ArrowLeft, Loader2 } from "lucide-react";
+import { CalendarOff, CalendarDays, Plus, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDemandesConges } from "@/hooks/useDemandesConges";
 import { useValidateDemandeConge } from "@/hooks/useValidateDemandeConge";
 import { useRefuseDemandeConge } from "@/hooks/useRefuseDemandeConge";
@@ -56,6 +63,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const [selectedDemandeId, setSelectedDemandeId] = useState<string | null>(null);
   const [motifRefus, setMotifRefus] = useState("");
   const [mode, setMode] = useState<"list" | "new">("list");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   const { data: entrepriseId } = useCurrentEntrepriseId();
   const currentWeek = getCurrentWeek();
@@ -132,7 +140,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
           demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, nom, prenom)
         `)
         .in("demandeur_id", allManagedIds)
-        .order("created_at", { ascending: false });
+        .order("date_debut", { ascending: true });
       
       if (error) {
         console.error("Erreur chargement mes demandes congés:", error);
@@ -158,11 +166,30 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
     }
   }, [open, allManagedIds]);
 
-  // Filtrer les demandes par statut
-  const demandesEnAttente = demandesAValider.filter((d) => d.statut === "EN_ATTENTE");
-  const demandesTraitees = demandesAValider.filter((d) => 
+  // Mois disponibles pour le filtre
+  const availableMonths = useMemo(() => {
+    const allDemandes = [...(demandesAValider || []), ...(mesDemandes || [])];
+    const monthsSet = new Set<string>();
+    allDemandes.forEach((d) => {
+      if (d.date_debut) {
+        monthsSet.add(d.date_debut.substring(0, 7));
+      }
+    });
+    return Array.from(monthsSet).sort();
+  }, [demandesAValider, mesDemandes]);
+
+  // Filtre par mois
+  const filterByMonth = (demandes: DemandeConge[]) => {
+    if (selectedMonth === "all") return demandes;
+    return demandes.filter((d) => d.date_debut?.startsWith(selectedMonth));
+  };
+
+  // Filtrer les demandes par statut puis par mois
+  const demandesEnAttente = filterByMonth(demandesAValider.filter((d) => d.statut === "EN_ATTENTE"));
+  const demandesTraitees = filterByMonth(demandesAValider.filter((d) => 
     d.statut === "VALIDEE_CONDUCTEUR" || d.statut === "VALIDEE_RH" || d.statut === "REFUSEE"
-  );
+  ));
+  const mesDemandesFiltrees = filterByMonth(mesDemandes);
 
   // Liste des employés pour le formulaire (conducteur + finisseurs + employés sans affectation)
   const employeesForForm: Employee[] = useMemo(() => {
@@ -371,6 +398,26 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                 Nouvelle demande
               </Button>
 
+              {/* Filtre par mois */}
+              {availableMonths.length > 0 && (
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filtrer par mois" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les mois</SelectItem>
+                      {availableMonths.map((month) => (
+                        <SelectItem key={month} value={month}>
+                          {format(new Date(month + "-01"), "MMMM yyyy", { locale: fr })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="en-attente" className="relative text-xs">
@@ -436,7 +483,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : mesDemandes.length === 0 ? (
+                  ) : mesDemandesFiltrees.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CalendarOff className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <p>Aucune demande créée</p>
@@ -451,7 +498,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                       </Button>
                     </div>
                   ) : (
-                    mesDemandes.map((demande) => (
+                    mesDemandesFiltrees.map((demande) => (
                       <DemandeCongeCard key={demande.id} demande={demande} />
                     ))
                   )}

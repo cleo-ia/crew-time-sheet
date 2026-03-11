@@ -40,7 +40,7 @@ export const useDemandesConges = (demandeurId?: string | null) => {
           *,
           demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, nom, prenom)
         `)
-        .order("created_at", { ascending: false });
+        .order("date_debut", { ascending: true });
 
       // Si demandeurId est fourni, filtrer uniquement les demandes de ce demandeur
       if (demandeurId) {
