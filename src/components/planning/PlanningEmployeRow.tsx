@@ -110,6 +110,7 @@ export const PlanningEmployeRow = ({
   showChefResponsable,
   onSetChefResponsable,
   absenceDays,
+  onAbsenceClick,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
