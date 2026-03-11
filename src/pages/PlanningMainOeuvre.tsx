@@ -49,6 +49,7 @@ import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { DemandeCongeDetailDialog } from "@/components/conges/DemandeCongeDetailDialog";
+import { AbsenceLDDetailDialog } from "@/components/conges/AbsenceLDDetailDialog";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
