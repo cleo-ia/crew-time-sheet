@@ -423,10 +423,11 @@ export const AddEmployeeToPlanningDialog = ({
                       isFree 
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                         : isAbsent
-                          ? "bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500"
+                          ? cn("bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500", onAbsenceClick && "cursor-pointer hover:ring-2 hover:ring-red-400")
                           : "bg-muted text-muted-foreground"
                     )}
                     title={isFree ? `${day.fullName} — Disponible` : isAbsent ? `${day.fullName} — Absent` : `${day.fullName} — Affecté`}
+                    onClick={isAbsent && onAbsenceClick ? (e) => { e.stopPropagation(); onAbsenceClick(employe.id, day.date); } : undefined}
                   >
                     {day.dayName}
                   </div>
