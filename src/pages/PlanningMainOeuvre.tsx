@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { cn } from "@/lib/utils";
@@ -42,6 +48,10 @@ import { useAbsencesLongueDureePlanning } from "@/hooks/useAbsencesLongueDureePl
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { DemandeCongeDetailDialog } from "@/components/conges/DemandeCongeDetailDialog";
+import type { DemandeConge } from "@/hooks/useDemandesConges";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
