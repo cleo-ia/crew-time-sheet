@@ -1,39 +1,35 @@
 
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+## Plan : Tri par date et filtre par mois pour les absences longue duree
 
 ### Fichier modifie
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+`src/components/conges/AbsencesLongueDureeSheet.tsx`
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+### Modification 1 : Tri par date de debut croissante
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
+Actuellement les absences sont triees par `created_at DESC` cote Supabase (dans le hook `useAbsencesLongueDuree`). Modifier le hook pour trier par `date_debut ASC`.
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+**Fichier** : `src/hooks/useAbsencesLongueDuree.ts`, ligne 36
 
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
+```typescript
+// Avant
+.order("created_at", { ascending: false });
+// Apres
+.order("date_debut", { ascending: true });
+```
 
-Meme pattern exact :
+### Modification 2 : Filtre par mois
 
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+Dans `AbsencesLongueDureeSheet.tsx` :
 
-### Ce qui ne change pas
+1. Ajouter un state `selectedMonth` (defaut `"all"`)
+2. Calculer les mois uniques a partir des `date_debut` de toutes les absences (actives + terminees), tries chronologiquement
+3. Ajouter un `Select` avec icone `CalendarDays` entre le header et les tabs (visible si plus d'un mois)
+4. Filtrer `actives` et `terminees` selon le mois selectionne avant le rendu
+5. Les compteurs dans les onglets et le badge du header refletent les donnees filtrees
 
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
+Le filtre s'applique sur `date_debut.startsWith(selectedMonth)`, meme pattern que celui implemente dans `CongesRHSheet.tsx`.
+
+2 fichiers modifies, environ 30 lignes ajoutees.
 
