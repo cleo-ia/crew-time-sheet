@@ -187,7 +187,7 @@ export const AbsencesLongueDureeSheet = ({
           </SheetHeader>
 
           <div className="mt-4">
-            {availableMonths.length > 1 && (
+            {availableMonths.length > 0 && (
               <div className="mb-3">
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="w-full">
