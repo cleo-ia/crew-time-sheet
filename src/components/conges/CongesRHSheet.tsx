@@ -53,12 +53,28 @@ export const CongesRHSheet = ({
   const [selectedDemandeId, setSelectedDemandeId] = useState<string | null>(null);
   const [motifRefus, setMotifRefus] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const { data: demandes = [], isLoading } = useDemandesCongesRH(entrepriseId);
   const validateMutation = useValidateDemandeConge();
   const refuseMutation = useRefuseDemandeConge();
   const markExporteesMutation = useMarkDemandesExportees();
   const enterpriseConfig = useEnterpriseConfig();
+
+  // Mois disponibles extraits des demandes
+  const availableMonths = useMemo(() => {
+    const months = [...new Set(demandes.map((d) => d.date_debut.substring(0, 7)))].sort();
+    return months.map((m) => ({
+      value: m,
+      label: format(new Date(m + "-01"), "MMMM yyyy", { locale: fr }),
+    }));
+  }, [demandes]);
+
+  // Filtre par mois
+  const filteredDemandes = useMemo(() => {
+    if (selectedMonth === "all") return demandes;
+    return demandes.filter((d) => d.date_debut.startsWith(selectedMonth));
+  }, [demandes, selectedMonth]);
 
   // Récupérer l'ID de l'utilisateur connecté
   useEffect(() => {
@@ -72,11 +88,11 @@ export const CongesRHSheet = ({
   }, []);
 
   // Demandes en attente de validation RH (après validation conducteur)
-  const aValider = demandes.filter((d) => d.statut === "VALIDEE_CONDUCTEUR");
+  const aValider = filteredDemandes.filter((d) => d.statut === "VALIDEE_CONDUCTEUR");
   // Demandes en attente de validation conducteur (pour suivi)
-  const enAttenteConducteur = demandes.filter((d) => d.statut === "EN_ATTENTE");
+  const enAttenteConducteur = filteredDemandes.filter((d) => d.statut === "EN_ATTENTE");
   // Demandes traitées (validées RH ou refusées)
-  const traitees = demandes.filter(
+  const traitees = filteredDemandes.filter(
     (d) => d.statut === "VALIDEE_RH" || d.statut === "REFUSEE"
   );
 
