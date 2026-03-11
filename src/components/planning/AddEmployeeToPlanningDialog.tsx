@@ -389,7 +389,20 @@ export const AddEmployeeToPlanningDialog = ({
               {employe.nom?.toUpperCase()} {employe.prenom}
             </span>
             {absencesLDByEmploye?.has(employe.id) && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+              <Badge 
+                variant="destructive" 
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4",
+                  onAbsenceClick && "cursor-pointer hover:opacity-80"
+                )}
+                onClick={(e) => {
+                  if (!onAbsenceClick) return;
+                  e.stopPropagation();
+                  const absData = absencesLDByEmploye.get(employe.id)!;
+                  const firstDate = absData.dates.values().next().value;
+                  if (firstDate) onAbsenceClick(employe.id, firstDate);
+                }}
+              >
                 {absencesLDByEmploye.get(employe.id)!.type}
               </Badge>
             )}
