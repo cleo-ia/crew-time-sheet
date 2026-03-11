@@ -92,6 +92,15 @@ const PlanningMainOeuvre = () => {
   const [validateDialogOpen, setValidateDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
+  const [selectedConge, setSelectedConge] = useState<DemandeConge | null>(null);
+  const [selectedAbsenceLD, setSelectedAbsenceLD] = useState<{
+    id: string;
+    type_absence: string;
+    date_debut: string;
+    date_fin: string | null;
+    motif: string | null;
+    salarie_nom: string;
+  } | null>(null);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id") || "";
   const enterpriseConfig = useEnterpriseConfig();
