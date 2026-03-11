@@ -26,13 +26,14 @@ interface PlanningEmployeRowProps {
   onRemove: (employeId: string) => void;
   isLoading?: boolean;
   conflictDays?: Map<string, string>; // jour -> nom du chantier en conflit
-  isChef?: boolean; // L'employé est-il un chef de chantier?
-  isChantierPrincipal?: boolean; // Est-ce le chantier principal du chef?
-  onSetChantierPrincipal?: (employeId: string) => void; // Callback pour définir comme principal
-  isChefResponsable?: boolean; // Est-ce le chef responsable de ce chantier?
-  showChefResponsable?: boolean; // Afficher le badge responsable (2+ chefs sur le chantier)?
-  onSetChefResponsable?: (employeId: string) => void; // Callback pour définir comme responsable
-  absenceDays?: Map<string, string>; // date -> type_absence (absences longue durée)
+  isChef?: boolean;
+  isChantierPrincipal?: boolean;
+  onSetChantierPrincipal?: (employeId: string) => void;
+  isChefResponsable?: boolean;
+  showChefResponsable?: boolean;
+  onSetChefResponsable?: (employeId: string) => void;
+  absenceDays?: Map<string, string>; // date -> type_absence
+  onAbsenceClick?: (employeId: string, date: string) => void;
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
