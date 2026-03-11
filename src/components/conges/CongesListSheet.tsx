@@ -483,7 +483,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : mesDemandes.length === 0 ? (
+                  ) : mesDemandesFiltrees.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CalendarOff className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <p>Aucune demande créée</p>
@@ -498,7 +498,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                       </Button>
                     </div>
                   ) : (
-                    mesDemandes.map((demande) => (
+                    mesDemandesFiltrees.map((demande) => (
                       <DemandeCongeCard key={demande.id} demande={demande} />
                     ))
                   )}
