@@ -160,7 +160,7 @@ export const CongesRHSheet = ({
           </SheetHeader>
 
           {/* Filtre par mois */}
-          {availableMonths.length > 1 && (
+          {availableMonths.length > 0 && (
             <div className="mt-3 flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
