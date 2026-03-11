@@ -398,6 +398,26 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
                 Nouvelle demande
               </Button>
 
+              {/* Filtre par mois */}
+              {availableMonths.length > 0 && (
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filtrer par mois" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les mois</SelectItem>
+                      {availableMonths.map((month) => (
+                        <SelectItem key={month} value={month}>
+                          {format(new Date(month + "-01"), "MMMM yyyy", { locale: fr })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="en-attente" className="relative text-xs">
