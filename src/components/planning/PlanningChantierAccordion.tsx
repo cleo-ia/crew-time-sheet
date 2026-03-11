@@ -587,6 +587,7 @@ export const PlanningChantierAccordion = ({
         allAffectations={allAffectations}
         onAdd={handleAdd}
         absencesLDByEmploye={absencesLDByEmploye}
+        onAbsenceClick={onAbsenceClick}
       />
     </>
   );

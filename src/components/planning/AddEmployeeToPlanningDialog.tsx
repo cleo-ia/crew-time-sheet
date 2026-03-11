@@ -34,7 +34,8 @@ interface AddEmployeeToPlanningDialogProps {
   existingAffectations: PlanningAffectation[];
   allAffectations: PlanningAffectation[];
   onAdd: (employeId: string, days: string[]) => void;
-  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string }>;
+  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string; details?: Map<string, { source: "conge" | "ald"; id: string }> }>;
+  onAbsenceClick?: (employeId: string, date: string) => void;
 }
 
 const TYPE_FILTERS: { value: EmployeType; label: string }[] = [
@@ -65,6 +66,7 @@ export const AddEmployeeToPlanningDialog = ({
   allAffectations,
   onAdd,
   absencesLDByEmploye,
+  onAbsenceClick,
 }: AddEmployeeToPlanningDialogProps) => {
   const { data: allEmployes = [], isLoading } = useAllEmployes();
   const [search, setSearch] = useState("");
@@ -387,7 +389,20 @@ export const AddEmployeeToPlanningDialog = ({
               {employe.nom?.toUpperCase()} {employe.prenom}
             </span>
             {absencesLDByEmploye?.has(employe.id) && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+              <Badge 
+                variant="destructive" 
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4",
+                  onAbsenceClick && "cursor-pointer hover:opacity-80"
+                )}
+                onClick={(e) => {
+                  if (!onAbsenceClick) return;
+                  e.stopPropagation();
+                  const absData = absencesLDByEmploye.get(employe.id)!;
+                  const firstDate = absData.dates.values().next().value;
+                  if (firstDate) onAbsenceClick(employe.id, firstDate);
+                }}
+              >
                 {absencesLDByEmploye.get(employe.id)!.type}
               </Badge>
             )}
@@ -408,10 +423,11 @@ export const AddEmployeeToPlanningDialog = ({
                       isFree 
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                         : isAbsent
-                          ? "bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500"
+                          ? cn("bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500", onAbsenceClick && "cursor-pointer hover:ring-2 hover:ring-red-400")
                           : "bg-muted text-muted-foreground"
                     )}
                     title={isFree ? `${day.fullName} — Disponible` : isAbsent ? `${day.fullName} — Absent` : `${day.fullName} — Affecté`}
+                    onClick={isAbsent && onAbsenceClick ? (e) => { e.stopPropagation(); onAbsenceClick(employe.id, day.date); } : undefined}
                   >
                     {day.dayName}
                   </div>
@@ -432,10 +448,11 @@ export const AddEmployeeToPlanningDialog = ({
                       isTaken
                         ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                         : isAbsent
-                          ? "bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500"
+                          ? cn("bg-red-100 text-red-400 dark:bg-red-900/30 dark:text-red-500", onAbsenceClick && "cursor-pointer hover:ring-2 hover:ring-red-400")
                           : "bg-muted text-muted-foreground"
                     )}
                     title={isTaken ? `${day.fullName} — Affecté` : isAbsent ? `${day.fullName} — Absent` : `${day.fullName} — Libre`}
+                    onClick={isAbsent && onAbsenceClick ? (e) => { e.stopPropagation(); onAbsenceClick(employe.id, day.date); } : undefined}
                   >
                     {day.dayName}
                   </div>

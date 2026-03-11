@@ -1,27 +1,39 @@
 
 
-## Plan : Rendre les indicateurs d'absence cliquables dans le dialog d'ajout d'employé
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Contexte
+### Fichier modifie
 
-Dans `AddEmployeeToPlanningDialog`, les badges rouges d'absence (AT, CP...) a cote du nom et les cases rouges par jour ne sont pas cliquables. On veut qu'un clic ouvre le detail du conge ou de l'absence longue duree, comme sur la grille principale.
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-### Modifications
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-**1. `src/components/planning/AddEmployeeToPlanningDialog.tsx`**
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-- Ajouter un nouveau prop `onAbsenceClick?: (employeId: string, date: string) => void`
-- Enrichir le prop `absencesLDByEmploye` pour inclure les `details` (deja disponible dans le type `AbsenceLD` du hook) : `Map<string, AbsenceLD>` au lieu de `Map<string, { dates: Set<string>; type: string }>`
-- Rendre le **badge type absence** (ligne ~389-393, le Badge "destructive" a cote du nom) cliquable : au clic, appeler `onAbsenceClick(employe.id, firstAbsenceDate)` pour ouvrir le detail
-- Rendre les **cases jour rouges** (lignes ~399-419 et ~424-444, les div rouges `isAbsent`) cliquables : au clic, appeler `onAbsenceClick(employe.id, day.date)` avec `e.stopPropagation()` pour ne pas selectionner l'employe
-- Ajouter `cursor-pointer` sur ces elements et un hover visuel
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-**2. `src/pages/PlanningMainOeuvre.tsx`**
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-- Passer `onAbsenceClick={handleAbsenceClick}` au composant `AddEmployeeToPlanningDialog`
-- Mettre a jour le type du prop `absencesLDByEmploye` passe au dialog pour inclure les `details`
+Meme pattern exact :
 
-### Resume
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-2 fichiers modifies. Les badges d'absence et les cases jour rouges dans le dialog d'ajout seront cliquables et ouvriront le meme dialog de detail que sur la grille principale.
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
