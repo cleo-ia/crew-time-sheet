@@ -557,6 +557,7 @@ export const PlanningChantierAccordion = ({
                       onSetChefResponsable={(empId) =>
                         onSetChefResponsable?.(empId, chantier.id)
                       }
+                      onAbsenceClick={onAbsenceClick}
                     />
                   );
                 })}
