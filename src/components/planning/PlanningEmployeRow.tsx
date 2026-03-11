@@ -269,7 +269,7 @@ export const PlanningEmployeRow = ({
           
           // Si absence longue durée, afficher icône bloquée
           if (absenceType) {
-            return <AbsenceIndicator key={day.date} typeAbsence={absenceType} />;
+            return <AbsenceIndicator key={day.date} typeAbsence={absenceType} onClick={() => onAbsenceClick?.(employe.id, day.date)} />;
           }
           
           // Si conflit sur ce jour (affecté ailleurs), afficher alerte
