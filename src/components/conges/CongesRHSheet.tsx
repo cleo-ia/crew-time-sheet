@@ -159,7 +159,25 @@ export const CongesRHSheet = ({
             </SheetTitle>
           </SheetHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          {/* Filtre par mois */}
+          {availableMonths.length > 1 && (
+            <div className="mt-3 flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les mois</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
             <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="a-valider" className="text-xs sm:text-sm">
                 À valider
