@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Pencil, Calendar } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, CalendarDays } from "lucide-react";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
