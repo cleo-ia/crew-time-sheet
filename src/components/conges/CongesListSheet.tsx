@@ -139,7 +139,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
           demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, nom, prenom)
         `)
         .in("demandeur_id", allManagedIds)
-        .order("created_at", { ascending: false });
+        .order("date_debut", { ascending: true });
       
       if (error) {
         console.error("Erreur chargement mes demandes congés:", error);
