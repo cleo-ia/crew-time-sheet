@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Sheet,
   SheetContent,
@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Pencil, Calendar } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, CalendarDays } from "lucide-react";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,11 +153,23 @@ export const AbsencesLongueDureeSheet = ({
     setDeleteId(null);
   };
 
+  const [selectedMonth, setSelectedMonth] = useState("all");
+
+  const availableMonths = useMemo(() => {
+    const months = new Set(absences.map((a) => a.date_debut.substring(0, 7)));
+    return Array.from(months).sort();
+  }, [absences]);
+
+  const filteredAbsences = useMemo(() => {
+    if (selectedMonth === "all") return absences;
+    return absences.filter((a) => a.date_debut.startsWith(selectedMonth));
+  }, [absences, selectedMonth]);
+
   const today = new Date();
-  const actives = absences.filter(
+  const actives = filteredAbsences.filter(
     (a) => !a.date_fin || isAfter(parseISO(a.date_fin), today)
   );
-  const terminees = absences.filter(
+  const terminees = filteredAbsences.filter(
     (a) => a.date_fin && isBefore(parseISO(a.date_fin), today)
   );
 
@@ -175,6 +187,24 @@ export const AbsencesLongueDureeSheet = ({
           </SheetHeader>
 
           <div className="mt-4">
+            {availableMonths.length > 1 && (
+              <div className="mb-3">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full">
+                    <CalendarDays className="h-4 w-4 mr-2 shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les mois</SelectItem>
+                    {availableMonths.map((month) => (
+                      <SelectItem key={month} value={month}>
+                        {format(new Date(month + "-01"), "MMMM yyyy", { locale: fr })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Tabs defaultValue="en-cours">
               <TabsList className="w-full mb-3">
                 <TabsTrigger value="en-cours" className="flex-1">
