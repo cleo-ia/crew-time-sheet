@@ -49,6 +49,7 @@ import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { DemandeCongeDetailDialog } from "@/components/conges/DemandeCongeDetailDialog";
+import { AbsenceLDDetailDialog } from "@/components/conges/AbsenceLDDetailDialog";
 import type { DemandeConge } from "@/hooks/useDemandesConges";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -837,46 +838,11 @@ const PlanningMainOeuvre = () => {
         onOpenChange={(open) => { if (!open) setSelectedConge(null); }}
       />
 
-      {/* Dialog détail absence longue durée */}
-      <Dialog open={!!selectedAbsenceLD} onOpenChange={(open) => { if (!open) setSelectedAbsenceLD(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Absence longue durée</DialogTitle>
-          </DialogHeader>
-          {selectedAbsenceLD && (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Salarié</span>
-                <span className="text-sm">{selectedAbsenceLD.salarie_nom}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Type</span>
-                <Badge variant="outline">{selectedAbsenceLD.type_absence}</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Du</span>
-                <span className="text-sm">
-                  {format(new Date(selectedAbsenceLD.date_debut), "dd/MM/yyyy", { locale: fr })}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Au</span>
-                <span className="text-sm">
-                  {selectedAbsenceLD.date_fin
-                    ? format(new Date(selectedAbsenceLD.date_fin), "dd/MM/yyyy", { locale: fr })
-                    : "Indéterminée"}
-                </span>
-              </div>
-              {selectedAbsenceLD.motif && (
-                <div>
-                  <span className="text-sm font-medium">Motif</span>
-                  <p className="text-sm text-muted-foreground mt-1">{selectedAbsenceLD.motif}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AbsenceLDDetailDialog
+        absence={selectedAbsenceLD}
+        open={!!selectedAbsenceLD}
+        onOpenChange={(open) => { if (!open) setSelectedAbsenceLD(null); }}
+      />
     </PageLayout>
   );
 };
