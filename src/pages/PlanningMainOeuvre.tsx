@@ -453,6 +453,46 @@ const PlanningMainOeuvre = () => {
     });
   };
 
+  const handleAbsenceClick = useCallback(async (employeId: string, date: string) => {
+    const absenceData = absencesLDByEmploye.get(employeId);
+    if (!absenceData?.details) return;
+    
+    const detail = absenceData.details.get(date);
+    if (!detail) return;
+
+    if (detail.source === "conge") {
+      // Fetch le congé complet
+      const { data: conge } = await supabase
+        .from("demandes_conges")
+        .select("*, demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(nom, prenom)")
+        .eq("id", detail.id)
+        .maybeSingle();
+      
+      if (conge) {
+        setSelectedConge(conge as any);
+      }
+    } else {
+      // Fetch l'absence longue durée
+      const { data: ald } = await supabase
+        .from("absences_longue_duree")
+        .select("*, salarie:utilisateurs!absences_longue_duree_salarie_id_fkey(nom, prenom)")
+        .eq("id", detail.id)
+        .maybeSingle();
+      
+      if (ald) {
+        const salarie = ald.salarie as any;
+        setSelectedAbsenceLD({
+          id: ald.id,
+          type_absence: ald.type_absence,
+          date_debut: ald.date_debut,
+          date_fin: ald.date_fin,
+          motif: ald.motif,
+          salarie_nom: salarie ? `${salarie.prenom} ${salarie.nom}`.trim() : "",
+        });
+      }
+    }
+  }, [absencesLDByEmploye]);
+
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
