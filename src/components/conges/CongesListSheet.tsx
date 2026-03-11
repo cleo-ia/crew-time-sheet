@@ -63,6 +63,7 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
   const [selectedDemandeId, setSelectedDemandeId] = useState<string | null>(null);
   const [motifRefus, setMotifRefus] = useState("");
   const [mode, setMode] = useState<"list" | "new">("list");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   const { data: entrepriseId } = useCurrentEntrepriseId();
   const currentWeek = getCurrentWeek();
