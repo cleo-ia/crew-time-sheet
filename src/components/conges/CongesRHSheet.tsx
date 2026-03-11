@@ -178,6 +178,8 @@ export const CongesRHSheet = ({
               </Select>
             </div>
           )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
             <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="a-valider" className="text-xs sm:text-sm">
                 À valider
