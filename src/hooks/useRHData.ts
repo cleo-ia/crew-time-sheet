@@ -735,12 +735,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
           ...(aff2?.map(a => a.jour) || []),
         ]);
 
-        // 4. Construire Set des fiche_id transmis (source de vérité)
-        const fichesTransmises = new Set(
-          filteredFiches
-            .filter(f => ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"].includes(f.statut))
-            .map(f => f.id)
-        );
+        // 4. Toutes les fiches ici sont déjà transmises (filtrées par statut dans la requête)
+        // Donc tous les fiche_id sont "source de vérité"
+        const fichesTransmises = new Set(filteredFiches.map(f => f.id));
 
         // 5. Filtrer seulement les jours des fiches NON transmises
         if (datesAffectees.size > 0) {
