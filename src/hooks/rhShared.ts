@@ -473,7 +473,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // 🆕 Pre-fetch cross-chantier data for chefs when a chantier filter is active
   // This allows us to detect "working on other site" vs "truly absent"
   let chefOtherSiteDates = new Map<string, Set<string>>(); // salarieId -> Set of dates with hours on other sites
-  const hasChantierFilter = filters.chantier && filters.chantier !== "all";
+  const hasChantierFilter2 = filters.chantier && filters.chantier !== "all";
   
   if (hasChantierFilter) {
     // Find all chef salarieIds in current data
