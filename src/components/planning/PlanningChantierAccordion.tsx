@@ -76,6 +76,7 @@ export const PlanningChantierAccordion = ({
   chefsWithPrincipal,
   onSetChefResponsable,
   absencesLDByEmploye,
+  onAbsenceClick,
 }: PlanningChantierAccordionProps) => {
   const { shortName } = useEnterpriseConfig();
   const { mutate: setChantierPrincipal } = useSetChantierPrincipal();
