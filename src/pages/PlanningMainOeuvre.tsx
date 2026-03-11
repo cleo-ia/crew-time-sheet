@@ -745,6 +745,7 @@ const PlanningMainOeuvre = () => {
                   chefsWithPrincipal={chefsWithPrincipal}
                   onSetChefResponsable={handleSetChefResponsable}
                   absencesLDByEmploye={absencesLDByEmploye}
+                  onAbsenceClick={handleAbsenceClick}
                 />
               ))}
             </div>
