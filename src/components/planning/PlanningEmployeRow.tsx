@@ -26,13 +26,14 @@ interface PlanningEmployeRowProps {
   onRemove: (employeId: string) => void;
   isLoading?: boolean;
   conflictDays?: Map<string, string>; // jour -> nom du chantier en conflit
-  isChef?: boolean; // L'employé est-il un chef de chantier?
-  isChantierPrincipal?: boolean; // Est-ce le chantier principal du chef?
-  onSetChantierPrincipal?: (employeId: string) => void; // Callback pour définir comme principal
-  isChefResponsable?: boolean; // Est-ce le chef responsable de ce chantier?
-  showChefResponsable?: boolean; // Afficher le badge responsable (2+ chefs sur le chantier)?
-  onSetChefResponsable?: (employeId: string) => void; // Callback pour définir comme responsable
-  absenceDays?: Map<string, string>; // date -> type_absence (absences longue durée)
+  isChef?: boolean;
+  isChantierPrincipal?: boolean;
+  onSetChantierPrincipal?: (employeId: string) => void;
+  isChefResponsable?: boolean;
+  showChefResponsable?: boolean;
+  onSetChefResponsable?: (employeId: string) => void;
+  absenceDays?: Map<string, string>; // date -> type_absence
+  onAbsenceClick?: (employeId: string, date: string) => void;
 }
 
 // Composant pour afficher "1" au lieu d'une checkbox
@@ -61,16 +62,20 @@ const DayIndicator = ({
   </button>
 );
 
-// Composant pour afficher une absence longue durée (bloqué)
-const AbsenceIndicator = ({ typeAbsence }: { typeAbsence: string }) => (
+// Composant pour afficher une absence longue durée (bloqué) — cliquable
+const AbsenceIndicator = ({ typeAbsence, onClick }: { typeAbsence: string; onClick?: () => void }) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <div className="w-6 h-6 flex items-center justify-center text-destructive cursor-help">
+      <button 
+        type="button"
+        onClick={onClick}
+        className="w-6 h-6 flex items-center justify-center text-destructive cursor-pointer hover:bg-destructive/10 rounded transition-colors"
+      >
         <Ban className="h-4 w-4" />
-      </div>
+      </button>
     </TooltipTrigger>
     <TooltipContent side="top" className="max-w-[200px]">
-      <p className="text-xs">Absent — <strong>{typeAbsence}</strong></p>
+      <p className="text-xs">Absent — <strong>{typeAbsence}</strong><br/>Cliquer pour voir le détail</p>
     </TooltipContent>
   </Tooltip>
 );
@@ -105,6 +110,7 @@ export const PlanningEmployeRow = ({
   showChefResponsable,
   onSetChefResponsable,
   absenceDays,
+  onAbsenceClick,
 }: PlanningEmployeRowProps) => {
   const type = getEmployeType(employe);
   const typeColors = EMPLOYE_TYPE_COLORS[type];
@@ -263,7 +269,7 @@ export const PlanningEmployeRow = ({
           
           // Si absence longue durée, afficher icône bloquée
           if (absenceType) {
-            return <AbsenceIndicator key={day.date} typeAbsence={absenceType} />;
+            return <AbsenceIndicator key={day.date} typeAbsence={absenceType} onClick={() => onAbsenceClick?.(employe.id, day.date)} />;
           }
           
           // Si conflit sur ce jour (affecté ailleurs), afficher alerte

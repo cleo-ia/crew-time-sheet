@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, ChevronsDownUp, ArrowLeft, CheckCircle, Edit, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { cn } from "@/lib/utils";
@@ -42,6 +48,10 @@ import { useAbsencesLongueDureePlanning } from "@/hooks/useAbsencesLongueDureePl
 import { useLogModification } from "@/hooks/useLogModification";
 import { useCurrentUserInfo } from "@/hooks/useCurrentUserInfo";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { DemandeCongeDetailDialog } from "@/components/conges/DemandeCongeDetailDialog";
+import type { DemandeConge } from "@/hooks/useDemandesConges";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 // Hook pour récupérer les chefs avec leur chantier principal
 const useChefsWithPrincipal = () => {
@@ -82,6 +92,15 @@ const PlanningMainOeuvre = () => {
   const [validateDialogOpen, setValidateDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
+  const [selectedConge, setSelectedConge] = useState<DemandeConge | null>(null);
+  const [selectedAbsenceLD, setSelectedAbsenceLD] = useState<{
+    id: string;
+    type_absence: string;
+    date_debut: string;
+    date_fin: string | null;
+    motif: string | null;
+    salarie_nom: string;
+  } | null>(null);
 
   const entrepriseId = localStorage.getItem("current_entreprise_id") || "";
   const enterpriseConfig = useEnterpriseConfig();
@@ -434,6 +453,46 @@ const PlanningMainOeuvre = () => {
     });
   };
 
+  const handleAbsenceClick = useCallback(async (employeId: string, date: string) => {
+    const absenceData = absencesLDByEmploye.get(employeId);
+    if (!absenceData?.details) return;
+    
+    const detail = absenceData.details.get(date);
+    if (!detail) return;
+
+    if (detail.source === "conge") {
+      // Fetch le congé complet
+      const { data: conge } = await supabase
+        .from("demandes_conges")
+        .select("*, demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(nom, prenom)")
+        .eq("id", detail.id)
+        .maybeSingle();
+      
+      if (conge) {
+        setSelectedConge(conge as any);
+      }
+    } else {
+      // Fetch l'absence longue durée
+      const { data: ald } = await supabase
+        .from("absences_longue_duree")
+        .select("*, salarie:utilisateurs!absences_longue_duree_salarie_id_fkey(nom, prenom)")
+        .eq("id", detail.id)
+        .maybeSingle();
+      
+      if (ald) {
+        const salarie = ald.salarie as any;
+        setSelectedAbsenceLD({
+          id: ald.id,
+          type_absence: ald.type_absence,
+          date_debut: ald.date_debut,
+          date_fin: ald.date_fin,
+          motif: ald.motif,
+          salarie_nom: salarie ? `${salarie.prenom} ${salarie.nom}`.trim() : "",
+        });
+      }
+    }
+  }, [absencesLDByEmploye]);
+
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
@@ -686,6 +745,7 @@ const PlanningMainOeuvre = () => {
                   chefsWithPrincipal={chefsWithPrincipal}
                   onSetChefResponsable={handleSetChefResponsable}
                   absencesLDByEmploye={absencesLDByEmploye}
+                  onAbsenceClick={handleAbsenceClick}
                 />
               ))}
             </div>
@@ -769,6 +829,54 @@ const PlanningMainOeuvre = () => {
           Problème d'affichage ? Vider le cache
         </Button>
       </div>
+
+      {/* Dialog détail congé */}
+      <DemandeCongeDetailDialog
+        demande={selectedConge}
+        open={!!selectedConge}
+        onOpenChange={(open) => { if (!open) setSelectedConge(null); }}
+      />
+
+      {/* Dialog détail absence longue durée */}
+      <Dialog open={!!selectedAbsenceLD} onOpenChange={(open) => { if (!open) setSelectedAbsenceLD(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Absence longue durée</DialogTitle>
+          </DialogHeader>
+          {selectedAbsenceLD && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Salarié</span>
+                <span className="text-sm">{selectedAbsenceLD.salarie_nom}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Type</span>
+                <Badge variant="outline">{selectedAbsenceLD.type_absence}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Du</span>
+                <span className="text-sm">
+                  {format(new Date(selectedAbsenceLD.date_debut), "dd/MM/yyyy", { locale: fr })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Au</span>
+                <span className="text-sm">
+                  {selectedAbsenceLD.date_fin
+                    ? format(new Date(selectedAbsenceLD.date_fin), "dd/MM/yyyy", { locale: fr })
+                    : "Indéterminée"}
+                </span>
+              </div>
+              {selectedAbsenceLD.motif && (
+                <div>
+                  <span className="text-sm font-medium">Motif</span>
+                  <p className="text-sm text-muted-foreground mt-1">{selectedAbsenceLD.motif}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

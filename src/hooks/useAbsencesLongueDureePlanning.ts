@@ -2,14 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getWeekDays } from "@/hooks/usePlanningAffectations";
 
+export interface AbsenceDetail {
+  source: "conge" | "ald";
+  id: string;
+}
+
 export interface AbsenceLD {
   dates: Set<string>;
   type: string;
+  details: Map<string, AbsenceDetail>; // date -> source + id
 }
 
 /**
  * Pour une semaine donnée, retourne une Map<employe_id, AbsenceLD>
- * contenant les jours L-V bloqués par une absence longue durée.
+ * contenant les jours L-V bloqués par une absence longue durée ou congé validé.
  */
 export const useAbsencesLongueDureePlanning = (semaine: string) => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -24,10 +30,9 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
       const lastDay = weekDays[weekDays.length - 1].date;
 
       // Charger les absences dont la période chevauche la semaine
-      // date_debut <= lastDay AND (date_fin IS NULL OR date_fin >= firstDay)
       const { data, error } = await supabase
         .from("absences_longue_duree")
-        .select("salarie_id, date_debut, date_fin, type_absence")
+        .select("id, salarie_id, date_debut, date_fin, type_absence")
         .eq("entreprise_id", entrepriseId)
         .lte("date_debut", lastDay)
         .or(`date_fin.is.null,date_fin.gte.${firstDay}`);
@@ -37,7 +42,7 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
       // 2e requête : congés classiques validés
       const { data: conges, error: congesError } = await supabase
         .from("demandes_conges")
-        .select("demandeur_id, date_debut, date_fin, type_conge, statut")
+        .select("id, demandeur_id, date_debut, date_fin, type_conge, statut")
         .eq("entreprise_id", entrepriseId)
         .in("statut", ["VALIDEE_CONDUCTEUR", "VALIDEE_RH"])
         .lte("date_debut", lastDay)
@@ -52,6 +57,7 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
         const existing = map.get(absence.salarie_id);
         const dates = existing?.dates || new Set<string>();
         const type = existing?.type || absence.type_absence;
+        const details = existing?.details || new Map<string, AbsenceDetail>();
 
         weekDays.forEach((day) => {
           const d = day.date;
@@ -60,11 +66,12 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
             (absence.date_fin === null || d <= absence.date_fin)
           ) {
             dates.add(d);
+            details.set(d, { source: "ald", id: absence.id });
           }
         });
 
         if (dates.size > 0) {
-          map.set(absence.salarie_id, { dates, type });
+          map.set(absence.salarie_id, { dates, type, details });
         }
       });
 
@@ -73,16 +80,18 @@ export const useAbsencesLongueDureePlanning = (semaine: string) => {
         const existing = map.get(conge.demandeur_id);
         const dates = existing?.dates || new Set<string>();
         const type = existing?.type || conge.type_conge;
+        const details = existing?.details || new Map<string, AbsenceDetail>();
 
         weekDays.forEach((day) => {
           const d = day.date;
           if (d >= conge.date_debut && d <= conge.date_fin) {
             dates.add(d);
+            details.set(d, { source: "conge", id: conge.id });
           }
         });
 
         if (dates.size > 0) {
-          map.set(conge.demandeur_id, { dates, type });
+          map.set(conge.demandeur_id, { dates, type, details });
         }
       });
 
