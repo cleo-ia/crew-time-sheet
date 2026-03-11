@@ -1,22 +1,39 @@
 
 
-## Plan : Tri des demandes de congés par date de début (plus proche en premier)
+## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
 
-### Modification
+### Fichier modifie
 
-**Fichier** : `src/hooks/useDemandesCongesRH.ts`, ligne 19
+`supabase/functions/sync-planning-to-teams/index.ts`
 
-Changer le tri Supabase de `created_at` (date de création) vers `date_debut` (date de début du congé), en ordre **croissant** :
+### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
 
-```typescript
-// Avant
-.order("created_at", { ascending: false });
+Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
 
-// Après
-.order("date_debut", { ascending: true });
-```
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
+- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
 
-Les demandes dont la date de début est la plus proche apparaîtront en premier dans tous les onglets (À valider, Attente cond., Traitées).
+### Modification 2 : Bloc conges valides (lignes 1521-1597)
 
-1 fichier, 1 ligne modifiée.
+Meme pattern exact :
+
+- `let ghostFicheId = existingGhost?.id || null`
+- Deplacer le calcul des `joursConge` AVANT la creation de fiche
+- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
+- `else` → log "Reutilisation fiche ghost existante pour conge"
+- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
+- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
+- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
+
+### Ce qui ne change pas
+
+- Requetes de detection `existingGhost` identiques
+- Ordre d'execution (LD avant conges) identique
+- Aucun autre fichier modifie
+- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
 
