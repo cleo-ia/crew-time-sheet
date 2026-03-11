@@ -34,7 +34,8 @@ interface AddEmployeeToPlanningDialogProps {
   existingAffectations: PlanningAffectation[];
   allAffectations: PlanningAffectation[];
   onAdd: (employeId: string, days: string[]) => void;
-  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string }>;
+  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string; details?: Map<string, { source: "conge" | "ald"; id: string }> }>;
+  onAbsenceClick?: (employeId: string, date: string) => void;
 }
 
 const TYPE_FILTERS: { value: EmployeType; label: string }[] = [
