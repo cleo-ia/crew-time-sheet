@@ -153,11 +153,23 @@ export const AbsencesLongueDureeSheet = ({
     setDeleteId(null);
   };
 
+  const [selectedMonth, setSelectedMonth] = useState("all");
+
+  const availableMonths = useMemo(() => {
+    const months = new Set(absences.map((a) => a.date_debut.substring(0, 7)));
+    return Array.from(months).sort();
+  }, [absences]);
+
+  const filteredAbsences = useMemo(() => {
+    if (selectedMonth === "all") return absences;
+    return absences.filter((a) => a.date_debut.startsWith(selectedMonth));
+  }, [absences, selectedMonth]);
+
   const today = new Date();
-  const actives = absences.filter(
+  const actives = filteredAbsences.filter(
     (a) => !a.date_fin || isAfter(parseISO(a.date_fin), today)
   );
-  const terminees = absences.filter(
+  const terminees = filteredAbsences.filter(
     (a) => a.date_fin && isBefore(parseISO(a.date_fin), today)
   );
 
