@@ -62,16 +62,20 @@ const DayIndicator = ({
   </button>
 );
 
-// Composant pour afficher une absence longue durée (bloqué)
-const AbsenceIndicator = ({ typeAbsence }: { typeAbsence: string }) => (
+// Composant pour afficher une absence longue durée (bloqué) — cliquable
+const AbsenceIndicator = ({ typeAbsence, onClick }: { typeAbsence: string; onClick?: () => void }) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <div className="w-6 h-6 flex items-center justify-center text-destructive cursor-help">
+      <button 
+        type="button"
+        onClick={onClick}
+        className="w-6 h-6 flex items-center justify-center text-destructive cursor-pointer hover:bg-destructive/10 rounded transition-colors"
+      >
         <Ban className="h-4 w-4" />
-      </div>
+      </button>
     </TooltipTrigger>
     <TooltipContent side="top" className="max-w-[200px]">
-      <p className="text-xs">Absent — <strong>{typeAbsence}</strong></p>
+      <p className="text-xs">Absent — <strong>{typeAbsence}</strong><br/>Cliquer pour voir le détail</p>
     </TooltipContent>
   </Tooltip>
 );
