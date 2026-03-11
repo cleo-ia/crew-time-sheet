@@ -316,16 +316,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   // Fusionner fiches normales et fiches ghost
   // Pour les ghost, ajouter un objet chantiers vide pour compatibilité
-  const fichesGhostNormalized = (fichesGhost || []).map(f => ({
-    ...f,
-    chantiers: {
-      code_chantier: null,
-      ville: null,
-      conducteur_id: null,
-      chef_id: null,
-      entreprise_id: f.entreprise_id,
-    }
-  }));
+  // Si un filtre chantier est actif, exclure les ghost (ils n'ont pas de chantier)
+  const hasChantierFilter = filters.chantier && filters.chantier !== "all";
+
+  const fichesGhostNormalized = hasChantierFilter
+    ? []
+    : (fichesGhost || []).map(f => ({
+        ...f,
+        chantiers: {
+          code_chantier: null,
+          ville: null,
+          conducteur_id: null,
+          chef_id: null,
+          entreprise_id: f.entreprise_id,
+        }
+      }));
 
   const toutesLesFiches = [...(fichesAvecChantier || []), ...fichesGhostNormalized];
 
@@ -468,7 +473,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // 🆕 Pre-fetch cross-chantier data for chefs when a chantier filter is active
   // This allows us to detect "working on other site" vs "truly absent"
   let chefOtherSiteDates = new Map<string, Set<string>>(); // salarieId -> Set of dates with hours on other sites
-  const hasChantierFilter = filters.chantier && filters.chantier !== "all";
+  // hasChantierFilter already declared above
   
   if (hasChantierFilter) {
     // Find all chef salarieIds in current data
