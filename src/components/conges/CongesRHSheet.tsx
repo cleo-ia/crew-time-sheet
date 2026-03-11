@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   Sheet,
   SheetContent,
@@ -11,13 +13,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Download } from "lucide-react";
+import { Download, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemandesCongesRH } from "@/hooks/useDemandesCongesRH";
 import { useValidateDemandeConge } from "@/hooks/useValidateDemandeConge";
@@ -44,12 +53,28 @@ export const CongesRHSheet = ({
   const [selectedDemandeId, setSelectedDemandeId] = useState<string | null>(null);
   const [motifRefus, setMotifRefus] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const { data: demandes = [], isLoading } = useDemandesCongesRH(entrepriseId);
   const validateMutation = useValidateDemandeConge();
   const refuseMutation = useRefuseDemandeConge();
   const markExporteesMutation = useMarkDemandesExportees();
   const enterpriseConfig = useEnterpriseConfig();
+
+  // Mois disponibles extraits des demandes
+  const availableMonths = useMemo(() => {
+    const months = [...new Set(demandes.map((d) => d.date_debut.substring(0, 7)))].sort();
+    return months.map((m) => ({
+      value: m,
+      label: format(new Date(m + "-01"), "MMMM yyyy", { locale: fr }),
+    }));
+  }, [demandes]);
+
+  // Filtre par mois
+  const filteredDemandes = useMemo(() => {
+    if (selectedMonth === "all") return demandes;
+    return demandes.filter((d) => d.date_debut.startsWith(selectedMonth));
+  }, [demandes, selectedMonth]);
 
   // Récupérer l'ID de l'utilisateur connecté
   useEffect(() => {
@@ -63,11 +88,11 @@ export const CongesRHSheet = ({
   }, []);
 
   // Demandes en attente de validation RH (après validation conducteur)
-  const aValider = demandes.filter((d) => d.statut === "VALIDEE_CONDUCTEUR");
+  const aValider = filteredDemandes.filter((d) => d.statut === "VALIDEE_CONDUCTEUR");
   // Demandes en attente de validation conducteur (pour suivi)
-  const enAttenteConducteur = demandes.filter((d) => d.statut === "EN_ATTENTE");
+  const enAttenteConducteur = filteredDemandes.filter((d) => d.statut === "EN_ATTENTE");
   // Demandes traitées (validées RH ou refusées)
-  const traitees = demandes.filter(
+  const traitees = filteredDemandes.filter(
     (d) => d.statut === "VALIDEE_RH" || d.statut === "REFUSEE"
   );
 
@@ -133,6 +158,26 @@ export const CongesRHSheet = ({
               )}
             </SheetTitle>
           </SheetHeader>
+
+          {/* Filtre par mois */}
+          {availableMonths.length > 1 && (
+            <div className="mt-3 flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les mois</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
             <TabsList className="w-full grid grid-cols-3">
