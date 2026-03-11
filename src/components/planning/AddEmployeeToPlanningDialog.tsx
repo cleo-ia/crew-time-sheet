@@ -66,6 +66,7 @@ export const AddEmployeeToPlanningDialog = ({
   allAffectations,
   onAdd,
   absencesLDByEmploye,
+  onAbsenceClick,
 }: AddEmployeeToPlanningDialogProps) => {
   const { data: allEmployes = [], isLoading } = useAllEmployes();
   const [search, setSearch] = useState("");
