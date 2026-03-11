@@ -55,7 +55,8 @@ interface PlanningChantierAccordionProps {
   forceOpen?: boolean;
   chefsWithPrincipal?: Map<string, string>; // chef_id -> chantier_principal_id
   onSetChefResponsable?: (employeId: string, chantierId: string) => void;
-  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string }>;
+  absencesLDByEmploye?: Map<string, { dates: Set<string>; type: string; details?: Map<string, { source: "conge" | "ald"; id: string }> }>;
+  onAbsenceClick?: (employeId: string, date: string) => void;
 }
 
 export const PlanningChantierAccordion = ({
