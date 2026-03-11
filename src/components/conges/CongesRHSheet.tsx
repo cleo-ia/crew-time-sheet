@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Download } from "lucide-react";
+import { Download, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemandesCongesRH } from "@/hooks/useDemandesCongesRH";
 import { useValidateDemandeConge } from "@/hooks/useValidateDemandeConge";
