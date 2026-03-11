@@ -16,7 +16,7 @@ export const useDemandesCongesRH = (entrepriseId?: string | null) => {
           demandeur:utilisateurs!demandes_conges_demandeur_id_fkey(id, nom, prenom)
         `)
         .eq("entreprise_id", entrepriseId)
-        .order("created_at", { ascending: false });
+        .order("date_debut", { ascending: true });
 
       if (error) {
         console.error("Erreur chargement demandes congés RH:", error);
