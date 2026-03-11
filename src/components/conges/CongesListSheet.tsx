@@ -166,11 +166,30 @@ export const CongesListSheet: React.FC<CongesListSheetProps> = ({
     }
   }, [open, allManagedIds]);
 
-  // Filtrer les demandes par statut
-  const demandesEnAttente = demandesAValider.filter((d) => d.statut === "EN_ATTENTE");
-  const demandesTraitees = demandesAValider.filter((d) => 
+  // Mois disponibles pour le filtre
+  const availableMonths = useMemo(() => {
+    const allDemandes = [...(demandesAValider || []), ...(mesDemandes || [])];
+    const monthsSet = new Set<string>();
+    allDemandes.forEach((d) => {
+      if (d.date_debut) {
+        monthsSet.add(d.date_debut.substring(0, 7));
+      }
+    });
+    return Array.from(monthsSet).sort();
+  }, [demandesAValider, mesDemandes]);
+
+  // Filtre par mois
+  const filterByMonth = (demandes: DemandeConge[]) => {
+    if (selectedMonth === "all") return demandes;
+    return demandes.filter((d) => d.date_debut?.startsWith(selectedMonth));
+  };
+
+  // Filtrer les demandes par statut puis par mois
+  const demandesEnAttente = filterByMonth(demandesAValider.filter((d) => d.statut === "EN_ATTENTE"));
+  const demandesTraitees = filterByMonth(demandesAValider.filter((d) => 
     d.statut === "VALIDEE_CONDUCTEUR" || d.statut === "VALIDEE_RH" || d.statut === "REFUSEE"
-  );
+  ));
+  const mesDemandesFiltrees = filterByMonth(mesDemandes);
 
   // Liste des employés pour le formulaire (conducteur + finisseurs + employés sans affectation)
   const employeesForForm: Employee[] = useMemo(() => {
