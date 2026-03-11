@@ -316,16 +316,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
 
   // Fusionner fiches normales et fiches ghost
   // Pour les ghost, ajouter un objet chantiers vide pour compatibilité
-  const fichesGhostNormalized = (fichesGhost || []).map(f => ({
-    ...f,
-    chantiers: {
-      code_chantier: null,
-      ville: null,
-      conducteur_id: null,
-      chef_id: null,
-      entreprise_id: f.entreprise_id,
-    }
-  }));
+  // Si un filtre chantier est actif, exclure les ghost (ils n'ont pas de chantier)
+  const hasChantierFilter = filters.chantier && filters.chantier !== "all";
+
+  const fichesGhostNormalized = hasChantierFilter
+    ? []
+    : (fichesGhost || []).map(f => ({
+        ...f,
+        chantiers: {
+          code_chantier: null,
+          ville: null,
+          conducteur_id: null,
+          chef_id: null,
+          entreprise_id: f.entreprise_id,
+        }
+      }));
 
   const toutesLesFiches = [...(fichesAvecChantier || []), ...fichesGhostNormalized];
 
