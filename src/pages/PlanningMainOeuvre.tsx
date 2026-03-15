@@ -176,7 +176,8 @@ const PlanningMainOeuvre = () => {
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
   const { data: affectations = [], isLoading: loadingAffectations } = usePlanningAffectations(semaine);
-  const { data: chefsWithPrincipal = new Map() } = useChefsWithPrincipal();
+  const { data: chefsWithPrincipalRaw = new Map() } = useChefsWithPrincipal();
+  const chefsWithPrincipal = useChefsWithPrincipalResolved(chefsWithPrincipalRaw, affectations);
   const { data: absencesLDByEmploye = new Map() } = useAbsencesLongueDureePlanning(semaine);
   
   // Mutations
