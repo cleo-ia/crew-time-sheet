@@ -295,6 +295,10 @@ export const useCopyPlanningWeek = () => {
       queryClient.invalidateQueries({ 
         queryKey: ["planning-affectations", variables.targetWeek] 
       });
+      // Invalider le cache des chefs avec chantier principal pour forcer le recalcul du badge
+      queryClient.invalidateQueries({ 
+        queryKey: ["chefs-chantier-principal"] 
+      });
       toast({
         title: "Planning copié",
         description: `${count} affectations copiées vers ${variables.targetWeek}`,

@@ -85,6 +85,54 @@ const useChefsWithPrincipal = () => {
   });
 };
 
+// Hook pour recalculer le chantier principal des chefs en fonction des affectations réelles de la semaine
+// Corrige le cas où chantier_principal_id pointe vers un chantier où le chef n'est plus affecté
+const useChefsWithPrincipalResolved = (
+  chefsWithPrincipal: Map<string, string>,
+  affectations: any[],
+) => {
+  return useMemo(() => {
+    if (!affectations.length) return chefsWithPrincipal;
+
+    // Construire une map: chefId -> { chantierId -> nbJours }
+    const chefChantierDays = new Map<string, Map<string, number>>();
+    for (const aff of affectations) {
+      if (aff.employe?.role_metier !== "chef") continue;
+      const empId = aff.employe_id;
+      if (!chefChantierDays.has(empId)) {
+        chefChantierDays.set(empId, new Map());
+      }
+      const chantierMap = chefChantierDays.get(empId)!;
+      chantierMap.set(aff.chantier_id, (chantierMap.get(aff.chantier_id) || 0) + 1);
+    }
+
+    // Pour chaque chef multi-chantier, vérifier la cohérence
+    const resolved = new Map(chefsWithPrincipal);
+    for (const [chefId, chantierMap] of chefChantierDays) {
+      if (chantierMap.size < 2) continue; // mono-chantier → pas de problème
+      
+      const currentPrincipal = resolved.get(chefId);
+      const chantierIds = [...chantierMap.keys()];
+      
+      // Si le principal actuel ne fait pas partie des chantiers de la semaine → recalculer
+      if (!currentPrincipal || !chantierIds.includes(currentPrincipal)) {
+        // Prendre le chantier avec le plus de jours
+        let bestChantier = chantierIds[0];
+        let maxDays = chantierMap.get(bestChantier) || 0;
+        for (const [cId, days] of chantierMap) {
+          if (days > maxDays) {
+            bestChantier = cId;
+            maxDays = days;
+          }
+        }
+        resolved.set(chefId, bestChantier);
+      }
+    }
+
+    return resolved;
+  }, [chefsWithPrincipal, affectations]);
+};
+
 const PlanningMainOeuvre = () => {
   const currentWeek = getCurrentWeek();
   const [semaine, setSemaine] = useState(getNextWeek(currentWeek)); // Par défaut S+1
