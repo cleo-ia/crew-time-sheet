@@ -935,6 +935,12 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
               .find(fj => (fj as any).code_trajet);
 
+            // *** FIX: Resolve ficheJourId to the filtered chantier's ficheJour ***
+            const filteredFjEntry = jour.allFicheJourIds.find(entry => filteredChantierFicheIds.has(entry.ficheId));
+            if (filteredFjEntry) {
+              jour.ficheJourId = filteredFjEntry.id;
+            }
+
             if (hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && jour.heuresNormales > 0) {
               // Chef was on another site this day
               (jour as any).isOnOtherSite = true;
@@ -962,6 +968,16 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
                 jour.chantierNom = filteredChantierInfo.nom || jour.chantierNom;
                 jour.chantierCode = filteredChantierInfo.code_chantier || jour.chantierCode;
                 jour.chantier = filteredChantierInfo.nom || jour.chantier;
+              }
+            }
+          });
+        } else {
+          // *** FIX: Sans filtre, résoudre ficheJourId vers celui avec le plus d'heures ***
+          dayMap.forEach((jour) => {
+            if (jour.allFicheJourIds.length > 1) {
+              const bestEntry = [...jour.allFicheJourIds].sort((a, b) => b.heures - a.heures)[0];
+              if (bestEntry) {
+                jour.ficheJourId = bestEntry.id;
               }
             }
           });
