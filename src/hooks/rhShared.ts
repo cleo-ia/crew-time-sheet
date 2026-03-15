@@ -699,22 +699,43 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         ? [...new Set(entries.map(e => e.jour.code_chantier_du_jour).filter(Boolean))].join(" + ")
         : jourRef.code_chantier_du_jour || "";
 
+      // Ville : fusion comme les codes chantier
+      const chantierVille = isChef && entries.length > 1
+        ? [...new Set(entries.map(e => e.jour.ville_du_jour).filter(Boolean))].join(" + ")
+        : jourRef.ville_du_jour || "";
+
+      // Type absence : scanner toutes les entrées pour trouver le premier non-null
+      const typeAbsence = isChef && entries.length > 1
+        ? entries.map(e => (e.jour as any).type_absence).find(t => t != null) || null
+        : (jourRef as any).type_absence || null;
+
+      // Commentaire : concaténer tous les commentaires non-vides
+      const commentaire = isChef && entries.length > 1
+        ? entries.map(e => (e.jour as any).commentaire).filter(Boolean).join(" | ")
+        : (jourRef as any).commentaire || "";
+
+      // Repas type : priorité à l'entrée où PA est coché
+      const repasType = isChef && entries.length > 1
+        ? (entries.find(e => e.jour.PA)?.jour as any)?.repas_type
+          || (jourRef as any).repas_type || null
+        : (jourRef as any).repas_type || null;
+
       detailJours.push({
         date: jourRef.date || "",
         chantierCode,
-        chantierVille: jourRef.ville_du_jour || "",
+        chantierVille,
         heures: heuresDuJour,
         intemperie,
         panier,
-        repasType: (jourRef as any).repas_type || null,
+        repasType,
         trajet: (jourRefTrajet as any).code_trajet || null,
         trajetPerso: (jourRefTrajet as any).code_trajet === "T_PERSO",
-        typeAbsence: (jourRef as any).type_absence || null,
+        typeAbsence,
         isEcole: isEcoleChantier,
         isAbsent,
         regularisationM1: (jourRef as any).regularisation_m1 || "",
         autresElements: (jourRef as any).autres_elements || "",
-        commentaire: (jourRef as any).commentaire || "",
+        commentaire,
       });
     }
 
