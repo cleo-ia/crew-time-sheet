@@ -1,20 +1,30 @@
-## Plan : Verrouillage 5/5 jours pour les chefs dans le planning — IMPLÉMENTÉ ✅
+
+
+## Fix : Supprimer le faux statut "Absent / À qualifier" pour chef multi-site filtré
 
 ### Problème
-Le planning permettait au conducteur de sélectionner des jours individuels pour les chefs (ex: L,M,M sur un chantier et J,V sur un autre), empêchant la saisie d'heures sur certains jours et cassant la consolidation RH.
+Ligne 970 de `useRHData.ts` : quand un chef a un `fiches_jours` sur le site filtré avec 0h (initialisation secondaire), `isAbsent` est mis à `true`. Cela déclenche l'affichage "Absent" + "À qualifier" dans le détail et bloque l'export. Or le chef n'est pas absent — il travaille sur un autre site.
 
-### Corrections apportées
+### Correction — `src/hooks/useRHData.ts`
 
-1. **`AddEmployeeToPlanningDialog`** : 
-   - Mode simple : quand un chef est sélectionné, tous les jours sont forcés (sauf absences LD) et les checkboxes sont verrouillées (disabled + 🔒)
-   - `handleDayToggle` : bloqué pour les chefs
-   - Mode batch : les chefs reçoivent automatiquement 5/5 jours, indépendamment des `commonDays`
+**Ligne 970** : dans le bloc `else if (hasAnyFicheOnFilteredSite)`, le chef a des heures sur un autre site. Il faut vérifier si le chef a travaillé ailleurs avant de le déclarer absent :
 
-2. **`PlanningEmployeRow`** : Le `DayIndicator` est `disabled` pour les chefs (`isChef` prop) → impossible de toggle un jour sur la grille
+```typescript
+// Ligne 970 — remplacer :
+jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0;
 
-3. **`PlanningMainOeuvre`** : Garde-fou dans `handleDayToggle` : si un chef tente de décocher un jour, un toast explicatif apparaît et l'action est bloquée
+// Par :
+const hasHoursOnOtherSite = joursForDate
+  .filter(fj => !filteredChantierFicheIds.has(fj.fiche_id))
+  .reduce((sum, fj) => sum + (Number(fj.heures) || Number(fj.HNORM) || 0), 0) > 0;
+jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && !hasHoursOnOtherSite;
+if (!jour.isAbsent) {
+  jour.typeAbsence = null;
+}
+```
 
-### Ce qui ne change pas
-- Le bouton "Supprimer" (retrait complet du chef d'un chantier) reste fonctionnel
-- Les ouvriers/finisseurs/grutiers/intérimaires gardent le comportement actuel
-- La sync Edge Function fonctionne correctement avec les 5 jours
+Même correction dans le **bloc ligne 944** (le `if` au-dessus) : ajouter `jour.typeAbsence = null;` après `jour.isAbsent = false;` pour être cohérent.
+
+### Résultat
+Quand on filtre DAVOULT et que BOUILLET a 0h sur DAVOULT mais 7h sur MAILLARD → le jour affiche 0h **sans** badge "Absent" ni "À qualifier".
+
