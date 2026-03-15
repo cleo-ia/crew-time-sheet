@@ -296,10 +296,21 @@ export const AddEmployeeToPlanningDialog = ({
   const handleBatchAdd = () => {
     if (selectedEmployeIds.size === 0 || commonDays.length === 0) return;
     selectedEmployeIds.forEach(employeId => {
-      const takenDays = daysTakenByEmploye.get(employeId) || new Set();
-      const availableDays = commonDays.filter(d => !takenDays.has(d));
-      if (availableDays.length > 0) {
-        onAdd(employeId, availableDays);
+      const emp = allEmployes.find(e => e.id === employeId);
+      const isChef = emp && getEmployeType(emp) === "chef";
+      if (isChef) {
+        // Chefs: forcer tous les jours (sauf absences LD)
+        const absDates = absencesLDByEmploye?.get(employeId)?.dates || new Set();
+        const allDays = weekDays.map(d => d.date).filter(d => !absDates.has(d));
+        if (allDays.length > 0) {
+          onAdd(employeId, allDays);
+        }
+      } else {
+        const takenDays = daysTakenByEmploye.get(employeId) || new Set();
+        const availableDays = commonDays.filter(d => !takenDays.has(d));
+        if (availableDays.length > 0) {
+          onAdd(employeId, availableDays);
+        }
       }
     });
     resetAndClose();
