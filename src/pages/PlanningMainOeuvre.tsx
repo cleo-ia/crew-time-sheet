@@ -319,6 +319,30 @@ const PlanningMainOeuvre = () => {
 
         queryClient.invalidateQueries({ queryKey: ["planning-affectations", semaine] });
       }
+
+      // ✅ Vérifier si le chantier_principal_id du chef retiré est toujours valide
+      const currentPrincipal = chefsWithPrincipal.get(employeId);
+      if (currentPrincipal === chantierId) {
+        // Le chef est retiré du chantier qui était son principal → recalculer
+        // Chercher les autres chantiers du chef cette semaine
+        const { data: chefOtherAffs } = await supabase
+          .from("planning_affectations")
+          .select("chantier_id")
+          .eq("employe_id", employeId)
+          .eq("semaine", semaine)
+          .eq("entreprise_id", entrepriseId);
+
+        const otherChantierIds = [...new Set((chefOtherAffs || []).map((a: any) => a.chantier_id))];
+        
+        if (otherChantierIds.length > 0) {
+          // Mettre à jour vers le premier chantier restant
+          await supabase
+            .from("utilisateurs")
+            .update({ chantier_principal_id: otherChantierIds[0] })
+            .eq("id", employeId);
+          queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+        }
+      }
     }
   };
 
