@@ -103,13 +103,13 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
       weekData.heuresNormales += day.heuresNormales || 0;
       weekData.heuresIntemperies += day.heuresIntemperies || 0;
       const isOnOtherSite = !!(day as any).isOnOtherSite;
-      const isAbsent = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite && !(day as any).isEcole;
+      const isAbsent = Boolean((day as any).isAbsent);
       weekData.paniers += (!isAbsent && !isOnOtherSite && day.panier) ? 1 : 0;
       weekData.trajets += (!isAbsent && !isOnOtherSite && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
       weekData.nbJours += 1;
       
       // Ne compter le type d'absence que si c'est vraiment un jour d'absence (pas sur un autre chantier ni ECOLE)
-      const isAbsentDay = (day.heuresNormales || 0) === 0 && !isOnOtherSite && !(day as any).isEcole;
+      const isAbsentDay = Boolean((day as any).isAbsent);
       if (isAbsentDay && (day as any).typeAbsence) {
         weekData.absences.push((day as any).typeAbsence);
       }
@@ -349,7 +349,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
             <TableBody>
               {data.dailyDetails.map((day, idx) => {
                 const isOnOtherSite = !!(day as any).isOnOtherSite;
-                const isAbsent = day.heuresNormales === 0 && !isOnOtherSite && !(day as any).isEcole;
+                const isAbsent = Boolean((day as any).isAbsent);
                 
                 // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
                 const sameSiteDays = data.dailyDetails.filter(
@@ -489,17 +489,18 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                   </TableCell>
                   <TableCell className="py-4 px-4">
                     {readOnly ? (
-                      <span className="text-sm">{(day as any).typeAbsence || (day.heuresNormales === 0 && !(day as any).isEcole ? "À qualifier" : "-")}</span>
+                      <span className="text-sm">{(day as any).typeAbsence || (isAbsent ? "À qualifier" : "-")}</span>
                     ) : (
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
-                      isAbsent={day.heuresNormales === 0 && !(day as any).isEcole}
+                      isAbsent={isAbsent}
                       allDays={data.dailyDetails.map(d => ({
                         date: d.date,
                         ficheJourId: d.ficheJourId,
                         heuresNormales: d.heuresNormales,
                         heuresIntemperies: d.heuresIntemperies,
                         typeAbsence: (d as any).typeAbsence || null,
+                        isAbsent: (d as any).isAbsent,
                       }))}
                       currentDate={day.date}
                       onSave={async (newValue) => {
@@ -755,6 +756,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                     otherSiteCode: (day as any).otherSiteCode,
                     otherSiteNom: (day as any).otherSiteNom,
                     isEcole: (day as any).isEcole,
+                    isAbsent: (day as any).isAbsent,
                     siteDetails: (day as any).siteDetails,
                   }));
               })()

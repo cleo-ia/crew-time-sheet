@@ -26,6 +26,7 @@ interface DayDetail {
   otherSiteNom?: string | null;
   siteDetails?: Array<{ code: string; nom: string; heures: number }>;
   isEcole?: boolean;
+  isAbsent?: boolean;
 }
 
 interface SignatureData {
@@ -118,7 +119,7 @@ export const RHWeekDetailDialog = ({ open, onOpenChange, semaine, days, signatur
             <TableBody>
               {days.map((day, idx) => {
                  const isOnOtherSite = !!day.isOnOtherSite;
-                 const isAbsent = day.heuresNormales === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite && !day.isEcole;
+                 const isAbsent = day.isAbsent ?? (day.heuresNormales === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite && !day.isEcole);
                 
                 return (
                   <TableRow 
