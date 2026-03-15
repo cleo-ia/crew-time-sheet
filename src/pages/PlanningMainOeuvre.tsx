@@ -234,6 +234,16 @@ const PlanningMainOeuvre = () => {
     date: string, 
     checked: boolean
   ) => {
+    // Bloquer le toggle des jours pour les chefs (5/5 obligatoire)
+    const empAff = affectations.find(a => a.employe_id === employeId);
+    if (empAff?.employe?.role_metier === "chef" && !checked) {
+      toast({
+        title: "Jours verrouillés",
+        description: "Un chef doit être affecté 5/5 jours sur chaque chantier pour pouvoir répartir ses heures.",
+      });
+      return;
+    }
+
     // Bloquer si absence longue durée
     const absenceLD = absencesLDByEmploye.get(employeId);
     if (checked && absenceLD?.dates.has(date)) {

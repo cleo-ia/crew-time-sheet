@@ -282,7 +282,7 @@ export const PlanningEmployeRow = ({
               key={day.date}
               checked={isAffectedHere}
               onClick={() => onDayToggle(employe.id, day.date, !isAffectedHere)}
-              disabled={isLoading || !!conflictChantier}
+              disabled={isLoading || !!conflictChantier || isChef}
             />
           );
         })}

@@ -243,15 +243,29 @@ export const AddEmployeeToPlanningDialog = ({
       setSelectedDays([]);
     } else {
       setSelectedEmployeId(employe.id);
-      const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
-      const availableDays = weekDays
-        .map(d => d.date)
-        .filter(date => !takenDays.has(date));
-      setSelectedDays(availableDays);
+      const isChef = getEmployeType(employe) === "chef";
+      if (isChef) {
+        // Chefs: forcer tous les jours (sauf absences LD)
+        const absDates = absencesLDByEmploye?.get(employe.id)?.dates || new Set();
+        const allDays = weekDays
+          .map(d => d.date)
+          .filter(date => !absDates.has(date));
+        setSelectedDays(allDays);
+      } else {
+        const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
+        const availableDays = weekDays
+          .map(d => d.date)
+          .filter(date => !takenDays.has(date));
+        setSelectedDays(availableDays);
+      }
     }
   };
 
   const handleDayToggle = (date: string) => {
+    // Bloquer le toggle pour les chefs (jours verrouillés)
+    const selectedEmp = allEmployes.find(e => e.id === selectedEmployeId);
+    if (selectedEmp && getEmployeType(selectedEmp) === "chef") return;
+    
     setSelectedDays(prev => 
       prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
     );
@@ -282,10 +296,21 @@ export const AddEmployeeToPlanningDialog = ({
   const handleBatchAdd = () => {
     if (selectedEmployeIds.size === 0 || commonDays.length === 0) return;
     selectedEmployeIds.forEach(employeId => {
-      const takenDays = daysTakenByEmploye.get(employeId) || new Set();
-      const availableDays = commonDays.filter(d => !takenDays.has(d));
-      if (availableDays.length > 0) {
-        onAdd(employeId, availableDays);
+      const emp = allEmployes.find(e => e.id === employeId);
+      const isChef = emp && getEmployeType(emp) === "chef";
+      if (isChef) {
+        // Chefs: forcer tous les jours (sauf absences LD)
+        const absDates = absencesLDByEmploye?.get(employeId)?.dates || new Set();
+        const allDays = weekDays.map(d => d.date).filter(d => !absDates.has(d));
+        if (allDays.length > 0) {
+          onAdd(employeId, allDays);
+        }
+      } else {
+        const takenDays = daysTakenByEmploye.get(employeId) || new Set();
+        const availableDays = commonDays.filter(d => !takenDays.has(d));
+        if (availableDays.length > 0) {
+          onAdd(employeId, availableDays);
+        }
       }
     });
     resetAndClose();
@@ -471,22 +496,27 @@ export const AddEmployeeToPlanningDialog = ({
             <div className="flex gap-2">
               {weekDays.map(day => {
                 const isTaken = takenDays.has(day.date);
+                const isChefSelected = selectedEmploye && getEmployeType(selectedEmploye) === "chef";
+                const isAbsLD = absencesLDByEmploye?.get(selectedEmploye?.id || "")?.dates.has(day.date);
+                const isLockedForChef = isChefSelected && !isAbsLD;
                 return (
                   <div key={day.date} className="flex items-center gap-1">
                     <Checkbox
                       id={`day-${day.date}`}
                       checked={selectedDays.includes(day.date)}
                       onCheckedChange={() => handleDayToggle(day.date)}
-                      disabled={isTaken}
+                      disabled={isTaken || isLockedForChef}
                     />
                     <label 
                       htmlFor={`day-${day.date}`}
                       className={cn(
                         "text-sm cursor-pointer",
-                        isTaken && "text-muted-foreground line-through"
+                        isTaken && "text-muted-foreground line-through",
+                        isLockedForChef && "text-muted-foreground"
                       )}
                     >
                       {day.fullName}
+                      {isLockedForChef && " 🔒"}
                     </label>
                   </div>
                 );
