@@ -942,20 +942,20 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
             }
 
             if (hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && jour.heuresNormales > 0) {
-              // Chef was on another site this day
-              (jour as any).isOnOtherSite = true;
-              // Find which other sites
-              const otherSites = ((jour as any).siteDetails as Array<{ code: string; nom: string; heures: number }>)
-                .filter(s => s.code !== filteredChantierCode && s.heures > 0);
-              (jour as any).otherSiteCode = otherSites.map(s => s.code).join(" + ");
-              (jour as any).otherSiteNom = otherSites.map(s => s.nom).join(" + ");
+              // Chef was on another site — show filtered site with 0h
+              (jour as any).isOnOtherSite = false;
               jour.isAbsent = false;
-              // Override heures to show filtered site heures (0)
               jour.heuresNormales = 0;
               jour.heuresIntemperies = 0;
               jour.codeTrajet = null;
               jour.trajetPerso = false;
               jour.panier = false;
+              // Force filtered site identity
+              if (filteredChantierInfo) {
+                jour.chantierNom = filteredChantierInfo.nom || jour.chantierNom;
+                jour.chantierCode = filteredChantierInfo.code_chantier || jour.chantierCode;
+                jour.chantier = filteredChantierInfo.nom || jour.chantier;
+              }
             } else if (hasAnyFicheOnFilteredSite) {
               // Chef was on the filtered site - show only that site's hours
               jour.heuresNormales = hoursOnFilteredSite;
