@@ -243,11 +243,21 @@ export const AddEmployeeToPlanningDialog = ({
       setSelectedDays([]);
     } else {
       setSelectedEmployeId(employe.id);
-      const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
-      const availableDays = weekDays
-        .map(d => d.date)
-        .filter(date => !takenDays.has(date));
-      setSelectedDays(availableDays);
+      const isChef = getEmployeType(employe) === "chef";
+      if (isChef) {
+        // Chefs: forcer tous les jours (sauf absences LD)
+        const absDates = absencesLDByEmploye?.get(employe.id)?.dates || new Set();
+        const allDays = weekDays
+          .map(d => d.date)
+          .filter(date => !absDates.has(date));
+        setSelectedDays(allDays);
+      } else {
+        const takenDays = daysTakenByEmploye.get(employe.id) || new Set();
+        const availableDays = weekDays
+          .map(d => d.date)
+          .filter(date => !takenDays.has(date));
+        setSelectedDays(availableDays);
+      }
     }
   };
 
