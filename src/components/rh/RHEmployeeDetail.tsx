@@ -489,7 +489,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                   </TableCell>
                   <TableCell className="py-4 px-4">
                     {readOnly ? (
-                      <span className="text-sm">{(day as any).typeAbsence || (day.heuresNormales === 0 && !(day as any).isEcole ? "À qualifier" : "-")}</span>
+                      <span className="text-sm">{(day as any).typeAbsence || (isAbsent ? "À qualifier" : "-")}</span>
                     ) : (
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
