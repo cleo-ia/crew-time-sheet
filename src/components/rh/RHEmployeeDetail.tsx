@@ -493,7 +493,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                     ) : (
                     <EditableAbsenceTypeCell
                       value={(day as any).typeAbsence || null}
-                      isAbsent={day.heuresNormales === 0 && !(day as any).isEcole}
+                      isAbsent={isAbsent}
                       allDays={data.dailyDetails.map(d => ({
                         date: d.date,
                         ficheJourId: d.ficheJourId,
