@@ -349,7 +349,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
             <TableBody>
               {data.dailyDetails.map((day, idx) => {
                 const isOnOtherSite = !!(day as any).isOnOtherSite;
-                const isAbsent = day.heuresNormales === 0 && !isOnOtherSite && !(day as any).isEcole;
+                const isAbsent = Boolean((day as any).isAbsent);
                 
                 // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
                 const sameSiteDays = data.dailyDetails.filter(
