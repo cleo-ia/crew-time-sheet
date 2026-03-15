@@ -103,7 +103,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
       weekData.heuresNormales += day.heuresNormales || 0;
       weekData.heuresIntemperies += day.heuresIntemperies || 0;
       const isOnOtherSite = !!(day as any).isOnOtherSite;
-      const isAbsent = (day.heuresNormales || 0) === 0 && (day.heuresIntemperies || 0) === 0 && !isOnOtherSite && !(day as any).isEcole;
+      const isAbsent = Boolean((day as any).isAbsent);
       weekData.paniers += (!isAbsent && !isOnOtherSite && day.panier) ? 1 : 0;
       weekData.trajets += (!isAbsent && !isOnOtherSite && (day as any).codeTrajet && (day as any).codeTrajet !== 'A_COMPLETER') ? 1 : 0;
       weekData.nbJours += 1;
