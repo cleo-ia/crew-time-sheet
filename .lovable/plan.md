@@ -1,39 +1,14 @@
+## Plan : Fix bug "Principal/Secondaire" des chefs multi-chantiers — IMPLÉMENTÉ ✅
 
+### Problème
+Le `chantier_principal_id` (stocké globalement dans `utilisateurs`) devenait obsolète quand un chef changeait de chantiers d'une semaine à l'autre, causant l'affichage "Secondaire" sur tous ses chantiers.
 
-## Plan : Fix des 2 bugs de collision ghost fiche (LD + congés / multi-congés)
+### Corrections apportées
 
-### Fichier modifie
+1. **Sync Edge Function** (`sync-planning-to-teams`) : Auto-recalcul du `chantier_principal_id` pour les chefs multi-chantiers quand la valeur actuelle ne correspond à aucun de leurs chantiers de la semaine (chantier avec le plus de jours).
 
-`supabase/functions/sync-planning-to-teams/index.ts`
+2. **UI Planning** (`PlanningMainOeuvre.tsx`) : Ajout du hook `useChefsWithPrincipalResolved` qui recalcule localement le badge Principal/Secondaire en fallback quand la valeur DB est incohérente avec les affectations de la semaine.
 
-### Modification 1 : Bloc absences longue duree (lignes 1391-1468)
+3. **Copy from previous week** (`usePlanningAffectations.ts`) : Invalidation du cache `chefs-chantier-principal` après copie.
 
-Remplacer le `if (existingGhost) { continue }` et restructurer le bloc :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursAbsence` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFiche.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFiche.id`)
-- Ajouter `ignoreDuplicates: true` dans les options upsert : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Modification 2 : Bloc conges valides (lignes 1521-1597)
-
-Meme pattern exact :
-
-- `let ghostFicheId = existingGhost?.id || null`
-- Deplacer le calcul des `joursConge` AVANT la creation de fiche
-- `if (!ghostFicheId)` → creer la fiche ghost, `ghostFicheId = newFicheConge.id`, incrementer compteurs
-- `else` → log "Reutilisation fiche ghost existante pour conge"
-- Upsert `fiches_jours` avec `fiche_id: ghostFicheId` (au lieu de `newFicheConge.id`)
-- Ajouter `ignoreDuplicates: true` : `{ onConflict: 'fiche_id,date', ignoreDuplicates: true }`
-- `results.push` avec `action: ghostFicheId === existingGhost?.id ? 'merged' : 'created'`
-
-### Ce qui ne change pas
-
-- Requetes de detection `existingGhost` identiques
-- Ordre d'execution (LD avant conges) identique
-- Aucun autre fichier modifie
-- `ignoreDuplicates: true` = INSERT ON CONFLICT DO NOTHING (securite theorique, premier ecrivain gagne)
-
+4. **Add/Remove chef** (`PlanningMainOeuvre.tsx`) : Vérification et mise à jour du `chantier_principal_id` lors de l'ajout/retrait d'un chef d'un chantier.
