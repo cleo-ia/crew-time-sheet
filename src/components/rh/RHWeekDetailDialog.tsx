@@ -26,6 +26,7 @@ interface DayDetail {
   otherSiteNom?: string | null;
   siteDetails?: Array<{ code: string; nom: string; heures: number }>;
   isEcole?: boolean;
+  isAbsent?: boolean;
 }
 
 interface SignatureData {
