@@ -9,6 +9,7 @@ interface DayData {
   heuresNormales: number;
   heuresIntemperies: number;
   typeAbsence: string | null;
+  isAbsent?: boolean;
 }
 
 interface EditableAbsenceTypeCellProps {
