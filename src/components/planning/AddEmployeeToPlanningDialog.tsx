@@ -496,22 +496,27 @@ export const AddEmployeeToPlanningDialog = ({
             <div className="flex gap-2">
               {weekDays.map(day => {
                 const isTaken = takenDays.has(day.date);
+                const isChefSelected = selectedEmploye && getEmployeType(selectedEmploye) === "chef";
+                const isAbsLD = absencesLDByEmploye?.get(selectedEmploye?.id || "")?.dates.has(day.date);
+                const isLockedForChef = isChefSelected && !isAbsLD;
                 return (
                   <div key={day.date} className="flex items-center gap-1">
                     <Checkbox
                       id={`day-${day.date}`}
                       checked={selectedDays.includes(day.date)}
                       onCheckedChange={() => handleDayToggle(day.date)}
-                      disabled={isTaken}
+                      disabled={isTaken || isLockedForChef}
                     />
                     <label 
                       htmlFor={`day-${day.date}`}
                       className={cn(
                         "text-sm cursor-pointer",
-                        isTaken && "text-muted-foreground line-through"
+                        isTaken && "text-muted-foreground line-through",
+                        isLockedForChef && "text-muted-foreground"
                       )}
                     >
                       {day.fullName}
+                      {isLockedForChef && " 🔒"}
                     </label>
                   </div>
                 );
