@@ -711,8 +711,8 @@ async function syncEntreprise(
         // Le principal est obsolète → recalculer avec le chantier ayant le plus de jours
         const chefDaysMap = new Map<string, number>()
         for (const cId of chantierIds) {
-          const days = chefDaysPerChantier.get(cId)?.get(chefId) || 0
-          chefDaysMap.set(cId, days)
+          const chefEntry = chefDaysPerChantier.get(cId)?.get(chefId)
+          chefDaysMap.set(cId, chefEntry?.count || 0)
         }
         
         let bestChantier = chantierIds[0]
