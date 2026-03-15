@@ -868,14 +868,20 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       if (isChef) {
         // CHEFS: sommer les heures de tous les chantiers par jour
         // AND build siteDetails array for each day
-        const dayMap = new Map<string, typeof dailyDetails[0] & { siteDetails: Array<{ code: string; nom: string; heures: number }> }>();
+        // Track all ficheJourIds per date for correct write targeting
+        const dayMap = new Map<string, typeof dailyDetails[0] & { 
+          siteDetails: Array<{ code: string; nom: string; heures: number }>;
+          allFicheJourIds: Array<{ id: string; ficheId: string; heures: number }>;
+        }>();
         dailyDetails.forEach(jour => {
           const existing = dayMap.get(jour.date);
+          const ficheId = fichesJoursFiltrees?.find(fj => fj.id === jour.ficheJourId)?.fiche_id || "";
           const siteDetail = {
             code: jour.chantierCode || jour.chantierNom || "?",
             nom: jour.chantierNom || jour.chantierCode || "?",
             heures: jour.heuresNormales,
           };
+          const ficheJourEntry = { id: jour.ficheJourId, ficheId, heures: jour.heuresNormales };
           if (!existing) {
             dayMap.set(jour.date, {
               ...jour,
@@ -883,6 +889,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               otherSiteCode: null,
               otherSiteNom: null,
               siteDetails: [siteDetail],
+              allFicheJourIds: [ficheJourEntry],
             } as any);
           } else {
             // Sommer les heures
@@ -894,8 +901,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
             if (!existing.codeTrajet || existing.codeTrajet === 'A_COMPLETER') {
               existing.codeTrajet = jour.codeTrajet;
             }
-            // Add site detail
+            // Add site detail and ficheJourId
             (existing as any).siteDetails.push(siteDetail);
+            existing.allFicheJourIds.push(ficheJourEntry);
           }
         });
 
@@ -927,6 +935,12 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               .filter(fj => filteredChantierFicheIds.has(fj.fiche_id))
               .find(fj => (fj as any).code_trajet);
 
+            // *** FIX: Resolve ficheJourId to the filtered chantier's ficheJour ***
+            const filteredFjEntry = jour.allFicheJourIds.find(entry => filteredChantierFicheIds.has(entry.ficheId));
+            if (filteredFjEntry) {
+              jour.ficheJourId = filteredFjEntry.id;
+            }
+
             if (hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && jour.heuresNormales > 0) {
               // Chef was on another site this day
               (jour as any).isOnOtherSite = true;
@@ -954,6 +968,16 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
                 jour.chantierNom = filteredChantierInfo.nom || jour.chantierNom;
                 jour.chantierCode = filteredChantierInfo.code_chantier || jour.chantierCode;
                 jour.chantier = filteredChantierInfo.nom || jour.chantier;
+              }
+            }
+          });
+        } else {
+          // *** FIX: Sans filtre, résoudre ficheJourId vers celui avec le plus d'heures ***
+          dayMap.forEach((jour) => {
+            if (jour.allFicheJourIds.length > 1) {
+              const bestEntry = [...jour.allFicheJourIds].sort((a, b) => b.heures - a.heures)[0];
+              if (bestEntry) {
+                jour.ficheJourId = bestEntry.id;
               }
             }
           });
