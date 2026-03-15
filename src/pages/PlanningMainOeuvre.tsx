@@ -399,19 +399,34 @@ const PlanningMainOeuvre = () => {
         });
       }
 
-      // 2. Définir comme chantier principal seulement si le chef n'en a pas
-      if (!chefsWithPrincipal.has(employeId)) {
+      // 2. Vérifier la cohérence du chantier_principal_id
+      // Si le chef a déjà un principal qui n'est plus dans ses chantiers de la semaine, le recalculer
+      const currentPrincipal = chefsWithPrincipal.get(employeId);
+      const chefChantierIds = [...new Set(
+        affectations
+          .filter(a => a.employe_id === employeId)
+          .map(a => a.chantier_id)
+      ), chantierId]; // inclure le nouveau chantier
+      
+      if (!currentPrincipal || !chefChantierIds.includes(currentPrincipal)) {
+        // Définir le chantier principal (premier chantier ou le nouveau)
+        const newPrincipal = currentPrincipal && chefChantierIds.includes(currentPrincipal) 
+          ? currentPrincipal 
+          : chantierId;
+        
         await supabase
           .from("utilisateurs")
-          .update({ chantier_principal_id: chantierId })
+          .update({ chantier_principal_id: newPrincipal })
           .eq("id", employeId);
 
         queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
 
-        toast({
-          title: "Chantier principal défini",
-          description: "Les heures du chef seront comptées sur ce chantier.",
-        });
+        if (!currentPrincipal) {
+          toast({
+            title: "Chantier principal défini",
+            description: "Les heures du chef seront comptées sur ce chantier.",
+          });
+        }
       }
 
       // 3. Auto-marquer comme chef responsable si aucun autre chef n'est responsable sur ce chantier
