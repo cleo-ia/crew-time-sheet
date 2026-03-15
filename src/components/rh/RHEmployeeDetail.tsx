@@ -755,6 +755,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                     otherSiteCode: (day as any).otherSiteCode,
                     otherSiteNom: (day as any).otherSiteNom,
                     isEcole: (day as any).isEcole,
+                    isAbsent: (day as any).isAbsent,
                     siteDetails: (day as any).siteDetails,
                   }));
               })()
