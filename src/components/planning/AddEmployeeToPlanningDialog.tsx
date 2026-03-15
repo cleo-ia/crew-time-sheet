@@ -262,6 +262,10 @@ export const AddEmployeeToPlanningDialog = ({
   };
 
   const handleDayToggle = (date: string) => {
+    // Bloquer le toggle pour les chefs (jours verrouillés)
+    const selectedEmp = allEmployes.find(e => e.id === selectedEmployeId);
+    if (selectedEmp && getEmployeType(selectedEmp) === "chef") return;
+    
     setSelectedDays(prev => 
       prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
     );
