@@ -109,7 +109,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
       weekData.nbJours += 1;
       
       // Ne compter le type d'absence que si c'est vraiment un jour d'absence (pas sur un autre chantier ni ECOLE)
-      const isAbsentDay = (day.heuresNormales || 0) === 0 && !isOnOtherSite && !(day as any).isEcole;
+      const isAbsentDay = Boolean((day as any).isAbsent);
       if (isAbsentDay && (day as any).typeAbsence) {
         weekData.absences.push((day as any).typeAbsence);
       }
