@@ -1,29 +1,20 @@
-
-
-## Fix : Afficher les données réelles du chantier filtré (trajets, paniers)
+## Plan : Verrouillage 5/5 jours pour les chefs dans le planning — IMPLÉMENTÉ ✅
 
 ### Problème
-Quand on filtre par chantier, les heures sont bien isolées mais **le code trajet et le panier** conservent les valeurs fusionnées d'un autre chantier. Deux bugs dans `useRHData.ts` :
+Le planning permettait au conducteur de sélectionner des jours individuels pour les chefs (ex: L,M,M sur un chantier et J,V sur un autre), empêchant la saisie d'heures sur certains jours et cassant la consolidation RH.
 
-1. **Ligne 954** (bloc "isOnOtherSite") : les heures sont remises à 0 mais `codeTrajet`, `trajetPerso` et `panier` gardent les valeurs de l'autre site
-2. **Ligne 961** (bloc "hasAnyFicheOnFilteredSite") : le `codeTrajet` n'est écrasé que s'il existe sur le site filtré → sinon l'ancien persiste
+### Corrections apportées
 
-### Correction (`src/hooks/useRHData.ts`)
+1. **`AddEmployeeToPlanningDialog`** : 
+   - Mode simple : quand un chef est sélectionné, tous les jours sont forcés (sauf absences LD) et les checkboxes sont verrouillées (disabled + 🔒)
+   - `handleDayToggle` : bloqué pour les chefs
+   - Mode batch : les chefs reçoivent automatiquement 5/5 jours, indépendamment des `commonDays`
 
-**Bloc isOnOtherSite (après ligne 955)** — ajouter :
-```typescript
-jour.codeTrajet = null;
-jour.trajetPerso = false;
-jour.panier = false;
-```
+2. **`PlanningEmployeRow`** : Le `DayIndicator` est `disabled` pour les chefs (`isChef` prop) → impossible de toggle un jour sur la grille
 
-**Bloc hasAnyFicheOnFilteredSite (lignes 961-963)** — remplacer le `if` par une affectation systématique :
-```typescript
-jour.codeTrajet = trajetOnFilteredSite
-  ? (trajetOnFilteredSite as any).code_trajet
-  : null;
-jour.trajetPerso = false; // reset, puis chercher sur le site filtré
-```
+3. **`PlanningMainOeuvre`** : Garde-fou dans `handleDayToggle` : si un chef tente de décocher un jour, un toast explicatif apparaît et l'action est bloquée
 
-Résultat : quand on filtre DAVOULT, on voit les données **réelles** de DAVOULT (trajet vide, panier vide si 0h), sans pollution par MAILLARD.
-
+### Ce qui ne change pas
+- Le bouton "Supprimer" (retrait complet du chef d'un chantier) reste fonctionnel
+- Les ouvriers/finisseurs/grutiers/intérimaires gardent le comportement actuel
+- La sync Edge Function fonctionne correctement avec les 5 jours
