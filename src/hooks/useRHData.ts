@@ -968,7 +968,13 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               jour.trajetPerso = trajetOnFilteredSite
                 ? (trajetOnFilteredSite as any).trajet_perso || false
                 : false;
-              jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0;
+              const hasHoursOnOtherSite = joursForDate
+                .filter(fj => !filteredChantierFicheIds.has(fj.fiche_id))
+                .reduce((sum, fj) => sum + (Number(fj.heures) || Number(fj.HNORM) || 0), 0) > 0;
+              jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0 && !hasHoursOnOtherSite;
+              if (!jour.isAbsent) {
+                jour.typeAbsence = null;
+              }
               (jour as any).isOnOtherSite = false;
               // Show filtered site info
               if (filteredChantierInfo) {
