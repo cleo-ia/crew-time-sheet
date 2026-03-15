@@ -945,6 +945,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               // Chef was on another site — show filtered site with 0h
               (jour as any).isOnOtherSite = false;
               jour.isAbsent = false;
+              jour.typeAbsence = null;
               jour.heuresNormales = 0;
               jour.heuresIntemperies = 0;
               jour.codeTrajet = null;
