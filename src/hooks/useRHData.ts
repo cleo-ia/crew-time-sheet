@@ -868,14 +868,20 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
       if (isChef) {
         // CHEFS: sommer les heures de tous les chantiers par jour
         // AND build siteDetails array for each day
-        const dayMap = new Map<string, typeof dailyDetails[0] & { siteDetails: Array<{ code: string; nom: string; heures: number }> }>();
+        // Track all ficheJourIds per date for correct write targeting
+        const dayMap = new Map<string, typeof dailyDetails[0] & { 
+          siteDetails: Array<{ code: string; nom: string; heures: number }>;
+          allFicheJourIds: Array<{ id: string; ficheId: string; heures: number }>;
+        }>();
         dailyDetails.forEach(jour => {
           const existing = dayMap.get(jour.date);
+          const ficheId = fichesJoursFiltrees?.find(fj => fj.id === jour.ficheJourId)?.fiche_id || "";
           const siteDetail = {
             code: jour.chantierCode || jour.chantierNom || "?",
             nom: jour.chantierNom || jour.chantierCode || "?",
             heures: jour.heuresNormales,
           };
+          const ficheJourEntry = { id: jour.ficheJourId, ficheId, heures: jour.heuresNormales };
           if (!existing) {
             dayMap.set(jour.date, {
               ...jour,
@@ -883,6 +889,7 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               otherSiteCode: null,
               otherSiteNom: null,
               siteDetails: [siteDetail],
+              allFicheJourIds: [ficheJourEntry],
             } as any);
           } else {
             // Sommer les heures
@@ -894,8 +901,9 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
             if (!existing.codeTrajet || existing.codeTrajet === 'A_COMPLETER') {
               existing.codeTrajet = jour.codeTrajet;
             }
-            // Add site detail
+            // Add site detail and ficheJourId
             (existing as any).siteDetails.push(siteDetail);
+            existing.allFicheJourIds.push(ficheJourEntry);
           }
         });
 
