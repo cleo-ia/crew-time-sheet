@@ -953,14 +953,20 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
               // Override heures to show filtered site heures (0)
               jour.heuresNormales = 0;
               jour.heuresIntemperies = 0;
+              jour.codeTrajet = null;
+              jour.trajetPerso = false;
+              jour.panier = false;
             } else if (hasAnyFicheOnFilteredSite) {
               // Chef was on the filtered site - show only that site's hours
               jour.heuresNormales = hoursOnFilteredSite;
               jour.heuresIntemperies = intemperiesOnFilteredSite;
               jour.panier = panierOnFilteredSite;
-              if (trajetOnFilteredSite) {
-                jour.codeTrajet = (trajetOnFilteredSite as any).code_trajet;
-              }
+              jour.codeTrajet = trajetOnFilteredSite
+                ? (trajetOnFilteredSite as any).code_trajet
+                : null;
+              jour.trajetPerso = trajetOnFilteredSite
+                ? (trajetOnFilteredSite as any).trajet_perso || false
+                : false;
               jour.isAbsent = hoursOnFilteredSite === 0 && intemperiesOnFilteredSite === 0;
               (jour as any).isOnOtherSite = false;
               // Show filtered site info
