@@ -500,6 +500,7 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                         heuresNormales: d.heuresNormales,
                         heuresIntemperies: d.heuresIntemperies,
                         typeAbsence: (d as any).typeAbsence || null,
+                        isAbsent: (d as any).isAbsent,
                       }))}
                       currentDate={day.date}
                       onSave={async (newValue) => {
