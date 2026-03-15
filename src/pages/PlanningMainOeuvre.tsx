@@ -85,6 +85,54 @@ const useChefsWithPrincipal = () => {
   });
 };
 
+// Hook pour recalculer le chantier principal des chefs en fonction des affectations réelles de la semaine
+// Corrige le cas où chantier_principal_id pointe vers un chantier où le chef n'est plus affecté
+const useChefsWithPrincipalResolved = (
+  chefsWithPrincipal: Map<string, string>,
+  affectations: any[],
+) => {
+  return useMemo(() => {
+    if (!affectations.length) return chefsWithPrincipal;
+
+    // Construire une map: chefId -> { chantierId -> nbJours }
+    const chefChantierDays = new Map<string, Map<string, number>>();
+    for (const aff of affectations) {
+      if (aff.employe?.role_metier !== "chef") continue;
+      const empId = aff.employe_id;
+      if (!chefChantierDays.has(empId)) {
+        chefChantierDays.set(empId, new Map());
+      }
+      const chantierMap = chefChantierDays.get(empId)!;
+      chantierMap.set(aff.chantier_id, (chantierMap.get(aff.chantier_id) || 0) + 1);
+    }
+
+    // Pour chaque chef multi-chantier, vérifier la cohérence
+    const resolved = new Map(chefsWithPrincipal);
+    for (const [chefId, chantierMap] of chefChantierDays) {
+      if (chantierMap.size < 2) continue; // mono-chantier → pas de problème
+      
+      const currentPrincipal = resolved.get(chefId);
+      const chantierIds = [...chantierMap.keys()];
+      
+      // Si le principal actuel ne fait pas partie des chantiers de la semaine → recalculer
+      if (!currentPrincipal || !chantierIds.includes(currentPrincipal)) {
+        // Prendre le chantier avec le plus de jours
+        let bestChantier = chantierIds[0];
+        let maxDays = chantierMap.get(bestChantier) || 0;
+        for (const [cId, days] of chantierMap) {
+          if (days > maxDays) {
+            bestChantier = cId;
+            maxDays = days;
+          }
+        }
+        resolved.set(chefId, bestChantier);
+      }
+    }
+
+    return resolved;
+  }, [chefsWithPrincipal, affectations]);
+};
+
 const PlanningMainOeuvre = () => {
   const currentWeek = getCurrentWeek();
   const [semaine, setSemaine] = useState(getNextWeek(currentWeek)); // Par défaut S+1
@@ -128,7 +176,8 @@ const PlanningMainOeuvre = () => {
   // Données
   const { data: chantiers = [], isLoading: loadingChantiers } = useChantiers();
   const { data: affectations = [], isLoading: loadingAffectations } = usePlanningAffectations(semaine);
-  const { data: chefsWithPrincipal = new Map() } = useChefsWithPrincipal();
+  const { data: chefsWithPrincipalRaw = new Map() } = useChefsWithPrincipal();
+  const chefsWithPrincipal = useChefsWithPrincipalResolved(chefsWithPrincipalRaw, affectations);
   const { data: absencesLDByEmploye = new Map() } = useAbsencesLongueDureePlanning(semaine);
   
   // Mutations
@@ -270,6 +319,30 @@ const PlanningMainOeuvre = () => {
 
         queryClient.invalidateQueries({ queryKey: ["planning-affectations", semaine] });
       }
+
+      // ✅ Vérifier si le chantier_principal_id du chef retiré est toujours valide
+      const currentPrincipal = chefsWithPrincipal.get(employeId);
+      if (currentPrincipal === chantierId) {
+        // Le chef est retiré du chantier qui était son principal → recalculer
+        // Chercher les autres chantiers du chef cette semaine
+        const { data: chefOtherAffs } = await supabase
+          .from("planning_affectations")
+          .select("chantier_id")
+          .eq("employe_id", employeId)
+          .eq("semaine", semaine)
+          .eq("entreprise_id", entrepriseId);
+
+        const otherChantierIds = [...new Set((chefOtherAffs || []).map((a: any) => a.chantier_id))];
+        
+        if (otherChantierIds.length > 0) {
+          // Mettre à jour vers le premier chantier restant
+          await supabase
+            .from("utilisateurs")
+            .update({ chantier_principal_id: otherChantierIds[0] })
+            .eq("id", employeId);
+          queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
+        }
+      }
     }
   };
 
@@ -350,19 +423,34 @@ const PlanningMainOeuvre = () => {
         });
       }
 
-      // 2. Définir comme chantier principal seulement si le chef n'en a pas
-      if (!chefsWithPrincipal.has(employeId)) {
+      // 2. Vérifier la cohérence du chantier_principal_id
+      // Si le chef a déjà un principal qui n'est plus dans ses chantiers de la semaine, le recalculer
+      const currentPrincipal = chefsWithPrincipal.get(employeId);
+      const chefChantierIds = [...new Set(
+        affectations
+          .filter(a => a.employe_id === employeId)
+          .map(a => a.chantier_id)
+      ), chantierId]; // inclure le nouveau chantier
+      
+      if (!currentPrincipal || !chefChantierIds.includes(currentPrincipal)) {
+        // Définir le chantier principal (premier chantier ou le nouveau)
+        const newPrincipal = currentPrincipal && chefChantierIds.includes(currentPrincipal) 
+          ? currentPrincipal 
+          : chantierId;
+        
         await supabase
           .from("utilisateurs")
-          .update({ chantier_principal_id: chantierId })
+          .update({ chantier_principal_id: newPrincipal })
           .eq("id", employeId);
 
         queryClient.invalidateQueries({ queryKey: ["chefs-chantier-principal"] });
 
-        toast({
-          title: "Chantier principal défini",
-          description: "Les heures du chef seront comptées sur ce chantier.",
-        });
+        if (!currentPrincipal) {
+          toast({
+            title: "Chantier principal défini",
+            description: "Les heures du chef seront comptées sur ce chantier.",
+          });
+        }
       }
 
       // 3. Auto-marquer comme chef responsable si aucun autre chef n'est responsable sur ce chantier
