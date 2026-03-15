@@ -684,6 +684,7 @@ async function syncEntreprise(
 
   for (const [chefId, chantierSet] of chantiersByChef) {
     if (chantierSet.size === 1) {
+      // Chef mono-chantier: auto-assign
       const uniqueChantierId = [...chantierSet][0]
       const currentPrincipal = chefPrincipalMap.get(chefId)
       
@@ -698,8 +699,42 @@ async function syncEntreprise(
         if (updateError) {
           console.error(`[sync-planning-to-teams] Erreur auto-assign chantier_principal_id:`, updateError)
         } else {
-          // Mettre à jour le map local
           chefPrincipalMap.set(chefId, uniqueChantierId)
+        }
+      }
+    } else {
+      // Chef multi-chantiers: vérifier si le principal actuel est toujours valide
+      const currentPrincipal = chefPrincipalMap.get(chefId)
+      const chantierIds = [...chantierSet]
+      
+      if (!currentPrincipal || !chantierIds.includes(currentPrincipal)) {
+        // Le principal est obsolète → recalculer avec le chantier ayant le plus de jours
+        const chefDaysMap = new Map<string, number>()
+        for (const cId of chantierIds) {
+          const days = chefDaysPerChantier.get(cId)?.get(chefId) || 0
+          chefDaysMap.set(cId, days)
+        }
+        
+        let bestChantier = chantierIds[0]
+        let maxDays = chefDaysMap.get(bestChantier) || 0
+        for (const [cId, days] of chefDaysMap) {
+          if (days > maxDays) {
+            bestChantier = cId
+            maxDays = days
+          }
+        }
+        
+        console.log(`[sync-planning-to-teams] Chef multi-chantiers ${chefId}: principal obsolète (${currentPrincipal || 'null'}), recalcul → ${bestChantier} (${maxDays} jours)`)
+        
+        const { error: updateError } = await supabase
+          .from('utilisateurs')
+          .update({ chantier_principal_id: bestChantier })
+          .eq('id', chefId)
+        
+        if (updateError) {
+          console.error(`[sync-planning-to-teams] Erreur recalcul chantier_principal_id multi-chantiers:`, updateError)
+        } else {
+          chefPrincipalMap.set(chefId, bestChantier)
         }
       }
     }
