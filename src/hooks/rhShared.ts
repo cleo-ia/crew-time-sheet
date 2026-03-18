@@ -651,7 +651,21 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         jourRefTrajet = entryAvecTrajet ? entryAvecTrajet.jour : jourRef;
       } else {
         // NON-CHEF ou une seule fiche : dédupliquer (garder le meilleur statut)
-        const bestEntry = entries.reduce((best, e) => {
+        // ✅ GARDE-FOU: Exclure les entrées fantômes (A_COMPLETER / A_QUALIFIER)
+        let filteredEntries = entries;
+        if (entries.length > 1) {
+          // Si une entrée a un vrai code_trajet et une autre a "A_COMPLETER", exclure A_COMPLETER
+          const realTrajetEntries = entries.filter(e => (e.jour as any).code_trajet && (e.jour as any).code_trajet !== 'A_COMPLETER');
+          if (realTrajetEntries.length > 0 && realTrajetEntries.length < entries.length) {
+            filteredEntries = realTrajetEntries;
+          }
+          // Si une entrée a un vrai type_absence et une autre a "A_QUALIFIER", exclure A_QUALIFIER
+          const realAbsenceEntries = filteredEntries.filter(e => !(e.jour as any).type_absence || (e.jour as any).type_absence !== 'A_QUALIFIER');
+          if (realAbsenceEntries.length > 0 && realAbsenceEntries.length < filteredEntries.length) {
+            filteredEntries = realAbsenceEntries;
+          }
+        }
+        const bestEntry = filteredEntries.reduce((best, e) => {
           const bestPrio = statutPriorite[best.ficheStatut] ?? 0;
           const curPrio = statutPriorite[e.ficheStatut] ?? 0;
           return curPrio > bestPrio ? e : best;
