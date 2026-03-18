@@ -1688,41 +1688,21 @@ async function copyFichesFromPreviousWeek(
     .eq('semaine', currentWeek)
     .maybeSingle()
 
-  // Si fiche existe avec heures, on ne copie pas les heures
-  // MAIS on crée quand même les affectations_jours_chef pour que l'équipe soit visible
-  if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-    // Créer les affectations malgré tout
-    if (chantier?.chef_id) {
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_jours_chef')
-          .upsert({
-            macon_id: employeId,
-            chef_id: chantier.chef_id,
-            chantier_id: chantierId,
-            jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'macon_id,jour' })
-      }
-      console.log(`[sync] Affectations créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
-    } else if (chantier?.conducteur_id) {
-      // ✅ CORRECTIF: utiliser les vrais jours du planning, pas une boucle fixe 5 jours
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_finisseurs_jours')
-          .upsert({
-            finisseur_id: employeId,
-            conducteur_id: chantier.conducteur_id,
-            chantier_id: chantierId,
-            date: jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'finisseur_id,date' })
-      }
-      console.log(`[sync] Affectations finisseurs créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h, ${joursPlanning.length} jours)`)
-    }
-    return { copied: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
+  // ✅ STRICT: Si fiche existe avec statut CLOTURE, ne pas toucher
+  if (existingFiche && existingFiche.statut === 'CLOTURE') {
+    console.log(`[sync] Fiche CLOTURE pour ${employeId} sur ${chantierId} — protection absolue`)
+    return { copied: false, reason: `Fiche clôturée, intouchable` }
+  }
+
+  // ✅ STRICT: Si fiche existe avec heures, on ÉCRASE (planning = source de vérité)
+  if (existingFiche) {
+    console.log(`[sync] Fiche existante pour ${employeId} sur ${chantierId} (${existingFiche.total_heures}h, statut=${existingFiche.statut}) — écrasement par le planning`)
+    // Supprimer les fiches_jours existantes pour les recréer
+    await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', existingFiche.id)
+      .eq('entreprise_id', entrepriseId)
   }
 
   // Récupérer la fiche S-1
