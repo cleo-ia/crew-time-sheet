@@ -914,7 +914,7 @@ async function syncEntreprise(
           .eq('semaine', currentWeek)
           .maybeSingle()
 
-        const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+        const STATUTS_PROTEGES_CHEF = ['CLOTURE']
         if (ficheChefSec && STATUTS_PROTEGES_CHEF.includes(ficheChefSec.statut)) {
           console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche protégée (${ficheChefSec.statut}) sur chantier secondaire, skip`)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef responsable chantier secondaire, fiche protégée` })
