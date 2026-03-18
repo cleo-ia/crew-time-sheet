@@ -771,7 +771,7 @@ async function syncEntreprise(
           .maybeSingle()
 
         // Ne pas toucher aux fiches protégées
-        const STATUTS_PROTEGES = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+        const STATUTS_PROTEGES = ['CLOTURE']
         if (ficheSecondaire && STATUTS_PROTEGES.includes(ficheSecondaire.statut)) {
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche protégée (${ficheSecondaire.statut}), skip`)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef secondaire, fiche protégée` })
@@ -914,7 +914,7 @@ async function syncEntreprise(
           .eq('semaine', currentWeek)
           .maybeSingle()
 
-        const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+        const STATUTS_PROTEGES_CHEF = ['CLOTURE']
         if (ficheChefSec && STATUTS_PROTEGES_CHEF.includes(ficheChefSec.statut)) {
           console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche protégée (${ficheChefSec.statut}) sur chantier secondaire, skip`)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef responsable chantier secondaire, fiche protégée` })
@@ -1188,7 +1188,7 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
-    const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+    const STATUTS_PROTEGES_CHEF = ['CLOTURE']
     if (fiche) {
       if (STATUTS_PROTEGES_CHEF.includes(fiche.statut)) {
         console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour macon ${maconId} chantier ${chantierId}`)
@@ -1238,7 +1238,7 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
-    const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+    const STATUTS_PROTEGES_FINISSEUR = ['CLOTURE']
     if (fiche) {
       if (STATUTS_PROTEGES_FINISSEUR.includes(fiche.statut)) {
         console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour finisseur ${finisseurId} chantier ${chantierId}`)
@@ -1342,7 +1342,7 @@ async function syncEntreprise(
   }
 
   // 3. Identifier les fiches orphelines (pas dans le planning)
-  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+  const STATUTS_PROTEGES_ORPHAN = ['CLOTURE']
   // deno-lint-ignore no-explicit-any
   const orphanFiches = (allFichesS || []).filter((f: any) => {
     // ✅ Skip fiches sans chantier (absences longue durée)
@@ -1399,6 +1399,110 @@ async function syncEntreprise(
   }
 
   console.log(`[sync-planning-to-teams] ${orphanDeletedCount} fiche(s) orpheline(s) supprimée(s)`)
+
+  // ========================================================================
+  // PHASE ANTI-DOUBLON: Détecter les collisions (salarie_id, date) sur
+  // des fiches de chantiers différents et ne garder que celle du planning
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase anti-doublon (salarie_id, date)...`)
+
+  // Récupérer TOUTES les fiches_jours de la semaine pour cette entreprise
+  // On utilise les fiches déjà connues pour filtrer
+  const { data: allFichesForDedup } = await supabase
+    .from('fiches')
+    .select('id, salarie_id, chantier_id, statut')
+    .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  if (allFichesForDedup && allFichesForDedup.length > 0) {
+    // deno-lint-ignore no-explicit-any
+    const ficheMapDedup = new Map((allFichesForDedup as any[]).map((f: any) => [f.id, f]))
+    // deno-lint-ignore no-explicit-any
+    const ficheIdsThisWeek = (allFichesForDedup as any[]).map((f: any) => f.id as string)
+
+    // Récupérer les fiches_jours pour ces fiches
+    const { data: allFichesJoursForDedup } = await supabase
+      .from('fiches_jours')
+      .select('id, fiche_id, date')
+      .in('fiche_id', ficheIdsThisWeek)
+
+    if (allFichesJoursForDedup) {
+      // Grouper par (salarie_id, date)
+      const groupBySalarieDate = new Map<string, { ficheJourId: string; ficheId: string; chantierId: string; statut: string }[]>()
+      
+      // deno-lint-ignore no-explicit-any
+      for (const fj of allFichesJoursForDedup as any[]) {
+        const fiche = ficheMapDedup.get(fj.fiche_id)
+        if (!fiche || !fiche.salarie_id) continue
+        
+        const key = `${fiche.salarie_id}|${fj.date}`
+        if (!groupBySalarieDate.has(key)) {
+          groupBySalarieDate.set(key, [])
+        }
+        groupBySalarieDate.get(key)!.push({
+          ficheJourId: fj.id,
+          ficheId: fj.fiche_id,
+          chantierId: fiche.chantier_id,
+          statut: fiche.statut
+        })
+      }
+
+      // Traiter les collisions
+      let dedupDeleted = 0
+      const fichesToRecalc = new Set<string>()
+
+      for (const [key, dedupEntries] of groupBySalarieDate) {
+        if (dedupEntries.length <= 1) continue
+        
+        const [salarieId, date] = key.split('|')
+        
+        // Trouver quelle entrée correspond au planning pour ce jour
+        // deno-lint-ignore no-explicit-any
+        const planningForDay = (planningData || []).filter((p: any) => p.employe_id === salarieId && p.jour === date)
+        // deno-lint-ignore no-explicit-any
+        const planningChantierIds = new Set(planningForDay.map((p: any) => p.chantier_id))
+        
+        // Garder les entrées du planning, supprimer les autres (sauf CLOTURE)
+        for (const entry of dedupEntries) {
+          if (planningChantierIds.has(entry.chantierId)) continue // Garder
+          if (entry.statut === 'CLOTURE') continue // Protéger
+          
+          // Supprimer cette fiches_jours en doublon
+          await supabase
+            .from('fiches_jours')
+            .delete()
+            .eq('id', entry.ficheJourId)
+          
+          fichesToRecalc.add(entry.ficheId)
+          dedupDeleted++
+          console.log(`[sync-planning-to-teams] Anti-doublon: supprimé fiche_jour ${entry.ficheJourId} (salarie=${salarieId}, date=${date}, chantier=${entry.chantierId})`)
+        }
+      }
+
+      // Recalculer total_heures pour les fiches affectées
+      for (const ficheIdToRecalc of fichesToRecalc) {
+        const { data: joursRestants } = await supabase
+          .from('fiches_jours')
+          .select('heures')
+          .eq('fiche_id', ficheIdToRecalc)
+
+        // deno-lint-ignore no-explicit-any
+        const newTotal = (joursRestants || []).reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+
+        if (!joursRestants || joursRestants.length === 0) {
+          // Fiche vide → supprimer
+          await supabase.from('fiches').delete().eq('id', ficheIdToRecalc)
+          console.log(`[sync-planning-to-teams] Anti-doublon: fiche ${ficheIdToRecalc} supprimée (0 jours restants)`)
+          stats.deleted++
+        } else {
+          await supabase.from('fiches').update({ total_heures: newTotal }).eq('id', ficheIdToRecalc)
+        }
+      }
+
+      console.log(`[sync-planning-to-teams] Anti-doublon: ${dedupDeleted} fiches_jours en doublon supprimé(s), ${fichesToRecalc.size} fiche(s) recalculée(s)`)
+      stats.deleted += dedupDeleted
+    }
+  }
 
   // ========================================================================
   // ABSENCES LONGUE DURÉE: Générer automatiquement des fiches "ghost"
@@ -1688,41 +1792,21 @@ async function copyFichesFromPreviousWeek(
     .eq('semaine', currentWeek)
     .maybeSingle()
 
-  // Si fiche existe avec heures, on ne copie pas les heures
-  // MAIS on crée quand même les affectations_jours_chef pour que l'équipe soit visible
-  if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-    // Créer les affectations malgré tout
-    if (chantier?.chef_id) {
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_jours_chef')
-          .upsert({
-            macon_id: employeId,
-            chef_id: chantier.chef_id,
-            chantier_id: chantierId,
-            jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'macon_id,jour' })
-      }
-      console.log(`[sync] Affectations créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h)`)
-    } else if (chantier?.conducteur_id) {
-      // ✅ CORRECTIF: utiliser les vrais jours du planning, pas une boucle fixe 5 jours
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_finisseurs_jours')
-          .upsert({
-            finisseur_id: employeId,
-            conducteur_id: chantier.conducteur_id,
-            chantier_id: chantierId,
-            date: jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'finisseur_id,date' })
-      }
-      console.log(`[sync] Affectations finisseurs créées pour ${employeId} (fiche protégée ${existingFiche.total_heures}h, ${joursPlanning.length} jours)`)
-    }
-    return { copied: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
+  // ✅ STRICT: Si fiche existe avec statut CLOTURE, ne pas toucher
+  if (existingFiche && existingFiche.statut === 'CLOTURE') {
+    console.log(`[sync] Fiche CLOTURE pour ${employeId} sur ${chantierId} — protection absolue`)
+    return { copied: false, reason: `Fiche clôturée, intouchable` }
+  }
+
+  // ✅ STRICT: Si fiche existe avec heures, on ÉCRASE (planning = source de vérité)
+  if (existingFiche) {
+    console.log(`[sync] Fiche existante pour ${employeId} sur ${chantierId} (${existingFiche.total_heures}h, statut=${existingFiche.statut}) — écrasement par le planning`)
+    // Supprimer les fiches_jours existantes pour les recréer
+    await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', existingFiche.id)
+      .eq('entreprise_id', entrepriseId)
   }
 
   // Récupérer la fiche S-1
@@ -1924,46 +2008,27 @@ async function createNewAffectation(
   // Vérifier si une fiche existe déjà avec des heures
   const { data: existingFiche } = await supabase
     .from('fiches')
-    .select('id, total_heures')
+    .select('id, total_heures, statut')
     .eq('salarie_id', employeId)
     .eq('chantier_id', chantierId)
     .eq('semaine', currentWeek)
     .maybeSingle()
 
-  // Si fiche existe avec heures, on ne crée pas de nouvelles heures
-  // MAIS on crée quand même les affectations pour que l'équipe soit visible
-  if (existingFiche && existingFiche.total_heures && existingFiche.total_heures > 0) {
-    // Créer les affectations sur les jours planifiés malgré tout
-    if (chantier?.chef_id) {
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_jours_chef')
-          .upsert({
-            macon_id: employeId,
-            chef_id: chantier.chef_id,
-            chantier_id: chantierId,
-            jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'macon_id,jour' })
-      }
-      console.log(`[sync] Affectations créées pour ${employeId} sur ${joursPlanning.length} jours (fiche protégée ${existingFiche.total_heures}h)`)
-    } else if (chantier?.conducteur_id) {
-      for (const jour of joursPlanning) {
-        await supabase
-          .from('affectations_finisseurs_jours')
-          .upsert({
-            finisseur_id: employeId,
-            conducteur_id: chantier.conducteur_id,
-            chantier_id: chantierId,
-            date: jour,
-            semaine: currentWeek,
-            entreprise_id: entrepriseId
-          }, { onConflict: 'finisseur_id,date' })
-      }
-      console.log(`[sync] Affectations finisseurs créées pour ${employeId} sur ${joursPlanning.length} jours (fiche protégée ${existingFiche.total_heures}h)`)
-    }
-    return { created: false, reason: `Fiche protégée (${existingFiche.total_heures}h), affectations créées` }
+  // ✅ STRICT: Si fiche existe avec statut CLOTURE, ne pas toucher
+  if (existingFiche && existingFiche.statut === 'CLOTURE') {
+    console.log(`[sync] Fiche CLOTURE pour ${employeId} sur ${chantierId} — protection absolue`)
+    return { created: false, reason: `Fiche clôturée, intouchable` }
+  }
+
+  // ✅ STRICT: Si fiche existe avec heures, on ÉCRASE (planning = source de vérité)
+  if (existingFiche) {
+    console.log(`[sync] Fiche existante pour ${employeId} sur ${chantierId} (${existingFiche.total_heures}h) — écrasement par le planning`)
+    // Supprimer les fiches_jours existantes pour les recréer
+    await supabase
+      .from('fiches_jours')
+      .delete()
+      .eq('fiche_id', existingFiche.id)
+      .eq('entreprise_id', entrepriseId)
   }
 
   // ✅ ECOLE: Si le chantier est un chantier école, forcer 0h
