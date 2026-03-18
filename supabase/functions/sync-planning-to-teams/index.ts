@@ -1904,7 +1904,7 @@ async function createNewAffectation(
   // Vérifier si une fiche existe déjà avec des heures
   const { data: existingFiche } = await supabase
     .from('fiches')
-    .select('id, total_heures')
+    .select('id, total_heures, statut')
     .eq('salarie_id', employeId)
     .eq('chantier_id', chantierId)
     .eq('semaine', currentWeek)
