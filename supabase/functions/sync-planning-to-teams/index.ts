@@ -771,7 +771,7 @@ async function syncEntreprise(
           .maybeSingle()
 
         // Ne pas toucher aux fiches protégées
-        const STATUTS_PROTEGES = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+        const STATUTS_PROTEGES = ['CLOTURE']
         if (ficheSecondaire && STATUTS_PROTEGES.includes(ficheSecondaire.statut)) {
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche protégée (${ficheSecondaire.statut}), skip`)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef secondaire, fiche protégée` })
