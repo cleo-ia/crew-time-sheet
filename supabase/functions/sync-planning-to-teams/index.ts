@@ -1401,6 +1401,110 @@ async function syncEntreprise(
   console.log(`[sync-planning-to-teams] ${orphanDeletedCount} fiche(s) orpheline(s) supprimée(s)`)
 
   // ========================================================================
+  // PHASE ANTI-DOUBLON: Détecter les collisions (salarie_id, date) sur
+  // des fiches de chantiers différents et ne garder que celle du planning
+  // ========================================================================
+  console.log(`[sync-planning-to-teams] Phase anti-doublon (salarie_id, date)...`)
+
+  // Récupérer TOUTES les fiches_jours de la semaine pour cette entreprise
+  // On utilise les fiches déjà connues pour filtrer
+  const { data: allFichesForDedup } = await supabase
+    .from('fiches')
+    .select('id, salarie_id, chantier_id, statut')
+    .eq('semaine', currentWeek)
+    .eq('entreprise_id', entrepriseId)
+
+  if (allFichesForDedup && allFichesForDedup.length > 0) {
+    // deno-lint-ignore no-explicit-any
+    const ficheMapDedup = new Map((allFichesForDedup as any[]).map((f: any) => [f.id, f]))
+    // deno-lint-ignore no-explicit-any
+    const ficheIdsThisWeek = (allFichesForDedup as any[]).map((f: any) => f.id as string)
+
+    // Récupérer les fiches_jours pour ces fiches
+    const { data: allFichesJoursForDedup } = await supabase
+      .from('fiches_jours')
+      .select('id, fiche_id, date')
+      .in('fiche_id', ficheIdsThisWeek)
+
+    if (allFichesJoursForDedup) {
+      // Grouper par (salarie_id, date)
+      const groupBySalarieDate = new Map<string, { ficheJourId: string; ficheId: string; chantierId: string; statut: string }[]>()
+      
+      // deno-lint-ignore no-explicit-any
+      for (const fj of allFichesJoursForDedup as any[]) {
+        const fiche = ficheMapDedup.get(fj.fiche_id)
+        if (!fiche || !fiche.salarie_id) continue
+        
+        const key = `${fiche.salarie_id}|${fj.date}`
+        if (!groupBySalarieDate.has(key)) {
+          groupBySalarieDate.set(key, [])
+        }
+        groupBySalarieDate.get(key)!.push({
+          ficheJourId: fj.id,
+          ficheId: fj.fiche_id,
+          chantierId: fiche.chantier_id,
+          statut: fiche.statut
+        })
+      }
+
+      // Traiter les collisions
+      let dedupDeleted = 0
+      const fichesToRecalc = new Set<string>()
+
+      for (const [key, dedupEntries] of groupBySalarieDate) {
+        if (dedupEntries.length <= 1) continue
+        
+        const [salarieId, date] = key.split('|')
+        
+        // Trouver quelle entrée correspond au planning pour ce jour
+        // deno-lint-ignore no-explicit-any
+        const planningForDay = (planningData || []).filter((p: any) => p.employe_id === salarieId && p.jour === date)
+        // deno-lint-ignore no-explicit-any
+        const planningChantierIds = new Set(planningForDay.map((p: any) => p.chantier_id))
+        
+        // Garder les entrées du planning, supprimer les autres (sauf CLOTURE)
+        for (const entry of dedupEntries) {
+          if (planningChantierIds.has(entry.chantierId)) continue // Garder
+          if (entry.statut === 'CLOTURE') continue // Protéger
+          
+          // Supprimer cette fiches_jours en doublon
+          await supabase
+            .from('fiches_jours')
+            .delete()
+            .eq('id', entry.ficheJourId)
+          
+          fichesToRecalc.add(entry.ficheId)
+          dedupDeleted++
+          console.log(`[sync-planning-to-teams] Anti-doublon: supprimé fiche_jour ${entry.ficheJourId} (salarie=${salarieId}, date=${date}, chantier=${entry.chantierId})`)
+        }
+      }
+
+      // Recalculer total_heures pour les fiches affectées
+      for (const ficheIdToRecalc of fichesToRecalc) {
+        const { data: joursRestants } = await supabase
+          .from('fiches_jours')
+          .select('heures')
+          .eq('fiche_id', ficheIdToRecalc)
+
+        // deno-lint-ignore no-explicit-any
+        const newTotal = (joursRestants || []).reduce((sum: number, j: any) => sum + (j.heures || 0), 0)
+
+        if (!joursRestants || joursRestants.length === 0) {
+          // Fiche vide → supprimer
+          await supabase.from('fiches').delete().eq('id', ficheIdToRecalc)
+          console.log(`[sync-planning-to-teams] Anti-doublon: fiche ${ficheIdToRecalc} supprimée (0 jours restants)`)
+          stats.deleted++
+        } else {
+          await supabase.from('fiches').update({ total_heures: newTotal }).eq('id', ficheIdToRecalc)
+        }
+      }
+
+      console.log(`[sync-planning-to-teams] Anti-doublon: ${dedupDeleted} fiches_jours en doublon supprimé(s), ${fichesToRecalc.size} fiche(s) recalculée(s)`)
+      stats.deleted += dedupDeleted
+    }
+  }
+
+  // ========================================================================
   // ABSENCES LONGUE DURÉE: Générer automatiquement des fiches "ghost"
   // pour les salariés en absence longue durée (AT, AM, congé parental, etc.)
   // Fiches sans chantier, 0h, type_absence pré-qualifié, statut ENVOYE_RH
