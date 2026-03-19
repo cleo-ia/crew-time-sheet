@@ -23,6 +23,7 @@ import Bootstrap from "./pages/Bootstrap";
 import NotFound from "./pages/NotFound";
 import Documentation from "./pages/Documentation";
 import ExportPaie from "./pages/ExportPaie";
+import CodesTrajet from "./pages/CodesTrajet";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
