@@ -211,7 +211,7 @@ const CodesTrajet = () => {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-0 pb-0">
-                    {!employes || employes.length === 0 ? (
+                    {sortedEmployes.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-4 px-4">
                         Aucun employé terrain trouvé.
                       </p>
