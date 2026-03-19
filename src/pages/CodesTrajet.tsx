@@ -100,16 +100,22 @@ const CodesTrajet = () => {
       />
       <PageLayout>
         {/* Stats + Search bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Building2 className="h-4 w-4" />
-              <span><strong className="text-foreground">{activeChantiers.length}</strong> chantier{activeChantiers.length > 1 ? "s" : ""} actif{activeChantiers.length > 1 ? "s" : ""}</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+              <Building2 className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-2xl font-bold text-foreground leading-none">{activeChantiers.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">chantier{activeChantiers.length > 1 ? "s" : ""} actif{activeChantiers.length > 1 ? "s" : ""}</p>
+              </div>
             </div>
             {employes && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span><strong className="text-foreground">{employes.length}</strong> employé{employes.length > 1 ? "s" : ""} terrain</span>
+              <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+                <Users className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-2xl font-bold text-foreground leading-none">{employes.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">employé{employes.length > 1 ? "s" : ""} terrain</p>
+                </div>
               </div>
             )}
           </div>
