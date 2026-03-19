@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { AppNav } from "@/components/navigation/AppNav";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { useChantiers } from "@/hooks/useChantiers";
 import {
   useEmployesTerrain,
