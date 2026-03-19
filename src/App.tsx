@@ -23,6 +23,7 @@ import Bootstrap from "./pages/Bootstrap";
 import NotFound from "./pages/NotFound";
 import Documentation from "./pages/Documentation";
 import ExportPaie from "./pages/ExportPaie";
+import CodesTrajet from "./pages/CodesTrajet";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
@@ -151,6 +152,16 @@ const App = () => (
               element={
                 <RequireRole allowedRoles={["super_admin", "admin", "rh"]}>
                   <ExportPaie />
+                </RequireRole>
+              } 
+            />
+
+            {/* Codes Trajet - Accessible par: super_admin, rh, admin */}
+            <Route 
+              path="/codes-trajet" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "rh", "admin"]}>
+                  <CodesTrajet />
                 </RequireRole>
               } 
             />
