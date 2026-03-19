@@ -56,6 +56,22 @@ const CodesTrajet = () => {
   const { data: mappings, isLoading: loadingMappings } = useCodesTrajetDefaut();
   const upsertMutation = useUpsertCodeTrajet();
 
+  const ROLE_ORDER: Record<string, number> = {
+    chef: 0, macon: 1, finisseur: 2, grutier: 3,
+  };
+
+  const sortedEmployes = useMemo(() => {
+    if (!employes) return [];
+    return [...employes].sort((a, b) => {
+      const ra = ROLE_ORDER[a.role_metier ?? ""] ?? 99;
+      const rb = ROLE_ORDER[b.role_metier ?? ""] ?? 99;
+      if (ra !== rb) return ra - rb;
+      const na = (a.nom ?? "").localeCompare(b.nom ?? "", "fr");
+      if (na !== 0) return na;
+      return (a.prenom ?? "").localeCompare(b.prenom ?? "", "fr");
+    });
+  }, [employes]);
+
   const activeChantiers = useMemo(() => {
     if (!chantiers) return [];
     const filtered = chantiers.filter((c) => c.actif);
