@@ -100,26 +100,24 @@ const CodesTrajet = () => {
       />
       <PageLayout>
         {/* Stats + Search bar */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 mt-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-6 mt-4 flex-wrap">
+          <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+            <Building2 className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-2xl font-bold text-foreground leading-none">{activeChantiers.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">chantier{activeChantiers.length > 1 ? "s" : ""} actif{activeChantiers.length > 1 ? "s" : ""}</p>
+            </div>
+          </div>
+          {employes && (
             <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
-              <Building2 className="h-5 w-5 text-primary" />
+              <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold text-foreground leading-none">{activeChantiers.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">chantier{activeChantiers.length > 1 ? "s" : ""} actif{activeChantiers.length > 1 ? "s" : ""}</p>
+                <p className="text-2xl font-bold text-foreground leading-none">{employes.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">employé{employes.length > 1 ? "s" : ""} terrain</p>
               </div>
             </div>
-            {employes && (
-              <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
-                <Users className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold text-foreground leading-none">{employes.length}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">employé{employes.length > 1 ? "s" : ""} terrain</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="relative max-w-sm w-full">
+          )}
+          <div className="relative w-72 ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher un chantier, ville..."
