@@ -56,6 +56,22 @@ const CodesTrajet = () => {
   const { data: mappings, isLoading: loadingMappings } = useCodesTrajetDefaut();
   const upsertMutation = useUpsertCodeTrajet();
 
+  const ROLE_ORDER: Record<string, number> = {
+    chef: 0, macon: 1, finisseur: 2, grutier: 3,
+  };
+
+  const sortedEmployes = useMemo(() => {
+    if (!employes) return [];
+    return [...employes].sort((a, b) => {
+      const ra = ROLE_ORDER[a.role_metier ?? ""] ?? 99;
+      const rb = ROLE_ORDER[b.role_metier ?? ""] ?? 99;
+      if (ra !== rb) return ra - rb;
+      const na = (a.nom ?? "").localeCompare(b.nom ?? "", "fr");
+      if (na !== 0) return na;
+      return (a.prenom ?? "").localeCompare(b.prenom ?? "", "fr");
+    });
+  }, [employes]);
+
   const activeChantiers = useMemo(() => {
     if (!chantiers) return [];
     const filtered = chantiers.filter((c) => c.actif);
@@ -73,8 +89,8 @@ const CodesTrajet = () => {
 
   // Compter les codes définis par chantier
   const getDefinedCount = (chantierId: string) => {
-    if (!mappings || !employes) return 0;
-    return employes.filter((emp) => mappings.has(`${chantierId}_${emp.id}`)).length;
+    if (!mappings || !sortedEmployes.length) return 0;
+    return sortedEmployes.filter((emp) => mappings.has(`${chantierId}_${emp.id}`)).length;
   };
 
   const handleChange = (
@@ -112,8 +128,8 @@ const CodesTrajet = () => {
             <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
               <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold text-foreground leading-none">{employes.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">employé{employes.length > 1 ? "s" : ""} terrain</p>
+              <p className="text-2xl font-bold text-foreground leading-none">{sortedEmployes.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">employé{sortedEmployes.length > 1 ? "s" : ""} terrain</p>
               </div>
             </div>
           )}
@@ -150,7 +166,7 @@ const CodesTrajet = () => {
           <Accordion type="multiple" className="space-y-2">
             {activeChantiers.map((chantier) => {
               const definedCount = getDefinedCount(chantier.id);
-              const totalCount = employes?.length ?? 0;
+              const totalCount = sortedEmployes.length;
               
               return (
                 <AccordionItem
@@ -195,7 +211,7 @@ const CodesTrajet = () => {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-0 pb-0">
-                    {!employes || employes.length === 0 ? (
+                    {sortedEmployes.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-4 px-4">
                         Aucun employé terrain trouvé.
                       </p>
@@ -209,7 +225,7 @@ const CodesTrajet = () => {
                         </div>
                         {/* Employee rows */}
                         <div className="divide-y divide-border/50">
-                          {employes.map((emp) => {
+                          {sortedEmployes.map((emp) => {
                             const key = `${chantier.id}_${emp.id}`;
                             const current = mappings?.get(key) ?? "AUCUN";
                             const hasCode = current !== "AUCUN";
