@@ -166,7 +166,7 @@ const CodesTrajet = () => {
           <Accordion type="multiple" className="space-y-2">
             {activeChantiers.map((chantier) => {
               const definedCount = getDefinedCount(chantier.id);
-              const totalCount = employes?.length ?? 0;
+              const totalCount = sortedEmployes.length;
               
               return (
                 <AccordionItem
