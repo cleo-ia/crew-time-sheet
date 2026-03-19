@@ -993,6 +993,8 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
                 jour.ficheJourId = bestEntry.id;
               }
             }
+            // FIX: recalculer isAbsent après fusion des heures multi-chantier
+            jour.isAbsent = jour.heuresNormales === 0 && jour.heuresIntemperies === 0 && !jour.isEcole;
           });
         }
         
