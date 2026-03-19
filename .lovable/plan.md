@@ -1,34 +1,23 @@
 
 
-## Plan : Tri des employés par rôle puis alphabétique
+## Plan : Générer un Excel des codes trajet par défaut depuis les données RH
 
-### Changement
+### Objectif
+Extraire de `fiches_jours` le code trajet le plus fréquemment utilisé par chaque employé terrain sur chaque chantier actif, et produire un fichier Excel téléchargeable.
 
-**Fichier : `src/pages/CodesTrajet.tsx`**
+### Données disponibles
+La requête SQL est prête et retourne environ 40+ lignes couvrant les chantiers : AMBERIEU, BECHEVELIN, CAPUCINES, COEUR DE BALME EST, CREUSOT HENRI, DAVOULT, FAMILLE, MAILLARD, NUANCE, QUARANTAINE, VENISSIEUX, VILOGIA, etc.
 
-Ajouter un `useMemo` qui trie les employés avant le rendu dans chaque accordéon chantier :
+### Étape unique
 
-1. Définir un ordre de priorité des rôles : `chef` → `macon` → `finisseur` → `grutier`
-2. Trier par cet ordre, puis par `nom` alphabétique, puis par `prenom` alphabétique
-3. Utiliser cette liste triée à la place de `employes` dans le `.map()` du rendu
+**Script Python** (`/tmp/gen_codes_trajet.py`) qui :
+1. Exécute une requête `psql` avec `COPY TO STDOUT` pour extraire le code trajet dominant par couple (chantier, employé) depuis les fiches transmises (`ENVOYE_RH`, `AUTO_VALIDE`, `CLOTURE`)
+2. Génère un fichier Excel stylé avec `openpyxl` :
+   - Colonnes : Chantier, Code Chantier, Ville, Nom, Prénom, Rôle, Code Trajet (le + fréquent), Nb jours observés
+   - Couleurs par rôle (orange=Chef, bleu=Maçon, vert=Finisseur, violet=Grutier)
+   - Filtres Excel activés
+3. Sauvegarde dans `/mnt/documents/codes_trajet_defaut_mars2026.xlsx`
 
-```ts
-const ROLE_ORDER: Record<string, number> = {
-  chef: 0, macon: 1, finisseur: 2, grutier: 3,
-};
-
-const sortedEmployes = useMemo(() => {
-  if (!employes) return [];
-  return [...employes].sort((a, b) => {
-    const ra = ROLE_ORDER[a.role_metier ?? ""] ?? 99;
-    const rb = ROLE_ORDER[b.role_metier ?? ""] ?? 99;
-    if (ra !== rb) return ra - rb;
-    const na = (a.nom ?? "").localeCompare(b.nom ?? "", "fr");
-    if (na !== 0) return na;
-    return (a.prenom ?? "").localeCompare(b.prenom ?? "", "fr");
-  });
-}, [employes]);
-```
-
-Remplacer les 3 occurrences de `employes` dans le JSX (`employes.length`, `employes.map(...)`) par `sortedEmployes`.
+### Résultat attendu
+Un fichier Excel que Tanguy peut utiliser comme référence pour saisir les codes trajet dans la page `/codes-trajet`, ou qui pourrait servir de base pour un INSERT automatique dans `codes_trajet_defaut`.
 
