@@ -128,8 +128,8 @@ const CodesTrajet = () => {
             <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
               <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold text-foreground leading-none">{employes.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">employé{employes.length > 1 ? "s" : ""} terrain</p>
+              <p className="text-2xl font-bold text-foreground leading-none">{sortedEmployes.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">employé{sortedEmployes.length > 1 ? "s" : ""} terrain</p>
               </div>
             </div>
           )}
