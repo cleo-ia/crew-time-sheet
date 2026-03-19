@@ -3,6 +3,7 @@ import { CODE_TRAJET_OPTIONS, CodeTrajet } from "@/types/transport";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { X } from "lucide-react";
 
 interface CodeTrajetSelectorProps {
   value: CodeTrajet | null;
