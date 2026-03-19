@@ -89,8 +89,8 @@ const CodesTrajet = () => {
 
   // Compter les codes définis par chantier
   const getDefinedCount = (chantierId: string) => {
-    if (!mappings || !employes) return 0;
-    return employes.filter((emp) => mappings.has(`${chantierId}_${emp.id}`)).length;
+    if (!mappings || !sortedEmployes.length) return 0;
+    return sortedEmployes.filter((emp) => mappings.has(`${chantierId}_${emp.id}`)).length;
   };
 
   const handleChange = (
