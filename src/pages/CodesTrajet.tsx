@@ -225,7 +225,7 @@ const CodesTrajet = () => {
                         </div>
                         {/* Employee rows */}
                         <div className="divide-y divide-border/50">
-                          {employes.map((emp) => {
+                          {sortedEmployes.map((emp) => {
                             const key = `${chantier.id}_${emp.id}`;
                             const current = mappings?.get(key) ?? "AUCUN";
                             const hasCode = current !== "AUCUN";
