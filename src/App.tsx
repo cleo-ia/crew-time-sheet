@@ -156,6 +156,16 @@ const App = () => (
               } 
             />
 
+            {/* Codes Trajet - Accessible par: super_admin, rh, admin */}
+            <Route 
+              path="/codes-trajet" 
+              element={
+                <RequireRole allowedRoles={["super_admin", "rh", "admin"]}>
+                  <CodesTrajet />
+                </RequireRole>
+              } 
+            />
+
             {/* Admin Panel - Accessible par: super_admin, admin, gestionnaire */}
             <Route 
               path="/admin" 

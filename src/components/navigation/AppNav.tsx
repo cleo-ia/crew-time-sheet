@@ -241,6 +241,21 @@ export const AppNav = () => {
                 </Link>
               </Button>
             )}
+
+            {canSeeCodesTrajet && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={getButtonClasses("/codes-trajet", "consultation-rh")}
+                style={getButtonStyle("/codes-trajet", "consultation-rh")}
+              >
+                <Link to="/codes-trajet">
+                  <Route className="h-4 w-4" />
+                  Codes trajet
+                </Link>
+              </Button>
+            )}
             
             {canSeeAdmin && (
               <Button
