@@ -1,18 +1,21 @@
 
 
-## Ajouter un bouton X de fermeture au dialog "Appliquer à plusieurs jours"
+## Correction du dialog "Appliquer à plusieurs jours" - mauvaise taille et position
 
-### Contexte
-Le composant `CodeTrajetSelector` (`src/components/timesheet/CodeTrajetSelector.tsx`) utilise un `AlertDialog` pour demander si on applique le trajet à un seul jour ou à tous. Ce composant n'a pas de croix de fermeture contrairement aux `Dialog` classiques.
+### Diagnostic
 
-### Modification
+Le `AlertDialog` du `CodeTrajetSelector` est rendu **a l'interieur d'une `TableCell`** dans `RHEmployeeDetail.tsx`. Le composant `AlertDialogContent` utilise `position: fixed` avec `z-50`, mais un element parent (probablement le container avec `overflow` ou un `transform`) cree un nouveau contexte de positionnement CSS, ce qui fait que le `fixed` se positionne relativement a ce parent au lieu du viewport.
+
+### Correction
 
 **Fichier** : `src/components/timesheet/CodeTrajetSelector.tsx`
 
-Ajouter un bouton X (icône `X` de lucide-react) en position absolue en haut à droite du `AlertDialogContent`, avec le même style que celui du `DialogContent` (opacity, hover ring orange). Au clic, il ferme le dialog sans appliquer de changement (même comportement que "Ce jour uniquement" — annulation).
+Forcer le `AlertDialogPortal` a se rendre dans `document.body` explicitement et augmenter le z-index du contenu pour qu'il passe au-dessus de tout :
 
-### Comportement au clic sur X
-- Ferme le dialog
-- N'applique aucun changement (ni ce jour, ni tous les jours)
-- Reset `pendingValue` à `null`
+1. Importer `AlertDialogPortal` et `AlertDialogOverlay` depuis le composant alert-dialog
+2. Remplacer `AlertDialogContent` par une structure manuelle utilisant `AlertDialogPortal` avec `container={document.body}` pour garantir le rendu hors du contexte CSS parent
+3. Conserver le bouton X tel quel
+4. Garder tout le reste identique (logique, texte, boutons)
+
+L'objectif est que le dialog s'affiche centré au milieu de l'ecran, en pleine taille, exactement comme avant.
 
