@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CODE_TRAJET_OPTIONS, CodeTrajet } from "@/types/transport";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogPortal, AlertDialogOverlay } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { X } from "lucide-react";
 
@@ -94,37 +94,42 @@ export const CodeTrajetSelector = ({
       </div>
 
       <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
-        <AlertDialogContent className="relative">
-          <button
-            onClick={() => { setShowDialog(false); setPendingValue(null); }}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Fermer</span>
-          </button>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Appliquer à plusieurs jours ?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Vous avez sélectionné <strong>{trajetLabel}</strong>.
-              </p>
-              <p>
-                Ce salarié a travaillé <strong>{batchDaysCount} jour{batchDaysCount && batchDaysCount > 1 ? 's' : ''}</strong> sur <strong>{chantierName}</strong>.
-              </p>
-              <p className="text-foreground font-medium mt-3">
-                Voulez-vous appliquer ce trajet à tous ces jours ?
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleSingleDay}>
-              Ce jour uniquement
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleAllDays}>
-              Tous les jours ({batchDaysCount})
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogPortal container={document.body}>
+          <AlertDialogOverlay className="fixed inset-0 z-[9998] bg-black/80" />
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+            <div className="relative w-full max-w-lg border bg-background p-6 shadow-lg sm:rounded-lg">
+              <button
+                onClick={() => { setShowDialog(false); setPendingValue(null); }}
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Fermer</span>
+              </button>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Appliquer à plusieurs jours ?</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>
+                    Vous avez sélectionné <strong>{trajetLabel}</strong>.
+                  </p>
+                  <p>
+                    Ce salarié a travaillé <strong>{batchDaysCount} jour{batchDaysCount && batchDaysCount > 1 ? 's' : ''}</strong> sur <strong>{chantierName}</strong>.
+                  </p>
+                  <p className="text-foreground font-medium mt-3">
+                    Voulez-vous appliquer ce trajet à tous ces jours ?
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleSingleDay}>
+                  Ce jour uniquement
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleAllDays}>
+                  Tous les jours ({batchDaysCount})
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </div>
+          </div>
+        </AlertDialogPortal>
       </AlertDialog>
     </>
   );
