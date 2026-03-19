@@ -1,40 +1,47 @@
 
 
-## Fix : Recalculer `isAbsent` après fusion multi-chantier des chefs
+## Plan : Affichage code chantier uniquement + fix copie S-1
 
-### Problème identifié
+### Problème 1 — Affichage dialog détail semaine
+Dans `useRHData.ts` (ligne 816), quand `ville_du_jour` existe, le nom affiché devient `"FAMILLE - LYON 7"`. Sans ville, c'est juste `"FAMILLE"`. L'utilisateur veut un affichage uniforme : le nom du chantier + le code en dessous (comme sur la capture : "FAMILLE" avec "CI897FAMILLE" en petit).
 
-Dans `useRHData.ts`, quand un chef a des fiches sur 2+ chantiers le même jour, la boucle de fusion (lignes 876-908) additionne correctement les heures mais conserve le `isAbsent` du premier enregistrement traité. Si celui-ci avait 0h (chantier secondaire), le jour reste marqué absent malgré les heures sommées.
+**Correction** : Supprimer la concaténation de la ville dans `chantierNom` (ligne 814-817 de `useRHData.ts`). Le code chantier est déjà passé séparément via `chantierCode`, et le dialog l'affiche déjà en petit en dessous du nom.
 
-**Impact** : dans la vue détail (sans filtre chantier), les jours apparaissent "Absent" à tort, faussant les compteurs paniers/trajets/absences des cartes semaine.
+### Problème 2 — `copyFichesFromPreviousWeek` ne copie pas les métadonnées chantier
+`createNewAffectation` (ligne 2088-2091) initialise correctement `code_chantier_du_jour` et `ville_du_jour`, mais `copyFichesFromPreviousWeek` (ligne 1872-1890) ne les inclut pas dans l'upsert. Résultat : les semaines copiées depuis S-1 ont ces champs à `null`.
 
-### Correction (1 seul fichier, 3 lignes ajoutées)
+**Correction** : Dans `copyFichesFromPreviousWeek`, ne PAS copier les valeurs de S-1 (qui pourraient être obsolètes si le chantier a changé). À la place, résoudre `code_chantier` et `ville` depuis le chantier cible actuel, comme le fait déjà `createNewAffectation`.
 
-**Fichier** : `src/hooks/useRHData.ts`, dans le bloc `else` (sans filtre, lignes 987-997)
+### Fichiers modifiés
 
-Après la résolution du `ficheJourId`, ajouter la recalculation de `isAbsent` :
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useRHData.ts` | Supprimer lignes 814-817 (concaténation ville dans chantierNom) |
+| `supabase/functions/sync-planning-to-teams/index.ts` | Ajouter `code_chantier_du_jour` et `ville_du_jour` dans l'upsert de `copyFichesFromPreviousWeek`, en les résolvant depuis le chantier cible |
+
+### Détail technique — Edge Function
+
+Dans `copyFichesFromPreviousWeek`, avant la boucle de copie des jours (ligne ~1867), récupérer le `code_chantier` et `ville` du chantier cible :
 
 ```ts
-// Existing: resolve ficheJourId to best entry
-dayMap.forEach((jour) => {
-  if (jour.allFicheJourIds.length > 1) {
-    const bestEntry = [...jour.allFicheJourIds].sort((a, b) => b.heures - a.heures)[0];
-    if (bestEntry) {
-      jour.ficheJourId = bestEntry.id;
-    }
-  }
-  // FIX: recalculer isAbsent après fusion des heures multi-chantier
-  jour.isAbsent = jour.heuresNormales === 0 && jour.heuresIntemperies === 0 && !jour.isEcole;
-});
+// Résoudre le code chantier et ville depuis le chantier cible (pas depuis S-1)
+const { data: chantierTarget } = await supabase
+  .from('chantiers')
+  .select('code_chantier, ville')
+  .eq('id', chantierId)
+  .maybeSingle()
+
+const codeChantierDuJour = chantierTarget?.code_chantier || null
+const villeDuJour = chantierTarget?.ville || null
 ```
 
-### Analyse de régression
+Puis dans l'upsert (ligne 1874), ajouter :
+```ts
+code_chantier_du_jour: codeChantierDuJour,
+ville_du_jour: villeDuJour,
+```
 
-- **Chefs mono-chantier** : aucun impact, `isAbsent` est recalculé avec la même logique qu'à la ligne 828 initiale.
-- **Chefs multi-chantier avec filtre** : non affecté, ce bloc est dans le `else` (sans filtre uniquement). Le bloc `if (activeChantierFilter)` gère déjà correctement `isAbsent`.
-- **Non-chefs** : non affecté, ils passent par le bloc `else` à la ligne 1002 (déduplication classique).
-- **Vue consolidée** : non affectée, elle utilise `rhShared.ts` (logique séparée déjà correcte).
-- **Logique identique** : la formule `heuresNormales === 0 && heuresIntemperies === 0 && !isEcole` est exactement celle utilisée à la ligne 828 pour le calcul initial, donc aucun changement de comportement sauf la correction du bug.
-
-**Risque de régression : nul.** C'est une recalculation du même flag avec la même formule, appliquée après la sommation au lieu d'avant.
+### Risque de régression
+- **Suppression ville dans nom** : aucun impact — la ville n'est utilisée nulle part ailleurs dans la vue détail, et le code chantier reste affiché séparément.
+- **Edge function** : alignement avec `createNewAffectation` qui fait déjà exactement ça — pas de nouveau pattern.
 
