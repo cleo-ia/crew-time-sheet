@@ -56,7 +56,7 @@ export const useCodesTrajetDefaut = () => {
       if (error) throw error;
 
       const map = new Map<string, string>();
-      for (const row of (data ?? []) as CodeTrajetRow[]) {
+      for (const row of (data ?? []) as unknown as CodeTrajetRow[]) {
         map.set(`${row.chantier_id}_${row.salarie_id}`, row.code_trajet);
       }
       return map;
