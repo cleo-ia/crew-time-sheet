@@ -351,11 +351,11 @@ export const RHEmployeeDetail = ({ salarieId, filters, onBack, readOnly = false,
                 const isOnOtherSite = !!(day as any).isOnOtherSite;
                 const isAbsent = Boolean((day as any).isAbsent);
                 
-                // Calculer les autres jours sur le même chantier qui n'ont pas encore de code_trajet défini
+                // Calculer les autres jours sur le même chantier (hors absents)
                 const sameSiteDays = data.dailyDetails.filter(
                   d => d.chantier === day.chantier && 
                        d.ficheJourId !== day.ficheJourId &&
-                       (!((d as any).codeTrajet) || (d as any).codeTrajet === 'A_COMPLETER')
+                       !((d as any).isAbsent)
                 );
                 
                 const batchFicheJourIds = [day.ficheJourId, ...sameSiteDays.map(d => d.ficheJourId)];
