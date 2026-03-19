@@ -811,10 +811,6 @@ export const useRHEmployeeDetail = (salarieId: string, filters: any) => {
             chantierNom = jour.code_chantier_du_jour;
             chantierCode = jour.code_chantier_du_jour;
           }
-          // Ajouter ville si présente
-          if (jour.ville_du_jour) {
-            chantierNom = `${chantierNom} - ${jour.ville_du_jour}`;
-          }
         } else if (fiche?.chantiers) {
           chantierNom = fiche.chantiers.nom;
           chantierCode = fiche.chantiers.code_chantier || null;
