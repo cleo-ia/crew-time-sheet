@@ -1885,6 +1885,9 @@ async function copyFichesFromPreviousWeek(
         HP: jourS1.HP,
         PA: jourS1.PA,
         entreprise_id: entrepriseId,
+        // Résoudre depuis le chantier cible (pas depuis S-1)
+        code_chantier_du_jour: chantier?.code_chantier || null,
+        ville_du_jour: chantier?.ville || null,
         // total_jour est une colonne générée, ne pas l'inclure
         // Ne pas copier: signature_data, commentaire
       }, { onConflict: 'fiche_id,date' })
