@@ -604,6 +604,65 @@ export type Database = {
           },
         ]
       }
+      codes_trajet_defaut: {
+        Row: {
+          chantier_id: string
+          code_trajet: string
+          created_at: string
+          entreprise_id: string
+          id: string
+          salarie_id: string
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          code_trajet: string
+          created_at?: string
+          entreprise_id: string
+          id?: string
+          salarie_id: string
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          code_trajet?: string
+          created_at?: string
+          entreprise_id?: string
+          id?: string
+          salarie_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "codes_trajet_defaut_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "codes_trajet_defaut_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "codes_trajet_defaut_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "me"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "codes_trajet_defaut_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conducteurs_chefs: {
         Row: {
           chef_id: string

@@ -93,10 +93,12 @@ const CodesTrajet = () => {
     <div className="min-h-screen bg-background">
       <AppNav />
       <PageLayout>
-        <PageHeader
-          title="Codes trajet par défaut"
-          description="Définissez un code trajet par défaut pour chaque salarié sur chaque chantier."
-        />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Codes trajet par défaut</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Définissez un code trajet par défaut pour chaque salarié sur chaque chantier.
+          </p>
+        </div>
 
         <div className="relative mb-4 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

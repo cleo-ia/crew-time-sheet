@@ -9,6 +9,12 @@ export interface EmployeTerrain {
   role_metier: string | null;
 }
 
+interface CodeTrajetRow {
+  chantier_id: string;
+  salarie_id: string;
+  code_trajet: string;
+}
+
 // Requête dédiée — indépendante de useAllEmployes
 export const useEmployesTerrain = () => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
@@ -33,7 +39,7 @@ export const useEmployesTerrain = () => {
   });
 };
 
-// Mappings codes trajet par défaut
+// Mappings codes trajet par défaut — utilise rpc/rest direct car table pas dans types.ts
 export const useCodesTrajetDefaut = () => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
@@ -43,14 +49,14 @@ export const useCodesTrajetDefaut = () => {
       if (!entrepriseId) return new Map<string, string>();
 
       const { data, error } = await supabase
-        .from("codes_trajet_defaut")
+        .from("codes_trajet_defaut" as any)
         .select("chantier_id, salarie_id, code_trajet")
         .eq("entreprise_id", entrepriseId);
 
       if (error) throw error;
 
       const map = new Map<string, string>();
-      for (const row of data ?? []) {
+      for (const row of (data ?? []) as CodeTrajetRow[]) {
         map.set(`${row.chantier_id}_${row.salarie_id}`, row.code_trajet);
       }
       return map;
@@ -79,7 +85,7 @@ export const useUpsertCodeTrajet = () => {
       if (!codeTrajet) {
         // Supprimer le mapping si "Aucun"
         const { error } = await supabase
-          .from("codes_trajet_defaut")
+          .from("codes_trajet_defaut" as any)
           .delete()
           .eq("entreprise_id", entrepriseId)
           .eq("chantier_id", chantierId)
@@ -89,7 +95,7 @@ export const useUpsertCodeTrajet = () => {
       }
 
       const { error } = await supabase
-        .from("codes_trajet_defaut")
+        .from("codes_trajet_defaut" as any)
         .upsert(
           {
             entreprise_id: entrepriseId,
