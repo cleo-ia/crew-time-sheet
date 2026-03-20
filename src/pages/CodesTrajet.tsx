@@ -99,11 +99,19 @@ const CodesTrajet = () => {
     salarieId: string,
     value: string
   ) => {
-    upsertMutation.mutate({
-      chantierId,
-      salarieId,
-      codeTrajet: value,
-    });
+    if (value === "_NON_DEFINI") {
+      upsertMutation.mutate({
+        chantierId,
+        salarieId,
+        codeTrajet: null,
+      });
+    } else {
+      upsertMutation.mutate({
+        chantierId,
+        salarieId,
+        codeTrajet: value,
+      });
+    }
   };
 
   return (
