@@ -48,146 +48,129 @@ const App = () => (
         <AuthProvider>
           <ErrorBoundary>
             <BrowserRouter>
-          <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/bootstrap" element={<Bootstrap />} />
-          <Route path="/install" element={<Install />} />
-          
-          <Route element={<RequireAuth />}>
-            {/* Saisie Chef - Accessible par: super_admin, chef */}
-            <Route 
-              path="/" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "chef"]}>
-                  <Index />
-                </RequireRole>
-              } 
-            />
-            
-            {/* Redirection pour ancienne route */}
-            <Route 
-              path="/saisie-conducteur" 
-              element={<Navigate to="/validation-conducteur" replace />}
-            />
-            
-            {/* Validation Conducteur - Accessible par: super_admin, conducteur */}
-            <Route 
-              path="/validation-conducteur" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
-                  <ValidationConducteur />
-                </RequireRole>
-              } 
-            />
-            
-            {/* Consultation RH - Accessible par: super_admin, rh */}
-            <Route 
-              path="/consultation-rh" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "rh"]}>
-                  <ConsultationRH />
-                </RequireRole>
-              } 
-            />
-            
-            {/* Signature Maçons - Accessible par tous les authentifiés */}
-            <Route path="/signature-macons" element={<SignatureMacons />} />
-            
-            {/* Documentation - Accessible par tous les authentifiés */}
-            <Route path="/documentation" element={<Documentation />} />
-            
-            {/* Signature Finisseurs - Accessible par: super_admin, conducteur */}
-            <Route 
-              path="/signature-finisseurs" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
-                  <SignatureFinisseurs />
-                </RequireRole>
-              } 
-            />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/bootstrap" element={<Bootstrap />} />
+                <Route path="/install" element={<Install />} />
+                
+                <Route element={<RequireAuth />}>
+                  <Route 
+                    path="/" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "chef"]}>
+                        <Index />
+                      </RequireRole>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/saisie-conducteur" 
+                    element={<Navigate to="/validation-conducteur" replace />}
+                  />
+                  
+                  <Route 
+                    path="/validation-conducteur" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                        <ValidationConducteur />
+                      </RequireRole>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/consultation-rh" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "rh"]}>
+                        <ConsultationRH />
+                      </RequireRole>
+                    } 
+                  />
+                  
+                  <Route path="/signature-macons" element={<SignatureMacons />} />
+                  <Route path="/documentation" element={<Documentation />} />
+                  
+                  <Route 
+                    path="/signature-finisseurs" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                        <SignatureFinisseurs />
+                      </RequireRole>
+                    } 
+                  />
 
-            {/* Planning Main d'Oeuvre - Accessible par: super_admin, conducteur, admin */}
-            <Route 
-              path="/planning-main-oeuvre" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "conducteur", "admin"]}>
-                  <PlanningMainOeuvre />
-                </RequireRole>
-              } 
-            />
+                  <Route 
+                    path="/planning-main-oeuvre" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "conducteur", "admin"]}>
+                        <PlanningMainOeuvre />
+                      </RequireRole>
+                    } 
+                  />
 
-            {/* Chantiers - Accessible par: super_admin, conducteur */}
-            <Route 
-              path="/chantiers" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "conducteur"]}>
-                  <ChantiersPage />
-                </RequireRole>
-              } 
-            />
-            
-            {/* Chantier Detail - Accessible par: super_admin, conducteur, chef (lecture seule pour chef) */}
-            <Route 
-              path="/chantiers/:id" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "conducteur", "chef"]}>
-                  <ChantierDetail />
-                </RequireRole>
-              } 
-            />
-            
-            {/* Rapprochement Intérimaires - Accessible par: super_admin, gestionnaire (SDER) */}
-            <Route 
-              path="/rapprochement-interim" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "gestionnaire"]}>
-                  <RapprochementInterim />
-                </RequireRole>
-              } 
-            />
+                  <Route 
+                    path="/chantiers" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "conducteur"]}>
+                        <ChantiersPage />
+                      </RequireRole>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/chantiers/:id" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "conducteur", "chef"]}>
+                        <ChantierDetail />
+                      </RequireRole>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/rapprochement-interim" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "gestionnaire"]}>
+                        <RapprochementInterim />
+                      </RequireRole>
+                    } 
+                  />
 
-            {/* Export Paie - Accessible par: super_admin, admin, rh */}
-            <Route 
-              path="/export-paie" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "admin", "rh"]}>
-                  <ExportPaie />
-                </RequireRole>
-              } 
-            />
+                  <Route 
+                    path="/export-paie" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "admin", "rh"]}>
+                        <ExportPaie />
+                      </RequireRole>
+                    } 
+                  />
 
-            {/* Codes Trajet - Accessible par: super_admin, rh, admin */}
-            <Route 
-              path="/codes-trajet" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "rh", "admin"]}>
-                  <CodesTrajet />
-                </RequireRole>
-              } 
-            />
+                  <Route 
+                    path="/codes-trajet" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "rh", "admin"]}>
+                        <CodesTrajet />
+                      </RequireRole>
+                    } 
+                  />
 
-            {/* Admin Panel - Accessible par: super_admin, admin, gestionnaire */}
-            <Route 
-              path="/admin" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
-                  <AdminPanel />
-                </RequireRole>
-              } 
-            />
-            {/* Chantier Detail - Accessible par: super_admin, admin, gestionnaire */}
-            <Route 
-              path="/admin/chantiers/:id" 
-              element={
-                <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
-                  <ChantierDetail />
-                </RequireRole>
-              } 
-            />
-          </Route>
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+                  <Route 
+                    path="/admin" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
+                        <AdminPanel />
+                      </RequireRole>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/chantiers/:id" 
+                    element={
+                      <RequireRole allowedRoles={["super_admin", "admin", "gestionnaire", "rh"]}>
+                        <ChantierDetail />
+                      </RequireRole>
+                    } 
+                  />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </BrowserRouter>
           </ErrorBoundary>
         </AuthProvider>
