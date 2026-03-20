@@ -1,24 +1,30 @@
 
 
-## Correction de l'erreur de build — attributs dupliqués
+## Passer le champ "Chef d'équipe" en lecture seule
 
-### Diagnostic
+### Contexte
 
-Les fichiers `main.tsx` et `App.tsx` sont **déjà propres** dans le code source. L'erreur vient du plugin `lovable-tagger` qui injecte deux fois les attributs `data-lov-*` et `data-component-*` lors de la transformation Vite.
+Le champ "Chef d'équipe" est modifiable dans deux endroits :
+1. **`ChantiersManager.tsx`** — formulaire de création/édition depuis la liste `/chantiers` (lignes 402-417)
+2. **`ChantierEditDialog.tsx`** — formulaire d'édition depuis la page détail d'un chantier (lignes 223-241)
 
-### Garantie zéro régression
+L'association chef-chantier doit se faire uniquement via le planning, pas manuellement.
 
-La correction consiste uniquement à **réécrire les deux fichiers à l'identique** (même contenu exact). Cela force le système de build à invalider le cache du tagger et à réinjecter les attributs une seule fois.
+### Modifications
 
-- Aucune ligne de code modifiée
-- Aucune logique modifiée
-- Aucune route, import, ou configuration touchée
-- Le contenu final sera strictement identique à l'actuel
+**Fichier 1 : `src/components/admin/ChantiersManager.tsx`** (lignes 402-417)
+- Remplacer le `Select` par un champ texte en lecture seule qui affiche le nom du chef actuel (ou "Aucun")
+- Ne pas envoyer `chef_id` dans le payload de sauvegarde (le laisser inchangé)
+- S'applique uniquement quand `basePath` est `/chantiers` (côté conducteur) — le formulaire admin garde le contrôle
 
-### Fichiers concernés
+**Fichier 2 : `src/components/chantier/ChantierEditDialog.tsx`** (lignes 223-241)
+- Remplacer le `Select` par un champ texte en lecture seule affichant le nom du chef ou "Aucun"
+- Retirer `chef_id` du payload `handleSave` pour ne pas écraser la valeur existante
 
-1. **`src/main.tsx`** — réécriture identique (19 lignes)
-2. **`src/App.tsx`** — réécriture identique (182 lignes)
+### Détails techniques
 
-C'est un "touch" des fichiers, rien de plus.
+- On utilise la liste `chefs` déjà chargée pour résoudre le nom à partir de `formData.chef_id`
+- Le champ affichera un `Input` avec `disabled` et la valeur textuelle du chef
+- Ajout d'un texte d'aide : "Géré automatiquement via le planning"
+- Zéro changement de logique métier, uniquement du rendu UI
 
