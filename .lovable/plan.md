@@ -1,20 +1,17 @@
 
 
-## Plan: Redéployer la Edge Function `sync-planning-to-teams`
+## Correction du build error "Duplicate data-lov-id" dans main.tsx et App.tsx
 
-### Contexte
-La cause confirmée du problème (Giovanni S10 manquant en RH) est que la version de la Edge Function exécutée en production lors des syncs S10/S11 ne contenait pas la logique de création des fiches ghost pour les congés validés. Le code source actuel contient bien cette logique (lignes 1640-1768), mais il n'était pas déployé.
+### Problème
+Le système Lovable a dupliqué ses attributs internes (`data-lov-id`, `data-lov-name`, etc.) dans `main.tsx` et `App.tsx`, ce qui bloque le build.
 
-### Actions
+### Solution
+Réécrire proprement `main.tsx` et `App.tsx` avec leur contenu exact actuel, sans aucune modification de logique — juste un "nettoyage" pour que le système Lovable réinjecte correctement ses attributs une seule fois.
 
-1. **Redéployer la Edge Function `sync-planning-to-teams`**
-   - Utiliser l'outil de déploiement Supabase pour pousser la version actuelle du code en production
-   - Cela rendra effective la logique de création des fiches ghost pour les congés validés
+### Fichiers modifiés
+1. **`src/main.tsx`** — Réécriture identique (même imports, même logique PWA, même render)
+2. **`src/App.tsx`** — Réécriture identique (même routes, même providers, même rôles)
 
-2. **Corriger l'erreur de build `main.tsx`**
-   - L'erreur "Duplicate data-lov-id" est un artefact du système de build Lovable, pas du code source (le fichier source est correct). Aucune modification nécessaire.
-
-### Résultat attendu
-- La prochaine sync automatique (lundi matin) ou manuelle créera correctement les fiches ghost pour les salariés en congé
-- Pour rattraper S10/S11, il faudra lancer manuellement la sync depuis le panneau admin pour ces semaines après le redéploiement
+### Risque de régression
+**Zéro.** Le code source ne change pas du tout. Seuls les attributs invisibles injectés automatiquement par Lovable sont nettoyés.
 
