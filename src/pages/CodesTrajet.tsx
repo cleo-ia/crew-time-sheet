@@ -101,7 +101,7 @@ const CodesTrajet = () => {
     upsertMutation.mutate({
       chantierId,
       salarieId,
-      codeTrajet: value === "AUCUN" ? null : value,
+      codeTrajet: value,
     });
   };
 
