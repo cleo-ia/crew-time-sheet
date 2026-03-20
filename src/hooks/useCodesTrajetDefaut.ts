@@ -82,7 +82,17 @@ export const useUpsertCodeTrajet = () => {
     }) => {
       if (!entrepriseId) throw new Error("Pas d'entreprise sélectionnée");
 
-      const finalCode = codeTrajet ?? "AUCUN";
+      // "_NON_DEFINI" / null → supprimer la ligne en base
+      if (!codeTrajet || codeTrajet === "_NON_DEFINI") {
+        const { error } = await supabase
+          .from("codes_trajet_defaut" as any)
+          .delete()
+          .eq("entreprise_id", entrepriseId)
+          .eq("chantier_id", chantierId)
+          .eq("salarie_id", salarieId);
+        if (error) throw error;
+        return;
+      }
 
       const { error } = await supabase
         .from("codes_trajet_defaut" as any)
@@ -91,7 +101,7 @@ export const useUpsertCodeTrajet = () => {
             entreprise_id: entrepriseId,
             chantier_id: chantierId,
             salarie_id: salarieId,
-            code_trajet: finalCode,
+            code_trajet: codeTrajet,
           },
           { onConflict: "entreprise_id,chantier_id,salarie_id" }
         );

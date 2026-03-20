@@ -236,8 +236,8 @@ const CodesTrajet = () => {
                         <div className="divide-y divide-border/50">
                           {sortedEmployes.map((emp) => {
                             const key = `${chantier.id}_${emp.id}`;
-                            const current = mappings?.get(key) ?? "AUCUN";
-                            const hasCode = current !== "AUCUN";
+                            const current = mappings?.has(key) ? mappings.get(key)! : "_NON_DEFINI";
+                            const hasCode = current !== "_NON_DEFINI";
                             
                             return (
                               <div
