@@ -1,17 +1,17 @@
 
 
-## Correction du build error "Duplicate data-lov-id" dans main.tsx et App.tsx
+## Correction des erreurs de build — attributs dupliqués dans main.tsx et App.tsx
 
 ### Problème
-Le système Lovable a dupliqué ses attributs internes (`data-lov-id`, `data-lov-name`, etc.) dans `main.tsx` et `App.tsx`, ce qui bloque le build.
+Le système de build Lovable injecte deux fois les attributs `data-lov-*` et `data-component-*` sur les composants JSX dans `main.tsx` et `App.tsx`, ce qui bloque le build.
 
 ### Solution
-Réécrire proprement `main.tsx` et `App.tsx` avec leur contenu exact actuel, sans aucune modification de logique — juste un "nettoyage" pour que le système Lovable réinjecte correctement ses attributs une seule fois.
+Réécrire les deux fichiers avec un contenu source propre. Le système réinjectera automatiquement les attributs une seule fois.
 
 ### Fichiers modifiés
-1. **`src/main.tsx`** — Réécriture identique (même imports, même logique PWA, même render)
-2. **`src/App.tsx`** — Réécriture identique (même routes, même providers, même rôles)
 
-### Risque de régression
-**Zéro.** Le code source ne change pas du tout. Seuls les attributs invisibles injectés automatiquement par Lovable sont nettoyés.
+1. **`src/main.tsx`** — Réécriture propre de la ligne `createRoot(...).render(<App />)`
+2. **`src/App.tsx`** — Réécriture propre du composant (contenu identique, sans attributs dupliqués)
+
+Aucun changement fonctionnel — uniquement un nettoyage pour débloquer le build.
 
