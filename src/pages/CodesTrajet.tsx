@@ -41,9 +41,10 @@ const ROLE_LABELS: Record<string, string> = {
   finisseur: "Finisseur",
 };
 
-// Codes trajet filtrés (sans AUCUN ni A_COMPLETER)
+// Codes trajet filtrés (sans A_COMPLETER)
 const TRAJET_OPTIONS = [
-  { value: "AUCUN", label: "— Aucun —" },
+  { value: "_NON_DEFINI", label: "— Non défini —" },
+  { value: "AUCUN", label: "— Aucun trajet —" },
   ...CODE_TRAJET_OPTIONS.filter(
     (o) => o.value !== "AUCUN" && o.value !== "A_COMPLETER"
   ),
@@ -90,7 +91,7 @@ const CodesTrajet = () => {
   // Compter les codes définis par chantier
   const getDefinedCount = (chantierId: string) => {
     if (!mappings || !sortedEmployes.length) return 0;
-    return sortedEmployes.filter((emp) => mappings.has(`${chantierId}_${emp.id}`)).length;
+    return sortedEmployes.filter((emp) => mappings?.has(`${chantierId}_${emp.id}`)).length;
   };
 
   const handleChange = (
@@ -98,11 +99,19 @@ const CodesTrajet = () => {
     salarieId: string,
     value: string
   ) => {
-    upsertMutation.mutate({
-      chantierId,
-      salarieId,
-      codeTrajet: value,
-    });
+    if (value === "_NON_DEFINI") {
+      upsertMutation.mutate({
+        chantierId,
+        salarieId,
+        codeTrajet: null,
+      });
+    } else {
+      upsertMutation.mutate({
+        chantierId,
+        salarieId,
+        codeTrajet: value,
+      });
+    }
   };
 
   return (
@@ -227,8 +236,8 @@ const CodesTrajet = () => {
                         <div className="divide-y divide-border/50">
                           {sortedEmployes.map((emp) => {
                             const key = `${chantier.id}_${emp.id}`;
-                            const current = mappings?.get(key) ?? "AUCUN";
-                            const hasCode = current !== "AUCUN";
+                            const current = mappings?.has(key) ? mappings.get(key)! : "_NON_DEFINI";
+                            const hasCode = current !== "_NON_DEFINI";
                             
                             return (
                               <div
