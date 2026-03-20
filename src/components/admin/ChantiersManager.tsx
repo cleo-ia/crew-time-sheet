@@ -69,7 +69,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
   const handleSave = async () => {
     const payload = {
       ...formData,
-      chef_id: formData.chef_id || null,
+      chef_id: basePath === "/chantiers" ? undefined : (formData.chef_id || null),
       conducteur_id: formData.conducteur_id || null,
       date_debut: formData.date_debut ? format(formData.date_debut, "yyyy-MM-dd") : null,
       date_fin: formData.date_fin ? format(formData.date_fin, "yyyy-MM-dd") : null,
@@ -401,19 +401,29 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
                 </div>
                 <div className="space-y-2">
                   <Label>Chef d'équipe (optionnel)</Label>
-                  <Select value={formData.chef_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Aucun</SelectItem>
-                      {chefs.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.prenom} {c.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {basePath === "/chantiers" ? (
+                    <>
+                      <Input
+                        disabled
+                        value={formData.chef_id ? chefs.find(c => c.id === formData.chef_id)?.prenom + " " + chefs.find(c => c.id === formData.chef_id)?.nom : "Aucun"}
+                      />
+                      <p className="text-xs text-muted-foreground">Géré automatiquement via le planning</p>
+                    </>
+                  ) : (
+                    <Select value={formData.chef_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Aucun</SelectItem>
+                        {chefs.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.prenom} {c.nom}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>

@@ -222,22 +222,11 @@ export const ChantierEditDialog = ({
 
                   <div className="space-y-2">
                     <Label>Chef d'équipe</Label>
-                    <Select
-                      value={formData.chef_id}
-                      onValueChange={(value) => setFormData({ ...formData, chef_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {chefs.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.prenom} {c.nom}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Optionnel</p>
+                    <Input
+                      disabled
+                      value={formData.chef_id ? chefs.find(c => c.id === formData.chef_id)?.prenom + " " + chefs.find(c => c.id === formData.chef_id)?.nom : "Aucun"}
+                    />
+                    <p className="text-xs text-muted-foreground">Géré automatiquement via le planning</p>
                   </div>
 
                   <div className="space-y-2">
