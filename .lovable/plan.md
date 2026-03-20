@@ -1,17 +1,27 @@
 
 
-## Remplir "AUCUN" pour PAM et ECOLE
+## Re-exécuter l'insertion pour PAM et ECOLE
 
-### Contexte
-- **PAM** : `5e9f9798-06be-4e70-a9b0-e7d02b22347a` — 0/73 configurés
-- **ECOLE** : `41a4da9f-58b2-45ed-bced-7a8a72b52d03` — 0/73 configurés
-- 73 employés terrain identifiés, aucun code trajet existant pour ces deux chantiers
+### Problème
+La migration précédente n'a pas inséré les données pour PAM et ECOLE (0 lignes en base). Les 73 lignes de 2CB-Atelier sont bien présentes.
+
+### Solution
+Créer une nouvelle migration avec exactement le même SQL pour insérer les 146 lignes manquantes (73 employés x 2 chantiers) avec `code_trajet = 'AUCUN'`.
 
 ### Action
-Insérer 146 lignes dans `codes_trajet_defaut` (73 employés x 2 chantiers) avec `code_trajet = 'AUCUN'`, via une requête SQL d'insertion groupée avec `ON CONFLICT DO NOTHING` pour éviter tout doublon.
+Une seule migration SQL :
+```sql
+INSERT INTO codes_trajet_defaut (entreprise_id, chantier_id, salarie_id, code_trajet)
+SELECT 'edd12053-...', c.chantier_id, u.id, 'AUCUN'
+FROM utilisateurs u
+CROSS JOIN (VALUES ('5e9f9798-...'::uuid), ('41a4da9f-...'::uuid)) AS c(chantier_id)
+WHERE u.entreprise_id = 'edd12053-...'
+  AND u.role_metier IN ('chef','macon','grutier','finisseur')
+ON CONFLICT DO NOTHING;
+```
 
-Aucune modification de code. Uniquement une opération de données.
+Aucune modification de code. Uniquement une ré-exécution de l'insertion en base.
 
 ### Résultat
-Les compteurs passeront de 0/73 à 73/73 pour PAM et ECOLE.
+PAM et ECOLE passeront de 0/73 à 73/73.
 
