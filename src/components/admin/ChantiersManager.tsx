@@ -401,19 +401,29 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
                 </div>
                 <div className="space-y-2">
                   <Label>Chef d'équipe (optionnel)</Label>
-                  <Select value={formData.chef_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Aucun</SelectItem>
-                      {chefs.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.prenom} {c.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {basePath === "/chantiers" ? (
+                    <>
+                      <Input
+                        disabled
+                        value={formData.chef_id ? chefs.find(c => c.id === formData.chef_id)?.prenom + " " + chefs.find(c => c.id === formData.chef_id)?.nom : "Aucun"}
+                      />
+                      <p className="text-xs text-muted-foreground">Géré automatiquement via le planning</p>
+                    </>
+                  ) : (
+                    <Select value={formData.chef_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, chef_id: value === "__none__" ? "" : value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Aucun</SelectItem>
+                        {chefs.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.prenom} {c.nom}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>
