@@ -1,17 +1,24 @@
 
 
-## Correction des erreurs de build — attributs dupliqués dans main.tsx et App.tsx
+## Correction de l'erreur de build — attributs dupliqués
 
-### Problème
-Le système de build Lovable injecte deux fois les attributs `data-lov-*` et `data-component-*` sur les composants JSX dans `main.tsx` et `App.tsx`, ce qui bloque le build.
+### Diagnostic
 
-### Solution
-Réécrire les deux fichiers avec un contenu source propre. Le système réinjectera automatiquement les attributs une seule fois.
+Les fichiers `main.tsx` et `App.tsx` sont **déjà propres** dans le code source. L'erreur vient du plugin `lovable-tagger` qui injecte deux fois les attributs `data-lov-*` et `data-component-*` lors de la transformation Vite.
 
-### Fichiers modifiés
+### Garantie zéro régression
 
-1. **`src/main.tsx`** — Réécriture propre de la ligne `createRoot(...).render(<App />)`
-2. **`src/App.tsx`** — Réécriture propre du composant (contenu identique, sans attributs dupliqués)
+La correction consiste uniquement à **réécrire les deux fichiers à l'identique** (même contenu exact). Cela force le système de build à invalider le cache du tagger et à réinjecter les attributs une seule fois.
 
-Aucun changement fonctionnel — uniquement un nettoyage pour débloquer le build.
+- Aucune ligne de code modifiée
+- Aucune logique modifiée
+- Aucune route, import, ou configuration touchée
+- Le contenu final sera strictement identique à l'actuel
+
+### Fichiers concernés
+
+1. **`src/main.tsx`** — réécriture identique (19 lignes)
+2. **`src/App.tsx`** — réécriture identique (182 lignes)
+
+C'est un "touch" des fichiers, rien de plus.
 
