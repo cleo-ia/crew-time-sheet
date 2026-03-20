@@ -41,9 +41,10 @@ const ROLE_LABELS: Record<string, string> = {
   finisseur: "Finisseur",
 };
 
-// Codes trajet filtrés (sans AUCUN ni A_COMPLETER)
+// Codes trajet filtrés (sans A_COMPLETER)
 const TRAJET_OPTIONS = [
-  { value: "AUCUN", label: "— Aucun —" },
+  { value: "_NON_DEFINI", label: "— Non défini —" },
+  { value: "AUCUN", label: "— Aucun trajet —" },
   ...CODE_TRAJET_OPTIONS.filter(
     (o) => o.value !== "AUCUN" && o.value !== "A_COMPLETER"
   ),
