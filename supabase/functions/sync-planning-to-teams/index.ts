@@ -487,41 +487,7 @@ async function syncEntreprise(
 
   console.log(`[sync-planning-to-teams] ${planningByEmployeChantier.size} couple(s) employé-chantier dans le planning`)
 
-  // 2. Récupérer les affectations existantes S-1 (pour comparaison)
-  // ✅ CORRECTIF: Ajouter filtre entreprise_id
-  const { data: affectationsS1Chef } = await supabase
-    .from('affectations_jours_chef')
-    .select('*')
-    .eq('semaine', previousWeek)
-    .eq('entreprise_id', entrepriseId)
-
-  // ✅ CORRECTIF: Ajouter filtre entreprise_id
-  const { data: affectationsS1Finisseurs } = await supabase
-    .from('affectations_finisseurs_jours')
-    .select('*')
-    .eq('semaine', previousWeek)
-    .eq('entreprise_id', entrepriseId)
-
-  // Grouper S-1 par couple (employé, chantier)
-  const s1ByEmployeChantier = new Map<string, { jours: string[] }>()
-  
-  // deno-lint-ignore no-explicit-any
-  for (const aff of (affectationsS1Chef || []) as any[]) {
-    const key = `${aff.macon_id}|${aff.chantier_id}`
-    if (!s1ByEmployeChantier.has(key)) {
-      s1ByEmployeChantier.set(key, { jours: [] })
-    }
-    s1ByEmployeChantier.get(key)!.jours.push(aff.jour)
-  }
-  
-  // deno-lint-ignore no-explicit-any
-  for (const aff of (affectationsS1Finisseurs || []) as any[]) {
-    const key = `${aff.finisseur_id}|${aff.chantier_id}`
-    if (!s1ByEmployeChantier.has(key)) {
-      s1ByEmployeChantier.set(key, { jours: [] })
-    }
-    s1ByEmployeChantier.get(key)!.jours.push(aff.date)
-  }
+  // 2. (Supprimé) Plus de fetch S-1 — on initialise toujours via createNewAffectation
 
   // 3. Récupérer les chantiers pour savoir s'ils ont un chef
   // deno-lint-ignore no-explicit-any
