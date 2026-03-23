@@ -110,7 +110,7 @@ export const useUpsertAffectationJourChef = () => {
       const { data, error } = await supabase
         .from("affectations_jours_chef")
         .upsert(affectation, {
-          onConflict: "macon_id,jour",
+          onConflict: "macon_id,jour,chantier_id",
         })
         .select()
         .single();
