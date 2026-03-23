@@ -1,20 +1,34 @@
 
 
-## Plan : Reactiver le flag `contrainteVendredi12h` pour Limoge-Revillon
+## Plan : Verrouiller le ChantierSelector par jour pour chefs et conducteurs
 
-### Fichier : `src/config/enterprises/limoge-revillon.ts`
+### Probleme
 
-**Modification unique, ligne 18 :**
+Dans `TimeEntryTable.tsx` (ligne 1279), le selecteur de chantier par jour permet a n'importe quel utilisateur de changer le chantier d'imputation. Cela peut creer des fiches orphelines et corrompre la ventilation analytique.
+
+### Modification unique
+
+**Fichier** : `src/components/timesheet/TimeEntryTable.tsx` (ligne 1328)
 
 ```
-Avant :  contrainteVendredi12h: false, // TEMPORAIREMENT DÉSACTIVÉ pour test - remettre à true après
-Après :  contrainteVendredi12h: true, // Actif: bloque transmission S avant vendredi (chefs + conducteurs + finisseurs)
+Avant :  disabled={isReadOnly || isDayBlocked}
+Apres :  disabled={isReadOnly || isDayBlocked || mode !== "conducteur"}
 ```
 
-Cela active les regles 2 et 3 du verrouillage temporel pour Limoge-Revillon :
-- Les chefs ne peuvent plus transmettre la semaine S avant vendredi
-- Les conducteurs et finisseurs non plus
-- La transmission de S-1 et anterieur reste possible a tout moment
+### Analyse d'impact par contexte
 
-La regle 1 (planning verrouille le vendredi) est deja active sans flag.
+| Contexte | mode | Resultat | Correct ? |
+|----------|------|----------|-----------|
+| Index.tsx (chef saisie) | `"create"` (defaut) | Verrouille | Oui — le chantier vient du planning |
+| FicheDetail.tsx lecture | `"edit"` + readOnly | Verrouille | Oui — deja en lecture seule |
+| FicheDetail.tsx edition | `"edit"` | Verrouille | Oui — le conducteur corrige les heures, pas le chantier |
+| ValidationConducteur.tsx saisie | `"conducteur"` | Modifiable | Oui — ses finisseurs peuvent changer de chantier dans la semaine |
+
+### Garantie zero regression
+
+- Le chantier par jour est toujours **affiche** (valeur visible dans le selecteur) — seule l'interaction est desactivee.
+- Le `code_chantier_du_jour` dans `fiches_jours` reste correctement initialise par la sync planning, il n'est simplement plus modifiable manuellement.
+- Les conducteurs en mode saisie directe conservent la flexibilite pour leurs finisseurs multi-chantier.
+- La ventilation analytique (`useVentilationAnalytique`) continue de lire `code_chantier_du_jour` sans changement.
+- Aucun autre composant n'utilise `ChantierSelector` avec un mode different.
 
