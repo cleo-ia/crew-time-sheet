@@ -1000,50 +1000,24 @@ async function syncEntreprise(
       // Si isChefResponsable = true ET chantier principal → traitement normal ci-dessous
     }
 
-    // Récupérer les affectations S-1 de ce couple employé-chantier
-    const affS1 = s1ByEmployeChantier.get(key)
+    // CRÉER / METTRE À JOUR l'affectation avec heures par jour spécifiques
+    const createResult = await createNewAffectation(
+      supabase,
+      employeId,
+      chantierId,
+      currentWeek,
+      joursPlanning,
+      chantier,
+      entrepriseId
+    )
     
-    // Comparer: mêmes jours pour ce couple employé-chantier?
-    const isIdentique = affS1 && arraysEqual(affS1.jours.sort(), joursPlanning)
-
-    if (isIdentique) {
-      // COPIER les heures de S-1 vers S
-      const copyResult = await copyFichesFromPreviousWeek(
-        supabase, 
-        employeId, 
-        chantierId, 
-        previousWeek, 
-        currentWeek,
-        chantier,
-        entrepriseId,
-        joursPlanning
-      )
-      
-      if (copyResult.copied) {
-        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'copied', details: `Heures copiées de ${previousWeek}` })
-        stats.copied++
-      } else {
-        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: copyResult.reason })
-      }
+    if (createResult.created) {
+      const totalHeures = calculateTotalHeures(joursPlanning)
+      results.push({ employe_id: employeId, employe_nom: employeNom, action: 'created', details: `Affectation créée avec ${totalHeures}h` })
+      stats.created++
     } else {
-      // CRÉER nouvelle affectation avec heures par jour spécifiques
-      const createResult = await createNewAffectation(
-        supabase,
-        employeId,
-        chantierId,
-        currentWeek,
-        joursPlanning,
-        chantier,
-        entrepriseId
-      )
-      
-      if (createResult.created) {
-        const totalHeures = calculateTotalHeures(joursPlanning)
-        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'created', details: `Nouvelle affectation créée avec ${totalHeures}h` })
-        stats.created++
-      } else {
-        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: createResult.reason })
-      }
+      results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: createResult.reason })
+      if (createResult.reason?.includes('protégée')) stats.protected++
     }
   }
 
