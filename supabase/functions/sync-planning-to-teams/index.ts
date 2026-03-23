@@ -990,7 +990,7 @@ async function syncEntreprise(
                 jour,
                 semaine: currentWeek,
                 entreprise_id: entrepriseId
-              }, { onConflict: 'macon_id,jour' })
+              }, { onConflict: 'macon_id,jour,chantier_id' })
           }
 
           console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche 0h créée sur chantier secondaire ${chantierId} (${joursPlanning.length} jours)`)
