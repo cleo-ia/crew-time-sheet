@@ -1,45 +1,64 @@
 
 
-## Plan : Elargir la protection des statuts dans le bloc chef secondaire (ligne 898)
+## Plan : Harmoniser la protection des statuts avances (4 endroits restants)
 
 ### Fichier : `supabase/functions/sync-planning-to-teams/index.ts`
 
-**Modification unique, ligne 898 :**
+Les lignes 740, 898 et 1786 sont deja corrigees avec la liste complete. Reste 4 endroits encore a `['CLOTURE']` seul.
+
+---
+
+### Modification 1 — Suppression macon hors planning (ligne 1180)
 
 ```
 Avant :  const STATUTS_PROTEGES_CHEF = ['CLOTURE']
-Après :  const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+Apres :  const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
 ```
 
-Et dans le bloc `if` qui suit (lignes 899-903), ajouter la creation des `affectations_jours_chef` avant le `continue` pour maintenir la visibilite equipe meme quand la fiche est protegee :
+Si le planning change en cours de semaine et qu'un macon est retire d'un chantier, sa fiche deja signee/transmise ne sera pas supprimee.
 
-```typescript
-if (ficheChefSec && STATUTS_PROTEGES_CHEF.includes(ficheChefSec.statut)) {
-  // Créer les affectations pour la visibilité équipe
-  for (const jour of joursPlanning) {
-    await supabase
-      .from('affectations_jours_chef')
-      .upsert({
-        macon_id: employeId,
-        chef_id: employeId,
-        chantier_id: chantierId,
-        jour,
-        semaine: currentWeek,
-        entreprise_id: entrepriseId
-      }, { onConflict: 'macon_id,jour,chantier_id' })
-  }
-  stats.protected++
-  continue
-}
+---
+
+### Modification 2 — Suppression finisseur hors planning (ligne 1230)
+
+```
+Avant :  const STATUTS_PROTEGES_FINISSEUR = ['CLOTURE']
+Apres :  const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
 ```
 
-### Scenario concret protege
+Meme logique pour les finisseurs.
 
-Lundi matin la sync auto tourne et cree les fiches BROUILLON. Mercredi le chef signe sa fiche (VALIDE_CHEF). Jeudi le conducteur relance une sync manuelle → la fiche signee est preservee, seules les affectations equipe sont mises a jour.
+---
+
+### Modification 3 — Fiches orphelines (ligne 1334)
+
+```
+Avant :  const STATUTS_PROTEGES_ORPHAN = ['CLOTURE']
+Apres :  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+```
+
+Une fiche orpheline (plus dans le planning) mais deja signee/transmise ne sera pas supprimee.
+
+---
+
+### Modification 4 — Anti-doublon fiches_jours (ligne 1457)
+
+```
+Avant :  if (entry.statut === 'CLOTURE') continue // Protéger
+Apres :  if (['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE'].includes(entry.statut)) continue // Protéger
+```
+
+Les fiches_jours en doublon sur des fiches signees/transmises ne seront pas supprimees.
+
+---
+
+### Scenario concret
+
+Vendredi le chef signe les fiches (VALIDE_CHEF). Le conducteur modifie le planning pour la meme semaine et relance une sync manuelle. Sans ce correctif, les fiches signees du macon/finisseur retire du planning seraient supprimees. Avec ce correctif, elles sont preservees.
 
 ### Pas de regression
 
-- Fiches BROUILLON : pas dans la liste → ecrasees normalement
-- Macons/grutiers/interimaires : ne passent pas par ce bloc
-- Visibilite equipe : garantie par l'upsert des affectations
+- Fiches BROUILLON : pas dans la liste → supprimees/ecrasees normalement comme avant
+- Fiches CLOTURE : deja protegees, restent protegees
+- Les 3 autres blocs (lignes 740, 898, 1786) : deja corriges, coherence totale
 
