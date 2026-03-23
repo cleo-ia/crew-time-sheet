@@ -1451,10 +1451,11 @@ async function syncEntreprise(
         // deno-lint-ignore no-explicit-any
         const planningChantierIds = new Set(planningForDay.map((p: any) => p.chantier_id))
         
-        // Garder les entrées du planning, supprimer les autres (sauf CLOTURE)
+        // Garder les entrées du planning, supprimer les autres (sauf statuts avancés)
+        const STATUTS_PROTEGES_DEDUP = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
         for (const entry of dedupEntries) {
           if (planningChantierIds.has(entry.chantierId)) continue // Garder
-          if (entry.statut === 'CLOTURE') continue // Protéger
+          if (STATUTS_PROTEGES_DEDUP.includes(entry.statut)) continue // Protéger
           
           // Supprimer cette fiches_jours en doublon
           await supabase
