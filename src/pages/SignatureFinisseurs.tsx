@@ -282,6 +282,22 @@ const SignatureFinisseurs = () => {
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
+    // Bloquer la transmission de la semaine en cours avant vendredi (contrainte entreprise)
+    const entrepriseSlugForContrainte = localStorage.getItem("entreprise_slug");
+    const { isCurrentWeek, isFridayOrWeekendParis } = await import("@/lib/date");
+    const { getEnterpriseConfig } = await import("@/config/enterprises");
+    const configContrainte = getEnterpriseConfig(entrepriseSlugForContrainte);
+    
+    if (configContrainte.features.contrainteVendredi12h && isCurrentWeek(semaine) && !isFridayOrWeekendParis()) {
+      toast({
+        title: "⏳ Transmission bloquée",
+        description: "La transmission de la semaine en cours n'est possible qu'à partir du vendredi.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+
     // Récupérer la signature directement depuis le canvas
     const canvas = signaturePadContainerRef.current?.querySelector('canvas');
     if (!canvas) {

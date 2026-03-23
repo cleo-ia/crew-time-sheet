@@ -83,3 +83,16 @@ export const isAfterFriday12hParis = (): boolean => {
 export const isCurrentWeek = (weekString: string): boolean => {
   return weekString === getCurrentWeek();
 };
+
+/**
+ * Vérifie si le jour courant à Paris est vendredi, samedi ou dimanche
+ * (sans condition d'heure, contrairement à isAfterFriday12hParis)
+ */
+export const isFridayOrWeekendParis = (): boolean => {
+  const formatter = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    weekday: 'long',
+  });
+  const weekday = formatter.format(new Date()).toLowerCase();
+  return ['vendredi', 'samedi', 'dimanche'].includes(weekday);
+};

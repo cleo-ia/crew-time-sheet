@@ -27,6 +27,7 @@ import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, Chevrons
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
+import { isFridayOrWeekendParis, isCurrentWeek as isCurrentWeekCheck } from "@/lib/date";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { 
@@ -192,6 +193,9 @@ const PlanningMainOeuvre = () => {
   const isMutating = upsertAffectation.isPending || deleteAffectation.isPending || 
                      removeEmploye.isPending || updateVehicule.isPending || copyPlanning.isPending ||
                      updateChantier.isPending;
+
+  // Verrouillage du planning : semaine courante + vendredi/samedi/dimanche
+  const isPlanningLocked = isCurrentWeekCheck(semaine) && isFridayOrWeekendParis();
 
   // Jours de la semaine
   const weekDays = useMemo(() => getWeekDays(semaine), [semaine]);
@@ -645,6 +649,18 @@ const PlanningMainOeuvre = () => {
         </div>
       </div>
 
+      {/* Bandeau de verrouillage planning */}
+      {isPlanningLocked && (
+        <div className="container mx-auto px-4 mt-4">
+          <div className="px-4 py-3 rounded-lg border-2 bg-amber-50 border-amber-400 dark:bg-amber-950/40 dark:border-amber-700 flex items-center gap-3">
+            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="font-semibold text-amber-800 dark:text-amber-200">
+              Planning verrouillé le vendredi — les modifications sont bloquées pour la semaine en cours
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Bandeau de statut de validation - très visible */}
       {!isLoadingValidation && (
         <div className={cn(
@@ -701,7 +717,7 @@ const PlanningMainOeuvre = () => {
                       });
                     }
                   }}
-                  disabled={isSyncing}
+                  disabled={isSyncing || isPlanningLocked}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >
                   {isSyncing ? (
@@ -714,7 +730,7 @@ const PlanningMainOeuvre = () => {
                 <Button
                   variant="outline"
                   onClick={() => invalidatePlanning()}
-                  disabled={isInvalidating}
+                  disabled={isInvalidating || isPlanningLocked}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >
                   {isInvalidating ? (
@@ -728,7 +744,7 @@ const PlanningMainOeuvre = () => {
             ) : (
               <Button 
                 onClick={() => setValidateDialogOpen(true)}
-                disabled={isValidating || affectations.length === 0}
+                disabled={isValidating || affectations.length === 0 || isPlanningLocked}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 {isValidating ? (
@@ -782,7 +798,7 @@ const PlanningMainOeuvre = () => {
             <Button
               variant="outline"
               onClick={() => setCopyDialogOpen(true)}
-              disabled={isMutating}
+              disabled={isMutating || isPlanningLocked}
             >
               <Copy className="h-4 w-4 mr-2" />
               Copier S-1
@@ -833,16 +849,16 @@ const PlanningMainOeuvre = () => {
                   allAffectations={affectations}
                   weekDays={weekDays}
                   semaine={semaine}
-                  onDayToggle={handleDayToggle}
-                  onVehiculeChange={handleVehiculeChange}
-                  onRemoveEmploye={handleRemoveEmploye}
-                  onAddEmploye={handleAddEmploye}
+                  onDayToggle={isPlanningLocked ? undefined : handleDayToggle}
+                  onVehiculeChange={isPlanningLocked ? undefined : handleVehiculeChange}
+                  onRemoveEmploye={isPlanningLocked ? undefined : handleRemoveEmploye}
+                  onAddEmploye={isPlanningLocked ? undefined : handleAddEmploye}
                   onHeuresChange={handleHeuresChange}
                   onInsertionChange={handleInsertionChange}
                   isLoading={isMutating}
                   forceOpen={allExpanded}
                   chefsWithPrincipal={chefsWithPrincipal}
-                  onSetChefResponsable={handleSetChefResponsable}
+                  onSetChefResponsable={isPlanningLocked ? undefined : handleSetChefResponsable}
                   absencesLDByEmploye={absencesLDByEmploye}
                   onAbsenceClick={handleAbsenceClick}
                 />
