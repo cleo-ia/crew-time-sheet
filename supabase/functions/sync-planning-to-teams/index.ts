@@ -1177,7 +1177,7 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
-    const STATUTS_PROTEGES_CHEF = ['CLOTURE']
+    const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
     if (fiche) {
       if (STATUTS_PROTEGES_CHEF.includes(fiche.statut)) {
         console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour macon ${maconId} chantier ${chantierId}`)
@@ -1227,7 +1227,7 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
-    const STATUTS_PROTEGES_FINISSEUR = ['CLOTURE']
+    const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
     if (fiche) {
       if (STATUTS_PROTEGES_FINISSEUR.includes(fiche.statut)) {
         console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour finisseur ${finisseurId} chantier ${chantierId}`)
@@ -1331,7 +1331,7 @@ async function syncEntreprise(
   }
 
   // 3. Identifier les fiches orphelines (pas dans le planning)
-  const STATUTS_PROTEGES_ORPHAN = ['CLOTURE']
+  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
   // deno-lint-ignore no-explicit-any
   const orphanFiches = (allFichesS || []).filter((f: any) => {
     // ✅ Skip fiches sans chantier (absences longue durée)
@@ -1451,10 +1451,11 @@ async function syncEntreprise(
         // deno-lint-ignore no-explicit-any
         const planningChantierIds = new Set(planningForDay.map((p: any) => p.chantier_id))
         
-        // Garder les entrées du planning, supprimer les autres (sauf CLOTURE)
+        // Garder les entrées du planning, supprimer les autres (sauf statuts avancés)
+        const STATUTS_PROTEGES_DEDUP = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
         for (const entry of dedupEntries) {
           if (planningChantierIds.has(entry.chantierId)) continue // Garder
-          if (entry.statut === 'CLOTURE') continue // Protéger
+          if (STATUTS_PROTEGES_DEDUP.includes(entry.statut)) continue // Protéger
           
           // Supprimer cette fiches_jours en doublon
           await supabase
