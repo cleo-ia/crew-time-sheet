@@ -1,64 +1,71 @@
 
 
-## Plan : Harmoniser la protection des statuts avances (4 endroits restants)
+## Plan : 3 regles de verrouillage temporel
 
-### Fichier : `supabase/functions/sync-planning-to-teams/index.ts`
+### Contexte
 
-Les lignes 740, 898 et 1786 sont deja corrigees avec la liste complete. Reste 4 endroits encore a `['CLOTURE']` seul.
+Le flux actuel a deja une feature flag `contrainteVendredi12h` (utilisee dans `Index.tsx` pour les chefs). On va etendre cette logique a 3 endroits et creer 2 nouvelles fonctions utilitaires.
 
----
+### Regle 1 — Verrouiller le planning le vendredi
 
-### Modification 1 — Suppression macon hors planning (ligne 1180)
+**Fichier** : `src/pages/PlanningMainOeuvre.tsx`
 
+- Ajouter un calcul `isPlanningLocked` : vrai si la semaine affichee est la semaine courante ET que le jour Paris est vendredi/samedi/dimanche.
+- Quand `isPlanningLocked` :
+  - Desactiver les boutons "Valider", "Modifier", "Synchroniser maintenant", "Copier S-1"
+  - Passer les `PlanningChantierAccordion` en read-only (desactiver `onDayToggle`, `onRemoveEmploye`, `onAddEmploye`, `onVehiculeChange`)
+  - Afficher un bandeau jaune : "Planning verrouille le vendredi — les modifications sont bloquees pour la semaine en cours"
+- Le planning des semaines S+1 et suivantes reste modifiable normalement.
+
+### Regle 2 — Bloquer la transmission de S avant vendredi (chefs)
+
+**Deja partiellement implemente** dans `src/pages/Index.tsx` via `isContrainteVendredi12h` + `isAfterFriday12hParis()`. C'est actif pour Limoge-Revillon (temporairement desactive).
+
+- **Aucun changement de code** necessaire ici, la logique existe deja.
+- Il faudra simplement reactiver le flag dans la config entreprise quand pret.
+
+### Regle 3 — Bloquer la transmission de S avant vendredi (conducteurs)
+
+**Fichier** : `src/pages/ValidationConducteur.tsx` (handleSaveAndSign, ~ligne 419)
+
+- Ajouter la meme verification que `Index.tsx` : si `isContrainteVendredi12h` et `isCurrentWeek(selectedWeek)` et pas vendredi/samedi/dimanche → bloquer avec toast.
+- Ajouter un bandeau d'avertissement dans l'UI (comme dans Index.tsx).
+
+**Fichier** : `src/pages/SignatureFinisseurs.tsx` (handleSubmit, ~ligne 282)
+
+- Ajouter la meme verification avant soumission : si `isContrainteVendredi12h` et `isCurrentWeek(semaine)` et pas vendredi → bloquer avec toast.
+
+### Nouvelle fonction utilitaire
+
+**Fichier** : `src/lib/date.ts`
+
+Ajouter `isFridayOrWeekendParis()` : retourne true si le jour courant a Paris est vendredi, samedi ou dimanche (sans condition d'heure, contrairement a `isAfterFriday12hParis` qui attend 12h).
+
+```typescript
+export const isFridayOrWeekendParis = (): boolean => {
+  const formatter = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    weekday: 'long',
+  });
+  const weekday = formatter.format(new Date()).toLowerCase();
+  return ['vendredi', 'samedi', 'dimanche'].includes(weekday);
+};
 ```
-Avant :  const STATUTS_PROTEGES_CHEF = ['CLOTURE']
-Apres :  const STATUTS_PROTEGES_CHEF = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
-```
 
-Si le planning change en cours de semaine et qu'un macon est retire d'un chantier, sa fiche deja signee/transmise ne sera pas supprimee.
+### Resume des fichiers touches
 
----
+| Fichier | Modification |
+|---------|-------------|
+| `src/lib/date.ts` | Ajouter `isFridayOrWeekendParis()` |
+| `src/pages/PlanningMainOeuvre.tsx` | Verrouillage planning semaine S le vendredi |
+| `src/pages/ValidationConducteur.tsx` | Bloquer transmission S avant vendredi |
+| `src/pages/SignatureFinisseurs.tsx` | Bloquer transmission S avant vendredi |
 
-### Modification 2 — Suppression finisseur hors planning (ligne 1230)
+### Protection S-1
 
-```
-Avant :  const STATUTS_PROTEGES_FINISSEUR = ['CLOTURE']
-Apres :  const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
-```
+Aucune restriction sur S-1 ou anterieur. Les verifications portent uniquement sur `isCurrentWeek(semaine)`.
 
-Meme logique pour les finisseurs.
+### Feature flag
 
----
-
-### Modification 3 — Fiches orphelines (ligne 1334)
-
-```
-Avant :  const STATUTS_PROTEGES_ORPHAN = ['CLOTURE']
-Apres :  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
-```
-
-Une fiche orpheline (plus dans le planning) mais deja signee/transmise ne sera pas supprimee.
-
----
-
-### Modification 4 — Anti-doublon fiches_jours (ligne 1457)
-
-```
-Avant :  if (entry.statut === 'CLOTURE') continue // Protéger
-Apres :  if (['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE'].includes(entry.statut)) continue // Protéger
-```
-
-Les fiches_jours en doublon sur des fiches signees/transmises ne seront pas supprimees.
-
----
-
-### Scenario concret
-
-Vendredi le chef signe les fiches (VALIDE_CHEF). Le conducteur modifie le planning pour la meme semaine et relance une sync manuelle. Sans ce correctif, les fiches signees du macon/finisseur retire du planning seraient supprimees. Avec ce correctif, elles sont preservees.
-
-### Pas de regression
-
-- Fiches BROUILLON : pas dans la liste → supprimees/ecrasees normalement comme avant
-- Fiches CLOTURE : deja protegees, restent protegees
-- Les 3 autres blocs (lignes 740, 898, 1786) : deja corriges, coherence totale
+Le verrouillage planning (regle 1) sera actif pour toutes les entreprises (pas de feature flag — c'est une regle metier universelle). Les regles 2 et 3 (transmission) utilisent le flag `contrainteVendredi12h` existant.
 
