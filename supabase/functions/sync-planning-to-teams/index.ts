@@ -1331,7 +1331,7 @@ async function syncEntreprise(
   }
 
   // 3. Identifier les fiches orphelines (pas dans le planning)
-  const STATUTS_PROTEGES_ORPHAN = ['CLOTURE']
+  const STATUTS_PROTEGES_ORPHAN = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
   // deno-lint-ignore no-explicit-any
   const orphanFiches = (allFichesS || []).filter((f: any) => {
     // ✅ Skip fiches sans chantier (absences longue durée)
