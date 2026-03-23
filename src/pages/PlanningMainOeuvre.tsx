@@ -27,6 +27,7 @@ import { Search, Copy, Users, Loader2, FileSpreadsheet, ChevronsUpDown, Chevrons
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { cn } from "@/lib/utils";
 import { getNextWeek, getCurrentWeek, calculatePreviousWeek } from "@/lib/weekUtils";
+import { isFridayOrWeekendParis, isCurrentWeek as isCurrentWeekCheck } from "@/lib/date";
 import { useChantiers, useUpdateChantier } from "@/hooks/useChantiers";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 import { 
