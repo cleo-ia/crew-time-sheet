@@ -973,11 +973,22 @@ async function syncEntreprise(
               }, { onConflict: 'fiche_id,date' })
           }
 
-          // Forcer total_heures = 0
-          await supabase
+          // Forcer total_heures = 0 uniquement si la fiche est encore en BROUILLON
+          const { data: existingFicheChefSec } = await supabase
             .from('fiches')
-            .update({ total_heures: 0, statut: 'BROUILLON' })
+            .select('statut')
             .eq('id', ficheChefSecId)
+            .single()
+          
+          const chefSecStatut = existingFicheChefSec?.statut
+          if (!chefSecStatut || chefSecStatut === 'BROUILLON') {
+            await supabase
+              .from('fiches')
+              .update({ total_heures: 0, statut: 'BROUILLON' })
+              .eq('id', ficheChefSecId)
+          } else {
+            console.log(`[sync-planning-to-teams] Chef secondaire: fiche ${ficheChefSecId} déjà en ${chefSecStatut}, statut préservé`)
+          }
 
           // Créer les affectations_jours_chef (chef = lui-même sur son chantier secondaire)
           for (const jour of joursPlanning) {
