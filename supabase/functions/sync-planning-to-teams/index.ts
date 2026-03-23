@@ -848,7 +848,7 @@ async function syncEntreprise(
           const finalTotal = isChantierSecondaire ? 0 : totalHeuresChefSec
           await supabase
             .from('fiches')
-            .update({ total_heures: finalTotal, statut: 'BROUILLON' })
+            .update({ total_heures: finalTotal })
             .eq('id', ficheSecId)
           
           // Créer les affectations_jours_chef pour le chef secondaire
