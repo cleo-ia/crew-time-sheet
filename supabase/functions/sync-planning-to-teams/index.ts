@@ -2146,7 +2146,7 @@ async function createNewAffectation(
           jour,
           semaine: currentWeek,
           entreprise_id: entrepriseId
-        }, { onConflict: 'macon_id,jour' })
+        }, { onConflict: 'macon_id,jour,chantier_id' })
     }
   } else if (chantier?.conducteur_id) {
     // ✅ CORRECTIF CRITIQUE: Ajouter entreprise_id dans l'upsert finisseurs
