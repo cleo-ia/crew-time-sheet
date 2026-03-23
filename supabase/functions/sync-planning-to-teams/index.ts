@@ -741,7 +741,7 @@ async function syncEntreprise(
         if (ficheSecondaire && STATUTS_PROTEGES.includes(ficheSecondaire.statut)) {
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche protégée (${ficheSecondaire.statut}), skip fiches_jours mais créer affectations`)
           // Ne pas toucher aux fiches_jours ni au statut, mais créer les affectations pour la visibilité équipe
-          const plannedChefForProtected = chantiersChefMap.get(chantierId)
+          const plannedChefForProtected = plannedChefByChantier.get(chantierId)
           for (const jour of joursPlanning) {
             await supabase
               .from('affectations_jours_chef')
