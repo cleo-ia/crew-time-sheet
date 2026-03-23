@@ -110,7 +110,7 @@ export const useUpsertAffectationJourChef = () => {
       const { data, error } = await supabase
         .from("affectations_jours_chef")
         .upsert(affectation, {
-          onConflict: "macon_id,jour",
+          onConflict: "macon_id,jour,chantier_id",
         })
         .select()
         .single();
@@ -332,7 +332,7 @@ export const useCreateDefaultAffectationsJours = () => {
       // Utiliser upsert pour éviter les erreurs de doublon
       const { data, error } = await supabase
         .from("affectations_jours_chef")
-        .upsert(affectationsToInsert, { onConflict: "macon_id,jour" })
+        .upsert(affectationsToInsert, { onConflict: "macon_id,jour,chantier_id" })
         .select();
       
       if (error) throw error;
