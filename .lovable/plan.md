@@ -1,61 +1,39 @@
 
 
-## Plan : Ajouter les filtres manquants dans useDeletePlanningAffectation
+## Plan : Ajouter la contrainte UNIQUE (fiche_id, date) sur fiches_jours
 
-### Probleme
+### Contexte
 
-La suppression d'une affectation planning filtre uniquement par `employe_id` + `jour` + `entreprise_id`. Il manque `chantier_id` et `semaine`, ce qui pourrait supprimer des lignes non visees.
+La table `fiches_jours` n'a aucune contrainte empechant deux lignes avec le meme `fiche_id` + `date`. Le code applicatif utilise `.upsert({ onConflict: 'fiche_id,date' })` a plusieurs endroits, mais sans contrainte UNIQUE en base, Supabase traite ces upserts comme de simples INSERT. Resultat : en cas de double-clic, latence reseau ou sync simultanee, des doublons peuvent apparaitre.
 
-### Modifications
+Actuellement il y a **zero doublon** en base — c'est le moment ideal pour poser la contrainte.
 
-**Fichier 1 : `src/hooks/usePlanningAffectations.ts`** (lignes 134-145)
+### Modification
 
-Ajouter `chantier_id` aux params et aux filtres de la requete delete :
+**Migration SQL** (une seule commande) :
 
-```typescript
-mutationFn: async (params: { 
-  employe_id: string; 
-  chantier_id: string;  // AJOUT
-  jour: string; 
-  semaine: string;
-  entreprise_id: string;
-}) => {
-  const { error } = await supabase
-    .from("planning_affectations")
-    .delete()
-    .eq("employe_id", params.employe_id)
-    .eq("chantier_id", params.chantier_id)  // AJOUT
-    .eq("jour", params.jour)
-    .eq("semaine", params.semaine)           // AJOUT
-    .eq("entreprise_id", params.entreprise_id);
-
-  if (error) throw error;
-},
+```sql
+ALTER TABLE public.fiches_jours
+ADD CONSTRAINT fiches_jours_fiche_id_date_unique UNIQUE (fiche_id, date);
 ```
 
-**Fichier 2 : `src/pages/PlanningMainOeuvre.tsx`** (ligne 271-276)
-
-Passer `chantier_id` lors de l'appel :
-
-```typescript
-await deleteAffectation.mutateAsync({
-  employe_id: employeId,
-  chantier_id: chantierId,  // AJOUT
-  jour: date,
-  semaine,
-  entreprise_id: entrepriseId,
-});
-```
-
-### Analyse zero regression
+### Analyse d'impact
 
 | Point | Verification |
 |-------|-------------|
-| Seul appelant | `PlanningMainOeuvre.tsx` — un seul endroit appelle `deleteAffectation.mutate` |
-| `chantierId` disponible | Oui, c'est un parametre de `handleDayToggle(employeId, chantierId, date, checked)` |
-| Comportement identique en usage normal | Oui — un employe ne peut etre que sur un chantier par jour, donc le filtre supplementaire ne change rien au cas nominal |
-| Protection supplementaire | Si un bug UI permettait un double-affectation, seule la bonne ligne serait supprimee |
-| Cache invalidation | Inchange — invalide toujours par `semaine` |
+| Doublons existants | Zero — la contrainte peut etre posee sans nettoyage |
+| `useAutoSaveFiche` | Utilise `.upsert({ onConflict: 'fiche_id,date' })` — fonctionnera correctement avec la contrainte |
+| `useSaveFiche` | Utilise `.upsert({ onConflict: 'fiche_id,date' })` — idem |
+| `useSaveFicheJours` | Fait un SELECT puis UPDATE/INSERT — pas d'impact, la logique evite deja les doublons |
+| `useCreateFicheJourForAffectation` | Verifie l'existence avant d'inserer — pas d'impact |
+| `sync-planning-to-teams` | Utilise `.upsert({ onConflict: 'fiche_id,date' })` — beneficie directement de la contrainte |
+| `purge-fiches-jours-duplicates` | Edge function de nettoyage — continue de fonctionner (delete + recalcul) |
+| Performance | L'index unique accelere les lookups par `(fiche_id, date)` deja frequents |
 
-Modification purement defensive, aucun changement de comportement observable.
+### Garantie zero regression
+
+- Aucun code applicatif ne tente d'inserer volontairement deux lignes pour le meme `fiche_id` + `date`
+- Les upserts existants qui declarent `onConflict: 'fiche_id,date'` vont enfin fonctionner comme prevu (mise a jour au lieu d'insertion)
+- Les SELECT/UPDATE manuels ne sont pas affectes par une contrainte UNIQUE
+- Aucune modification de code frontend necessaire
 
