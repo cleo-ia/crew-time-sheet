@@ -1227,7 +1227,7 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
 
     // Supprimer les fiches_jours et la fiche associées (sauf si fiche protégée)
-    const STATUTS_PROTEGES_FINISSEUR = ['CLOTURE']
+    const STATUTS_PROTEGES_FINISSEUR = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
     if (fiche) {
       if (STATUTS_PROTEGES_FINISSEUR.includes(fiche.statut)) {
         console.log(`[sync-planning-to-teams] ⚠️ Fiche protégée (statut=${fiche.statut}) — suppression ignorée pour finisseur ${finisseurId} chantier ${chantierId}`)
