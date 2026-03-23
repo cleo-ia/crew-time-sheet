@@ -1325,7 +1325,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                                 chefId={undefined}
                                 allowAll={true}
                                 compact={true}
-                                disabled={isReadOnly || isDayBlocked}
+                                disabled={isReadOnly || isDayBlocked || mode !== "conducteur"}
               />
                             </div>
                             
