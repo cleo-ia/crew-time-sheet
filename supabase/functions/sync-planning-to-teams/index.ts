@@ -739,8 +739,23 @@ async function syncEntreprise(
         // Ne pas toucher aux fiches protégées
         const STATUTS_PROTEGES = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
         if (ficheSecondaire && STATUTS_PROTEGES.includes(ficheSecondaire.statut)) {
-          console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche protégée (${ficheSecondaire.statut}), skip`)
-          results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef secondaire, fiche protégée` })
+          console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche protégée (${ficheSecondaire.statut}), skip fiches_jours mais créer affectations`)
+          // Ne pas toucher aux fiches_jours ni au statut, mais créer les affectations pour la visibilité équipe
+          const plannedChefForProtected = chantiersChefMap.get(chantierId)
+          for (const jour of joursPlanning) {
+            await supabase
+              .from('affectations_jours_chef')
+              .upsert({
+                macon_id: employeId,
+                chef_id: plannedChefForProtected?.chefId || employeId,
+                chantier_id: chantierId,
+                jour,
+                semaine: currentWeek,
+                entreprise_id: entrepriseId
+              }, { onConflict: 'macon_id,jour,chantier_id' })
+          }
+          results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef secondaire, fiche protégée (${ficheSecondaire.statut})` })
+          stats.protected++
           continue
         }
         
