@@ -1,34 +1,61 @@
 
 
-## Plan : Verrouiller le ChantierSelector par jour pour chefs et conducteurs
+## Plan : Ajouter les filtres manquants dans useDeletePlanningAffectation
 
 ### Probleme
 
-Dans `TimeEntryTable.tsx` (ligne 1279), le selecteur de chantier par jour permet a n'importe quel utilisateur de changer le chantier d'imputation. Cela peut creer des fiches orphelines et corrompre la ventilation analytique.
+La suppression d'une affectation planning filtre uniquement par `employe_id` + `jour` + `entreprise_id`. Il manque `chantier_id` et `semaine`, ce qui pourrait supprimer des lignes non visees.
 
-### Modification unique
+### Modifications
 
-**Fichier** : `src/components/timesheet/TimeEntryTable.tsx` (ligne 1328)
+**Fichier 1 : `src/hooks/usePlanningAffectations.ts`** (lignes 134-145)
 
+Ajouter `chantier_id` aux params et aux filtres de la requete delete :
+
+```typescript
+mutationFn: async (params: { 
+  employe_id: string; 
+  chantier_id: string;  // AJOUT
+  jour: string; 
+  semaine: string;
+  entreprise_id: string;
+}) => {
+  const { error } = await supabase
+    .from("planning_affectations")
+    .delete()
+    .eq("employe_id", params.employe_id)
+    .eq("chantier_id", params.chantier_id)  // AJOUT
+    .eq("jour", params.jour)
+    .eq("semaine", params.semaine)           // AJOUT
+    .eq("entreprise_id", params.entreprise_id);
+
+  if (error) throw error;
+},
 ```
-Avant :  disabled={isReadOnly || isDayBlocked}
-Apres :  disabled={isReadOnly || isDayBlocked || mode !== "conducteur"}
+
+**Fichier 2 : `src/pages/PlanningMainOeuvre.tsx`** (ligne 271-276)
+
+Passer `chantier_id` lors de l'appel :
+
+```typescript
+await deleteAffectation.mutateAsync({
+  employe_id: employeId,
+  chantier_id: chantierId,  // AJOUT
+  jour: date,
+  semaine,
+  entreprise_id: entrepriseId,
+});
 ```
 
-### Analyse d'impact par contexte
+### Analyse zero regression
 
-| Contexte | mode | Resultat | Correct ? |
-|----------|------|----------|-----------|
-| Index.tsx (chef saisie) | `"create"` (defaut) | Verrouille | Oui — le chantier vient du planning |
-| FicheDetail.tsx lecture | `"edit"` + readOnly | Verrouille | Oui — deja en lecture seule |
-| FicheDetail.tsx edition | `"edit"` | Verrouille | Oui — le conducteur corrige les heures, pas le chantier |
-| ValidationConducteur.tsx saisie | `"conducteur"` | Modifiable | Oui — ses finisseurs peuvent changer de chantier dans la semaine |
+| Point | Verification |
+|-------|-------------|
+| Seul appelant | `PlanningMainOeuvre.tsx` — un seul endroit appelle `deleteAffectation.mutate` |
+| `chantierId` disponible | Oui, c'est un parametre de `handleDayToggle(employeId, chantierId, date, checked)` |
+| Comportement identique en usage normal | Oui — un employe ne peut etre que sur un chantier par jour, donc le filtre supplementaire ne change rien au cas nominal |
+| Protection supplementaire | Si un bug UI permettait un double-affectation, seule la bonne ligne serait supprimee |
+| Cache invalidation | Inchange — invalide toujours par `semaine` |
 
-### Garantie zero regression
-
-- Le chantier par jour est toujours **affiche** (valeur visible dans le selecteur) — seule l'interaction est desactivee.
-- Le `code_chantier_du_jour` dans `fiches_jours` reste correctement initialise par la sync planning, il n'est simplement plus modifiable manuellement.
-- Les conducteurs en mode saisie directe conservent la flexibilite pour leurs finisseurs multi-chantier.
-- La ventilation analytique (`useVentilationAnalytique`) continue de lire `code_chantier_du_jour` sans changement.
-- Aucun autre composant n'utilise `ChantierSelector` avec un mode different.
+Modification purement defensive, aucun changement de comportement observable.
 
