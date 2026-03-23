@@ -798,7 +798,7 @@ const PlanningMainOeuvre = () => {
             <Button
               variant="outline"
               onClick={() => setCopyDialogOpen(true)}
-              disabled={isMutating}
+              disabled={isMutating || isPlanningLocked}
             >
               <Copy className="h-4 w-4 mr-2" />
               Copier S-1
