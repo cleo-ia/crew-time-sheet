@@ -194,6 +194,9 @@ const PlanningMainOeuvre = () => {
                      removeEmploye.isPending || updateVehicule.isPending || copyPlanning.isPending ||
                      updateChantier.isPending;
 
+  // Verrouillage du planning : semaine courante + vendredi/samedi/dimanche
+  const isPlanningLocked = isCurrentWeekCheck(semaine) && isFridayOrWeekendParis();
+
   // Jours de la semaine
   const weekDays = useMemo(() => getWeekDays(semaine), [semaine]);
 
