@@ -1,23 +1,20 @@
 
 
-## Plan : 3 règles de verrouillage temporel — IMPLÉMENTÉ ✅
+## Plan : Reactiver le flag `contrainteVendredi12h` pour Limoge-Revillon
 
-### Règle 1 — Planning verrouillé le vendredi (semaine courante)
-- `isPlanningLocked` dans `PlanningMainOeuvre.tsx` : désactive boutons Valider, Modifier, Synchroniser, Copier S-1
-- Accordions en read-only (onDayToggle, onRemoveEmploye, onAddEmploye, onVehiculeChange, onSetChefResponsable passés à undefined)
-- Bandeau jaune d'avertissement affiché
+### Fichier : `src/config/enterprises/limoge-revillon.ts`
 
-### Règle 2 — Transmission S bloquée avant vendredi (chefs)
-- Déjà implémenté via `contrainteVendredi12h` dans `Index.tsx` (flag temporairement désactivé pour LR)
+**Modification unique, ligne 18 :**
 
-### Règle 3 — Transmission S bloquée avant vendredi (conducteurs + finisseurs)
-- `ValidationConducteur.tsx` : vérification ajoutée dans `handleSaveAndSign`
-- `SignatureFinisseurs.tsx` : vérification ajoutée dans `handleSubmit`
-- Utilise le feature flag `contrainteVendredi12h` existant
+```
+Avant :  contrainteVendredi12h: false, // TEMPORAIREMENT DÉSACTIVÉ pour test - remettre à true après
+Après :  contrainteVendredi12h: true, // Actif: bloque transmission S avant vendredi (chefs + conducteurs + finisseurs)
+```
 
-### Nouvelle utilitaire
-- `isFridayOrWeekendParis()` ajoutée dans `src/lib/date.ts`
+Cela active les regles 2 et 3 du verrouillage temporel pour Limoge-Revillon :
+- Les chefs ne peuvent plus transmettre la semaine S avant vendredi
+- Les conducteurs et finisseurs non plus
+- La transmission de S-1 et anterieur reste possible a tout moment
 
-### Activation
-- Règle 1 (planning) : active pour toutes les entreprises
-- Règles 2+3 (transmission) : conditionnées au flag `contrainteVendredi12h` (à réactiver dans config entreprise)
+La regle 1 (planning verrouille le vendredi) est deja active sans flag.
+
