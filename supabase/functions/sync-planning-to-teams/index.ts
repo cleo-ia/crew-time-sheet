@@ -1105,30 +1105,37 @@ async function syncEntreprise(
       .eq('entreprise_id', entrepriseId)
       .neq('chantier_id', chantierPrincipalId)
 
-    if (pollutedAffectations && pollutedAffectations.length > 0) {
-      console.log(`[sync-planning-to-teams] Chef ${chefId}: suppression de ${pollutedAffectations.length} affectation(s) polluée(s) sur chantiers secondaires`)
+    // Déterminer les chantiers légitimes du chef dans le planning de cette semaine
+    const chefPlannedChantiers = new Set<string>()
+    for (const key of planningByEmployeChantier.keys()) {
+      if (key.startsWith(`${chefId}|`)) {
+        chefPlannedChantiers.add(key.split('|')[1])
+      }
+    }
+    // Toujours inclure le chantier principal
+    chefPlannedChantiers.add(chantierPrincipalId)
+
+    // 1. Supprimer les affectations du chef sur des chantiers où il n'est PAS planifié
+    const { data: pollutedAffectations } = await supabase
+      .from('affectations_jours_chef')
+      .select('id, chantier_id')
+      .eq('macon_id', chefId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+
+    const toDelete = pollutedAffectations?.filter(a => !chefPlannedChantiers.has(a.chantier_id)) || []
+
+    if (toDelete.length > 0) {
+      console.log(`[sync-planning-to-teams] Chef ${chefId}: suppression de ${toDelete.length} affectation(s) orpheline(s) sur chantiers non planifiés`)
       
+      const idsToDelete = toDelete.map(a => a.id)
       await supabase
         .from('affectations_jours_chef')
         .delete()
-        .eq('macon_id', chefId)
-        .eq('semaine', currentWeek)
-        .eq('entreprise_id', entrepriseId)
-        .neq('chantier_id', chantierPrincipalId)
+        .in('id', idsToDelete)
     }
 
     // 2. Forcer la création des 5 affectations sur le chantier principal
-    for (const jour of weekDays) {
-      await supabase
-        .from('affectations_jours_chef')
-        .upsert({
-          macon_id: chefId,
-          chef_id: chefId, // Le chef est son propre "chef" pour ses affectations
-          chantier_id: chantierPrincipalId,
-          jour,
-          semaine: currentWeek,
-          entreprise_id: entrepriseId
-        }, { onConflict: 'macon_id,jour,chantier_id' })
     }
 
     console.log(`[sync-planning-to-teams] Chef ${chefId}: 5 affectations forcées sur chantier principal ${chantierPrincipalId}`)
