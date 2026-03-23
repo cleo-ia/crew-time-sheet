@@ -849,16 +849,16 @@ const PlanningMainOeuvre = () => {
                   allAffectations={affectations}
                   weekDays={weekDays}
                   semaine={semaine}
-                  onDayToggle={handleDayToggle}
-                  onVehiculeChange={handleVehiculeChange}
-                  onRemoveEmploye={handleRemoveEmploye}
-                  onAddEmploye={handleAddEmploye}
+                  onDayToggle={isPlanningLocked ? undefined : handleDayToggle}
+                  onVehiculeChange={isPlanningLocked ? undefined : handleVehiculeChange}
+                  onRemoveEmploye={isPlanningLocked ? undefined : handleRemoveEmploye}
+                  onAddEmploye={isPlanningLocked ? undefined : handleAddEmploye}
                   onHeuresChange={handleHeuresChange}
                   onInsertionChange={handleInsertionChange}
                   isLoading={isMutating}
                   forceOpen={allExpanded}
                   chefsWithPrincipal={chefsWithPrincipal}
-                  onSetChefResponsable={handleSetChefResponsable}
+                  onSetChefResponsable={isPlanningLocked ? undefined : handleSetChefResponsable}
                   absencesLDByEmploye={absencesLDByEmploye}
                   onAbsenceClick={handleAbsenceClick}
                 />
