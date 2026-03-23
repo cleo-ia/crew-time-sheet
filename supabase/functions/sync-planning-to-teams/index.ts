@@ -2002,7 +2002,4 @@ function parseISOWeek(semaine: string): Date {
   return result
 }
 
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false
-  return a.every((v, i) => v === b[i])
-}
+// arraysEqual — SUPPRIMÉE (plus utilisée)
