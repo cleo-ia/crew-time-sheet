@@ -730,7 +730,7 @@ const PlanningMainOeuvre = () => {
                 <Button
                   variant="outline"
                   onClick={() => invalidatePlanning()}
-                  disabled={isInvalidating}
+                  disabled={isInvalidating || isPlanningLocked}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >
                   {isInvalidating ? (
