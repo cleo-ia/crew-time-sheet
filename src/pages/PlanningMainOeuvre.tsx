@@ -270,6 +270,7 @@ const PlanningMainOeuvre = () => {
     } else {
       await deleteAffectation.mutateAsync({
         employe_id: employeId,
+        chantier_id: chantierId,
         jour: date,
         semaine,
         entreprise_id: entrepriseId,

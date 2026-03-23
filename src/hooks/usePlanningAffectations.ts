@@ -133,6 +133,7 @@ export const useDeletePlanningAffectation = () => {
   return useMutation({
     mutationFn: async (params: { 
       employe_id: string; 
+      chantier_id: string;
       jour: string; 
       semaine: string;
       entreprise_id: string;
@@ -141,7 +142,9 @@ export const useDeletePlanningAffectation = () => {
         .from("planning_affectations")
         .delete()
         .eq("employe_id", params.employe_id)
+        .eq("chantier_id", params.chantier_id)
         .eq("jour", params.jour)
+        .eq("semaine", params.semaine)
         .eq("entreprise_id", params.entreprise_id);
 
       if (error) throw error;
