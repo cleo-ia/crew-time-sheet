@@ -1,16 +1,15 @@
 
 
-## Plan appliqué ✅ — copyFichesFromPreviousWeek supprimée, statuts protégés
+## Plan : Corriger `chantiersChefMap` → `plannedChefByChantier` (ligne 744)
 
-### Modifications effectuées dans `supabase/functions/sync-planning-to-teams/index.ts`
+### Fichier : `supabase/functions/sync-planning-to-teams/index.ts`
 
-1. **Fetch S-1 supprimé** — Plus de requêtes `affectationsS1Chef` / `affectationsS1Finisseurs`, plus de map `s1ByEmployeChantier`
-2. **Statuts protégés dans le bloc chef secondaire** — `STATUTS_PROTEGES` étendu à `['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']`, avec création des affectations équipe même sur fiche protégée
-3. **Branchement copy/create remplacé** — Appel direct à `createNewAffectation` dans tous les cas
-4. **Statuts protégés dans `createNewAffectation`** — Les fiches signées/transmises/clôturées ne sont plus écrasées, seules les affectations équipe sont créées
-5. **`copyFichesFromPreviousWeek` et `arraysEqual` supprimées** — Code mort retiré
-6. **Plus de forçage `statut: 'BROUILLON'`** — Le bloc chef secondaire ne force plus le statut lors du update total_heures
+**1 seule modification, ligne 744 :**
 
-### Migration DB déjà appliquée
+```
+Avant :  const plannedChefForProtected = chantiersChefMap.get(chantierId)
+Après :  const plannedChefForProtected = plannedChefByChantier.get(chantierId)
+```
 
-Contrainte unique `affectations_jours_chef` changée de `(macon_id, jour)` à `(macon_id, jour, chantier_id)`.
+La variable `plannedChefByChantier` est definie a la ligne 427 et contient exactement les memes donnees attendues (le chef responsable par chantier). Correction defensive pure, aucun changement de logique.
+
