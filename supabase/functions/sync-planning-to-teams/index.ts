@@ -1992,16 +1992,46 @@ async function createNewAffectation(
     .eq('semaine', currentWeek)
     .maybeSingle()
 
-  // ✅ STRICT: Si fiche existe avec statut CLOTURE, ne pas toucher
-  if (existingFiche && existingFiche.statut === 'CLOTURE') {
-    console.log(`[sync] Fiche CLOTURE pour ${employeId} sur ${chantierId} — protection absolue`)
-    return { created: false, reason: `Fiche clôturée, intouchable` }
+  // ✅ Protéger les fiches avec statut avancé (signées, transmises, clôturées)
+  const STATUTS_PROTEGES_CREATE = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE']
+  if (existingFiche && STATUTS_PROTEGES_CREATE.includes(existingFiche.statut)) {
+    console.log(`[sync] Fiche protégée (${existingFiche.statut}) pour ${employeId} sur ${chantierId} — pas d'écrasement, création affectations uniquement`)
+    
+    // Créer quand même les affectations pour la visibilité équipe
+    if (chantier?.chef_id) {
+      for (const jour of joursPlanning) {
+        await supabase
+          .from('affectations_jours_chef')
+          .upsert({
+            macon_id: employeId,
+            chef_id: chantier.chef_id,
+            chantier_id: chantierId,
+            jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'macon_id,jour,chantier_id' })
+      }
+    } else if (chantier?.conducteur_id) {
+      for (const jour of joursPlanning) {
+        await supabase
+          .from('affectations_finisseurs_jours')
+          .upsert({
+            finisseur_id: employeId,
+            conducteur_id: chantier.conducteur_id,
+            chantier_id: chantierId,
+            date: jour,
+            semaine: currentWeek,
+            entreprise_id: entrepriseId
+          }, { onConflict: 'finisseur_id,date' })
+      }
+    }
+    
+    return { created: false, reason: `Fiche protégée (${existingFiche.statut})` }
   }
 
-  // ✅ STRICT: Si fiche existe avec heures, on ÉCRASE (planning = source de vérité)
+  // Si fiche BROUILLON existe, on ÉCRASE (planning = source de vérité)
   if (existingFiche) {
-    console.log(`[sync] Fiche existante pour ${employeId} sur ${chantierId} (${existingFiche.total_heures}h) — écrasement par le planning`)
-    // Supprimer les fiches_jours existantes pour les recréer
+    console.log(`[sync] Fiche existante BROUILLON pour ${employeId} sur ${chantierId} (${existingFiche.total_heures}h) — écrasement par le planning`)
     await supabase
       .from('fiches_jours')
       .delete()
