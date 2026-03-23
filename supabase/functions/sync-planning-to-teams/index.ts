@@ -1952,7 +1952,7 @@ async function copyFichesFromPreviousWeek(
           jour,
           semaine: currentWeek,
           entreprise_id: chantier.entreprise_id
-        }, { onConflict: 'macon_id,jour' })
+        }, { onConflict: 'macon_id,jour,chantier_id' })
     }
   } else if (chantier?.conducteur_id) {
     // ✅ CORRECTIF: Utiliser joursPlanning (vrais jours du planning S) et non jours (dates de S-1)
