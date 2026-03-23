@@ -744,7 +744,7 @@ const PlanningMainOeuvre = () => {
             ) : (
               <Button 
                 onClick={() => setValidateDialogOpen(true)}
-                disabled={isValidating || affectations.length === 0}
+                disabled={isValidating || affectations.length === 0 || isPlanningLocked}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 {isValidating ? (
