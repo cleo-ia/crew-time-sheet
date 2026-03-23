@@ -15,7 +15,7 @@ export const limogeRevillonConfig: EnterpriseConfig = {
   
   features: {
     ...defaultFeatures,
-    contrainteVendredi12h: false, // TEMPORAIREMENT DÉSACTIVÉ pour test - remettre à true après
+    contrainteVendredi12h: true, // Actif: bloque transmission S avant vendredi (chefs + conducteurs + finisseurs)
     ratioGlobal: true, // Actif: saisie des ratios journaliers (M3 béton, ML voile, M2 coffrage, météo)
     pointsMeteo: true, // Actif: bouton météo avec radar et prévisions 12h
   },
