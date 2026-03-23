@@ -717,7 +717,7 @@ const PlanningMainOeuvre = () => {
                       });
                     }
                   }}
-                  disabled={isSyncing}
+                  disabled={isSyncing || isPlanningLocked}
                   className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
                 >
                   {isSyncing ? (
