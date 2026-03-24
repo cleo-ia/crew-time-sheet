@@ -1880,6 +1880,8 @@ async function createNewAffectation(
             entreprise_id: entrepriseId
           }, { onConflict: 'macon_id,jour,chantier_id' })
       }
+      // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+      await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
     } else if (chantier?.conducteur_id) {
       for (const jour of joursPlanning) {
         await supabase
