@@ -64,7 +64,7 @@ export const useExportPaieReadiness = (periode: string) => {
       // Fetch fiches for these weeks
       const { data: fiches, error: fichesError } = await supabase
         .from("fiches")
-        .select("id, semaine, statut, salarie_id, chantier_id, utilisateurs!salarie_id(nom, prenom, role_metier)")
+        .select("id, semaine, statut, salarie_id, chantier_id, utilisateurs!salarie_id(nom, prenom, role_metier, agence_interim)")
         .in("semaine", weeks);
 
       if (fichesError) throw fichesError;
