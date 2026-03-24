@@ -1,75 +1,110 @@
+{
 
+## Analyse approfondie du plan V2 - Corrections et points d'attention
 
-# Plan : Paie Prévisionnelle basée sur le Planning S+1
+### Points forts du plan actuel
+- Les deux points d'entree sont bien identifies (useUpdateFicheStatus + SignatureFinisseurs)
+- La logique de resolution chantier via `code_chantier_du_jour` est correcte
+- Le placement juste apres `injectValidatedLeaves` est le bon moment
 
-## Contexte
+### Problemes identifies et corrections
 
-Remplacer le clonage de la "Semaine Socle" par une estimation basée sur les affectations réelles du planning (`planning_affectations`), remplies par les conducteurs chaque mercredi.
+**1. Re-fetch inutile des fiches**
+Le plan prevoit de re-fetcher les fiches pour obtenir `chantier_id` apres la mise a jour. C'est inutile et fragile. Il suffit d'ajouter `chantier_id` au `.select()` existant dans les deux points d'entree :
+- `useFiches.ts` ligne 747 : `.select("id, salarie_id, semaine")` → `.select("id, salarie_id, semaine, chantier_id")`
+- `SignatureFinisseurs.tsx` lignes 419/433 : idem
 
-## Logique d'estimation — Ordre de priorité
+Cela evite une requete supplementaire et un risque de desynchronisation.
 
-Pour chaque jour ouvrable manquant du mois :
+**2. Performance - eviter les boucles N+1**
+Le plan actuel (inspire de `injectValidatedLeaves`) fait une boucle par fiche puis par jour → beaucoup de requetes unitaires. Pour 20 employes × 5 jours = potentiellement 100 requetes individuelles.
 
-1. **Planning direct** — Affectation existante dans `planning_affectations` pour ce salarié à cette date
-2. **Clone du planning S-1** — Même jour de la semaine dans la semaine précédente (ex: lundi S14 → lundi S13)
-3. **Semaine Socle** — Fallback actuel si le salarié n'est pas dans le planning
-4. **Fallback optimiste** — 39h standard, panier, T1
+Approche optimisee :
+- 1 seule requete pour charger TOUS les `fiches_jours` eligibles (`code_trajet = "A_COMPLETER"` ET `trajet_perso != true`) de toutes les fiches transmises
+- 1 seule requete pour resoudre les `code_chantier_du_jour` uniques → `chantiers.id`
+- 1 seule requete pour charger les `codes_trajet_defaut` pertinents (filtres par `entreprise_id` + `.in("salarie_id", [...]`)
+- Puis en memoire : construire la map de lookup et faire les updates en batch
 
-Heures et accessoires par jour estimé :
-- **Heures** : 8h (lun-jeu), 7h (vendredi)
-- **Panier** : oui (sauf apprenti)
-- **Trajet** : `codes_trajet_defaut[chantier_id + salarié_id]` → sinon trajet le plus fréquent des jours réels → sinon T1
-- **Chantier** : `code_chantier` et `ville` du chantier affecté
+**3. Cas limites a gerer**
 
-## Modifications techniques
+| Cas | Comportement |
+|---|---|
+| `code_trajet = "A_COMPLETER"` | Chercher dans la map → remplacer |
+| `code_trajet = "GD"` | Ne pas toucher |
+| `code_trajet = null` | Ne pas toucher (trajet non coche) |
+| `trajet_perso = true` | Ne pas toucher |
+| Mapping = `"AUCUN"` | Mettre `code_trajet = null` |
+| Mapping inexistant (couple chantier/salarie non configure) | Laisser `"A_COMPLETER"` pour traitement RH manuel |
+| `code_chantier_du_jour` non trouvable dans `chantiers` | Fallback sur `fiche.chantier_id` |
+| `code_chantier_du_jour` vide/null | Utiliser `fiche.chantier_id` |
 
-### `src/hooks/usePaiePrevisionnelle.ts`
+**4. Troisieme point d'entree deja couvert**
+`FicheDetail.tsx` (validation conducteur) appelle `useUpdateFicheStatus` via `updateStatus.mutateAsync()` → deja couvert par le hook. Pas de modification supplementaire.
 
-**Nouvelle fonction `fetchPlanningForEstimation`** :
-- Paramètres : `salarieIds[]`, `datesManquantes[]`, `entrepriseId`
-- Requête 1 : `planning_affectations` filtrée par `employe_id` IN salarieIds + dates manquantes → `Map<salarieId+date, chantier_id>`
-- Pour les dates sans résultat : calculer les dates S-1 correspondantes (même jour de semaine, semaine précédente)
-- Requête 2 (si nécessaire) : `planning_affectations` pour ces dates S-1
-- Requête 3 : `chantiers` pour résoudre `code_chantier` et `ville`
-- Retourne `Map<salarieId+date, { chantierId, chantierCode, chantierVille }>`
+**5. Gestion d'erreur**
+L'auto-fill ne doit JAMAIS bloquer la transmission. Si une erreur survient (table inaccessible, etc.), on log l'erreur et on continue. La fiche arrive au RH avec `A_COMPLETER` — le RH peut corriger manuellement comme avant.
 
-**Modification de `generateEstimatedDays`** :
-- Devient `async`, accepte un nouveau paramètre `planningMap` (optionnel)
-- Nouveau cas prioritaire avant la semaine socle : si `planningMap` a une entrée pour la date → jour estimé avec chantier du planning + heures standard + trajet résolu
-- Dates non couvertes → fallback semaine socle / optimiste existant
+---
 
-### `src/hooks/rhShared.ts`
+### Plan corrige
 
-Dans `buildRHConsolidation` :
-- **En amont** (1 requête batch) : charger toutes les `planning_affectations` pour `entreprise_id` + plage de dates manquantes du mois
-- **En amont** (1 requête batch) : charger tous les `codes_trajet_defaut` pour résoudre les trajets
-- Passer le `planningMap` résolu à `generateEstimatedDays` pour chaque salarié
+**Fichier 1 : `src/hooks/useApplyDefaultCodesTrajet.ts` (nouveau)**
 
-### Aucune migration BDD
-
-`planning_affectations` existe déjà avec `employe_id`, `chantier_id`, `jour`, `semaine`, `entreprise_id`.
-
-### Aucun changement UI
-
-Flag `is_estimated: true` conservé. Badge popover existant dans RHPreExport inchangé. Snapshot M-1 et régularisation identiques.
-
-## Flux résumé
-
-```text
-Export paie (20 mars, S12)
-│
-├─ Jours réels (S10, S11, S12) → fiches_jours ✅
-│
-├─ Jours manquants S13 (24-28 mars)
-│   └─ Planning S13 rempli le 18/03 ✅
-│       └─ Chantier affecté + 8h/7h + trajet défaut
-│
-├─ Jours manquants S14 (30-31 mars)
-│   └─ Planning S14 pas encore rempli ❌
-│       └─ Clone S13 (lun S13→lun S14, mar S13→mar S14)
-│           └─ Chantier affecté + 8h/7h + trajet défaut
-│
-└─ Salarié absent du planning ?
-    └─ Fallback semaine socle / optimiste
+```typescript
+export async function applyDefaultCodesTrajet(fiches: { id: string, salarie_id: string, chantier_id: string | null }[]) {
+  // 1. Collecter tous les fiche IDs et salarie IDs uniques
+  // 2. Charger en 1 requete : fiches_jours WHERE fiche_id IN (...) 
+  //    AND code_trajet = "A_COMPLETER" AND (trajet_perso IS NULL OR trajet_perso = false)
+  // 3. Extraire les code_chantier_du_jour uniques non-null
+  // 4. Resoudre en 1 requete : chantiers WHERE code_chantier IN (...) → map code→id
+  // 5. Charger en 1 requete : codes_trajet_defaut WHERE entreprise_id = X 
+  //    AND salarie_id IN (...)
+  //    → map "(chantier_id, salarie_id)" → code_trajet
+  // 6. Pour chaque fiches_jours eligible :
+  //    - Determiner chantier_id effectif (code_chantier_du_jour resolu OU fiche.chantier_id)
+  //    - Lookup dans la map
+  //    - Si trouve et != "AUCUN" → update code_trajet
+  //    - Si trouve et == "AUCUN" → update code_trajet = null
+  //    - Si pas trouve → laisser "A_COMPLETER"
+  // 7. Executer les updates en batch (par groupe de 50)
+  // 8. Tout en try/catch — jamais de throw vers l'appelant
+}
 ```
 
+**Fichier 2 : `src/hooks/useFiches.ts`**
+- Ligne 747 : ajouter `chantier_id` au select
+- Apres ligne 768 (apres `injectValidatedLeaves`) : appeler `applyDefaultCodesTrajet(updatedFiches)`
+
+**Fichier 3 : `src/pages/SignatureFinisseurs.tsx`**
+- Lignes 419/433 : ajouter `chantier_id` au select
+- Apres ligne 451 (apres `injectValidatedLeaves`) : appeler `applyDefaultCodesTrajet(fichesTransmises)`
+
+---
+
+### Ce qui ne change PAS
+- Aucune migration DB
+- Aucun changement UI
+- Le comportement RH reste identique (les codes non resolus restent `A_COMPLETER`)
+- `injectValidatedLeaves` continue de fonctionner avant l'auto-fill (ordre important : les conges injectent des jours a 0h sans trajet, donc pas de conflit)
+
+## ✅ Plan implémenté : Paie Prévisionnelle basée sur le Planning S+1
+
+### Fichiers modifiés
+
+**`src/hooks/usePaiePrevisionnelle.ts`** :
+- Nouvelle fonction `fetchPlanningForEstimation(salarieIds, dates, entrepriseId)` → charge planning_affectations direct + clone S-1 + résolution chantiers
+- Nouvelle fonction `fetchCodesTrajetDefautBatch(entrepriseId, salarieIds)` → charge codes_trajet_defaut en batch
+- `generateEstimatedDays` enrichi avec paramètres `planningMap`, `codesTrajetMap`, `salarieId` — le planning a priorité sur la semaine socle
+
+**`src/hooks/rhShared.ts`** :
+- Pré-chargement batch du planning + codes trajet avant la boucle par salarié (2 requêtes parallèles)
+- Passage de `globalPlanningMap` et `globalCodesTrajetMap` à `generateEstimatedDays`
+
+### Ordre de priorité des estimations
+1. Planning direct (planning_affectations pour la date)
+2. Clone S-1 (même jour de semaine, 7 jours avant)
+3. Semaine Socle (fallback existant)
+4. Fallback optimiste (8h/7h, panier, T1)
+
+### Aucune migration BDD, aucun changement UI
+}

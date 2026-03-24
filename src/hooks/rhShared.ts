@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { batchQueryIn } from "@/lib/supabaseBatch";
-import { format, startOfMonth, endOfMonth, parseISO, startOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, eachDayOfInterval, getDay } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
-import { generateEstimatedDays, calculateRegularisationM1Batch } from "./usePaiePrevisionnelle";
+import { generateEstimatedDays, calculateRegularisationM1Batch, fetchPlanningForEstimation, fetchCodesTrajetDefautBatch, PlanningChantierInfo } from "./usePaiePrevisionnelle";
 
 export interface RHFilters {
   periode?: string;
@@ -514,6 +514,35 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
   }
 
+  // 🆕 PRE-FETCH planning data for estimation (batch, before per-employee loop)
+  let globalPlanningMap: Map<string, PlanningChantierInfo> | null = null;
+  let globalCodesTrajetMap: Map<string, string> | null = null;
+
+  if (filters.includeEstimations && !isAllPeriodes && mois && entrepriseId) {
+    try {
+      const [year, month] = mois.split("-").map(Number);
+      const moisDebut2 = startOfMonth(new Date(year, month - 1));
+      const moisFin2 = endOfMonth(new Date(year, month - 1));
+
+      // Calculer toutes les dates ouvrables manquantes potentielles du mois
+      const tousJoursOuvrablesMois = eachDayOfInterval({ start: moisDebut2, end: moisFin2 })
+        .filter((d: Date) => { const dow = getDay(d); return dow >= 1 && dow <= 5; })
+        .map((d: Date) => format(d, "yyyy-MM-dd"));
+
+      // Charger planning + codes trajet en parallèle
+      const [planningMap, codesTrajetMap] = await Promise.all([
+        fetchPlanningForEstimation(salarieIds as string[], tousJoursOuvrablesMois, entrepriseId),
+        fetchCodesTrajetDefautBatch(entrepriseId, salarieIds as string[]),
+      ]);
+
+      globalPlanningMap = planningMap;
+      globalCodesTrajetMap = codesTrajetMap;
+      console.log(`[Planning Batch] ${planningMap.size} affectations, ${codesTrajetMap.size} codes trajet chargés`);
+    } catch (e) {
+      console.warn("[Planning Batch] Erreur chargement planning, fallback semaine socle:", e);
+    }
+  }
+
   // Agréger par salarié
   const employeeMap = new Map<string, EmployeeWithDetails>();
 
@@ -779,6 +808,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       const estimatedDays = generateEstimatedDays(detailJours, mois, {
         isEcole: isApprentice,
         defaultTrajetCode,
+        planningMap: globalPlanningMap || undefined,
+        codesTrajetMap: globalCodesTrajetMap || undefined,
+        salarieId,
       });
 
       if (estimatedDays.length > 0) {
