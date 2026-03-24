@@ -155,7 +155,8 @@ export const useExportPaieReadiness = (periode: string) => {
       for (const f of allFiches) {
         if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
           const existing = nonValideesMap.get(f.salarie_id);
-          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string; role_metier: string | null } | null;
+          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string; role_metier: string | null; agence_interim: string | null } | null;
+          if (utilisateur?.agence_interim) continue; // Exclure les intérimaires
           if (existing) {
             if (f.semaine) existing.semaines.add(f.semaine);
           } else {
