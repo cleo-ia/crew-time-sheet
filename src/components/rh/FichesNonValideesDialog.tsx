@@ -15,7 +15,7 @@ interface Props {
 export const FichesNonValideesDialog = ({ open, onOpenChange, fichesNonValidees, periodeLabel }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="capitalize">Fiches en attente — {periodeLabel}</DialogTitle>
           <DialogDescription>
