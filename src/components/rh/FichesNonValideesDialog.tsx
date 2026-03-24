@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
+import { RoleBadge } from "@/components/ui/role-badge";
 import type { FicheNonValidee } from "@/hooks/useExportPaieReadiness";
 
 interface Props {
