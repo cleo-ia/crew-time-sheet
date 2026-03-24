@@ -1,60 +1,56 @@
 
 
-# Plan : Détail du blocage par chef/semaine au clic sur un badge
+# Plan : Bouton d'envoi de mail urgent depuis le diagnostic de blocage
 
 ## Objectif
 
-Quand Tanguy clique sur un badge semaine (ex: S12) d'un salarié dans le dialog "Fiches en attente", un sous-dialog s'ouvre et affiche :
-- Le chef concerné et son chantier
-- La liste des employés affectés à ce chef cette semaine-là
-- Pour chaque employé, le statut de sa fiche (pas de fiche, brouillon = bloqué côté chef, validé chef = bloqué côté conducteur)
-- Un résumé clair : "Bloqué côté chef" ou "Bloqué côté conducteur"
+Ajouter un bouton dans `FicheBlockDetailDialog` qui envoie un email d'urgence pour transmission/validation des fiches. Le destinataire est déterminé automatiquement par le diagnostic :
+- **Bloqué côté chef** → email au chef
+- **Bloqué côté conducteur** → email au conducteur
 
 ## Modifications
 
-### 1. Enrichir les données — `src/hooks/useExportPaieReadiness.ts`
+### 1. Nouvelle Edge Function — `supabase/functions/rappel-urgence-export/index.ts`
 
-- Ajouter `chantier_id` à l'interface `FicheNonValidee` (map salarié → chantier_id par semaine)
-- Stocker les paires `{semaine, chantierId}` au lieu de juste `semaine` pour pouvoir requêter ensuite
+Edge function qui reçoit `{ targetUserId, targetRole, semaine, chantierNom, teamCount }` et :
+- Récupère le profil (email, prénom) du destinataire via `profiles`
+- Construit un email HTML avec le template existant (`generateEmailHtml`) en mode `alerte`
+- Envoie via Resend
+- Insère un historique dans `rappels_historique`
 
-Ou plus simplement : garder l'interface actuelle et faire la requête de détail à la demande (au clic).
+Suit le même pattern que `rappel-chefs` (Resend + shared email template + CORS + service role).
 
-**Choix retenu** : requête à la demande (plus simple, pas besoin de changer le hook existant).
+### 2. Enrichir le hook — `src/hooks/useFicheBlockDetail.ts`
 
-### 2. Nouveau hook — `src/hooks/useFicheBlockDetail.ts`
+Ajouter `chefEmail` et `conducteurEmail` à l'interface `FicheBlockDetail`. Les récupérer depuis la table `profiles` (qui contient l'email des users auth) en plus de `utilisateurs`.
 
-Hook qui prend `(salarieId, semaine)` et retourne :
-- Le chantier et le chef associés (via `affectations_jours_chef` ou `fiches`)
-- La liste des employés de l'équipe du chef sur ce chantier/semaine (via `affectations_jours_chef`)
-- Pour chaque employé : son statut de fiche (`null` = aucune fiche, `BROUILLON`, `EN_SIGNATURE`, `VALIDE_CHEF`, etc.)
-- Le diagnostic : si toutes les fiches sont en `BROUILLON`/`EN_SIGNATURE`/absentes → "Bloqué côté chef" ; si au moins une est `VALIDE_CHEF` → "Bloqué côté conducteur"
+### 3. Nouveau hook — `src/hooks/useSendUrgentRappel.ts`
 
-Logique :
-1. Trouver la fiche du salarié pour cette semaine → récupérer `chantier_id`
-2. Via `affectations_jours_chef`, trouver le `chef_id` du chantier/semaine
-3. Lister tous les `macon_id` affectés à ce chef/chantier/semaine
-4. Récupérer les fiches de chacun → statut
-5. Enrichir avec noms depuis `utilisateurs`
+Mutation qui appelle `supabase.functions.invoke("rappel-urgence-export", { body: {...} })` avec toast de succès/erreur.
 
-### 3. Nouveau composant — `src/components/rh/FicheBlockDetailDialog.tsx`
+### 4. Modifier — `src/components/rh/FicheBlockDetailDialog.tsx`
 
-Dialog affichant :
-- Header : "Détail S12 — BELBAGHDADI Amine" avec le nom du chantier
-- Diagnostic global en badge coloré : "Bloqué côté chef" (orange) ou "Bloqué côté conducteur" (rouge)
-- Nom du chef et nom du conducteur
-- Tableau des employés de l'équipe avec colonnes : Nom, Rôle, Statut (avec `StatusBadge` existant ou badge simplifié)
-
-### 4. Modifier — `src/components/rh/FichesNonValideesDialog.tsx`
-
-- Rendre les badges semaine cliquables (`cursor-pointer`, `onClick`)
-- Au clic, ouvrir `FicheBlockDetailDialog` avec `salarieId` + `semaine`
-- Ajouter un state local pour le dialog de détail
+- Importer `Button` et le hook `useSendUrgentRappel`
+- Ajouter un bouton sous le diagnostic badge :
+  - Si `bloque_chef` : "Envoyer un rappel urgent au chef" (icône Mail)
+  - Si `bloque_conducteur` : "Envoyer un rappel urgent au conducteur" (icône Mail)
+  - Si `mixte` : deux boutons
+- Confirmation via state + texte "Êtes-vous sûr ?" avant envoi
+- Spinner pendant l'envoi
 
 ## Résumé des fichiers
 
 | Fichier | Action |
 |---|---|
-| `src/hooks/useFicheBlockDetail.ts` | Créer |
-| `src/components/rh/FicheBlockDetailDialog.tsx` | Créer |
-| `src/components/rh/FichesNonValideesDialog.tsx` | Modifier (badges cliquables) |
+| `supabase/functions/rappel-urgence-export/index.ts` | Créer |
+| `src/hooks/useFicheBlockDetail.ts` | Modifier (ajouter emails) |
+| `src/hooks/useSendUrgentRappel.ts` | Créer |
+| `src/components/rh/FicheBlockDetailDialog.tsx` | Modifier (bouton) |
+
+## Détails techniques
+
+- L'email est envoyé via Resend (clé `RESEND_API_KEY` déjà configurée)
+- Le template utilise `generateEmailHtml` avec `emailType: 'alerte'` pour un style urgent
+- Le contenu mentionne la semaine, le chantier, et le nombre de fiches en attente
+- L'historique est tracé dans `rappels_historique` avec `type = 'urgence_export'`
 
