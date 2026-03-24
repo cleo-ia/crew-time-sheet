@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 import { batchQueryIn } from "@/lib/supabaseBatch";
-import { fr } from "date-fns/locale";
 
 export interface FicheNonValidee {
   salarieId: string;
