@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
+import { RoleBadge } from "@/components/ui/role-badge";
 import type { FicheNonValidee } from "@/hooks/useExportPaieReadiness";
 
 interface Props {
@@ -42,7 +43,12 @@ export const FichesNonValideesDialog = ({ open, onOpenChange, fichesNonValidees,
                 {fichesNonValidees.map((f) => (
                   <TableRow key={f.salarieId}>
                     <TableCell className="font-medium whitespace-nowrap">
-                      {f.nom} {f.prenom}
+                      <div className="flex items-center gap-2">
+                        <span>{f.nom} {f.prenom}</span>
+                        {f.roleMetier && (
+                          <RoleBadge role={f.roleMetier as any} size="sm" />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
