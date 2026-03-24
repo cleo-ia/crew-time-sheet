@@ -411,12 +411,12 @@ const SignatureFinisseurs = () => {
 
         // 3. Injecter automatiquement les congés validés pour ces fiches
         // Récupérer toutes les fiches transmises (fiches avec chantier des affectations)
-        let fichesTransmises: { id: string; salarie_id: string; semaine: string }[] = [];
+        let fichesTransmises: { id: string; salarie_id: string; semaine: string; chantier_id: string | null }[] = [];
         
         if (allChantierIds.length > 0) {
           const { data: fichesAvecChantier } = await supabase
             .from("fiches")
-            .select("id, salarie_id, semaine")
+            .select("id, salarie_id, semaine, chantier_id")
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
             .in("chantier_id", allChantierIds);
@@ -430,7 +430,7 @@ const SignatureFinisseurs = () => {
           const chantierIdsSansChef = chantiersWithoutChef.map(c => c.id);
           const { data: fichesChantiersSansChef } = await supabase
             .from("fiches")
-            .select("id, salarie_id, semaine")
+            .select("id, salarie_id, semaine, chantier_id")
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
             .in("chantier_id", chantierIdsSansChef);
@@ -449,6 +449,9 @@ const SignatureFinisseurs = () => {
         if (fichesTransmises.length > 0) {
           const { injectValidatedLeaves } = await import("@/hooks/useInjectValidatedLeaves");
           await injectValidatedLeaves(fichesTransmises);
+
+          const { applyDefaultCodesTrajet } = await import("@/hooks/useApplyDefaultCodesTrajet");
+          await applyDefaultCodesTrajet(fichesTransmises);
         }
       }
 
