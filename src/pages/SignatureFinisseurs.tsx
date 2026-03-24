@@ -430,7 +430,7 @@ const SignatureFinisseurs = () => {
           const chantierIdsSansChef = chantiersWithoutChef.map(c => c.id);
           const { data: fichesChantiersSansChef } = await supabase
             .from("fiches")
-            .select("id, salarie_id, semaine")
+            .select("id, salarie_id, semaine, chantier_id")
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
             .in("chantier_id", chantierIdsSansChef);
