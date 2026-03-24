@@ -151,8 +151,10 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       return {
         chefId,
         chefNom: chefUser ? `${chefUser.prenom} ${chefUser.nom}` : "—",
+        chefEmail,
         conducteurId,
         conducteurNom: conducteurUser ? `${conducteurUser.prenom} ${conducteurUser.nom}` : "—",
+        conducteurEmail,
         chantierNom: chantier?.nom || "—",
         diagnostic,
         diagnosticLabel,
