@@ -776,8 +776,16 @@ async function syncEntreprise(
     }
   }
 
-  // 4. Traiter chaque employé du planning
-  for (const [key, affectations] of planningByEmployeChantier) {
+  // 4. Traiter chaque employé du planning (chefs en premier pour garantir l'initialisation)
+  const sortedEntries = [...planningByEmployeChantier.entries()].sort(([, a], [, b]) => {
+    const aIsChef = a[0]?.employe?.role_metier === 'chef' ? 0 : 1
+    const bIsChef = b[0]?.employe?.role_metier === 'chef' ? 0 : 1
+    return aIsChef - bIsChef
+  })
+  const chefFirstCount = sortedEntries.filter(([, a]) => a[0]?.employe?.role_metier === 'chef').length
+  console.log(`[sync-planning-to-teams] Ordre: ${chefFirstCount} chef(s) traités en premier sur ${sortedEntries.length} entrées`)
+
+  for (const [key, affectations] of sortedEntries) {
     const [employeId, chantierId] = key.split('|')
     const employe = affectations[0]?.employe
     const employeNom = (employe?.prenom || '') + ' ' + (employe?.nom || '') || employeId
