@@ -744,7 +744,7 @@ export const useUpdateFicheStatus = () => {
           .update({ statut: status as any })
           .eq("chantier_id", chantierId)
           .eq("semaine", semaine)
-          .select("id, salarie_id, semaine");
+          .select("id, salarie_id, semaine, chantier_id");
 
         if (error) throw error;
         updatedFiches = data;
@@ -754,7 +754,7 @@ export const useUpdateFicheStatus = () => {
           .from("fiches")
           .update({ statut: status as any })
           .eq("id", ficheId)
-          .select("id, salarie_id, semaine");
+          .select("id, salarie_id, semaine, chantier_id");
 
         if (error) throw error;
         updatedFiches = data;
