@@ -150,11 +150,12 @@ export const useExportPaieReadiness = (periode: string) => {
       }
 
       // Build fichesNonValidees: group unvalidated fiches by salarie
-      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string> }>();
+      const ROLE_ORDER: Record<string, number> = { chef: 0, macon: 1, finisseur: 2, grutier: 3 };
+      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string>; roleMetier: string | null }>();
       for (const f of allFiches) {
         if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
           const existing = nonValideesMap.get(f.salarie_id);
-          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string } | null;
+          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string; role_metier: string | null } | null;
           if (existing) {
             if (f.semaine) existing.semaines.add(f.semaine);
           } else {
@@ -162,6 +163,7 @@ export const useExportPaieReadiness = (periode: string) => {
               nom: utilisateur?.nom || "—",
               prenom: utilisateur?.prenom || "",
               semaines: new Set(f.semaine ? [f.semaine] : []),
+              roleMetier: utilisateur?.role_metier || null,
             });
           }
         }
@@ -172,8 +174,14 @@ export const useExportPaieReadiness = (periode: string) => {
           nom: v.nom,
           prenom: v.prenom,
           semaines: Array.from(v.semaines).sort(),
+          roleMetier: v.roleMetier,
         }))
-        .sort((a, b) => a.nom.localeCompare(b.nom));
+        .sort((a, b) => {
+          const ra = ROLE_ORDER[a.roleMetier || ""] ?? 4;
+          const rb = ROLE_ORDER[b.roleMetier || ""] ?? 4;
+          if (ra !== rb) return ra - rb;
+          return a.nom.localeCompare(b.nom);
+        });
 
       return {
         status,
