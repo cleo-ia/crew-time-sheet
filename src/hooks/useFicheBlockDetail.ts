@@ -137,7 +137,10 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       let diagnostic: FicheBlockDetail["diagnostic"];
       let diagnosticLabel: string;
 
-      if (allPreChef) {
+      if (!chefId) {
+        diagnostic = "bloque_conducteur";
+        diagnosticLabel = "Bloqué côté conducteur — en attente de transmission";
+      } else if (allPreChef) {
         diagnostic = "bloque_chef";
         diagnosticLabel = "Bloqué côté chef — le chef n'a pas encore transmis";
       } else if (hasValideChef) {
