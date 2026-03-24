@@ -53,6 +53,11 @@ export const FichesNonValideesDialog = ({ open, onOpenChange, fichesNonValidees,
                           {f.roleMetier && (
                             <RoleBadge role={f.roleMetier as any} size="sm" />
                           )}
+                          {f.sansChef && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">
+                              Sans chef
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

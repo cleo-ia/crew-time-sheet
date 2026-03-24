@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, startOfISOWeek, addWeeks, format, getISOWeek, getISOWeekYear, parse } from "date-fns";
 import { fr } from "date-fns/locale";
+import { batchQueryIn } from "@/lib/supabaseBatch";
 
 export interface FicheNonValidee {
   salarieId: string;
@@ -9,6 +10,7 @@ export interface FicheNonValidee {
   prenom: string;
   semaines: string[];
   roleMetier: string | null;
+  sansChef: boolean;
 }
 
 export interface ExportPaieReadiness {
@@ -169,6 +171,21 @@ export const useExportPaieReadiness = (periode: string) => {
           }
         }
       }
+      // Fetch affectations_jours_chef to determine sansChef status
+      const salarieIds = Array.from(nonValideesMap.keys());
+      const affectationsChef = salarieIds.length > 0
+        ? await batchQueryIn<{ macon_id: string }>(
+            "affectations_jours_chef",
+            "macon_id",
+            "macon_id",
+            salarieIds,
+            {
+              extraFilters: (q: any) => q.in("semaine", weeks),
+            }
+          )
+        : [];
+      const salariesAvecChef = new Set(affectationsChef.map((a) => a.macon_id));
+
       const fichesNonValidees: FicheNonValidee[] = Array.from(nonValideesMap.entries())
         .map(([salarieId, v]) => ({
           salarieId,
@@ -176,6 +193,7 @@ export const useExportPaieReadiness = (periode: string) => {
           prenom: v.prenom,
           semaines: Array.from(v.semaines).sort(),
           roleMetier: v.roleMetier,
+          sansChef: !salariesAvecChef.has(salarieId),
         }))
         .sort((a, b) => {
           const ra = ROLE_ORDER[a.roleMetier || ""] ?? 4;
