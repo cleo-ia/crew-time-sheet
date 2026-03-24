@@ -449,6 +449,9 @@ const SignatureFinisseurs = () => {
         if (fichesTransmises.length > 0) {
           const { injectValidatedLeaves } = await import("@/hooks/useInjectValidatedLeaves");
           await injectValidatedLeaves(fichesTransmises);
+
+          const { applyDefaultCodesTrajet } = await import("@/hooks/useApplyDefaultCodesTrajet");
+          await applyDefaultCodesTrajet(fichesTransmises);
         }
       }
 
