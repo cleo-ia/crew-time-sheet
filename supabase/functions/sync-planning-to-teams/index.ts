@@ -2042,6 +2042,8 @@ async function createNewAffectation(
           entreprise_id: entrepriseId
         }, { onConflict: 'finisseur_id,date' })
     }
+    // ✅ FIX: Supprimer les jours fantômes dans affectations_finisseurs_jours
+    await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
   }
 
   return { created: true, reason: '' }
