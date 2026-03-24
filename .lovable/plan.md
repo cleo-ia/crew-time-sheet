@@ -1,28 +1,31 @@
 
 
-# Plan : Badge "Sans chef" pour les employés gérés par un conducteur
+# Fix : Diagnostic pour employés sans chef
 
-## Objectif
+## Problème
+Quand un employé n'a pas de chef affecté (`chefId === null`), le diagnostic affiche "Bloqué côté chef" alors que c'est le conducteur qui est responsable de la transmission.
 
-Ajouter un badge "Sans chef" (style discret, ex: gris/bleu) a cote du `RoleBadge` dans le dialog "Fiches en attente" pour les employes qui n'ont aucune affectation chef (`affectations_jours_chef`) sur les semaines concernees.
+## Modification
 
-## Modifications
+### `src/hooks/useFicheBlockDetail.ts`
 
-### 1. `src/hooks/useExportPaieReadiness.ts`
+Dans la section diagnostic (ligne ~112), ajouter une vérification `chefId === null` avant la logique existante :
 
-- Ajouter un champ `sansChef: boolean` a l'interface `FicheNonValidee`
-- Apres avoir construit `nonValideesMap`, faire une requete batch sur `affectations_jours_chef` pour toutes les semaines du mois, filtrant sur les `macon_id` presents dans la map
-- Pour chaque salarie, si aucune ligne `affectations_jours_chef` n'existe pour ses semaines non validees, marquer `sansChef: true`
+```typescript
+if (!chefId) {
+  diagnostic = "bloque_conducteur";
+  diagnosticLabel = "Bloqué côté conducteur — en attente de transmission";
+} else if (allPreChef) {
+  diagnostic = "bloque_chef";
+  diagnosticLabel = "Bloqué côté chef — le chef n'a pas encore transmis";
+} else if (hasValideChef) {
+  diagnostic = "bloque_conducteur";
+  diagnosticLabel = "Bloqué côté conducteur — en attente de validation";
+} else {
+  diagnostic = "mixte";
+  diagnosticLabel = "Statuts mixtes dans l'équipe";
+}
+```
 
-### 2. `src/components/rh/FichesNonValideesDialog.tsx`
-
-- A cote du `RoleBadge`, afficher conditionnellement un badge "Sans chef" si `f.sansChef === true`
-- Style : `Badge variant="outline"` avec couleur distinctive (ex: bleu/gris) pour differencier visuellement
-
-## Fichiers
-
-| Fichier | Action |
-|---|---|
-| `src/hooks/useExportPaieReadiness.ts` | Modifier (ajouter `sansChef` + requete affectations) |
-| `src/components/rh/FichesNonValideesDialog.tsx` | Modifier (afficher badge) |
+Un seul fichier modifié, ~5 lignes changées.
 
