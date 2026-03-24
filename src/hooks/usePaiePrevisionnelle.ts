@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, startOfMonth, endOfMonth, getDay, eachDayOfInterval, subMonths, addDays } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, getDay, eachDayOfInterval, subMonths, addDays, subDays } from "date-fns";
 import { batchQueryIn } from "@/lib/supabaseBatch";
 import { EmployeeDetail, EmployeeWithDetails } from "./rhShared";
 
@@ -7,14 +7,173 @@ import { EmployeeDetail, EmployeeWithDetails } from "./rhShared";
  * Paie Prévisionnelle — Génération des jours estimés et régularisation M-1
  * 
  * Logique :
- * 1. Identifier la "Semaine Socle" = dernière semaine complètement saisie du mois
- * 2. Cloner les données de la Semaine Socle pour les jours manquants
- * 3. Fallback optimiste si la semaine socle est en absence
- * 4. Gestion apprentis (is_ecole) : 7h/jour, pas de panier/trajet
+ * 1. Planning direct — affectation dans planning_affectations pour cette date
+ * 2. Clone planning S-1 — même jour de la semaine, semaine précédente
+ * 3. Semaine Socle — dernière semaine saisie du mois
+ * 4. Fallback optimiste — 39h standard, panier, T1
  */
 
 export interface EstimatedDay extends EmployeeDetail {
   is_estimated: true;
+}
+
+export interface PlanningChantierInfo {
+  chantierId: string;
+  chantierCode: string;
+  chantierVille: string;
+}
+
+/**
+ * Charge les données du planning pour estimer les jours manquants.
+ * Retourne Map<"salarieId_yyyy-MM-dd", PlanningChantierInfo>
+ * 
+ * Stratégie :
+ * 1. Requête directe sur les dates manquantes
+ * 2. Pour les dates non couvertes, clone S-1 (même jour de semaine, 7 jours avant)
+ * 3. Résout les chantier_id en code_chantier + ville
+ */
+export async function fetchPlanningForEstimation(
+  salarieIds: string[],
+  datesManquantes: string[], // format yyyy-MM-dd
+  entrepriseId: string
+): Promise<Map<string, PlanningChantierInfo>> {
+  const result = new Map<string, PlanningChantierInfo>();
+  if (salarieIds.length === 0 || datesManquantes.length === 0) return result;
+
+  // 1. Requête directe : planning_affectations pour les dates manquantes
+  const planningDirect = await batchQueryIn<{
+    employe_id: string;
+    chantier_id: string;
+    jour: string;
+  }>(
+    "planning_affectations",
+    "employe_id, chantier_id, jour",
+    "employe_id",
+    salarieIds,
+    {
+      extraFilters: (q: any) => q
+        .eq("entreprise_id", entrepriseId)
+        .in("jour", datesManquantes),
+    }
+  );
+
+  // Collecter les chantier_id trouvés et les dates couvertes
+  const chantierIds = new Set<string>();
+  const coveredKeys = new Set<string>();
+
+  for (const row of planningDirect) {
+    const key = `${row.employe_id}_${row.jour}`;
+    coveredKeys.add(key);
+    chantierIds.add(row.chantier_id);
+    // Stocker temporairement avec chantierId seulement (on résoudra après)
+    result.set(key, { chantierId: row.chantier_id, chantierCode: "", chantierVille: "" });
+  }
+
+  // 2. Pour les dates non couvertes, calculer S-1 (même jour, 7 jours avant)
+  const uncoveredDates: { salarieId: string; originalDate: string; s1Date: string }[] = [];
+  
+  for (const salarieId of salarieIds) {
+    for (const dateStr of datesManquantes) {
+      const key = `${salarieId}_${dateStr}`;
+      if (!coveredKeys.has(key)) {
+        const s1Date = format(subDays(parseISO(dateStr), 7), "yyyy-MM-dd");
+        uncoveredDates.push({ salarieId, originalDate: dateStr, s1Date });
+      }
+    }
+  }
+
+  if (uncoveredDates.length > 0) {
+    // Requête S-1
+    const s1Dates = [...new Set(uncoveredDates.map(u => u.s1Date))];
+    const s1SalarieIds = [...new Set(uncoveredDates.map(u => u.salarieId))];
+
+    const planningS1 = await batchQueryIn<{
+      employe_id: string;
+      chantier_id: string;
+      jour: string;
+    }>(
+      "planning_affectations",
+      "employe_id, chantier_id, jour",
+      "employe_id",
+      s1SalarieIds,
+      {
+        extraFilters: (q: any) => q
+          .eq("entreprise_id", entrepriseId)
+          .in("jour", s1Dates),
+      }
+    );
+
+    // Indexer S-1 par employe_id + jour
+    const s1Map = new Map<string, string>();
+    for (const row of planningS1) {
+      s1Map.set(`${row.employe_id}_${row.jour}`, row.chantier_id);
+    }
+
+    // Appliquer le clone S-1
+    for (const { salarieId, originalDate, s1Date } of uncoveredDates) {
+      const chantierId = s1Map.get(`${salarieId}_${s1Date}`);
+      if (chantierId) {
+        chantierIds.add(chantierId);
+        result.set(`${salarieId}_${originalDate}`, { chantierId, chantierCode: "", chantierVille: "" });
+      }
+    }
+  }
+
+  // 3. Résoudre les chantier_id en code_chantier + ville
+  if (chantierIds.size > 0) {
+    const { data: chantiers } = await supabase
+      .from("chantiers")
+      .select("id, code_chantier, ville")
+      .in("id", [...chantierIds]);
+
+    const chantierMap = new Map<string, { code: string; ville: string }>();
+    (chantiers || []).forEach(c => {
+      chantierMap.set(c.id, { code: c.code_chantier || "", ville: c.ville || "" });
+    });
+
+    // Enrichir le résultat
+    for (const [key, info] of result.entries()) {
+      const ch = chantierMap.get(info.chantierId);
+      if (ch) {
+        result.set(key, { ...info, chantierCode: ch.code, chantierVille: ch.ville });
+      }
+    }
+  }
+
+  console.log(`[Planning Estimation] ${result.size} jours résolus via planning pour ${salarieIds.length} salariés`);
+  return result;
+}
+
+/**
+ * Charge les codes trajet par défaut en batch pour résolution planning.
+ * Retourne Map<"chantierId_salarieId", codeTrajet>
+ */
+export async function fetchCodesTrajetDefautBatch(
+  entrepriseId: string,
+  salarieIds: string[]
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (!entrepriseId || salarieIds.length === 0) return map;
+
+  const rows = await batchQueryIn<{
+    chantier_id: string;
+    salarie_id: string;
+    code_trajet: string;
+  }>(
+    "codes_trajet_defaut",
+    "chantier_id, salarie_id, code_trajet",
+    "salarie_id",
+    salarieIds,
+    {
+      extraFilters: (q: any) => q.eq("entreprise_id", entrepriseId),
+    }
+  );
+
+  for (const row of rows) {
+    map.set(`${row.chantier_id}_${row.salarie_id}`, row.code_trajet);
+  }
+
+  return map;
 }
 
 /**
@@ -27,21 +186,18 @@ function findSemaineSocle(
   moisDebut: Date,
   moisFin: Date
 ): Map<number, EmployeeDetail> | null {
-  // Grouper les jours réels par semaine ISO (dayOfWeek: 1=lundi ... 5=vendredi)
   const joursDuMois = detailJours.filter(j => {
     const d = parseISO(j.date);
     return d >= moisDebut && d <= moisFin;
   });
 
-  // Grouper par numéro de semaine ISO (utiliser le lundi comme clé)
   const weeksMap = new Map<string, Map<number, EmployeeDetail>>();
   
   joursDuMois.forEach(jour => {
     const d = parseISO(jour.date);
-    const dayOfWeek = getDay(d); // 0=dim, 1=lun, ..., 5=ven
-    if (dayOfWeek < 1 || dayOfWeek > 5) return; // ignorer weekends
+    const dayOfWeek = getDay(d);
+    if (dayOfWeek < 1 || dayOfWeek > 5) return;
     
-    // Calculer le lundi de cette semaine
     const monday = addDays(d, 1 - dayOfWeek);
     const weekKey = format(monday, 'yyyy-MM-dd');
     
@@ -51,17 +207,13 @@ function findSemaineSocle(
     weeksMap.get(weekKey)!.set(dayOfWeek, jour);
   });
 
-  // Trier les semaines par date décroissante pour trouver la dernière
   const sortedWeeks = [...weeksMap.entries()].sort(([a], [b]) => b.localeCompare(a));
 
   for (const [, joursSemaine] of sortedWeeks) {
-    // Vérifier qu'au moins 1 jour a des heures > 0
     const hasWorkedDay = [...joursSemaine.values()].some(j => j.heures > 0);
-    // Vérifier que tous les jours ouvrables (lun-ven) qui sont dans le mois sont saisis
     const nbJoursSaisis = joursSemaine.size;
     
     if (hasWorkedDay && nbJoursSaisis >= 3) {
-      // Semaine socle trouvée (au moins 3 jours saisis avec du travail)
       return joursSemaine;
     }
   }
@@ -70,7 +222,12 @@ function findSemaineSocle(
 }
 
 /**
- * Génère les jours estimés pour un salarié pour les dates manquantes du mois
+ * Génère les jours estimés pour un salarié pour les dates manquantes du mois.
+ * 
+ * Ordre de priorité :
+ * 1. Planning direct / clone S-1 (via planningMap)
+ * 2. Semaine Socle (clonage dernière semaine saisie)
+ * 3. Fallback optimiste (8h/7h, panier, T1)
  */
 export function generateEstimatedDays(
   detailJours: EmployeeDetail[],
@@ -78,6 +235,9 @@ export function generateEstimatedDays(
   options: {
     isEcole?: boolean;
     defaultTrajetCode?: string | null;
+    planningMap?: Map<string, PlanningChantierInfo>;
+    codesTrajetMap?: Map<string, string>;
+    salarieId?: string;
   } = {}
 ): EstimatedDay[] {
   if (!mois || mois === "all") return [];
@@ -120,45 +280,77 @@ export function generateEstimatedDays(
     }));
   }
 
-  // Trouver la semaine socle
+  // Trouver la semaine socle (fallback)
   const semaineSocle = findSemaineSocle(detailJours, moisDebut, moisFin);
 
-  if (semaineSocle) {
-    // Vérifier si la semaine socle contient des jours travaillés (heures > 0)
-    const hasTravaile = [...semaineSocle.values()].some(j => j.heures > 0 && !j.isAbsent);
+  const estimatedDays: EstimatedDay[] = [];
 
-    if (hasTravaile) {
-      // === CAS NORMAL : cloner la semaine socle ===
-      return datesManquantes.map(d => {
-        const dow = getDay(d); // 1=lun ... 5=ven
-        // Chercher le jour correspondant dans la semaine socle
-        const jourRef = semaineSocle.get(dow);
+  for (const d of datesManquantes) {
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const dow = getDay(d); // 1=lun ... 5=ven
+
+    // === PRIORITÉ 1 : Planning (direct ou clone S-1) ===
+    if (options.planningMap && options.salarieId) {
+      const planningKey = `${options.salarieId}_${dateStr}`;
+      const planningInfo = options.planningMap.get(planningKey);
+
+      if (planningInfo) {
+        const heures = dow === 5 ? 7 : 8;
         
-        if (jourRef && jourRef.heures > 0) {
-          return {
-            date: format(d, 'yyyy-MM-dd'),
-            chantierCode: jourRef.chantierCode,
-            chantierVille: jourRef.chantierVille,
-            heures: jourRef.heures,
-            intemperie: 0,
-            panier: jourRef.panier,
-            repasType: jourRef.repasType,
-            trajet: jourRef.trajet,
-            trajetPerso: jourRef.trajetPerso,
-            isAbsent: false,
-            isEcole: false,
-            is_estimated: true as const,
-          };
+        // Résoudre le trajet via codes_trajet_defaut
+        let trajet: string | null = options.defaultTrajetCode || "T1";
+        if (options.codesTrajetMap) {
+          const trajetKey = `${planningInfo.chantierId}_${options.salarieId}`;
+          const trajetDefaut = options.codesTrajetMap.get(trajetKey);
+          if (trajetDefaut) {
+            trajet = trajetDefaut === "AUCUN" ? null : trajetDefaut;
+          }
         }
-        
-        // Jour non trouvé dans la semaine socle → fallback optimiste
-        return createOptimisticDay(d, options.defaultTrajetCode);
-      });
+
+        estimatedDays.push({
+          date: dateStr,
+          chantierCode: planningInfo.chantierCode,
+          chantierVille: planningInfo.chantierVille,
+          heures,
+          intemperie: 0,
+          panier: true,
+          trajet,
+          trajetPerso: false,
+          isAbsent: false,
+          isEcole: false,
+          is_estimated: true as const,
+        });
+        continue; // Jour couvert par le planning, passer au suivant
+      }
     }
+
+    // === PRIORITÉ 2 : Semaine Socle ===
+    if (semaineSocle) {
+      const jourRef = semaineSocle.get(dow);
+      if (jourRef && jourRef.heures > 0 && !jourRef.isAbsent) {
+        estimatedDays.push({
+          date: dateStr,
+          chantierCode: jourRef.chantierCode,
+          chantierVille: jourRef.chantierVille,
+          heures: jourRef.heures,
+          intemperie: 0,
+          panier: jourRef.panier,
+          repasType: jourRef.repasType,
+          trajet: jourRef.trajet,
+          trajetPerso: jourRef.trajetPerso,
+          isAbsent: false,
+          isEcole: false,
+          is_estimated: true as const,
+        });
+        continue;
+      }
+    }
+
+    // === PRIORITÉ 3 : Fallback optimiste ===
+    estimatedDays.push(createOptimisticDay(d, options.defaultTrajetCode));
   }
 
-  // === FALLBACK OPTIMISTE (absence en semaine socle ou pas de semaine socle) ===
-  return datesManquantes.map(d => createOptimisticDay(d, options.defaultTrajetCode));
+  return estimatedDays;
 }
 
 /**
@@ -166,7 +358,7 @@ export function generateEstimatedDays(
  */
 function createOptimisticDay(date: Date, defaultTrajetCode?: string | null): EstimatedDay {
   const dow = getDay(date);
-  const heures = dow === 5 ? 7 : 8; // 7h vendredi, 8h lun-jeu
+  const heures = dow === 5 ? 7 : 8;
   
   return {
     date: format(date, 'yyyy-MM-dd'),
@@ -195,7 +387,6 @@ export async function calculateRegularisationM1Batch(
   const result = new Map<string, string>();
   if (!moisActuel || moisActuel === "all" || !entrepriseId || salarieIds.length === 0) return result;
 
-  // 1. Charger le snapshot du mois M-1 (1 requête)
   const [year, month] = moisActuel.split("-").map(Number);
   const moisPrecedent = format(subMonths(new Date(year, month - 1, 1), 1), "yyyy-MM");
 
@@ -212,17 +403,14 @@ export async function calculateRegularisationM1Batch(
   const snapshot = periodes[0].snapshot_estimations as Record<string, any[]> | null;
   if (!snapshot) return result;
 
-  // Filtrer uniquement les salariés présents dans le snapshot
   const salariesAvecEstimations = salarieIds.filter(id => snapshot[id] && snapshot[id].length > 0);
   if (salariesAvecEstimations.length === 0) return result;
 
-  // Collecter toutes les dates estimées et tous les salarié IDs concernés
   const allEstimatedDates = new Set<string>();
   salariesAvecEstimations.forEach(id => {
     snapshot[id].forEach((d: any) => allEstimatedDates.add(d.date));
   });
 
-  // 2. Charger en batch toutes les fiches + fiches_jours concernées (2 requêtes)
   const fichesData = await batchQueryIn<{ id: string; salarie_id: string }>("fiches", "id, salarie_id", "salarie_id", salariesAvecEstimations, {
     extraFilters: (q: any) => q.eq("entreprise_id", entrepriseId).in("statut", ["ENVOYE_RH", "AUTO_VALIDE", "CLOTURE"]),
   });
@@ -230,7 +418,6 @@ export async function calculateRegularisationM1Batch(
   if (fichesData.length === 0) return result;
 
   const ficheIds = fichesData.map(f => f.id);
-  // Map fiche_id -> salarie_id
   const ficheSalarieMap = new Map<string, string>();
   fichesData.forEach(f => { ficheSalarieMap.set(f.id, f.salarie_id); });
 
@@ -245,7 +432,6 @@ export async function calculateRegularisationM1Batch(
     }
   );
 
-  // Indexer les jours réels par salarié + date
   const reelBySalarie = new Map<string, Map<string, any>>();
   (joursReels || []).forEach((j: any) => {
     const salarieId = ficheSalarieMap.get(j.fiche_id);
@@ -258,7 +444,6 @@ export async function calculateRegularisationM1Batch(
     }
   });
 
-  // 3. Calculer les deltas pour chaque salarié (en mémoire, 0 requête)
   for (const salarieId of salariesAvecEstimations) {
     const estimatedDays = snapshot[salarieId];
     const reelMap = reelBySalarie.get(salarieId) || new Map();
@@ -301,10 +486,8 @@ export async function calculateRegularisationM1Batch(
       parts.push(`PA: ${sign}${deltaPaniers}`);
     }
     if (deltaTrajetsCodes.length > 0) {
-      // Aggregate travel changes by pair (old→new)
       const pairCounts = new Map<string, number>();
       deltaTrajetsCodes.forEach(change => {
-        // Extract the transition part (after the date)
         const match = change.match(/: (.+)/);
         if (match) {
           const key = match[1];
