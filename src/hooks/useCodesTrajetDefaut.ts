@@ -48,15 +48,29 @@ export const useCodesTrajetDefaut = () => {
     queryFn: async () => {
       if (!entrepriseId) return new Map<string, string>();
 
-      const { data, error } = await supabase
-        .from("codes_trajet_defaut" as any)
-        .select("chantier_id, salarie_id, code_trajet")
-        .eq("entreprise_id", entrepriseId);
+      const PAGE_SIZE = 1000;
+      let allRows: CodeTrajetRow[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("codes_trajet_defaut" as any)
+          .select("chantier_id, salarie_id, code_trajet")
+          .eq("entreprise_id", entrepriseId)
+          .order("chantier_id" as any)
+          .order("salarie_id" as any)
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+        const rows = (data ?? []) as unknown as CodeTrajetRow[];
+        allRows = allRows.concat(rows);
+        hasMore = rows.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
 
       const map = new Map<string, string>();
-      for (const row of (data ?? []) as unknown as CodeTrajetRow[]) {
+      for (const row of allRows) {
         map.set(`${row.chantier_id}_${row.salarie_id}`, row.code_trajet);
       }
       return map;
