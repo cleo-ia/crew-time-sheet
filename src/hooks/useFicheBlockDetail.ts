@@ -12,8 +12,10 @@ export interface TeamMemberStatus {
 export interface FicheBlockDetail {
   chefId: string | null;
   chefNom: string;
+  chefEmail: string | null;
   conducteurId: string | null;
   conducteurNom: string;
+  conducteurEmail: string | null;
   chantierNom: string;
   diagnostic: "bloque_chef" | "bloque_conducteur" | "mixte" | "inconnu";
   diagnosticLabel: string;
