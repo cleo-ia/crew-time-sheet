@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { batchQueryIn } from "@/lib/supabaseBatch";
-import { format, startOfMonth, endOfMonth, parseISO, startOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, eachDayOfInterval, getDay } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { generateEstimatedDays, calculateRegularisationM1Batch, fetchPlanningForEstimation, fetchCodesTrajetDefautBatch, PlanningChantierInfo } from "./usePaiePrevisionnelle";
 
