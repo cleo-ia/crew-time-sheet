@@ -396,7 +396,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Conducteur de travaux</Label>
+                  <Label>Conducteur de travaux {isCreating && "*"}</Label>
                   <Select value={formData.conducteur_id} onValueChange={(value) => setFormData({ ...formData, conducteur_id: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner..." />
