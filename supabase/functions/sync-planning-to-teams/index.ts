@@ -937,6 +937,8 @@ async function syncEntreprise(
                 entreprise_id: entrepriseId
               }, { onConflict: 'macon_id,jour,chantier_id' })
           }
+          // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+          await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
           
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche créée avec ${finalTotal}h sur ${joursPlanning.length} jours (chantier ${isChantierSecondaire ? 'secondaire → 0h' : 'principal → heures normales'})`)
         }
