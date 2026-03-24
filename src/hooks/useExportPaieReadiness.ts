@@ -64,7 +64,7 @@ export const useExportPaieReadiness = (periode: string) => {
       // Fetch fiches for these weeks
       const { data: fiches, error: fichesError } = await supabase
         .from("fiches")
-        .select("id, semaine, statut, salarie_id, chantier_id, utilisateurs!salarie_id(nom, prenom, role_metier)")
+        .select("id, semaine, statut, salarie_id, chantier_id, utilisateurs!salarie_id(nom, prenom, role_metier, agence_interim)")
         .in("semaine", weeks);
 
       if (fichesError) throw fichesError;
@@ -155,7 +155,8 @@ export const useExportPaieReadiness = (periode: string) => {
       for (const f of allFiches) {
         if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
           const existing = nonValideesMap.get(f.salarie_id);
-          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string; role_metier: string | null } | null;
+          const utilisateur = f.utilisateurs as unknown as { nom: string; prenom: string; role_metier: string | null; agence_interim: string | null } | null;
+          if (utilisateur?.agence_interim) continue; // Exclure les intérimaires
           if (existing) {
             if (f.semaine) existing.semaines.add(f.semaine);
           } else {
