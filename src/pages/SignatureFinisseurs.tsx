@@ -416,7 +416,7 @@ const SignatureFinisseurs = () => {
         if (allChantierIds.length > 0) {
           const { data: fichesAvecChantier } = await supabase
             .from("fiches")
-            .select("id, salarie_id, semaine")
+            .select("id, salarie_id, semaine, chantier_id")
             .eq("semaine", semaine)
             .in("salarie_id", finisseurIds)
             .in("chantier_id", allChantierIds);
