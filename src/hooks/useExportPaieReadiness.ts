@@ -8,6 +8,7 @@ export interface FicheNonValidee {
   nom: string;
   prenom: string;
   semaines: string[];
+  roleMetier: string | null;
 }
 
 export interface ExportPaieReadiness {
