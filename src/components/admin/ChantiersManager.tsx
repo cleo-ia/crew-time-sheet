@@ -66,7 +66,18 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
   const userInfo = useCurrentUserInfo();
   const { data: userRole } = useCurrentUserRole();
 
+  const isCreating = !editingChantier;
+
   const handleSave = async () => {
+    if (isCreating && !formData.conducteur_id) {
+      toast({
+        title: "Champ obligatoire",
+        description: "Le conducteur de travaux est obligatoire pour créer un chantier.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       ...formData,
       chef_id: basePath === "/chantiers" ? undefined : (formData.chef_id || null),
