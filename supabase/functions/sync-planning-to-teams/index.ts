@@ -47,6 +47,76 @@ function getHeuresForDay(dateStr: string): number {
   return HEURES_PAR_JOUR[dayNum] || 8
 }
 
+// Helper: supprimer les jours fantômes dans affectations_jours_chef pour un couple (employé, chantier, semaine)
+// deno-lint-ignore no-explicit-any
+async function deleteStaleAffectationJoursChef(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  currentWeek: string,
+  entrepriseId: string,
+  joursPlanning: string[]
+) {
+  const monday = parseISOWeek(currentWeek)
+  const allWeekDays: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    allWeekDays.push(d.toISOString().split('T')[0])
+  }
+  const staleDays = allWeekDays.filter(d => !joursPlanning.includes(d))
+  if (staleDays.length > 0) {
+    const { error } = await supabase
+      .from('affectations_jours_chef')
+      .delete()
+      .eq('macon_id', employeId)
+      .eq('chantier_id', chantierId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .in('jour', staleDays)
+    if (error) {
+      console.error(`[sync] Erreur suppression jours fantômes affectations_jours_chef:`, error)
+    } else {
+      console.log(`[sync] Supprimé ${staleDays.length} jour(s) fantôme(s) affectations_jours_chef pour ${employeId} chantier ${chantierId}`)
+    }
+  }
+}
+
+// Helper: supprimer les jours fantômes dans affectations_finisseurs_jours pour un couple (employé, chantier, semaine)
+// deno-lint-ignore no-explicit-any
+async function deleteStaleAffectationFinisseursJours(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  currentWeek: string,
+  entrepriseId: string,
+  joursPlanning: string[]
+) {
+  const monday = parseISOWeek(currentWeek)
+  const allWeekDays: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    allWeekDays.push(d.toISOString().split('T')[0])
+  }
+  const staleDays = allWeekDays.filter(d => !joursPlanning.includes(d))
+  if (staleDays.length > 0) {
+    const { error } = await supabase
+      .from('affectations_finisseurs_jours')
+      .delete()
+      .eq('finisseur_id', employeId)
+      .eq('chantier_id', chantierId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .in('date', staleDays)
+    if (error) {
+      console.error(`[sync] Erreur suppression jours fantômes affectations_finisseurs_jours:`, error)
+    } else {
+      console.log(`[sync] Supprimé ${staleDays.length} jour(s) fantôme(s) affectations_finisseurs_jours pour ${employeId} chantier ${chantierId}`)
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -754,6 +824,8 @@ async function syncEntreprise(
                 entreprise_id: entrepriseId
               }, { onConflict: 'macon_id,jour,chantier_id' })
           }
+          // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+          await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef secondaire, fiche protégée (${ficheSecondaire.statut})` })
           stats.protected++
           continue
@@ -865,6 +937,8 @@ async function syncEntreprise(
                 entreprise_id: entrepriseId
               }, { onConflict: 'macon_id,jour,chantier_id' })
           }
+          // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+          await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
           
           console.log(`[sync-planning-to-teams] Chef secondaire ${employeNom}: fiche créée avec ${finalTotal}h sur ${joursPlanning.length} jours (chantier ${isChantierSecondaire ? 'secondaire → 0h' : 'principal → heures normales'})`)
         }
@@ -911,6 +985,8 @@ async function syncEntreprise(
                 entreprise_id: entrepriseId
               }, { onConflict: 'macon_id,jour,chantier_id' })
           }
+          // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+          await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
           results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: `Chef responsable chantier secondaire, fiche protégée (${ficheChefSec.statut})` })
           stats.protected++
           continue
@@ -998,6 +1074,8 @@ async function syncEntreprise(
                 entreprise_id: entrepriseId
               }, { onConflict: 'macon_id,jour,chantier_id' })
           }
+          // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+          await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
 
           console.log(`[sync-planning-to-teams] Chef ${employeNom}: fiche 0h créée sur chantier secondaire ${chantierId} (${joursPlanning.length} jours)`)
         }
@@ -1802,6 +1880,8 @@ async function createNewAffectation(
             entreprise_id: entrepriseId
           }, { onConflict: 'macon_id,jour,chantier_id' })
       }
+      // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+      await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
     } else if (chantier?.conducteur_id) {
       for (const jour of joursPlanning) {
         await supabase
@@ -1815,6 +1895,8 @@ async function createNewAffectation(
             entreprise_id: entrepriseId
           }, { onConflict: 'finisseur_id,date' })
       }
+      // ✅ FIX: Supprimer les jours fantômes dans affectations_finisseurs_jours
+      await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
     }
     
     return { created: false, reason: `Fiche protégée (${existingFiche.statut})` }
@@ -1944,6 +2026,8 @@ async function createNewAffectation(
           entreprise_id: entrepriseId
         }, { onConflict: 'macon_id,jour,chantier_id' })
     }
+    // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
+    await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
   } else if (chantier?.conducteur_id) {
     // ✅ CORRECTIF CRITIQUE: Ajouter entreprise_id dans l'upsert finisseurs
     for (const jour of joursPlanning) {
@@ -1958,6 +2042,8 @@ async function createNewAffectation(
           entreprise_id: entrepriseId
         }, { onConflict: 'finisseur_id,date' })
     }
+    // ✅ FIX: Supprimer les jours fantômes dans affectations_finisseurs_jours
+    await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
   }
 
   return { created: true, reason: '' }
