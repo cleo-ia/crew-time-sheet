@@ -514,6 +514,36 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
   }
 
+  // 🆕 PRE-FETCH planning data for estimation (batch, before per-employee loop)
+  let globalPlanningMap: Map<string, PlanningChantierInfo> | null = null;
+  let globalCodesTrajetMap: Map<string, string> | null = null;
+
+  if (filters.includeEstimations && !isAllPeriodes && mois && entrepriseId) {
+    try {
+      const [year, month] = mois.split("-").map(Number);
+      const moisDebut2 = startOfMonth(new Date(year, month - 1));
+      const moisFin2 = endOfMonth(new Date(year, month - 1));
+
+      // Calculer toutes les dates ouvrables manquantes potentielles du mois
+      const { eachDayOfInterval: eachDay, getDay: gd, format: fmt } = await import("date-fns");
+      const tousJoursOuvrablesMois = eachDay({ start: moisDebut2, end: moisFin2 })
+        .filter((d: Date) => { const dow = gd(d); return dow >= 1 && dow <= 5; })
+        .map((d: Date) => fmt(d, "yyyy-MM-dd"));
+
+      // Charger planning + codes trajet en parallèle
+      const [planningMap, codesTrajetMap] = await Promise.all([
+        fetchPlanningForEstimation(salarieIds as string[], tousJoursOuvrablesMois, entrepriseId),
+        fetchCodesTrajetDefautBatch(entrepriseId, salarieIds as string[]),
+      ]);
+
+      globalPlanningMap = planningMap;
+      globalCodesTrajetMap = codesTrajetMap;
+      console.log(`[Planning Batch] ${planningMap.size} affectations, ${codesTrajetMap.size} codes trajet chargés`);
+    } catch (e) {
+      console.warn("[Planning Batch] Erreur chargement planning, fallback semaine socle:", e);
+    }
+  }
+
   // Agréger par salarié
   const employeeMap = new Map<string, EmployeeWithDetails>();
 
