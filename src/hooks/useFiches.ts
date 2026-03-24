@@ -766,6 +766,9 @@ export const useUpdateFicheStatus = () => {
       if (status === "ENVOYE_RH" && updatedFiches && updatedFiches.length > 0) {
         const { injectValidatedLeaves } = await import("@/hooks/useInjectValidatedLeaves");
         await injectValidatedLeaves(updatedFiches);
+
+        const { applyDefaultCodesTrajet } = await import("@/hooks/useApplyDefaultCodesTrajet");
+        await applyDefaultCodesTrajet(updatedFiches);
       }
 
       return updatedFiches;
