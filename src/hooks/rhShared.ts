@@ -809,6 +809,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       const estimatedDays = generateEstimatedDays(detailJours, mois, {
         isEcole: isApprentice,
         defaultTrajetCode,
+        planningMap: globalPlanningMap || undefined,
+        codesTrajetMap: globalCodesTrajetMap || undefined,
+        salarieId,
       });
 
       if (estimatedDays.length > 0) {
