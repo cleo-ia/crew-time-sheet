@@ -12,8 +12,10 @@ export interface TeamMemberStatus {
 export interface FicheBlockDetail {
   chefId: string | null;
   chefNom: string;
+  chefEmail: string | null;
   conducteurId: string | null;
   conducteurNom: string;
+  conducteurEmail: string | null;
   chantierNom: string;
   diagnostic: "bloque_chef" | "bloque_conducteur" | "mixte" | "inconnu";
   diagnosticLabel: string;
@@ -92,6 +94,20 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       const chefUser = chefId ? usersMap.get(chefId) : null;
       const conducteurUser = conducteurId ? usersMap.get(conducteurId) : null;
 
+      // 5b. Fetch emails from profiles for chef and conducteur
+      const emailIds = [chefId, conducteurId].filter(Boolean) as string[];
+      let chefEmail: string | null = null;
+      let conducteurEmail: string | null = null;
+      if (emailIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .in("id", emailIds);
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p.email]) || []);
+        chefEmail = chefId ? profilesMap.get(chefId) || null : null;
+        conducteurEmail = conducteurId ? profilesMap.get(conducteurId) || null : null;
+      }
+
       // 6. Build team list
       const team: TeamMemberStatus[] = Array.from(teamIds).map((id) => {
         const user = usersMap.get(id);
@@ -135,8 +151,10 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       return {
         chefId,
         chefNom: chefUser ? `${chefUser.prenom} ${chefUser.nom}` : "—",
+        chefEmail,
         conducteurId,
         conducteurNom: conducteurUser ? `${conducteurUser.prenom} ${conducteurUser.nom}` : "—",
+        conducteurEmail,
         chantierNom: chantier?.nom || "—",
         diagnostic,
         diagnosticLabel,

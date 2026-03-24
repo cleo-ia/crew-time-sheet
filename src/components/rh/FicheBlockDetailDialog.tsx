@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { RoleBadge } from "@/components/ui/role-badge";
-import { Loader2, HardHat, UserCheck } from "lucide-react";
+import { Loader2, HardHat, UserCheck, Mail } from "lucide-react";
 import { useFicheBlockDetail } from "@/hooks/useFicheBlockDetail";
+import { useSendUrgentRappel } from "@/hooks/useSendUrgentRappel";
 
 interface Props {
   open: boolean;
@@ -38,10 +41,35 @@ const statutLabel = (statut: string | null): { label: string; className: string 
 
 export const FicheBlockDetailDialog = ({ open, onOpenChange, salarieId, semaine, salarieName }: Props) => {
   const { data, isLoading } = useFicheBlockDetail(salarieId, semaine);
+  const sendRappel = useSendUrgentRappel();
+  const [confirmTarget, setConfirmTarget] = useState<"chef" | "conducteur" | null>(null);
   const weekNum = semaine?.split("-S")[1] || semaine || "";
 
+  const handleSendRappel = (role: "chef" | "conducteur") => {
+    if (confirmTarget === role) {
+      // Second click = confirm
+      const targetUserId = role === "chef" ? data?.chefId : data?.conducteurId;
+      if (!targetUserId || !semaine || !data) return;
+      sendRappel.mutate(
+        {
+          targetUserId,
+          targetRole: role,
+          semaine,
+          chantierNom: data.chantierNom,
+          teamCount: data.team.length,
+        },
+        { onSettled: () => setConfirmTarget(null) }
+      );
+    } else {
+      setConfirmTarget(role);
+    }
+  };
+
+  const showChefButton = data && (data.diagnostic === "bloque_chef" || data.diagnostic === "mixte") && data.chefId;
+  const showConducteurButton = data && (data.diagnostic === "bloque_conducteur" || data.diagnostic === "mixte") && data.conducteurId;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); setConfirmTarget(null); }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Détail S{weekNum} — {salarieName}</DialogTitle>
@@ -84,6 +112,40 @@ export const FicheBlockDetailDialog = ({ open, onOpenChange, salarieId, semaine,
                 <span className="text-muted-foreground">Conducteur :</span>
                 <span className="font-medium">{data.conducteurNom}</span>
               </div>
+            </div>
+
+            {/* Urgent reminder buttons */}
+            <div className="flex flex-wrap gap-2">
+              {showChefButton && (
+                <Button
+                  size="sm"
+                  variant={confirmTarget === "chef" ? "destructive" : "outline"}
+                  onClick={() => handleSendRappel("chef")}
+                  disabled={sendRappel.isPending}
+                >
+                  {sendRappel.isPending && confirmTarget === "chef" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-1.5" />
+                  )}
+                  {confirmTarget === "chef" ? "Confirmer l'envoi au chef ?" : "Rappel urgent au chef"}
+                </Button>
+              )}
+              {showConducteurButton && (
+                <Button
+                  size="sm"
+                  variant={confirmTarget === "conducteur" ? "destructive" : "outline"}
+                  onClick={() => handleSendRappel("conducteur")}
+                  disabled={sendRappel.isPending}
+                >
+                  {sendRappel.isPending && confirmTarget === "conducteur" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-1.5" />
+                  )}
+                  {confirmTarget === "conducteur" ? "Confirmer l'envoi au conducteur ?" : "Rappel urgent au conducteur"}
+                </Button>
+              )}
             </div>
 
             {/* Team table */}
