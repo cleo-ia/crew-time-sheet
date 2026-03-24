@@ -652,7 +652,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isCreating && !formData.conducteur_id}>
               {editingChantier ? "Modifier" : "Créer"}
             </Button>
           </DialogFooter>
