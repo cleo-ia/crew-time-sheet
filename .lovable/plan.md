@@ -1,28 +1,28 @@
 
 
-## Trier la boucle sync pour traiter les chefs en premier
+# Codes trajet AMBERIEU → T9 — Limoge Revillon
 
-### Probleme
-Dans `syncEntreprise`, la boucle principale (ligne 780) itere sur `planningByEmployeChantier` dans l'ordre d'insertion du Map. Si un ouvrier est traite avant le chef de son chantier, la fiche de l'ouvrier peut etre creee avec un `user_id` (chef) qui n'a pas encore sa propre fiche initialisee. Ce n'est pas un bug bloquant (les donnees finales sont correctes) mais ca genere des traitements dans le desordre et des logs confus.
+## Action
+Exécuter un INSERT SQL dans `codes_trajet_defaut` pour attribuer le code trajet **T9** à **tous les 69 employés terrain** (chef, macon, grutier, finisseur) de Limoge Revillon pour le chantier **AMBERIEU**.
 
-### Correction
+## Script SQL
 
-**Fichier:** `supabase/functions/sync-planning-to-teams/index.ts`
-
-1. **Apres la construction de `planningByEmployeChantier`** (ligne ~556), trier les entries pour que les chefs passent en premier. Concretement, convertir le Map en tableau d'entries, trier avec les chefs (`employe.role_metier === 'chef'`) en tete, puis iterer sur ce tableau trie au lieu du Map brut.
-
-2. **Remplacement de la boucle ligne 780** : au lieu de `for (const [key, affectations] of planningByEmployeChantier)`, on fait :
-```typescript
-const sortedEntries = [...planningByEmployeChantier.entries()].sort(([, a], [, b]) => {
-  const aIsChef = a[0]?.employe?.role_metier === 'chef' ? 0 : 1
-  const bIsChef = b[0]?.employe?.role_metier === 'chef' ? 0 : 1
-  return aIsChef - bIsChef
-})
-
-for (const [key, affectations] of sortedEntries) {
+```sql
+INSERT INTO codes_trajet_defaut (entreprise_id, chantier_id, salarie_id, code_trajet)
+SELECT 
+  'edd12053-55dc-4f4b-b2ad-5048cb5aa798',
+  'h1268dbe1-d9ab-4c54-b739-473f4d692cc8',
+  u.id,
+  'T9'
+FROM utilisateurs u
+WHERE u.entreprise_id = 'edd12053-55dc-4f4b-b2ad-5048cb5aa798'
+  AND u.role_metier IN ('chef', 'macon', 'grutier', 'finisseur')
+ON CONFLICT (entreprise_id, chantier_id, salarie_id)
+DO UPDATE SET code_trajet = 'T9', updated_at = now();
 ```
 
-3. **Ajout d'un log** pour confirmer l'ordre de traitement : `console.log(\`[sync-planning-to-teams] Ordre: ${chefCount} chef(s) traités en premier sur ${sortedEntries.length} entrées\`)`
-
-Zero impact sur les donnees ou la logique existante — seul l'ordre d'iteration change. Les chefs sont traites avant les ouvriers, garantissant que leurs fiches et affectations existent deja quand on traite les ouvriers du meme chantier.
+## Resultat attendu
+- 69 lignes insérées/mises à jour dans `codes_trajet_defaut`
+- Le chantier AMBERIEU affichera 100% de progression sur la page /codes-trajet
+- Prêt pour le chantier suivant après exécution
 
