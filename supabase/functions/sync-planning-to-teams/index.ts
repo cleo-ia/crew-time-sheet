@@ -47,6 +47,76 @@ function getHeuresForDay(dateStr: string): number {
   return HEURES_PAR_JOUR[dayNum] || 8
 }
 
+// Helper: supprimer les jours fantômes dans affectations_jours_chef pour un couple (employé, chantier, semaine)
+// deno-lint-ignore no-explicit-any
+async function deleteStaleAffectationJoursChef(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  currentWeek: string,
+  entrepriseId: string,
+  joursPlanning: string[]
+) {
+  const monday = parseISOWeek(currentWeek)
+  const allWeekDays: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    allWeekDays.push(d.toISOString().split('T')[0])
+  }
+  const staleDays = allWeekDays.filter(d => !joursPlanning.includes(d))
+  if (staleDays.length > 0) {
+    const { error } = await supabase
+      .from('affectations_jours_chef')
+      .delete()
+      .eq('macon_id', employeId)
+      .eq('chantier_id', chantierId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .in('jour', staleDays)
+    if (error) {
+      console.error(`[sync] Erreur suppression jours fantômes affectations_jours_chef:`, error)
+    } else {
+      console.log(`[sync] Supprimé ${staleDays.length} jour(s) fantôme(s) affectations_jours_chef pour ${employeId} chantier ${chantierId}`)
+    }
+  }
+}
+
+// Helper: supprimer les jours fantômes dans affectations_finisseurs_jours pour un couple (employé, chantier, semaine)
+// deno-lint-ignore no-explicit-any
+async function deleteStaleAffectationFinisseursJours(
+  supabase: any,
+  employeId: string,
+  chantierId: string,
+  currentWeek: string,
+  entrepriseId: string,
+  joursPlanning: string[]
+) {
+  const monday = parseISOWeek(currentWeek)
+  const allWeekDays: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    allWeekDays.push(d.toISOString().split('T')[0])
+  }
+  const staleDays = allWeekDays.filter(d => !joursPlanning.includes(d))
+  if (staleDays.length > 0) {
+    const { error } = await supabase
+      .from('affectations_finisseurs_jours')
+      .delete()
+      .eq('finisseur_id', employeId)
+      .eq('chantier_id', chantierId)
+      .eq('semaine', currentWeek)
+      .eq('entreprise_id', entrepriseId)
+      .in('date', staleDays)
+    if (error) {
+      console.error(`[sync] Erreur suppression jours fantômes affectations_finisseurs_jours:`, error)
+    } else {
+      console.log(`[sync] Supprimé ${staleDays.length} jour(s) fantôme(s) affectations_finisseurs_jours pour ${employeId} chantier ${chantierId}`)
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
