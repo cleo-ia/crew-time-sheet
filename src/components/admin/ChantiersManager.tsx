@@ -66,7 +66,18 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
   const userInfo = useCurrentUserInfo();
   const { data: userRole } = useCurrentUserRole();
 
+  const isCreating = !editingChantier;
+
   const handleSave = async () => {
+    if (isCreating && !formData.conducteur_id) {
+      toast({
+        title: "Champ obligatoire",
+        description: "Le conducteur de travaux est obligatoire pour créer un chantier.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       ...formData,
       chef_id: basePath === "/chantiers" ? undefined : (formData.chef_id || null),
@@ -385,7 +396,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Conducteur de travaux</Label>
+                  <Label>Conducteur de travaux {isCreating && "*"}</Label>
                   <Select value={formData.conducteur_id} onValueChange={(value) => setFormData({ ...formData, conducteur_id: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner..." />
@@ -641,7 +652,7 @@ export const ChantiersManager = ({ basePath = "/admin/chantiers", showEcoleToggl
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isCreating && !formData.conducteur_id}>
               {editingChantier ? "Modifier" : "Créer"}
             </Button>
           </DialogFooter>
