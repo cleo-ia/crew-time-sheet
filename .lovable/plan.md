@@ -1,4 +1,4 @@
-
+{
 
 ## Analyse approfondie du plan V2 - Corrections et points d'attention
 
@@ -50,24 +50,25 @@ L'auto-fill ne doit JAMAIS bloquer la transmission. Si une erreur survient (tabl
 
 **Fichier 1 : `src/hooks/useApplyDefaultCodesTrajet.ts` (nouveau)**
 
-```text
-applyDefaultCodesTrajet(fiches: { id, salarie_id, chantier_id }[])
-  1. Collecter tous les fiche IDs et salarie IDs uniques
-  2. Charger en 1 requete : fiches_jours WHERE fiche_id IN (...) 
-     AND code_trajet = "A_COMPLETER" AND (trajet_perso IS NULL OR trajet_perso = false)
-  3. Extraire les code_chantier_du_jour uniques non-null
-  4. Resoudre en 1 requete : chantiers WHERE code_chantier IN (...) → map code→id
-  5. Charger en 1 requete : codes_trajet_defaut WHERE entreprise_id = X 
-     AND salarie_id IN (...)
-     → map "(chantier_id, salarie_id)" → code_trajet
-  6. Pour chaque fiches_jours eligible :
-     - Determiner chantier_id effectif (code_chantier_du_jour resolu OU fiche.chantier_id)
-     - Lookup dans la map
-     - Si trouve et != "AUCUN" → update code_trajet
-     - Si trouve et == "AUCUN" → update code_trajet = null
-     - Si pas trouve → laisser "A_COMPLETER"
-  7. Executer les updates en batch (par groupe de 50)
-  8. Tout en try/catch — jamais de throw vers l'appelant
+```typescript
+export async function applyDefaultCodesTrajet(fiches: { id: string, salarie_id: string, chantier_id: string | null }[]) {
+  // 1. Collecter tous les fiche IDs et salarie IDs uniques
+  // 2. Charger en 1 requete : fiches_jours WHERE fiche_id IN (...) 
+  //    AND code_trajet = "A_COMPLETER" AND (trajet_perso IS NULL OR trajet_perso = false)
+  // 3. Extraire les code_chantier_du_jour uniques non-null
+  // 4. Resoudre en 1 requete : chantiers WHERE code_chantier IN (...) → map code→id
+  // 5. Charger en 1 requete : codes_trajet_defaut WHERE entreprise_id = X 
+  //    AND salarie_id IN (...)
+  //    → map "(chantier_id, salarie_id)" → code_trajet
+  // 6. Pour chaque fiches_jours eligible :
+  //    - Determiner chantier_id effectif (code_chantier_du_jour resolu OU fiche.chantier_id)
+  //    - Lookup dans la map
+  //    - Si trouve et != "AUCUN" → update code_trajet
+  //    - Si trouve et == "AUCUN" → update code_trajet = null
+  //    - Si pas trouve → laisser "A_COMPLETER"
+  // 7. Executer les updates en batch (par groupe de 50)
+  // 8. Tout en try/catch — jamais de throw vers l'appelant
+}
 ```
 
 **Fichier 2 : `src/hooks/useFiches.ts`**
@@ -86,3 +87,24 @@ applyDefaultCodesTrajet(fiches: { id, salarie_id, chantier_id }[])
 - Le comportement RH reste identique (les codes non resolus restent `A_COMPLETER`)
 - `injectValidatedLeaves` continue de fonctionner avant l'auto-fill (ordre important : les conges injectent des jours a 0h sans trajet, donc pas de conflit)
 
+## ✅ Plan implémenté : Paie Prévisionnelle basée sur le Planning S+1
+
+### Fichiers modifiés
+
+**`src/hooks/usePaiePrevisionnelle.ts`** :
+- Nouvelle fonction `fetchPlanningForEstimation(salarieIds, dates, entrepriseId)` → charge planning_affectations direct + clone S-1 + résolution chantiers
+- Nouvelle fonction `fetchCodesTrajetDefautBatch(entrepriseId, salarieIds)` → charge codes_trajet_defaut en batch
+- `generateEstimatedDays` enrichi avec paramètres `planningMap`, `codesTrajetMap`, `salarieId` — le planning a priorité sur la semaine socle
+
+**`src/hooks/rhShared.ts`** :
+- Pré-chargement batch du planning + codes trajet avant la boucle par salarié (2 requêtes parallèles)
+- Passage de `globalPlanningMap` et `globalCodesTrajetMap` à `generateEstimatedDays`
+
+### Ordre de priorité des estimations
+1. Planning direct (planning_affectations pour la date)
+2. Clone S-1 (même jour de semaine, 7 jours avant)
+3. Semaine Socle (fallback existant)
+4. Fallback optimiste (8h/7h, panier, T1)
+
+### Aucune migration BDD, aucun changement UI
+}
