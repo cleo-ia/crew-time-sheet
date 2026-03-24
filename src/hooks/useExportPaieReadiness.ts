@@ -9,6 +9,7 @@ export interface FicheNonValidee {
   prenom: string;
   semaines: string[];
   roleMetier: string | null;
+  sansChef: boolean;
 }
 
 export interface ExportPaieReadiness {
