@@ -525,10 +525,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       const moisFin2 = endOfMonth(new Date(year, month - 1));
 
       // Calculer toutes les dates ouvrables manquantes potentielles du mois
-      const { eachDayOfInterval: eachDay, getDay: gd, format: fmt } = await import("date-fns");
-      const tousJoursOuvrablesMois = eachDay({ start: moisDebut2, end: moisFin2 })
-        .filter((d: Date) => { const dow = gd(d); return dow >= 1 && dow <= 5; })
-        .map((d: Date) => fmt(d, "yyyy-MM-dd"));
+      const tousJoursOuvrablesMois = eachDayOfInterval({ start: moisDebut2, end: moisFin2 })
+        .filter((d: Date) => { const dow = getDay(d); return dow >= 1 && dow <= 5; })
+        .map((d: Date) => format(d, "yyyy-MM-dd"));
 
       // Charger planning + codes trajet en parallèle
       const [planningMap, codesTrajetMap] = await Promise.all([
