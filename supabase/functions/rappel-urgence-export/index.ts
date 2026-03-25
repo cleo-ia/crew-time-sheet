@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     `
 
     const emailHtml = generateEmailHtml(
-      profile.first_name || roleLabel,
+      profile.prenom || roleLabel,
       emailContent,
       'https://crew-time-sheet.lovable.app/',
       targetRole === 'chef' ? 'Transmettre mes fiches' : 'Valider les fiches',
