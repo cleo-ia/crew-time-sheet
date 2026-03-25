@@ -101,7 +101,7 @@ const App = () => (
                   <Route 
                     path="/planning-main-oeuvre" 
                     element={
-                      <RequireRole allowedRoles={["super_admin", "conducteur", "admin"]}>
+                      <RequireRole allowedRoles={["super_admin", "conducteur", "admin", "rh"]}>
                         <PlanningMainOeuvre />
                       </RequireRole>
                     } 
