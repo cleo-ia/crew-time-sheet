@@ -217,6 +217,21 @@ export const AppNav = () => {
                 asChild
                 variant="ghost"
                 size="sm"
+                className={getButtonClasses("/planning-main-oeuvre", "consultation-rh")}
+                style={getButtonStyle("/planning-main-oeuvre", "consultation-rh")}
+              >
+                <Link to="/planning-main-oeuvre">
+                  <CalendarDays className="h-4 w-4" />
+                  Planning S+1
+                </Link>
+              </Button>
+            )}
+
+            {canSeeRH && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
                 className={getButtonClasses("/consultation-rh", "consultation-rh")}
                 style={getButtonStyle("/consultation-rh", "consultation-rh")}
               >
