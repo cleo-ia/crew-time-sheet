@@ -1,35 +1,34 @@
 
 
-# Séparer le bouton Planning S+1 par rôle dans la navigation
+# Corriger la recherche d'email dans le rappel urgent
 
 ## Problème
-Actuellement, le bouton "Planning S+1" est affiché dans un bloc commun (`canSeePlanning`) avec le thème orange `validation-conducteur`. Pour Tanguy (RH), ce bouton apparaît au milieu des boutons conducteur qu'il ne devrait pas voir. Il faut que le bouton Planning apparaisse uniquement dans la section correspondant au rôle de l'utilisateur.
+L'Edge Function `rappel-urgence-export` et le hook `useFicheBlockDetail` utilisent la table `profiles` avec un `utilisateurs.id`, alors que `profiles` est indexée par `auth.users.id`. L'ID ne correspond pas, d'où l'erreur "Profil non trouvé".
 
-## Modification — `src/components/navigation/AppNav.tsx`
+## Corrections
 
-**a) Supprimer `"rh"` de `canSeePlanning`** — revenir à :
+### 1. Edge Function `supabase/functions/rappel-urgence-export/index.ts`
+Remplacer la requête sur `profiles` par une requête sur `utilisateurs` :
 ```typescript
-const canSeePlanning = userRole && ["super_admin", "conducteur", "admin"].includes(userRole);
+// AVANT (ligne 41-47)
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('id, email, first_name, last_name')
+  .eq('id', targetUserId)
+  .maybeSingle()
+
+// APRÈS
+const { data: profile } = await supabase
+  .from('utilisateurs')
+  .select('id, email, prenom, nom')
+  .eq('id', targetUserId)
+  .maybeSingle()
 ```
+Adapter ensuite les références : `profile.first_name` → `profile.prenom`, `profile.last_name` → `profile.nom`.
 
-**b) Ajouter un bouton Planning S+1 dédié dans la section RH** — juste avant ou après "Consultation RH" (L215), conditionné par `canSeeRH` :
-```typescript
-{canSeeRH && (
-  <Button asChild variant="ghost" size="sm"
-    className={getButtonClasses("/planning-main-oeuvre", "consultation-rh")}
-    style={getButtonStyle("/planning-main-oeuvre", "consultation-rh")}>
-    <Link to="/planning-main-oeuvre">
-      <CalendarDays className="h-4 w-4" />
-      Planning S+1
-    </Link>
-  </Button>
-)}
-```
+### 2. Hook `src/hooks/useFicheBlockDetail.ts`
+Remplacer la requête sur `profiles` (lignes 98-108) par une requête sur `utilisateurs` pour récupérer les emails du chef et du conducteur, puisque `chefId`/`conducteurId` sont des `utilisateurs.id`.
 
-Ainsi :
-- **Conducteurs/admins** : voient le bouton Planning en orange dans leur section (inchangé)
-- **RH** : voit le bouton Planning en vert dans sa section, au même niveau que Consultation RH / Export Paie / Codes trajet
-- **Aucun doublon** pour `super_admin` car `canSeePlanning` et `canSeeRH` ne se chevauchent pas pour RH
-
-Aucune autre modification nécessaire — la route et le mode lecture seule sont déjà en place.
+### 3. Redéployer l'Edge Function
+Appeler `deploy_edge_functions` pour `rappel-urgence-export` après la modification.
 
