@@ -938,13 +938,9 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   }
 
   const result = filteredMap.sort((a, b) => {
-    // Tri par métier puis par nom
-    const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
-    const aOrder = metierOrder[a.metier as keyof typeof metierOrder] ?? 4;
-    const bOrder = metierOrder[b.metier as keyof typeof metierOrder] ?? 4;
-    
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    return a.nom.localeCompare(b.nom);
+    const nomCompare = a.nom.localeCompare(b.nom);
+    if (nomCompare !== 0) return nomCompare;
+    return a.prenom.localeCompare(b.prenom);
   });
 
   console.log(`[RH Consolidation] ${result.length} salariés trouvés`);
