@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
 
     // Récupérer le profil du destinataire
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, first_name, last_name')
+      .from('utilisateurs')
+      .select('id, email, prenom, nom')
       .eq('id', targetUserId)
       .maybeSingle()
 
