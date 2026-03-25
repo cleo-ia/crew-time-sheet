@@ -801,14 +801,16 @@ const PlanningMainOeuvre = () => {
               Export Excel
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => setCopyDialogOpen(true)}
-              disabled={isMutating || isPlanningLocked}
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Copier S-1
-            </Button>
+            {!isReadOnly && (
+              <Button
+                variant="outline"
+                onClick={() => setCopyDialogOpen(true)}
+                disabled={isMutating || isPlanningLocked}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copier S-1
+              </Button>
+            )}
 
             <Button
               variant="outline"
