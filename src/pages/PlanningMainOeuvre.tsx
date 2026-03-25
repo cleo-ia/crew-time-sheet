@@ -654,7 +654,7 @@ const PlanningMainOeuvre = () => {
       </div>
 
       {/* Bandeau de verrouillage planning */}
-      {isPlanningLocked && (
+      {!isReadOnly && isPlanningLocked && (
         <div className="container mx-auto px-4 mt-4">
           <div className="px-4 py-3 rounded-lg border-2 bg-amber-50 border-amber-400 dark:bg-amber-950/40 dark:border-amber-700 flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400 shrink-0" />
