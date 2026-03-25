@@ -732,7 +732,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       if (!isAbsent && panier) paniers++;
       
       // Compteur par code trajet
-      if (!isAbsent && (jourRefTrajet as any).code_trajet) {
+      // Ne compter le trajet que si T > 0 ou trajet_perso actif (filet de sécurité données contaminées)
+      const trajetActif = isChef && entries.length > 1
+        ? entries.some(e => (Number(e.jour.T) || 0) > 0 || (e.jour as any).trajet_perso === true)
+        : (Number(jourRef.T) || 0) > 0 || (jourRef as any).trajet_perso === true;
+      if (!isAbsent && trajetActif && (jourRefTrajet as any).code_trajet) {
         trajetsParCode[(jourRefTrajet as any).code_trajet] = (trajetsParCode[(jourRefTrajet as any).code_trajet] || 0) + 1;
         totalJoursTrajets++;
       }
