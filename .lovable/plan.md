@@ -1,34 +1,38 @@
 
 
-# Trier les salariés par ordre alphabétique sur Export Paie
+# Exclure les jours ALD et congés validés de la paie prévisionnelle
 
-## Problème actuel
-Dans `src/hooks/rhShared.ts` (ligne 940-948), le tri est fait par **catégorie de métier** d'abord (Chef, Maçon, Grutier, Finisseur, Intérimaire) puis par nom. Cela explique pourquoi les chefs apparaissent en premier dans ta vue.
+## Problème
+`generateEstimatedDays` génère des jours estimés (8h, panier, T1) pour les dates sans fiche_jours, sans vérifier si le salarié est en **absence longue durée (ALD)** ou en **congé validé (CP, RTT, maladie…)** sur ces dates. Résultat : KAMAGATE Lancine apparaît avec 2 jours estimés les 30-31 mars alors qu'il est en ALD.
 
-## Correction
-Modifier le tri final dans `buildRHConsolidation` pour trier uniquement par **nom** puis **prénom**, sans tenir compte du métier :
+## Solution
 
+### 1. Charger les absences ALD et congés validés dans `buildRHConsolidation` (`src/hooks/rhShared.ts`)
+
+Avant la boucle par salarié (vers ligne 530), ajouter 2 requêtes Supabase :
+
+- **`absences_longue_duree`** : `date_debut <= dateFin` et `date_fin IS NULL OR date_fin >= dateDebut`
+- **`demandes_conges`** avec `statut IN ('VALIDEE_CONDUCTEUR', 'VALIDEE_RH')` : `date_debut <= dateFin` et `date_fin >= dateDebut`
+
+Construire une `Map<salarieId, Set<date>>` des jours bloqués.
+
+### 2. Passer les dates bloquées à `generateEstimatedDays` (`src/hooks/usePaiePrevisionnelle.ts`)
+
+- Ajouter une option `blockedDates?: Set<string>` aux paramètres de `generateEstimatedDays`
+- Juste après le calcul de `datesManquantes`, filtrer : retirer les dates présentes dans `blockedDates`
+- Ainsi, aucun jour estimé ne sera créé pour un salarié en ALD ou congé validé
+
+### 3. Passer le paramètre depuis `rhShared.ts`
+
+Dans l'appel à `generateEstimatedDays` (ligne 812), ajouter :
 ```typescript
-// AVANT
-const result = filteredMap.sort((a, b) => {
-  const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
-  const aOrder = metierOrder[a.metier] ?? 4;
-  const bOrder = metierOrder[b.metier] ?? 4;
-  if (aOrder !== bOrder) return aOrder - bOrder;
-  return a.nom.localeCompare(b.nom);
-});
-
-// APRÈS
-const result = filteredMap.sort((a, b) => {
-  const nomCompare = a.nom.localeCompare(b.nom);
-  if (nomCompare !== 0) return nomCompare;
-  return a.prenom.localeCompare(b.prenom);
-});
+blockedDates: absenceDatesMap.get(salarieId),
 ```
 
-## Impact
-Ce tri s'applique à toutes les vues qui utilisent `buildRHConsolidation` : Export Paie (étape 2), Consultation RH, et Rapprochement Intérim. Tous les salariés seront triés A→Z par nom.
+## Fichiers modifiés
+- `src/hooks/rhShared.ts` — ajout des 2 requêtes + passage du paramètre
+- `src/hooks/usePaiePrevisionnelle.ts` — ajout de l'option `blockedDates` et filtrage
 
-## Fichier modifié
-- `src/hooks/rhShared.ts` — lignes 940-948
+## Impact
+Seuls les salariés sans ALD ni congé validé auront des jours estimés. Les salariés comme KAMAGATE n'auront plus de jours "fantômes" dans l'export paie.
 
