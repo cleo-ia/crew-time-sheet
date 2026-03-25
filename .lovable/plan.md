@@ -1,34 +1,34 @@
 
 
-# Corriger la recherche d'email dans le rappel urgent
+# Trier les salariés par ordre alphabétique sur Export Paie
 
-## Problème
-L'Edge Function `rappel-urgence-export` et le hook `useFicheBlockDetail` utilisent la table `profiles` avec un `utilisateurs.id`, alors que `profiles` est indexée par `auth.users.id`. L'ID ne correspond pas, d'où l'erreur "Profil non trouvé".
+## Problème actuel
+Dans `src/hooks/rhShared.ts` (ligne 940-948), le tri est fait par **catégorie de métier** d'abord (Chef, Maçon, Grutier, Finisseur, Intérimaire) puis par nom. Cela explique pourquoi les chefs apparaissent en premier dans ta vue.
 
-## Corrections
+## Correction
+Modifier le tri final dans `buildRHConsolidation` pour trier uniquement par **nom** puis **prénom**, sans tenir compte du métier :
 
-### 1. Edge Function `supabase/functions/rappel-urgence-export/index.ts`
-Remplacer la requête sur `profiles` par une requête sur `utilisateurs` :
 ```typescript
-// AVANT (ligne 41-47)
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('id, email, first_name, last_name')
-  .eq('id', targetUserId)
-  .maybeSingle()
+// AVANT
+const result = filteredMap.sort((a, b) => {
+  const metierOrder = { Chef: 0, Maçon: 1, Grutier: 2, Finisseur: 3, Intérimaire: 4 };
+  const aOrder = metierOrder[a.metier] ?? 4;
+  const bOrder = metierOrder[b.metier] ?? 4;
+  if (aOrder !== bOrder) return aOrder - bOrder;
+  return a.nom.localeCompare(b.nom);
+});
 
 // APRÈS
-const { data: profile } = await supabase
-  .from('utilisateurs')
-  .select('id, email, prenom, nom')
-  .eq('id', targetUserId)
-  .maybeSingle()
+const result = filteredMap.sort((a, b) => {
+  const nomCompare = a.nom.localeCompare(b.nom);
+  if (nomCompare !== 0) return nomCompare;
+  return a.prenom.localeCompare(b.prenom);
+});
 ```
-Adapter ensuite les références : `profile.first_name` → `profile.prenom`, `profile.last_name` → `profile.nom`.
 
-### 2. Hook `src/hooks/useFicheBlockDetail.ts`
-Remplacer la requête sur `profiles` (lignes 98-108) par une requête sur `utilisateurs` pour récupérer les emails du chef et du conducteur, puisque `chefId`/`conducteurId` sont des `utilisateurs.id`.
+## Impact
+Ce tri s'applique à toutes les vues qui utilisent `buildRHConsolidation` : Export Paie (étape 2), Consultation RH, et Rapprochement Intérim. Tous les salariés seront triés A→Z par nom.
 
-### 3. Redéployer l'Edge Function
-Appeler `deploy_edge_functions` pour `rappel-urgence-export` après la modification.
+## Fichier modifié
+- `src/hooks/rhShared.ts` — lignes 940-948
 
