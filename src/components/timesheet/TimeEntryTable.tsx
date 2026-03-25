@@ -769,7 +769,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
                   heuresIntemperie: HI,
                   absent: hours === 0 && !PA && T === 0 && HI === 0,
                   commentaire: (j as any).commentaire || "",
-                  codeTrajet: ((j as any).code_trajet || "A_COMPLETER") as CodeTrajet,
+                  codeTrajet: (T > 0 ? ((j as any).code_trajet || "A_COMPLETER") : ((j as any).code_trajet || null)) as CodeTrajet,
                 };
               }
             });

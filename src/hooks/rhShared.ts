@@ -676,7 +676,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         jourRef = bestEntry.jour;
 
         // Pour le trajet : chercher la fiche qui a un code_trajet renseigné (même logique que le panier)
-        const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet);
+        const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet && (e.jour as any).code_trajet !== 'A_COMPLETER');
         jourRefTrajet = entryAvecTrajet ? entryAvecTrajet.jour : jourRef;
       } else {
         // NON-CHEF ou une seule fiche : dédupliquer (garder le meilleur statut)
@@ -732,7 +732,11 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
       if (!isAbsent && panier) paniers++;
       
       // Compteur par code trajet
-      if (!isAbsent && (jourRefTrajet as any).code_trajet) {
+      // Ne compter le trajet que si T > 0 ou trajet_perso actif (filet de sécurité données contaminées)
+      const trajetActif = isChef && entries.length > 1
+        ? entries.some(e => (Number(e.jour.T) || 0) > 0 || (e.jour as any).trajet_perso === true)
+        : (Number(jourRef.T) || 0) > 0 || (jourRef as any).trajet_perso === true;
+      if (!isAbsent && trajetActif && (jourRefTrajet as any).code_trajet) {
         trajetsParCode[(jourRefTrajet as any).code_trajet] = (trajetsParCode[(jourRefTrajet as any).code_trajet] || 0) + 1;
         totalJoursTrajets++;
       }
