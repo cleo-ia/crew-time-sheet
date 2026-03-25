@@ -238,6 +238,7 @@ export function generateEstimatedDays(
     planningMap?: Map<string, PlanningChantierInfo>;
     codesTrajetMap?: Map<string, string>;
     salarieId?: string;
+    blockedDates?: Set<string>;
   } = {}
 ): EstimatedDay[] {
   if (!mois || mois === "all") return [];
