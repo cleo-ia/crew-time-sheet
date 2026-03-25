@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
         semaine,
         chantier: chantierNom,
         destinataire: {
-          nom: `${profile.first_name} ${profile.last_name}`,
+          nom: `${profile.prenom} ${profile.nom}`,
           email: profile.email,
           role: targetRole,
         },
