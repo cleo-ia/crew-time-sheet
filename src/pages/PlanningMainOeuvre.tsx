@@ -194,8 +194,11 @@ const PlanningMainOeuvre = () => {
                      removeEmploye.isPending || updateVehicule.isPending || copyPlanning.isPending ||
                      updateChantier.isPending;
 
+  // Lecture seule pour le rôle RH
+  const isReadOnly = userRole === "rh";
+
   // Verrouillage du planning : semaine courante + vendredi/samedi/dimanche
-  const isPlanningLocked = isCurrentWeekCheck(semaine) && isFridayOrWeekendParis();
+  const isPlanningLocked = isReadOnly || (isCurrentWeekCheck(semaine) && isFridayOrWeekendParis());
 
   // Jours de la semaine
   const weekDays = useMemo(() => getWeekDays(semaine), [semaine]);
