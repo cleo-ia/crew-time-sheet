@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       throw new Error(`Pas d'email pour l'utilisateur ${targetUserId}`)
     }
 
-    console.log(`[rappel-urgence-export] Envoi à ${profile.first_name} ${profile.last_name} (${profile.email}) - rôle: ${targetRole}`)
+    console.log(`[rappel-urgence-export] Envoi à ${profile.prenom} ${profile.nom} (${profile.email}) - rôle: ${targetRole}`)
 
     const roleLabel = targetRole === 'chef' ? 'chef de chantier' : 'conducteur de travaux'
     const actionLabel = targetRole === 'chef' 
