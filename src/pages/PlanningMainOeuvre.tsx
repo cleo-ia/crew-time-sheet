@@ -631,7 +631,7 @@ const PlanningMainOeuvre = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => navigate('/validation-conducteur')}
+                onClick={() => navigate(isReadOnly ? '/consultation-rh' : '/validation-conducteur')}
                 className="h-9 w-9 bg-background hover:bg-muted border-primary/30"
               >
                 <ArrowLeft className="h-5 w-5 text-primary" />
