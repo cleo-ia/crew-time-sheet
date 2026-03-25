@@ -257,10 +257,13 @@ export function generateEstimatedDays(
   // Trouver les dates déjà couvertes par des fiches_jours réels
   const datesReelles = new Set(detailJours.map(j => j.date));
 
-  // Dates manquantes
-  const datesManquantes = tousJoursOuvrables.filter(
-    d => !datesReelles.has(format(d, 'yyyy-MM-dd'))
-  );
+  // Dates manquantes (exclure les dates bloquées par ALD ou congés validés)
+  const datesManquantes = tousJoursOuvrables.filter(d => {
+    const dateStr = format(d, 'yyyy-MM-dd');
+    if (datesReelles.has(dateStr)) return false;
+    if (options.blockedDates?.has(dateStr)) return false;
+    return true;
+  });
 
   if (datesManquantes.length === 0) return [];
 
