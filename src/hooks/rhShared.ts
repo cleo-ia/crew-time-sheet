@@ -518,26 +518,59 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   let globalPlanningMap: Map<string, PlanningChantierInfo> | null = null;
   let globalCodesTrajetMap: Map<string, string> | null = null;
 
+  // Map des dates bloquées par ALD ou congés validés, par salarié
+  let absenceDatesMap = new Map<string, Set<string>>();
+
   if (filters.includeEstimations && !isAllPeriodes && mois && entrepriseId) {
     try {
       const [year, month] = mois.split("-").map(Number);
       const moisDebut2 = startOfMonth(new Date(year, month - 1));
       const moisFin2 = endOfMonth(new Date(year, month - 1));
+      const moisDebutStr = format(moisDebut2, "yyyy-MM-dd");
+      const moisFinStr = format(moisFin2, "yyyy-MM-dd");
 
       // Calculer toutes les dates ouvrables manquantes potentielles du mois
       const tousJoursOuvrablesMois = eachDayOfInterval({ start: moisDebut2, end: moisFin2 })
         .filter((d: Date) => { const dow = getDay(d); return dow >= 1 && dow <= 5; })
         .map((d: Date) => format(d, "yyyy-MM-dd"));
 
-      // Charger planning + codes trajet en parallèle
-      const [planningMap, codesTrajetMap] = await Promise.all([
+      // Charger planning + codes trajet + absences en parallèle
+      const [planningMap, codesTrajetMap, aldData, congesData] = await Promise.all([
         fetchPlanningForEstimation(salarieIds as string[], tousJoursOuvrablesMois, entrepriseId),
         fetchCodesTrajetDefautBatch(entrepriseId, salarieIds as string[]),
+        supabase
+          .from("absences_longue_duree")
+          .select("salarie_id, date_debut, date_fin")
+          .eq("entreprise_id", entrepriseId)
+          .lte("date_debut", moisFinStr)
+          .or(`date_fin.is.null,date_fin.gte.${moisDebutStr}`),
+        supabase
+          .from("demandes_conges")
+          .select("demandeur_id, date_debut, date_fin")
+          .eq("entreprise_id", entrepriseId)
+          .in("statut", ["VALIDEE_CONDUCTEUR", "VALIDEE_RH"])
+          .lte("date_debut", moisFinStr)
+          .gte("date_fin", moisDebutStr),
       ]);
 
       globalPlanningMap = planningMap;
       globalCodesTrajetMap = codesTrajetMap;
-      console.log(`[Planning Batch] ${planningMap.size} affectations, ${codesTrajetMap.size} codes trajet chargés`);
+
+      // Construire la map des dates bloquées
+      const addBlockedDates = (salarieId: string, dateDebut: string, dateFin: string | null) => {
+        if (!absenceDatesMap.has(salarieId)) absenceDatesMap.set(salarieId, new Set());
+        const blocked = absenceDatesMap.get(salarieId)!;
+        for (const dateStr of tousJoursOuvrablesMois) {
+          if (dateStr >= dateDebut && (dateFin === null || dateStr <= dateFin)) {
+            blocked.add(dateStr);
+          }
+        }
+      };
+
+      (aldData.data || []).forEach(a => addBlockedDates(a.salarie_id, a.date_debut, a.date_fin));
+      (congesData.data || []).forEach(c => addBlockedDates(c.demandeur_id, c.date_debut, c.date_fin));
+
+      console.log(`[Planning Batch] ${planningMap.size} affectations, ${codesTrajetMap.size} codes trajet, ${absenceDatesMap.size} salariés avec absences bloquées`);
     } catch (e) {
       console.warn("[Planning Batch] Erreur chargement planning, fallback semaine socle:", e);
     }
