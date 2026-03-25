@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
 
     // Récupérer le profil du destinataire
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, first_name, last_name')
+      .from('utilisateurs')
+      .select('id, email, prenom, nom')
       .eq('id', targetUserId)
       .maybeSingle()
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       throw new Error(`Pas d'email pour l'utilisateur ${targetUserId}`)
     }
 
-    console.log(`[rappel-urgence-export] Envoi à ${profile.first_name} ${profile.last_name} (${profile.email}) - rôle: ${targetRole}`)
+    console.log(`[rappel-urgence-export] Envoi à ${profile.prenom} ${profile.nom} (${profile.email}) - rôle: ${targetRole}`)
 
     const roleLabel = targetRole === 'chef' ? 'chef de chantier' : 'conducteur de travaux'
     const actionLabel = targetRole === 'chef' 
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     `
 
     const emailHtml = generateEmailHtml(
-      profile.first_name || roleLabel,
+      profile.prenom || roleLabel,
       emailContent,
       'https://crew-time-sheet.lovable.app/',
       targetRole === 'chef' ? 'Transmettre mes fiches' : 'Valider les fiches',
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
         semaine,
         chantier: chantierNom,
         destinataire: {
-          nom: `${profile.first_name} ${profile.last_name}`,
+          nom: `${profile.prenom} ${profile.nom}`,
           email: profile.email,
           role: targetRole,
         },

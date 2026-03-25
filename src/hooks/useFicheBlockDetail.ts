@@ -94,18 +94,22 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       const chefUser = chefId ? usersMap.get(chefId) : null;
       const conducteurUser = conducteurId ? usersMap.get(conducteurId) : null;
 
-      // 5b. Fetch emails from profiles for chef and conducteur
-      const emailIds = [chefId, conducteurId].filter(Boolean) as string[];
+      // 5b. Fetch emails from utilisateurs for chef and conducteur
+      const chefUser2 = chefId ? usersMap.get(chefId) : null;
+      const conducteurUser2 = conducteurId ? usersMap.get(conducteurId) : null;
+      // Email is already in the utilisateurs query (step 5), so just extract it
+      // We need to re-query with email field since step 5 didn't select it
       let chefEmail: string | null = null;
       let conducteurEmail: string | null = null;
+      const emailIds = [chefId, conducteurId].filter(Boolean) as string[];
       if (emailIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
+        const { data: emailUsers } = await supabase
+          .from("utilisateurs")
           .select("id, email")
           .in("id", emailIds);
-        const profilesMap = new Map(profiles?.map((p) => [p.id, p.email]) || []);
-        chefEmail = chefId ? profilesMap.get(chefId) || null : null;
-        conducteurEmail = conducteurId ? profilesMap.get(conducteurId) || null : null;
+        const emailMap = new Map(emailUsers?.map((u) => [u.id, u.email]) || []);
+        chefEmail = chefId ? emailMap.get(chefId) || null : null;
+        conducteurEmail = conducteurId ? emailMap.get(conducteurId) || null : null;
       }
 
       // 6. Build team list
