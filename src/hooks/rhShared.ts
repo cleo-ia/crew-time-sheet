@@ -453,7 +453,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
   // Récupérer les jours de toutes les fiches (batched via utilitaire)
   const joursData = await batchQueryIn<any>(
     "fiches_jours",
-    "fiche_id, date, HNORM, HI, PA, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire",
+    "fiche_id, date, HNORM, HI, PA, T, repas_type, code_trajet, trajet_perso, heures, code_chantier_du_jour, ville_du_jour, type_absence, regularisation_m1, autres_elements, commentaire",
     "fiche_id",
     ficheIds,
     { limitPerChunk: 10000 }
