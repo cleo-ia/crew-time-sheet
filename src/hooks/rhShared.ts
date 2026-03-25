@@ -676,7 +676,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         jourRef = bestEntry.jour;
 
         // Pour le trajet : chercher la fiche qui a un code_trajet renseigné (même logique que le panier)
-        const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet);
+        const entryAvecTrajet = entries.find(e => (e.jour as any).code_trajet && (e.jour as any).code_trajet !== 'A_COMPLETER');
         jourRefTrajet = entryAvecTrajet ? entryAvecTrajet.jour : jourRef;
       } else {
         // NON-CHEF ou une seule fiche : dédupliquer (garder le meilleur statut)
