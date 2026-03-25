@@ -848,6 +848,7 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
         planningMap: globalPlanningMap || undefined,
         codesTrajetMap: globalCodesTrajetMap || undefined,
         salarieId,
+        blockedDates: absenceDatesMap.get(salarieId),
       });
 
       if (estimatedDays.length > 0) {
