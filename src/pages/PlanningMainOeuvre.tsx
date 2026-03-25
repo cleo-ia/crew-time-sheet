@@ -704,60 +704,62 @@ const PlanningMainOeuvre = () => {
               )}
             </div>
             
-            {isValidated ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    await syncPlanningToTeams(semaine);
-                    if (userInfo) {
-                      logModification.mutate({
-                        entrepriseId: userInfo.entrepriseId,
-                        userId: userInfo.userId,
-                        userName: userInfo.userName,
-                        action: "sync_planning",
-                        details: { message: `Synchronisation du planning envoyée aux chefs (Semaine ${semaine})`, semaine },
-                        userRole: userRole || null,
-                      });
-                    }
-                  }}
-                  disabled={isSyncing || isPlanningLocked}
-                  className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+            {!isReadOnly && (
+              isValidated ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      await syncPlanningToTeams(semaine);
+                      if (userInfo) {
+                        logModification.mutate({
+                          entrepriseId: userInfo.entrepriseId,
+                          userId: userInfo.userId,
+                          userName: userInfo.userName,
+                          action: "sync_planning",
+                          details: { message: `Synchronisation du planning envoyée aux chefs (Semaine ${semaine})`, semaine },
+                          userRole: userRole || null,
+                        });
+                      }
+                    }}
+                    disabled={isSyncing || isPlanningLocked}
+                    className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Synchroniser maintenant
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => invalidatePlanning()}
+                    disabled={isInvalidating || isPlanningLocked}
+                    className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
+                  >
+                    {isInvalidating ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Edit className="h-4 w-4 mr-2" />
+                    )}
+                    Modifier
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => setValidateDialogOpen(true)}
+                  disabled={isValidating || affectations.length === 0 || isPlanningLocked}
+                  className="bg-green-600 hover:bg-green-700 text-white"
                 >
-                  {isSyncing ? (
+                  {isValidating ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <CheckCircle className="h-4 w-4 mr-2" />
                   )}
-                  Synchroniser maintenant
+                  Valider le planning
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => invalidatePlanning()}
-                  disabled={isInvalidating || isPlanningLocked}
-                  className="border-green-400 hover:bg-green-100 dark:border-green-600 dark:hover:bg-green-900/50"
-                >
-                  {isInvalidating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Edit className="h-4 w-4 mr-2" />
-                  )}
-                  Modifier
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                onClick={() => setValidateDialogOpen(true)}
-                disabled={isValidating || affectations.length === 0 || isPlanningLocked}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                {isValidating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                )}
-                Valider le planning
-              </Button>
+              )
             )}
           </div>
         </div>
