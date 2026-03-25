@@ -861,8 +861,8 @@ const PlanningMainOeuvre = () => {
                   onVehiculeChange={isPlanningLocked ? undefined : handleVehiculeChange}
                   onRemoveEmploye={isPlanningLocked ? undefined : handleRemoveEmploye}
                   onAddEmploye={isPlanningLocked ? undefined : handleAddEmploye}
-                  onHeuresChange={handleHeuresChange}
-                  onInsertionChange={handleInsertionChange}
+                  onHeuresChange={isReadOnly ? undefined : handleHeuresChange}
+                  onInsertionChange={isReadOnly ? undefined : handleInsertionChange}
                   isLoading={isMutating}
                   forceOpen={allExpanded}
                   chefsWithPrincipal={chefsWithPrincipal}
