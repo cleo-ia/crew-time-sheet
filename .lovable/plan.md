@@ -1,38 +1,25 @@
 
 
-# Exclure les jours ALD et congés validés de la paie prévisionnelle
+## Nettoyage de la fiche parasite GUNDUZ Erdal - S13
 
-## Problème
-`generateEstimatedDays` génère des jours estimés (8h, panier, T1) pour les dates sans fiche_jours, sans vérifier si le salarié est en **absence longue durée (ALD)** ou en **congé validé (CP, RTT, maladie…)** sur ces dates. Résultat : KAMAGATE Lancine apparaît avec 2 jours estimés les 30-31 mars alors qu'il est en ALD.
+### Contexte
+GUNDUZ Erdal est en ALD mais a une fiche parasite sur le chantier OLYMPIA pour S13 (statut BROUILLON, ID: `4b08e51e-433c-4acb-b1db-4d8a9d66d0c5`). Il faut supprimer cette fiche et ses fiches_jours associées.
 
-## Solution
+### Actions
 
-### 1. Charger les absences ALD et congés validés dans `buildRHConsolidation` (`src/hooks/rhShared.ts`)
+1. **Supprimer les fiches_jours** liées à la fiche parasite (`fiche_id = '4b08e51e-433c-4acb-b1db-4d8a9d66d0c5'`)
+2. **Supprimer les signatures** éventuelles liées à cette fiche
+3. **Supprimer la fiche** elle-même
 
-Avant la boucle par salarié (vers ligne 530), ajouter 2 requêtes Supabase :
+### Détails techniques
 
-- **`absences_longue_duree`** : `date_debut <= dateFin` et `date_fin IS NULL OR date_fin >= dateDebut`
-- **`demandes_conges`** avec `statut IN ('VALIDEE_CONDUCTEUR', 'VALIDEE_RH')` : `date_debut <= dateFin` et `date_fin >= dateDebut`
+Trois requêtes DELETE exécutées dans l'ordre (respect des dépendances) :
 
-Construire une `Map<salarieId, Set<date>>` des jours bloqués.
-
-### 2. Passer les dates bloquées à `generateEstimatedDays` (`src/hooks/usePaiePrevisionnelle.ts`)
-
-- Ajouter une option `blockedDates?: Set<string>` aux paramètres de `generateEstimatedDays`
-- Juste après le calcul de `datesManquantes`, filtrer : retirer les dates présentes dans `blockedDates`
-- Ainsi, aucun jour estimé ne sera créé pour un salarié en ALD ou congé validé
-
-### 3. Passer le paramètre depuis `rhShared.ts`
-
-Dans l'appel à `generateEstimatedDays` (ligne 812), ajouter :
-```typescript
-blockedDates: absenceDatesMap.get(salarieId),
+```sql
+DELETE FROM fiches_jours WHERE fiche_id = '4b08e51e-433c-4acb-b1db-4d8a9d66d0c5';
+DELETE FROM signatures WHERE fiche_id = '4b08e51e-433c-4acb-b1db-4d8a9d66d0c5';
+DELETE FROM fiches WHERE id = '4b08e51e-433c-4acb-b1db-4d8a9d66d0c5';
 ```
 
-## Fichiers modifiés
-- `src/hooks/rhShared.ts` — ajout des 2 requêtes + passage du paramètre
-- `src/hooks/usePaiePrevisionnelle.ts` — ajout de l'option `blockedDates` et filtrage
-
-## Impact
-Seuls les salariés sans ALD ni congé validé auront des jours estimés. Les salariés comme KAMAGATE n'auront plus de jours "fantômes" dans l'export paie.
+La fiche ghost ALD (chantier_id NULL, 0h) restera intacte.
 
