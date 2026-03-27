@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, addDays, startOfWeek } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Truck } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 
 interface RHTransportTabProps {
-  filters: { periode?: string };
+  filters: { periode?: string; semaine?: string };
 }
 
 interface TransportRow {
@@ -25,18 +25,31 @@ interface TransportRow {
   conducteurSoir: string | null;
 }
 
-const useRHTransportData = (periode: string | undefined) => {
+const useRHTransportData = (periode: string | undefined, semaine: string | undefined) => {
   const entrepriseId = localStorage.getItem("current_entreprise_id");
 
   return useQuery({
-    queryKey: ["rh-transport", periode, entrepriseId],
+    queryKey: ["rh-transport", periode, semaine, entrepriseId],
     enabled: !!periode && periode !== "all" && !!entrepriseId,
     queryFn: async (): Promise<TransportRow[]> => {
       if (!periode || periode === "all" || !entrepriseId) return [];
 
-      const [year, month] = periode.split("-").map(Number);
-      const dateDebut = format(startOfMonth(new Date(year, month - 1)), "yyyy-MM-dd");
-      const dateFin = format(endOfMonth(new Date(year, month - 1)), "yyyy-MM-dd");
+      let dateDebut: string;
+      let dateFin: string;
+
+      if (semaine && semaine !== "all") {
+        // Parse ISO week "YYYY-Www" → get Monday and Friday
+        const [yearStr, weekStr] = semaine.split("-W");
+        const jan4 = new Date(Number(yearStr), 0, 4);
+        const monday = startOfWeek(jan4, { weekStartsOn: 1 });
+        const weekMonday = addDays(monday, (Number(weekStr) - 1) * 7);
+        dateDebut = format(weekMonday, "yyyy-MM-dd");
+        dateFin = format(addDays(weekMonday, 6), "yyyy-MM-dd");
+      } else {
+        const [year, month] = periode.split("-").map(Number);
+        dateDebut = format(startOfMonth(new Date(year, month - 1)), "yyyy-MM-dd");
+        dateFin = format(endOfMonth(new Date(year, month - 1)), "yyyy-MM-dd");
+      }
 
       // Fetch transport jours in the date range with related data
       const { data: joursData, error } = await supabase
@@ -163,7 +176,7 @@ const formatDate = (dateStr: string) => {
 };
 
 export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
-  const { data: rows = [], isLoading } = useRHTransportData(filters.periode);
+  const { data: rows = [], isLoading } = useRHTransportData(filters.periode, filters.semaine);
 
   if (!filters.periode || filters.periode === "all") {
     return (
