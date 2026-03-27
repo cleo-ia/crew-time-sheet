@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck, Calendar } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck, Calendar, Truck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
