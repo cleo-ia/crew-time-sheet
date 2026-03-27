@@ -853,9 +853,11 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
 
   // Auto-save avec debounce de 1 seconde (réduit pour plus de réactivité)
   // ⚠️ DÉSACTIVÉ en mode conducteur (sauvegarde manuelle via bouton "Enregistrer")
-  useEffect(() => {
+   useEffect(() => {
     if (isConducteurMode) return;
     if (readOnly || !hasLoadedData || entries.length === 0 || !chefId) return;
+    // 🛡️ GARDE: Ne pas auto-sauvegarder sur une semaine future
+    if (weekId > getCurrentWeek()) return;
     
     const timer = setTimeout(() => {
       console.log("[TimeEntryTable] Auto-saving (debounce)...");
