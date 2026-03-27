@@ -886,7 +886,7 @@ export const TimeEntryTable = ({ chantierId, weekId, chefId, onEntriesChange, on
     if (isConducteurMode) return;
     
     const handleVisibilityChange = () => {
-      if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly) {
+      if (document.hidden && isDirty.current && hasLoadedData && entries.length > 0 && chefId && !readOnly && weekId <= getCurrentWeek()) {
         console.log("[TimeEntryTable] Page hidden, forcing immediate save");
         autoSaveMutation.mutate({ 
           timeEntries: entries, 

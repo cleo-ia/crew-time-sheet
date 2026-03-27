@@ -46,6 +46,13 @@ export const useAutoSaveFiche = () => {
     mutationFn: async (params: SaveFicheParams) => {
       const { timeEntries, weekId, chantierId, chefId, forceNormalize = false } = params;
 
+      // 🛡️ GARDE: Ne pas auto-sauvegarder sur une semaine future
+      const currentWeek = getCurrentWeek();
+      if (weekId > currentWeek) {
+        console.log(`[useAutoSaveFiche] Semaine future détectée (${weekId} > ${currentWeek}), skip auto-save`);
+        return [];
+      }
+
       // Collecter tous les chantierId utilisés
       const allChantierIds = new Set<string>();
       if (chantierId) allChantierIds.add(chantierId);
