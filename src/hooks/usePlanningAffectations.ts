@@ -292,7 +292,72 @@ export const useCopyPlanningWeek = () => {
 
       if (insertError) throw insertError;
 
-      return newAffectations.length;
+      // ✅ COUCHE 1: Nettoyage post-copie — supprimer les affectations sur jours de congé/ALD
+      const targetMonday2 = parseISOWeek(params.targetWeek);
+      const targetDays = [0, 1, 2, 3, 4].map(i => {
+        const d = addDays(targetMonday2, i);
+        return format(d, "yyyy-MM-dd");
+      });
+      const firstDay = targetDays[0];
+      const lastDay = targetDays[targetDays.length - 1];
+
+      // Récupérer congés validés chevauchant la semaine cible
+      const { data: congesValides } = await supabase
+        .from("demandes_conges")
+        .select("demandeur_id, date_debut, date_fin")
+        .eq("entreprise_id", params.entreprise_id)
+        .in("statut", ["VALIDEE_CONDUCTEUR", "VALIDEE_RH"])
+        .lte("date_debut", lastDay)
+        .gte("date_fin", firstDay);
+
+      // Récupérer ALD actives chevauchant la semaine cible
+      const { data: aldsActives } = await supabase
+        .from("absences_longue_duree")
+        .select("salarie_id, date_debut, date_fin")
+        .eq("entreprise_id", params.entreprise_id)
+        .lte("date_debut", lastDay)
+        .or(`date_fin.is.null,date_fin.gte.${firstDay}`);
+
+      // Construire le Set de clés bloquées
+      const blockedKeys = new Set<string>();
+
+      (congesValides || []).forEach((c: { demandeur_id: string; date_debut: string; date_fin: string }) => {
+        targetDays.forEach(d => {
+          if (d >= c.date_debut && d <= c.date_fin) {
+            blockedKeys.add(`${c.demandeur_id}|${d}`);
+          }
+        });
+      });
+
+      (aldsActives || []).forEach((a: { salarie_id: string; date_debut: string; date_fin: string | null }) => {
+        targetDays.forEach(d => {
+          if (d >= a.date_debut && (a.date_fin === null || d <= a.date_fin)) {
+            blockedKeys.add(`${a.salarie_id}|${d}`);
+          }
+        });
+      });
+
+      // Supprimer les affectations illégales
+      let deletedCount = 0;
+      if (blockedKeys.size > 0) {
+        for (const key of blockedKeys) {
+          const [empId, jour] = key.split("|");
+          const { data: deleted } = await supabase
+            .from("planning_affectations")
+            .delete()
+            .eq("employe_id", empId)
+            .eq("jour", jour)
+            .eq("semaine", params.targetWeek)
+            .eq("entreprise_id", params.entreprise_id)
+            .select("id");
+          deletedCount += (deleted?.length || 0);
+        }
+        if (deletedCount > 0) {
+          console.log(`[CopyPlanning] Supprimé ${deletedCount} affectation(s) en conflit avec congés/ALD`);
+        }
+      }
+
+      return newAffectations.length - deletedCount;
     },
     onSuccess: (count, variables) => {
       queryClient.invalidateQueries({ 

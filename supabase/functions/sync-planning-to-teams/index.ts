@@ -1860,6 +1860,59 @@ async function createNewAffectation(
   entrepriseId: string
 ): Promise<{ created: boolean; reason: string }> {
 
+  // ✅ COUCHE 2: Guard absences — filtrer les jours couverts par un congé validé ou ALD
+  const mondayGuard = parseISOWeek(currentWeek)
+  const guardDays = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(mondayGuard)
+    d.setDate(mondayGuard.getDate() + i)
+    guardDays.push(d.toISOString().split('T')[0])
+  }
+  const firstDayGuard = guardDays[0]
+  const lastDayGuard = guardDays[guardDays.length - 1]
+
+  // Congés validés pour cet employé
+  const { data: empConges } = await supabase
+    .from('demandes_conges')
+    .select('date_debut, date_fin')
+    .eq('demandeur_id', employeId)
+    .eq('entreprise_id', entrepriseId)
+    .in('statut', ['VALIDEE_CONDUCTEUR', 'VALIDEE_RH'])
+    .lte('date_debut', lastDayGuard)
+    .gte('date_fin', firstDayGuard)
+
+  // ALD actives pour cet employé
+  const { data: empAlds } = await supabase
+    .from('absences_longue_duree')
+    .select('date_debut, date_fin')
+    .eq('salarie_id', employeId)
+    .eq('entreprise_id', entrepriseId)
+    .lte('date_debut', lastDayGuard)
+    .or(`date_fin.is.null,date_fin.gte.${firstDayGuard}`)
+
+  const blockedDays = new Set<string>()
+  for (const c of (empConges || [])) {
+    for (const d of guardDays) {
+      if (d >= c.date_debut && d <= c.date_fin) blockedDays.add(d)
+    }
+  }
+  for (const a of (empAlds || [])) {
+    for (const d of guardDays) {
+      if (d >= a.date_debut && (a.date_fin === null || d <= a.date_fin)) blockedDays.add(d)
+    }
+  }
+
+  // Filtrer les jours planifiés
+  const filteredJours = joursPlanning.filter(j => !blockedDays.has(j))
+  if (blockedDays.size > 0 && filteredJours.length < joursPlanning.length) {
+    console.log(`[sync] Guard absences: ${joursPlanning.length - filteredJours.length} jour(s) exclu(s) pour ${employeId} (congé/ALD)`)
+  }
+  if (filteredJours.length === 0) {
+    return { created: false, reason: 'Tous les jours couverts par absence (congé/ALD)' }
+  }
+  // Remplacer joursPlanning par les jours filtrés
+  joursPlanning = filteredJours
+
   // Vérifier si une fiche existe déjà avec des heures
   const { data: existingFiche } = await supabase
     .from('fiches')
