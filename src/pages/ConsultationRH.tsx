@@ -19,7 +19,7 @@ import { RHSummary } from "@/components/rh/RHSummary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRHSummary } from "@/hooks/useRHData";
 import { RHConsolidated } from "@/components/rh/RHConsolidated";
-import { RHDetailView } from "@/components/rh/RHDetailView";
+import { RHTransportTab } from "@/components/rh/RHTransportTab";
 import { RHHistorique } from "@/components/rh/RHHistorique";
 import { RHFicheDetail } from "@/components/rh/RHFicheDetail";
 import { RHPeriodeDetail } from "@/components/rh/RHPeriodeDetail";
