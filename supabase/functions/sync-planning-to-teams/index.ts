@@ -1929,7 +1929,7 @@ async function createNewAffectation(
     
     // Créer quand même les affectations pour la visibilité équipe
     if (chantier?.chef_id) {
-      for (const jour of joursPlanning) {
+      for (const jour of safeDays) {
         await supabase
           .from('affectations_jours_chef')
           .upsert({
@@ -1942,9 +1942,9 @@ async function createNewAffectation(
           }, { onConflict: 'macon_id,jour,chantier_id' })
       }
       // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
-      await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
+      await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, safeDays)
     } else if (chantier?.conducteur_id) {
-      for (const jour of joursPlanning) {
+      for (const jour of safeDays) {
         await supabase
           .from('affectations_finisseurs_jours')
           .upsert({
@@ -1957,7 +1957,7 @@ async function createNewAffectation(
           }, { onConflict: 'finisseur_id,date' })
       }
       // ✅ FIX: Supprimer les jours fantômes dans affectations_finisseurs_jours
-      await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
+      await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, safeDays)
     }
     
     return { created: false, reason: `Fiche protégée (${existingFiche.statut})` }
@@ -1977,13 +1977,13 @@ async function createNewAffectation(
   const isEcole = chantier?.is_ecole === true
 
   // Calculer les heures par jour spécifiques (L-J: 8h, V: 7h)
-  const nbJours = joursPlanning.length
+  const nbJours = safeDays.length
   if (nbJours === 0) {
     return { created: false, reason: 'Aucun jour planifié' }
   }
 
   // Calculer le total basé sur les jours réels (0 si ECOLE)
-  const totalHeures = isEcole ? (7 * joursPlanning.length) : calculateTotalHeures(joursPlanning)
+  const totalHeures = isEcole ? (7 * safeDays.length) : calculateTotalHeures(safeDays)
 
   // Créer ou mettre à jour la fiche
   let ficheId = existingFiche?.id
@@ -2013,7 +2013,7 @@ async function createNewAffectation(
   const chantierCode = chantier?.code_chantier || null
   const chantierVille = chantier?.ville || null
   
-  for (const jour of joursPlanning) {
+  for (const jour of safeDays) {
     const heuresJour = isEcole ? 7 : getHeuresForDay(jour)
     const { error: jourError } = await supabase
       .from('fiches_jours')
@@ -2042,7 +2042,7 @@ async function createNewAffectation(
   }
 
   // ✅ FIX: Nettoyer les jours fantômes (fiches_jours hors planning)
-  // Supprimer tous les fiches_jours pour cette fiche dont la date n'est pas dans joursPlanning
+  // Supprimer tous les fiches_jours pour cette fiche dont la date n'est pas dans safeDays
   const mondayOfWeek = parseISOWeek(currentWeek)
   const allWeekDates: string[] = []
   for (let i = 0; i < 5; i++) {
@@ -2051,7 +2051,7 @@ async function createNewAffectation(
     allWeekDates.push(d.toISOString().split('T')[0])
   }
   
-  const datesToDelete = allWeekDates.filter(d => !joursPlanning.includes(d))
+  const datesToDelete = allWeekDates.filter(d => !safeDays.includes(d))
   
   if (datesToDelete.length > 0) {
     const { error: deleteError } = await supabase
@@ -2075,7 +2075,7 @@ async function createNewAffectation(
 
   // Créer les affectations_jours_chef ou affectations_finisseurs_jours
   if (chantier?.chef_id) {
-    for (const jour of joursPlanning) {
+    for (const jour of safeDays) {
       await supabase
         .from('affectations_jours_chef')
         .upsert({
@@ -2088,10 +2088,10 @@ async function createNewAffectation(
         }, { onConflict: 'macon_id,jour,chantier_id' })
     }
     // ✅ FIX: Supprimer les jours fantômes dans affectations_jours_chef
-    await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
+    await deleteStaleAffectationJoursChef(supabase, employeId, chantierId, currentWeek, entrepriseId, safeDays)
   } else if (chantier?.conducteur_id) {
     // ✅ CORRECTIF CRITIQUE: Ajouter entreprise_id dans l'upsert finisseurs
-    for (const jour of joursPlanning) {
+    for (const jour of safeDays) {
       await supabase
         .from('affectations_finisseurs_jours')
         .upsert({
@@ -2104,7 +2104,7 @@ async function createNewAffectation(
         }, { onConflict: 'finisseur_id,date' })
     }
     // ✅ FIX: Supprimer les jours fantômes dans affectations_finisseurs_jours
-    await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, joursPlanning)
+    await deleteStaleAffectationFinisseursJours(supabase, employeId, chantierId, currentWeek, entrepriseId, safeDays)
   }
 
   return { created: true, reason: '' }
