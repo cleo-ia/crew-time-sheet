@@ -39,11 +39,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
       let dateFin: string;
 
       if (semaine && semaine !== "all") {
-        // Parse ISO week "YYYY-Www" → get Monday and Friday
-        const [yearStr, weekStr] = semaine.split("-W");
-        const jan4 = new Date(Number(yearStr), 0, 4);
-        const monday = startOfWeek(jan4, { weekStartsOn: 1 });
-        const weekMonday = addDays(monday, (Number(weekStr) - 1) * 7);
+        const weekMonday = parseISOWeek(semaine);
         dateDebut = format(weekMonday, "yyyy-MM-dd");
         dateFin = format(addDays(weekMonday, 6), "yyyy-MM-dd");
       } else {
