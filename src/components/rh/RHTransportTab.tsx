@@ -273,6 +273,7 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
       <div className="text-sm text-muted-foreground mt-4 px-2">
         {rows.length} ligne{rows.length > 1 ? "s" : ""} de transport
       </div>
+      </div>
     </div>
   );
 };
