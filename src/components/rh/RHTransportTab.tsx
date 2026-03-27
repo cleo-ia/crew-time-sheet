@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 
 interface RHTransportTabProps {
-  filters: { periode?: string };
+  filters: { periode?: string; semaine?: string };
 }
 
 interface TransportRow {
