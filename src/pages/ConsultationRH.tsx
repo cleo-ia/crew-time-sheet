@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck, Calendar } from "lucide-react";
+import { FileSpreadsheet, Download, Lock, Route, Building2, History, RefreshCw, HardHat, ChevronDown, PieChart, Users, UserCheck, Calendar, Truck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +19,7 @@ import { RHSummary } from "@/components/rh/RHSummary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRHSummary } from "@/hooks/useRHData";
 import { RHConsolidated } from "@/components/rh/RHConsolidated";
-import { RHDetailView } from "@/components/rh/RHDetailView";
+import { RHTransportTab } from "@/components/rh/RHTransportTab";
 import { RHHistorique } from "@/components/rh/RHHistorique";
 import { RHFicheDetail } from "@/components/rh/RHFicheDetail";
 import { RHPeriodeDetail } from "@/components/rh/RHPeriodeDetail";
@@ -367,8 +367,9 @@ const ConsultationRH = () => {
                     <TabsTrigger value="preexport" className="rounded-none">
                       Pré-export Excel
                     </TabsTrigger>
-                    <TabsTrigger value="detail" className="rounded-none">
-                      Détail chantier/semaine
+                    <TabsTrigger value="transport" className="rounded-none flex items-center gap-1">
+                      <Truck className="h-3 w-3" />
+                      Transport
                     </TabsTrigger>
                     <TabsTrigger value="historique" className="rounded-none">
                       Historique clôturé
@@ -400,8 +401,8 @@ const ConsultationRH = () => {
                   <RHPreExport filters={filters} />
                 </TabsContent>
 
-                <TabsContent value="detail" className="p-6">
-                  <RHDetailView filters={filters} onSelectFiche={setSelectedFiche} />
+                <TabsContent value="transport" className="p-6">
+                  <RHTransportTab filters={filters} />
                 </TabsContent>
 
                 <TabsContent value="historique" className="p-6">
