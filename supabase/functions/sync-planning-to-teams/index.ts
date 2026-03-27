@@ -1910,8 +1910,8 @@ async function createNewAffectation(
   if (filteredJours.length === 0) {
     return { created: false, reason: 'Tous les jours couverts par absence (congé/ALD)' }
   }
-  // Remplacer joursPlanning par les jours filtrés
-  joursPlanning = filteredJours
+  // Utiliser les jours filtrés pour toute la suite de la fonction
+  const safeDays = filteredJours
 
   // Vérifier si une fiche existe déjà avec des heures
   const { data: existingFiche } = await supabase
