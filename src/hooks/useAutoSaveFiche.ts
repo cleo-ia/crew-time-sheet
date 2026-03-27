@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getCurrentWeek } from "@/lib/weekUtils";
 
 
 type RepasType = "PANIER" | "RESTO" | null;
@@ -44,6 +45,13 @@ export const useAutoSaveFiche = () => {
   return useMutation({
     mutationFn: async (params: SaveFicheParams) => {
       const { timeEntries, weekId, chantierId, chefId, forceNormalize = false } = params;
+
+      // 🛡️ GARDE: Ne pas auto-sauvegarder sur une semaine future
+      const currentWeek = getCurrentWeek();
+      if (weekId > currentWeek) {
+        console.log(`[useAutoSaveFiche] Semaine future détectée (${weekId} > ${currentWeek}), skip auto-save`);
+        return [];
+      }
 
       // Collecter tous les chantierId utilisés
       const allChantierIds = new Set<string>();
