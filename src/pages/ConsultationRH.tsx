@@ -401,8 +401,8 @@ const ConsultationRH = () => {
                   <RHPreExport filters={filters} />
                 </TabsContent>
 
-                <TabsContent value="detail" className="p-6">
-                  <RHDetailView filters={filters} onSelectFiche={setSelectedFiche} />
+                <TabsContent value="transport" className="p-6">
+                  <RHTransportTab filters={filters} />
                 </TabsContent>
 
                 <TabsContent value="historique" className="p-6">
