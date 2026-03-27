@@ -971,7 +971,18 @@ export const buildRHConsolidation = async (filters: RHFilters): Promise<Employee
     }
   }
 
+  const rolePriority: Record<string, number> = {
+    chef: 1,
+    macon: 2,
+    grutier: 3,
+    finisseur: 4,
+    interimaire: 5,
+  };
+
   const result = filteredMap.sort((a, b) => {
+    const prioA = rolePriority[a.role] ?? 99;
+    const prioB = rolePriority[b.role] ?? 99;
+    if (prioA !== prioB) return prioA - prioB;
     const nomCompare = a.nom.localeCompare(b.nom);
     if (nomCompare !== 0) return nomCompare;
     return a.prenom.localeCompare(b.prenom);
