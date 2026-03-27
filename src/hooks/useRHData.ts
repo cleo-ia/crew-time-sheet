@@ -128,7 +128,7 @@ export const useRHConsolidated = (filters: any) => {
       // Mapper vers le format RHEmployee attendu par l'UI
       const result: RHEmployee[] = consolidatedData.map(emp => ({
         id: emp.id,
-        nom: `${emp.prenom} ${emp.nom}`.trim(),
+        nom: `${emp.nom.toUpperCase()} ${emp.prenom}`.trim(),
         agence_interim: emp.agence_interim,
         isChef: emp.isChef,
         role: emp.role,

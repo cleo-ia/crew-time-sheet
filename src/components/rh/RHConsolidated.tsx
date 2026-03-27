@@ -61,7 +61,7 @@ export const RHConsolidated = ({ filters, onSelectFiche }: RHConsolidatedProps) 
               <TableRow key={emp.id} className="hover:bg-muted/20">
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    {emp.nom.toUpperCase()} {emp.prenom}
+                    {emp.nom}
                     {emp.anomalies > 0 && (
                       <AlertTriangle className="h-4 w-4 text-warning" />
                     )}
