@@ -1,38 +1,25 @@
 
 
-## Remplacer l'onglet "Détail chantier/semaine" par un onglet "Transport"
+## Fix: L'onglet Transport ne prend pas en compte le filtre semaine
 
-### Objectif
-Afficher pour le mois sélectionné dans les filtres RH un récapitulatif de tous les conducteurs (matin et soir) extraits des tables `fiches_transport` + `fiches_transport_jours`, groupé par date et chantier.
+### Probleme
+Le format des semaines dans l'app est `YYYY-S12` (avec un **S**), mais le code du transport split sur `-W`. Du coup le parsing échoue et aucune donnée n'est retournée.
 
-### Fichiers modifiés
+### Correction — `src/components/rh/RHTransportTab.tsx` (lignes 40-47)
 
-**1. Nouveau composant : `src/components/rh/RHTransportTab.tsx`**
+Remplacer le parsing manuel de la semaine par l'utilitaire existant `parseISOWeek` de `src/lib/weekUtils.ts` qui gère les deux formats (`-S` et `-W`).
 
-- Props : `{ filters: any }` (utilise `filters.periode` pour le mois)
-- Hook React Query qui :
-  - Récupère toutes les `fiches_transport` dont la `semaine` correspond au mois sélectionné (même logique de filtrage par jours ouvrés que le reste de la page RH)
-  - Joint `fiches_transport_jours` avec les noms des conducteurs via `utilisateurs` (conducteur_aller = matin, conducteur_retour = soir)
-  - Joint `chantiers` pour le nom/code du chantier
-- Affichage en tableau :
-  - Colonnes : **Date** | **Chantier** | **Véhicule (immat)** | **Conducteur matin** | **Conducteur soir**
-  - Trié par date croissante puis par chantier
-  - Skeleton loading + état vide
-  - Message si aucun mois sélectionné
+```typescript
+// Avant (bug)
+const [yearStr, weekStr] = semaine.split("-W");
+const jan4 = new Date(Number(yearStr), 0, 4);
+const monday = startOfWeek(jan4, { weekStartsOn: 1 });
+const weekMonday = addDays(monday, (Number(weekStr) - 1) * 7);
 
-**2. Modification : `src/pages/ConsultationRH.tsx`**
+// Après (fix)
+import { parseISOWeek } from "@/lib/weekUtils";
+const weekMonday = parseISOWeek(semaine); // gère -S et -W
+```
 
-- Import du nouveau composant
-- Remplacer le `TabsTrigger` "Détail chantier/semaine" (value `detail`) par "Transport" avec icône `Truck`
-- Remplacer le `TabsContent` correspondant : `<RHTransportTab filters={filters} />` au lieu de `<RHDetailView />`
-- Supprimer l'import de `RHDetailView` (plus utilisé)
-
-### Ce qui ne change pas
-- Aucune modification de base de données
-- Les autres onglets restent identiques
-- Les filtres RH existants sont réutilisés (seul `periode` est exploité pour filtrer le mois)
-
-### Détail technique
-- La jointure sur `fiches_transport_jours` utilise les FK existantes : `conducteur_aller_id` → `utilisateurs` (matin) et `conducteur_retour_id` → `utilisateurs` (soir)
-- Le filtrage par mois se fait en calculant les dates lundi-vendredi de chaque semaine et vérifiant si elles tombent dans le mois sélectionné (cohérent avec la règle des jours ouvrés du système RH)
+Le reste du code (`dateDebut`/`dateFin` calculés à partir de `weekMonday`) reste identique.
 
