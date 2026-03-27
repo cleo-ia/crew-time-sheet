@@ -195,8 +195,46 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
     );
   }
 
+  // Compute driver summary: count each matin/soir appearance
+  const driverCounts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.conducteurMatin && row.conducteurMatin !== "—") {
+      driverCounts.set(row.conducteurMatin, (driverCounts.get(row.conducteurMatin) || 0) + 1);
+    }
+    if (row.conducteurSoir && row.conducteurSoir !== "—") {
+      driverCounts.set(row.conducteurSoir, (driverCounts.get(row.conducteurSoir) || 0) + 1);
+    }
+  }
+  const driverSummary = [...driverCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-6">
+      {/* Driver summary */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3 text-foreground">Récapitulatif conducteurs — {driverSummary.length} conducteur{driverSummary.length > 1 ? "s" : ""}</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Conducteur</TableHead>
+                <TableHead className="text-right">Nb trajets</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {driverSummary.map(([name, count]) => (
+                <TableRow key={name}>
+                  <TableCell className="font-medium">{name}</TableCell>
+                  <TableCell className="text-right font-mono">{count}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Detail table */}
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
