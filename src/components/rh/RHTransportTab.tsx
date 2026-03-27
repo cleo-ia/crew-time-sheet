@@ -111,22 +111,35 @@ const useRHTransportData = (periode: string | undefined) => {
         userMap.set(u.id, `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim());
       });
 
-      // Build rows
-      const rows: TransportRow[] = joursData.map(jour => {
+      // Group by date + chantier + immatriculation to merge matin/soir into one row
+      const grouped = new Map<string, TransportRow>();
+
+      for (const jour of joursData) {
         const chantierId = transportChantierMap.get(jour.fiche_transport_id);
         const chantier = chantierId ? chantierMap.get(chantierId) : null;
+        const key = `${jour.date}|${chantierId || ""}|${jour.immatriculation || ""}`;
 
-        return {
-          date: jour.date,
-          chantierNom: chantier?.nom || "—",
-          codeChantier: chantier?.code_chantier || null,
-          immatriculation: jour.immatriculation || null,
-          conducteurMatin: jour.conducteur_aller_id ? userMap.get(jour.conducteur_aller_id) || "—" : null,
-          conducteurSoir: jour.conducteur_retour_id ? userMap.get(jour.conducteur_retour_id) || "—" : null,
-        };
-      });
+        const existing = grouped.get(key);
+        const matin = jour.conducteur_aller_id ? userMap.get(jour.conducteur_aller_id) || "—" : null;
+        const soir = jour.conducteur_retour_id ? userMap.get(jour.conducteur_retour_id) || "—" : null;
 
-      // Sort by date then chantier
+        if (existing) {
+          if (matin && !existing.conducteurMatin) existing.conducteurMatin = matin;
+          if (soir && !existing.conducteurSoir) existing.conducteurSoir = soir;
+        } else {
+          grouped.set(key, {
+            date: jour.date,
+            chantierNom: chantier?.nom || "—",
+            codeChantier: chantier?.code_chantier || null,
+            immatriculation: jour.immatriculation || null,
+            conducteurMatin: matin,
+            conducteurSoir: soir,
+          });
+        }
+      }
+
+      const rows = [...grouped.values()];
+
       rows.sort((a, b) => {
         const dateComp = a.date.localeCompare(b.date);
         if (dateComp !== 0) return dateComp;
