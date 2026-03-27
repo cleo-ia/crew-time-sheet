@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, addDays, startOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, addDays } from "date-fns";
+import { parseISOWeek } from "@/lib/weekUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Truck } from "lucide-react";
 import {
