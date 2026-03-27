@@ -367,8 +367,9 @@ const ConsultationRH = () => {
                     <TabsTrigger value="preexport" className="rounded-none">
                       Pré-export Excel
                     </TabsTrigger>
-                    <TabsTrigger value="detail" className="rounded-none">
-                      Détail chantier/semaine
+                    <TabsTrigger value="transport" className="rounded-none flex items-center gap-1">
+                      <Truck className="h-3 w-3" />
+                      Transport
                     </TabsTrigger>
                     <TabsTrigger value="historique" className="rounded-none">
                       Historique clôturé
