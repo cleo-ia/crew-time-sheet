@@ -1,25 +1,22 @@
 
 
-## Fix: L'onglet Transport ne prend pas en compte le filtre semaine
+## Ajouter les badges de rôle dans le récapitulatif conducteurs
 
 ### Probleme
-Le format des semaines dans l'app est `YYYY-S12` (avec un **S**), mais le code du transport split sur `-W`. Du coup le parsing échoue et aucune donnée n'est retournée.
+Le récapitulatif conducteurs affiche uniquement le nom. Il faut ajouter le badge de rôle (Maçon, Chef, Intérimaire, etc.) a coté du nom, comme dans les autres tableaux RH.
 
-### Correction — `src/components/rh/RHTransportTab.tsx` (lignes 40-47)
+### Approche
+Le code actuel ne stocke que le nom (string) dans `driverCounts`. Il faut aussi récupérer le `role_metier` depuis la table `utilisateurs` et le propager jusqu'au récapitulatif.
 
-Remplacer le parsing manuel de la semaine par l'utilitaire existant `parseISOWeek` de `src/lib/weekUtils.ts` qui gère les deux formats (`-S` et `-W`).
+### Modifications — `src/components/rh/RHTransportTab.tsx`
 
-```typescript
-// Avant (bug)
-const [yearStr, weekStr] = semaine.split("-W");
-const jan4 = new Date(Number(yearStr), 0, 4);
-const monday = startOfWeek(jan4, { weekStartsOn: 1 });
-const weekMonday = addDays(monday, (Number(weekStr) - 1) * 7);
+1. **Fetch `role_metier`** : Ajouter `role_metier` au select des utilisateurs (ligne 86) : `"id, nom, prenom, role_metier"`
 
-// Après (fix)
-import { parseISOWeek } from "@/lib/weekUtils";
-const weekMonday = parseISOWeek(semaine); // gère -S et -W
-```
+2. **Stocker le rôle par nom** : Créer un `Map<string, string>` qui associe chaque nom de conducteur a son `role_metier` (macon, chef, finisseur, interimaire, grutier, conducteur)
 
-Le reste du code (`dateDebut`/`dateFin` calculés à partir de `weekMonday`) reste identique.
+3. **Propager dans le récapitulatif** : Dans le `driverSummary`, utiliser cette map pour afficher un `<RoleBadge>` a coté du nom dans la colonne "Conducteur"
+
+4. **Import** : Ajouter `import { RoleBadge } from "@/components/ui/role-badge"`
+
+Le tableau de détail en bas reste inchangé (pas de badge la-bas).
 
