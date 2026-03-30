@@ -4,6 +4,7 @@ import { format, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoleBadge } from "@/components/ui/role-badge";
+import { Badge } from "@/components/ui/badge";
 import { Truck } from "lucide-react";
 import {
   Table,
@@ -277,7 +278,9 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
                       )}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{count}</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant="secondary" className="font-mono">{count}</Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
