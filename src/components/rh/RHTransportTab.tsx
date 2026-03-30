@@ -79,7 +79,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
       const [transportRes, utilisateursRes] = await Promise.all([
         supabase
           .from("fiches_transport")
-          .select("id, chantier_id")
+          .select("id, chantier_id, fiche_id")
           .in("id", transportIds),
         conducteurIds.size > 0
           ? supabase
@@ -91,6 +91,35 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
 
       if (transportRes.error) throw transportRes.error;
       if (utilisateursRes.error) throw utilisateursRes.error;
+
+      // Filter: only keep fiches_transport whose parent fiche is transmitted
+      const ficheIds = [...new Set(
+        (transportRes.data || []).map((t: any) => t.fiche_id).filter(Boolean) as string[]
+      )];
+
+      let validTransportIds = new Set(transportIds);
+      if (ficheIds.length > 0) {
+        const { data: fichesData } = await supabase
+          .from("fiches")
+          .select("id, statut")
+          .in("id", ficheIds);
+
+        const validFicheIds = new Set(
+          (fichesData || [])
+            .filter((f: any) => f.statut === "ENVOYE_RH" || f.statut === "AUTO_VALIDE")
+            .map((f: any) => f.id)
+        );
+
+        validTransportIds = new Set(
+          (transportRes.data || [])
+            .filter((t: any) => t.fiche_id && validFicheIds.has(t.fiche_id))
+            .map((t: any) => t.id)
+        );
+      }
+
+      // Filter joursData to only transmitted fiches
+      const filteredJours = joursData.filter(j => validTransportIds.has(j.fiche_transport_id));
+      if (filteredJours.length === 0) return { rows: [], userRoleMap: {} };
 
       // Map transport -> chantier_id
       const transportChantierMap = new Map<string, string | null>();
@@ -128,7 +157,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
       // Group by date + chantier + immatriculation to merge matin/soir into one row
       const grouped = new Map<string, TransportRow>();
 
-      for (const jour of joursData) {
+      for (const jour of filteredJours) {
         const chantierId = transportChantierMap.get(jour.fiche_transport_id);
         const chantier = chantierId ? chantierMap.get(chantierId) : null;
         const key = `${jour.date}|${chantierId || ""}|${jour.immatriculation || ""}`;
