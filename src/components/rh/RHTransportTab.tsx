@@ -160,7 +160,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         return a.chantierNom.localeCompare(b.chantierNom);
       });
 
-      return rows;
+      return { rows, userRoleMap: Object.fromEntries(userRoleMap) };
     },
   });
 };
