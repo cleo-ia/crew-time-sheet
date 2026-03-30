@@ -278,7 +278,9 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
                       )}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{count}</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant="secondary" className="font-mono">{count}</Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
