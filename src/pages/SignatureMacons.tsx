@@ -282,6 +282,7 @@ const SignatureMacons = () => {
         title: "❌ Erreur",
         description: "Impossible de soumettre la fiche",
       });
+      setIsSubmitting(false);
     }
   };
 
