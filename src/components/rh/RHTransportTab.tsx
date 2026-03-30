@@ -84,7 +84,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         conducteurIds.size > 0
           ? supabase
               .from("utilisateurs")
-              .select("id, nom, prenom")
+              .select("id, nom, prenom, role")
               .in("id", [...conducteurIds])
           : Promise.resolve({ data: [], error: null }),
       ]);
