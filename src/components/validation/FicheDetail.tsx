@@ -756,7 +756,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
                 <SignaturePad
                   employeeName="Conducteur"
                   onSave={async (signatureData) => {
-                    if (!conducteurId) return;
+                    if (!conducteurId || saveSignatureMutation.isPending || updateStatus.isPending) return;
                     
                     try {
                       console.log("🖊️ Début de la signature pour", allFiches.length, "fiches");
