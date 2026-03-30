@@ -33,8 +33,8 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
   return useQuery({
     queryKey: ["rh-transport", periode, semaine, entrepriseId],
     enabled: !!periode && periode !== "all" && !!entrepriseId,
-    queryFn: async (): Promise<TransportRow[]> => {
-      if (!periode || periode === "all" || !entrepriseId) return [];
+    queryFn: async (): Promise<{ rows: TransportRow[]; userRoleMap: Record<string, string> }> => {
+      if (!periode || periode === "all" || !entrepriseId) return { rows: [], userRoleMap: {} };
 
       let dateDebut: string;
       let dateFin: string;
