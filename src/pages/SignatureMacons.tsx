@@ -569,7 +569,8 @@ const SignatureMacons = () => {
                     Vous pouvez maintenant soumettre la fiche au conducteur de travaux
                   </p>
                 </div>
-                <Button onClick={handleFinish} className="bg-success hover:bg-success/90">
+                <Button onClick={handleFinish} disabled={isSubmitting} className="bg-success hover:bg-success/90">
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Soumettre au conducteur
                 </Button>
               </div>

@@ -250,7 +250,8 @@ export const VehiculesManager = () => {
             <Button variant="outline" onClick={handleCloseDialog}>
               Annuler
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={createVehicule.isPending || updateVehicule.isPending}>
+              {(createVehicule.isPending || updateVehicule.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editingVehicule ? "Modifier" : "Ajouter"}
             </Button>
           </DialogFooter>
