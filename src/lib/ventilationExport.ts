@@ -447,9 +447,15 @@ export const exportVentilationCompletePdf = async (
     }
   };
 
+  const entrepriseLogo = getEntrepriseLogo();
+
   const drawPageHeader = (title: string) => {
     currentTitle = title;
-    drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+    try {
+      pdf.addImage(entrepriseLogo, "PNG", margin, 5, 35, 18);
+    } catch {
+      drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+    }
     drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
     drawText(title, pageWidth / 2, 22, { bold: true, fontSize: 12, align: "center" });
     drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 29, { fontSize: 10, align: "center" });
