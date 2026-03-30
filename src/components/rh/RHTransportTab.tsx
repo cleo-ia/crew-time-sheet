@@ -65,7 +65,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         .order("date", { ascending: true });
 
       if (error) throw error;
-      if (!joursData || joursData.length === 0) return [];
+      if (!joursData || joursData.length === 0) return { rows: [], userRoleMap: {} };
 
       // Collect unique IDs for batch lookups
       const transportIds = [...new Set(joursData.map(j => j.fiche_transport_id))];
