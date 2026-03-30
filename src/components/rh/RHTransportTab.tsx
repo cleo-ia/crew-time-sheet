@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { parseISOWeek } from "@/lib/weekUtils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { Truck } from "lucide-react";
 import {
   Table,
@@ -32,8 +33,8 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
   return useQuery({
     queryKey: ["rh-transport", periode, semaine, entrepriseId],
     enabled: !!periode && periode !== "all" && !!entrepriseId,
-    queryFn: async (): Promise<TransportRow[]> => {
-      if (!periode || periode === "all" || !entrepriseId) return [];
+    queryFn: async (): Promise<{ rows: TransportRow[]; userRoleMap: Record<string, string> }> => {
+      if (!periode || periode === "all" || !entrepriseId) return { rows: [], userRoleMap: {} };
 
       let dateDebut: string;
       let dateFin: string;
@@ -64,7 +65,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         .order("date", { ascending: true });
 
       if (error) throw error;
-      if (!joursData || joursData.length === 0) return [];
+      if (!joursData || joursData.length === 0) return { rows: [], userRoleMap: {} };
 
       // Collect unique IDs for batch lookups
       const transportIds = [...new Set(joursData.map(j => j.fiche_transport_id))];
@@ -83,7 +84,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         conducteurIds.size > 0
           ? supabase
               .from("utilisateurs")
-              .select("id, nom, prenom")
+              .select("id, nom, prenom, role")
               .in("id", [...conducteurIds])
           : Promise.resolve({ data: [], error: null }),
       ]);
@@ -117,8 +118,11 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
 
       // Map utilisateurs
       const userMap = new Map<string, string>();
+      const userRoleMap = new Map<string, string>();
       (utilisateursRes.data || []).forEach(u => {
-        userMap.set(u.id, `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim());
+        const fullName = `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim();
+        userMap.set(u.id, fullName);
+        if (u.role) userRoleMap.set(fullName, u.role);
       });
 
       // Group by date + chantier + immatriculation to merge matin/soir into one row
@@ -156,7 +160,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
         return a.chantierNom.localeCompare(b.chantierNom);
       });
 
-      return rows;
+      return { rows, userRoleMap: Object.fromEntries(userRoleMap) };
     },
   });
 };
@@ -173,7 +177,9 @@ const formatDate = (dateStr: string) => {
 };
 
 export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
-  const { data: rows = [], isLoading } = useRHTransportData(filters.periode, filters.semaine);
+  const { data, isLoading } = useRHTransportData(filters.periode, filters.semaine);
+  const rows = data?.rows || [];
+  const roleMap = data?.userRoleMap || {};
 
   if (!filters.periode || filters.periode === "all") {
     return (
@@ -234,7 +240,14 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
             <TableBody>
               {driverSummary.map(([name, count]) => (
                 <TableRow key={name}>
-                  <TableCell className="font-medium">{name}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="flex items-center gap-2">
+                      {name}
+                      {roleMap[name] && (
+                        <RoleBadge role={roleMap[name] as any} size="sm" />
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right font-mono">{count}</TableCell>
                 </TableRow>
               ))}
