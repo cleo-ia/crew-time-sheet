@@ -1157,8 +1157,13 @@ export const exportVentilationInterimPdf = async (data: VentilationEmployeeRow[]
   };
 
   // Header complet (page 1 uniquement)
+  const entrepriseLogoInterim = getEntrepriseLogo();
   const drawPageHeaderFull = () => {
-    drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+    try {
+      pdf.addImage(entrepriseLogoInterim, "PNG", margin, 5, 35, 18);
+    } catch {
+      drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+    }
     drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
     drawText("VENTILATION ANALYTIQUE % par Interimaire", pageWidth / 2, 22, { bold: true, fontSize: 12, align: "center" });
     drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 29, { fontSize: 10, align: "center" });
