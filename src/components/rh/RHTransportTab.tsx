@@ -157,7 +157,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
       // Group by date + chantier + immatriculation to merge matin/soir into one row
       const grouped = new Map<string, TransportRow>();
 
-      for (const jour of joursData) {
+      for (const jour of filteredJours) {
         const chantierId = transportChantierMap.get(jour.fiche_transport_id);
         const chantier = chantierId ? chantierMap.get(chantierId) : null;
         const key = `${jour.date}|${chantierId || ""}|${jour.immatriculation || ""}`;
