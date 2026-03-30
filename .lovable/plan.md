@@ -1,22 +1,31 @@
 
 
-## Protection double-clic — FicheDetail (validation conducteur)
+## Ajouter le logo entreprise sur les PDF Ventilation Analytique
 
-**SignatureMacons** et **VehiculesManager** sont déjà protégés. Seul **FicheDetail** reste à corriger.
+### Contexte
+Les PDF de ventilation affichent actuellement "Limoge Revillon" en texte simple en haut à gauche. Le logo est deja importé dans le fichier (`logoLimogeRevillon`) mais jamais utilisé dans le rendu PDF.
 
-### Problème
+### Ce qui change
+On remplace le texte "Limoge Revillon" par l'image du logo **uniquement sur la première page de chaque section** (Ouvrier, Intérimaire, Recap). Les pages suivantes gardent le texte comme aujourd'hui. La mise en page reste identique (mêmes positions, mêmes marges).
 
-Quand le conducteur signe, le `onSave` du `SignaturePad` lance la signature + validation en async. Pendant ce temps, rien n'empêche un double-clic ou une seconde interaction.
+### Fichier modifié
+`src/lib/ventilationExport.ts` -- 1 seul fichier
 
-### Modification
+### Modifications
 
-**Fichier** : `src/components/validation/FicheDetail.tsx`
+1. **Ajouter un helper `getEntrepriseLogo()`** (comme dans `pdfExportInterimaire.ts`) qui retourne le bon logo selon le slug entreprise en localStorage.
 
-1. Ajouter `updateStatus.isPending || saveSignatureMutation.isPending` comme condition de désactivation sur le bouton "Signer" (le bouton qui affiche le `SignaturePad`).
-2. Dans le `onSave` du `SignaturePad`, ajouter une garde `if (saveSignatureMutation.isPending || updateStatus.isPending) return;` en début de callback pour ignorer les appels concurrents.
+2. **Export complet (`exportVentilationCompletePdf`)** -- Modifier `drawPageHeader()` (ligne 440) pour dessiner le logo via `pdf.addImage()` à la place du texte entreprise. Cette fonction est appelée 3 fois (sections Ouvrier, Intérim, Recap). Les headers "minimal" des pages suivantes restent en texte.
 
-### Impact
-- 1 seul fichier modifié
-- Aucun changement de logique métier
-- Risque de régression : nul
+3. **Export individuel Recap (`exportRecapChantierPdf`)** -- Remplacer le `drawText(entrepriseName...)` ligne 825 par `pdf.addImage(logo...)` sur la première page uniquement.
+
+4. **Export individuel Ouvrier (`exportVentilationOuvrierPdf`)** -- Remplacer dans `drawPageHeaderFull()` ligne 933. Le `drawPageHeaderMinimal()` reste en texte.
+
+5. **Export individuel Intérim (`exportVentilationInterimPdf`)** -- Remplacer dans `drawPageHeaderFull()` ligne 1135. Le `drawPageHeaderMinimal()` reste en texte.
+
+### Détails techniques
+- Logo : `pdf.addImage(logo, "PNG", margin, 5, 35, 18)` -- même taille que les autres exports (35x18mm)
+- Fallback : si le logo échoue (`try/catch`), on affiche le texte comme aujourd'hui
+- Le reste de l'en-tête (date, titre, période) ne bouge pas
+- Le logo uploadé sera copié dans `src/assets/` pour remplacer l'existant si meilleure qualité
 
