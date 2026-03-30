@@ -240,7 +240,14 @@ export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
             <TableBody>
               {driverSummary.map(([name, count]) => (
                 <TableRow key={name}>
-                  <TableCell className="font-medium">{name}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="flex items-center gap-2">
+                      {name}
+                      {roleMap[name] && (
+                        <RoleBadge role={roleMap[name] as any} size="sm" />
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right font-mono">{count}</TableCell>
                 </TableRow>
               ))}
