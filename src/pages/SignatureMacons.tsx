@@ -196,8 +196,11 @@ const SignatureMacons = () => {
   const allSigned = macons.every((m) => m.signed);
   const signedCount = macons.filter((m) => m.signed).length;
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleFinish = async () => {
-    if (!chantierId || !semaine || !chefId) return;
+    if (!chantierId || !semaine || !chefId || isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       // 1. Mettre à jour le statut → VALIDE_CHEF
