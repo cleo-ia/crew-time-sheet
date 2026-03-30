@@ -177,7 +177,9 @@ const formatDate = (dateStr: string) => {
 };
 
 export const RHTransportTab = ({ filters }: RHTransportTabProps) => {
-  const { data: rows = [], isLoading } = useRHTransportData(filters.periode, filters.semaine);
+  const { data, isLoading } = useRHTransportData(filters.periode, filters.semaine);
+  const rows = data?.rows || [];
+  const roleMap = data?.userRoleMap || {};
 
   if (!filters.periode || filters.periode === "all") {
     return (
