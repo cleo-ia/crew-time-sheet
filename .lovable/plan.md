@@ -1,38 +1,22 @@
 
 
-## Protection contre les double-clics sur les boutons non protegés
+## Protection double-clic — FicheDetail (validation conducteur)
 
-### Analyse effectuee
+**SignatureMacons** et **VehiculesManager** sont déjà protégés. Seul **FicheDetail** reste à corriger.
 
-J'ai audité tous les boutons de soumission critiques et les mécanismes de debounce existants.
+### Problème
 
-**Deja protegé (aucune modification) :**
-- Page Index (Saisie chef) : garde `isSubmitting` + `disabled` sur le bouton
-- Page ValidationConducteur : garde `isSubmitting` + `disabled`
-- Page SignatureFinisseurs : garde `isSubmitting` + `disabled`
-- Auto-save TimeEntryTable : debounce 1s avec `clearTimeout`
-- Auto-save TransportSheet : debounce 2s avec `clearTimeout`
-- Auto-save TransportSheetV2 : debounce + save immédiat à la fermeture
-- EditableCell RH : debounce 500ms avec `clearTimeout`
-- Tous les formulaires admin (InviteUser, CreateUser, Chantiers, etc.) : `isPending` React Query
+Quand le conducteur signe, le `onSave` du `SignaturePad` lance la signature + validation en async. Pendant ce temps, rien n'empêche un double-clic ou une seconde interaction.
 
-**3 boutons sans protection (a corriger) :**
+### Modification
 
-### 1. SignatureMacons — "Soumettre au conducteur"
-- Ajouter un state `isSubmitting` + garde en haut de `handleFinish`
-- Ajouter `disabled={isSubmitting}` + spinner sur le bouton
+**Fichier** : `src/components/validation/FicheDetail.tsx`
 
-### 2. FicheDetail — bouton "Valider" (handleValidate)
-- Ajouter `disabled={updateStatus.isPending}` sur le bouton de validation
+1. Ajouter `updateStatus.isPending || saveSignatureMutation.isPending` comme condition de désactivation sur le bouton "Signer" (le bouton qui affiche le `SignaturePad`).
+2. Dans le `onSave` du `SignaturePad`, ajouter une garde `if (saveSignatureMutation.isPending || updateStatus.isPending) return;` en début de callback pour ignorer les appels concurrents.
 
-### 3. VehiculesManager — bouton "Ajouter/Modifier"
-- Ajouter `disabled={createVehicule.isPending || updateVehicule.isPending}` sur le bouton
-
-### Impact zero sur les debounce existants
-Aucun debounce n'est modifié. Les timers auto-save restent identiques (1s, 2s, 500ms). Seuls 3 boutons reçoivent un `disabled` pendant l'exécution de leur action.
-
-### Details techniques
-- **Fichiers modifiés** : `SignatureMacons.tsx`, `FicheDetail.tsx`, `VehiculesManager.tsx`
-- **Pas de nouveau hook, pas de nouvelle dépendance**
-- **Risque de regression** : nul — on ajoute uniquement un `disabled` temporaire pendant le `await`
+### Impact
+- 1 seul fichier modifié
+- Aucun changement de logique métier
+- Risque de régression : nul
 
