@@ -1,22 +1,27 @@
 
+Objectif: corriger la régression sur l’onglet **Transport RH** (écran vide depuis l’ajout des badges) et conserver les badges **uniquement** dans “Récapitulatif conducteurs”.
 
-## Ajouter les badges de rôle dans le récapitulatif conducteurs
+1) Diagnostic confirmé
+- Le composant `src/components/rh/RHTransportTab.tsx` lit actuellement `utilisateurs` avec `.select("id, nom, prenom, role")`.
+- Dans le schéma (`src/integrations/supabase/types.ts`), la colonne existante est `role_metier` (pas `role`).
+- Cette erreur de colonne fait échouer la requête et casse le chargement des données transport.
 
-### Probleme
-Le récapitulatif conducteurs affiche uniquement le nom. Il faut ajouter le badge de rôle (Maçon, Chef, Intérimaire, etc.) a coté du nom, comme dans les autres tableaux RH.
+2) Correctif à appliquer (fichier unique)
+- Fichier: `src/components/rh/RHTransportTab.tsx`
+- Remplacer la sélection utilisateurs:
+  - de: `id, nom, prenom, role`
+  - vers: `id, nom, prenom, role_metier`
+- Adapter le mapping des badges:
+  - utiliser `u.role_metier` pour remplir `userRoleMap`.
+- Conserver l’affichage des badges **seulement** dans le tableau “Récapitulatif conducteurs”.
+- Ne rien changer dans le tableau de détail (matin/soir sans badge), comme demandé.
 
-### Approche
-Le code actuel ne stocke que le nom (string) dans `driverCounts`. Il faut aussi récupérer le `role_metier` depuis la table `utilisateurs` et le propager jusqu'au récapitulatif.
+3) Robustesse (petite sécurité)
+- Ajouter une gestion d’erreur explicite côté UI (état `isError`) pour éviter un faux “Aucune donnée” quand une requête échoue.
+- Message d’erreur clair: “Erreur de chargement des données transport” + suggestion de rafraîchir.
 
-### Modifications — `src/components/rh/RHTransportTab.tsx`
-
-1. **Fetch `role_metier`** : Ajouter `role_metier` au select des utilisateurs (ligne 86) : `"id, nom, prenom, role_metier"`
-
-2. **Stocker le rôle par nom** : Créer un `Map<string, string>` qui associe chaque nom de conducteur a son `role_metier` (macon, chef, finisseur, interimaire, grutier, conducteur)
-
-3. **Propager dans le récapitulatif** : Dans le `driverSummary`, utiliser cette map pour afficher un `<RoleBadge>` a coté du nom dans la colonne "Conducteur"
-
-4. **Import** : Ajouter `import { RoleBadge } from "@/components/ui/role-badge"`
-
-Le tableau de détail en bas reste inchangé (pas de badge la-bas).
-
+4) Vérifications fonctionnelles
+- Cas 1: `Période = mois`, `Semaine = Toutes` → données visibles + badges dans le récap.
+- Cas 2: `Période = mois`, `Semaine = semaine précise` → filtrage semaine respecté + badges visibles dans le récap.
+- Cas 3: employé sans `role_metier` → nom visible sans badge.
+- Cas 4: aucune donnée réelle → état vide normal “Aucune donnée de transport”.
