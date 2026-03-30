@@ -1,31 +1,47 @@
 
 
-## Ajouter le logo entreprise sur les PDF Ventilation Analytique
+## Améliorer le visuel du popup "absences non justifiées"
 
-### Contexte
-Les PDF de ventilation affichent actuellement "Limoge Revillon" en texte simple en haut à gauche. Le logo est deja importé dans le fichier (`logoLimogeRevillon`) mais jamais utilisé dans le rendu PDF.
+### Problème
+Le toast d'erreur affiche un long texte brut avec les noms séparés par des virgules — difficile à lire quand il y a 10+ salariés.
 
 ### Ce qui change
-On remplace le texte "Limoge Revillon" par l'image du logo **uniquement sur la première page de chaque section** (Ouvrier, Intérimaire, Recap). Les pages suivantes gardent le texte comme aujourd'hui. La mise en page reste identique (mêmes positions, mêmes marges).
+On remplace le texte brut par un toast structuré avec :
+- **Titre** : "Impossible d'exporter"
+- **Description JSX** : nombre de salariés, puis liste à puces des noms (chacun sur sa propre ligne), puis message "Veuillez qualifier..."
+- Durée et comportement identiques
+
+Sonner supporte nativement le JSX dans `description`, donc pas besoin de composant custom.
 
 ### Fichier modifié
-`src/lib/ventilationExport.ts` -- 1 seul fichier
+`src/pages/ConsultationRH.tsx` — 2 endroits (export RH complet + export chefs)
 
-### Modifications
+### Détail des modifications
 
-1. **Ajouter un helper `getEntrepriseLogo()`** (comme dans `pdfExportInterimaire.ts`) qui retourne le bon logo selon le slug entreprise en localStorage.
+**Toast export complet (ligne ~129)** : remplacer le `toast.error(string)` par :
+```tsx
+toast.error("Impossible d'exporter", {
+  description: (
+    <div className="mt-1 text-sm">
+      <p>{nbEmployes} salarié(s) ont des absences non justifiées :</p>
+      <ul className="mt-2 list-disc pl-4 space-y-0.5 max-h-40 overflow-y-auto">
+        {employesAvecAbsencesNonQualifiees.map((e, i) => (
+          <li key={i}>{e.prenom} {e.nom}</li>
+        ))}
+      </ul>
+      <p className="mt-2 font-medium">Veuillez qualifier toutes les absences avant l'export.</p>
+    </div>
+  ),
+  duration: 8000,
+});
+```
 
-2. **Export complet (`exportVentilationCompletePdf`)** -- Modifier `drawPageHeader()` (ligne 440) pour dessiner le logo via `pdf.addImage()` à la place du texte entreprise. Cette fonction est appelée 3 fois (sections Ouvrier, Intérim, Recap). Les headers "minimal" des pages suivantes restent en texte.
+**Toast export chefs (ligne ~192)** : même transformation adaptée au message "Chefs concernés".
 
-3. **Export individuel Recap (`exportRecapChantierPdf`)** -- Remplacer le `drawText(entrepriseName...)` ligne 825 par `pdf.addImage(logo...)` sur la première page uniquement.
+**Bonus** — `src/components/rh/InterimaireExportDialog.tsx` (ligne ~263) : même mise en forme pour la cohérence.
 
-4. **Export individuel Ouvrier (`exportVentilationOuvrierPdf`)** -- Remplacer dans `drawPageHeaderFull()` ligne 933. Le `drawPageHeaderMinimal()` reste en texte.
-
-5. **Export individuel Intérim (`exportVentilationInterimPdf`)** -- Remplacer dans `drawPageHeaderFull()` ligne 1135. Le `drawPageHeaderMinimal()` reste en texte.
-
-### Détails techniques
-- Logo : `pdf.addImage(logo, "PNG", margin, 5, 35, 18)` -- même taille que les autres exports (35x18mm)
-- Fallback : si le logo échoue (`try/catch`), on affiche le texte comme aujourd'hui
-- Le reste de l'en-tête (date, titre, période) ne bouge pas
-- Le logo uploadé sera copié dans `src/assets/` pour remplacer l'existant si meilleure qualité
+### Impact
+- Même contenu, meilleure lisibilité
+- Liste scrollable si beaucoup de noms
+- Aucun changement de logique métier
 
