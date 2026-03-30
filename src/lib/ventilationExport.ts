@@ -7,6 +7,16 @@ import logoLimogeRevillon from "@/assets/logo-limoge-revillon.png";
 import logoSder from "@/assets/logo-sder.png";
 import logoEngoBourgogne from "@/assets/logo-engo-bourgogne.png";
 
+const getEntrepriseLogo = (): string => {
+  const slug = localStorage.getItem("entreprise_slug");
+  const logos: Record<string, string> = {
+    "limoge-revillon": logoLimogeRevillon,
+    "sder": logoSder,
+    "engo-bourgogne": logoEngoBourgogne,
+  };
+  return logos[slug || ""] || logoLimogeRevillon;
+};
+
 const formatPeriodeLabel = (periode: string): string => {
   const [year, month] = periode.split("-");
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
