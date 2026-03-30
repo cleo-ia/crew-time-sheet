@@ -741,7 +741,7 @@ export const FicheDetail = ({ ficheId, onBack, readOnly = false }: FicheDetailPr
                   <Button 
                     onClick={() => setShowSignaturePad(true)}
                     className="w-full bg-orange-500 hover:bg-orange-600"
-                    disabled={!isTransportValidForSignature}
+                    disabled={!isTransportValidForSignature || saveSignatureMutation.isPending || updateStatus.isPending}
                   >
                     <PenTool className="h-4 w-4 mr-2" />
                     Enregistrer et collecter les signatures
