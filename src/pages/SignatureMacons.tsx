@@ -196,8 +196,11 @@ const SignatureMacons = () => {
   const allSigned = macons.every((m) => m.signed);
   const signedCount = macons.filter((m) => m.signed).length;
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleFinish = async () => {
-    if (!chantierId || !semaine || !chefId) return;
+    if (!chantierId || !semaine || !chefId || isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       // 1. Mettre à jour le statut → VALIDE_CHEF
@@ -279,6 +282,7 @@ const SignatureMacons = () => {
         title: "❌ Erreur",
         description: "Impossible de soumettre la fiche",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -566,7 +570,8 @@ const SignatureMacons = () => {
                     Vous pouvez maintenant soumettre la fiche au conducteur de travaux
                   </p>
                 </div>
-                <Button onClick={handleFinish} className="bg-success hover:bg-success/90">
+                <Button onClick={handleFinish} disabled={isSubmitting} className="bg-success hover:bg-success/90">
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Soumettre au conducteur
                 </Button>
               </div>
