@@ -118,8 +118,11 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
 
       // Map utilisateurs
       const userMap = new Map<string, string>();
+      const userRoleMap = new Map<string, string>();
       (utilisateursRes.data || []).forEach(u => {
-        userMap.set(u.id, `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim());
+        const fullName = `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim();
+        userMap.set(u.id, fullName);
+        if (u.role) userRoleMap.set(fullName, u.role);
       });
 
       // Group by date + chantier + immatriculation to merge matin/soir into one row
