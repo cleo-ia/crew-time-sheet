@@ -122,7 +122,7 @@ const useRHTransportData = (periode: string | undefined, semaine: string | undef
       (utilisateursRes.data || []).forEach(u => {
         const fullName = `${u.nom?.toUpperCase() || ""} ${u.prenom || ""}`.trim();
         userMap.set(u.id, fullName);
-        if (u.role) userRoleMap.set(fullName, u.role);
+        if (u.role_metier) userRoleMap.set(fullName, u.role_metier);
       });
 
       // Group by date + chantier + immatriculation to merge matin/soir into one row
