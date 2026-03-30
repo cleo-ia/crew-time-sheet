@@ -838,7 +838,12 @@ export const exportRecapChantierPdf = async (data: RecapChantierRow[], periode: 
   };
 
   // En-tête conforme Excel
-  drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+  const entrepriseLogo = getEntrepriseLogo();
+  try {
+    pdf.addImage(entrepriseLogo, "PNG", margin, 5, 35, 18);
+  } catch {
+    drawText(entrepriseName, margin, 12, { bold: true, fontSize: 11 });
+  }
   drawText(`${location}, le ${dateStr}`, pageWidth - margin, 12, { fontSize: 10, align: "right" });
   drawText("RECAP HEURES par Chantier par type main d'oeuvre", pageWidth / 2, 20, { bold: true, fontSize: 12, align: "center" });
   drawText(`Periode du ${periodeDates.debut} au ${periodeDates.fin}`, pageWidth / 2, 27, { fontSize: 10, align: "center" });
