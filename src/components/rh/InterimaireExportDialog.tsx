@@ -260,10 +260,20 @@ export const InterimaireExportDialog = ({
           .map(e => `${e.prenom} ${e.nom}`)
           .join(", ");
         
-        toast.error(
-          `Impossible d'exporter : des salariés ont des absences non justifiées.\n\nSalariés concernés : ${nomsSalaries}`,
-          { duration: 8000 }
-        );
+        toast.error("Impossible d'exporter", {
+          description: (
+            <div className="mt-1 text-sm">
+              <p>{employesAvecAbsencesNonQualifiees.length} salarié(s) ont des absences non justifiées :</p>
+              <ul className="mt-2 list-disc pl-4 space-y-0.5 max-h-40 overflow-y-auto">
+                {employesAvecAbsencesNonQualifiees.map((e, i) => (
+                  <li key={i}>{e.prenom} {e.nom}</li>
+                ))}
+              </ul>
+              <p className="mt-2 font-medium">Veuillez qualifier toutes les absences avant l'export.</p>
+            </div>
+          ),
+          duration: 8000,
+        });
         return;
       }
 
