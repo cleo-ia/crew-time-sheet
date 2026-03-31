@@ -1,29 +1,36 @@
 
 
-## Ajouter les indicateurs de jours d'affectation dans le détail des fiches en attente
+## Ajouter les indicateurs jour pour les employés "sans chef"
 
 ### Probleme
-Dans la dialog de détail, chaque membre de l'équipe affiche un badge statut (Brouillon, Validé chef, etc.) mais on ne voit pas **quels jours** il est affecté sur ce chantier. Pour un employé multi-chantier (ex: CHATELIN L-M-M sur MAILLARD, J-V sur VILLENEUVE), c'est indispensable.
+Les indicateurs de jours (L M M J V) ne s'affichent pas pour les employés sur des chantiers sans chef. Le hook `useFicheBlockDetail` ne requête que `affectations_jours_chef` pour récupérer les jours. Pour les chantiers sans chef, les affectations sont dans `affectations_finisseurs_jours`.
 
 ### Solution
 
-**Fichier 1 : `src/hooks/useFicheBlockDetail.ts`**
-- Ajouter `jour` au select de `affectations_jours_chef` (ligne 57) : `"chef_id, macon_id, chantier_id, jour"`
-- Ajouter un champ `jours: string[]` dans l'interface `TeamMemberStatus` (les dates d'affectation sur ce chantier)
-- Lors de la construction de chaque `TeamMemberStatus`, extraire les jours depuis les affectations filtrées par `chantier_id + macon_id`
+**Fichier : `src/hooks/useFicheBlockDetail.ts`**
 
-**Fichier 2 : `src/components/rh/FicheBlockDetailDialog.tsx`**
-- Dans la table équipe, ajouter à côté du badge statut les petits indicateurs de jours (L M M J V) — pastilles avec "1" si affecté, vides sinon
-- Style identique au `DayIndicator` du planning (carré 6x6, couleur primary si actif) mais en lecture seule (pas cliquable)
-- Utiliser les initiales des jours (L, M, M, J, V) au-dessus ou directement les carrés "1"
+1. Ajouter une requête vers `affectations_finisseurs_jours` en parallèle de celle sur `affectations_jours_chef` :
+   ```ts
+   const { data: allAffectationsFinisseurs } = await supabase
+     .from("affectations_finisseurs_jours")
+     .select("finisseur_id, chantier_id, date")
+     .in("chantier_id", chantierIds)
+     .eq("semaine", semaine);
+   ```
 
-### Details techniques
+2. Collecter les `finisseur_id` dans `allUserIds` et `teamMemberIds`
+
+3. Lors de la construction de `memberJours`, fusionner les deux sources :
+   - Jours depuis `affectations_jours_chef` (filtre `macon_id`)
+   - Jours depuis `affectations_finisseurs_jours` (filtre `finisseur_id`)
+   - Dédupliquer et trier
+
+### Fichiers modifies
 
 | Fichier | Changement |
 |---|---|
-| `src/hooks/useFicheBlockDetail.ts` | Select `jour`, ajouter `jours: string[]` à `TeamMemberStatus` |
-| `src/components/rh/FicheBlockDetailDialog.tsx` | Afficher indicateurs jour L-V à côté du badge statut |
+| `src/hooks/useFicheBlockDetail.ts` | Requête `affectations_finisseurs_jours` + fusion des jours |
 
 ### Resultat attendu
-Pour CHATELIN sur VILLENEUVE : on voit les indicateurs J-V actifs. Sur MAILLARD : L-M-M actifs. Le tout à côté du badge "Brouillon".
+Les indicateurs L M M J V apparaissent aussi pour les employés sur des chantiers sans chef (affectés via le conducteur).
 
