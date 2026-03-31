@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentWeek, parseISOWeek } from "@/lib/weekUtils";
-import { format, addDays } from "date-fns";
+import { format, addDays, eachDayOfInterval, isBefore, isAfter, addWeeks } from "date-fns";
 
 export type AbsenceLongueDuree = {
   id: string;
