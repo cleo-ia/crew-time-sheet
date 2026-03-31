@@ -41,6 +41,44 @@ const statutLabel = (statut: string | null): { label: string; className: string 
   }
 };
 
+const DAY_LABELS = ["L", "M", "M", "J", "V"];
+
+const DayIndicators = ({ jours, semaine }: { jours: string[]; semaine: string | null }) => {
+  const weekDates = useMemo(() => {
+    if (!semaine) return [];
+    const [yearStr, weekStr] = semaine.split("-S");
+    const year = parseInt(yearStr);
+    const week = parseInt(weekStr);
+    const jan4 = new Date(year, 0, 4);
+    const startOfWeek1 = startOfISOWeek(jan4);
+    const monday = addDays(startOfWeek1, (week - 1) * 7);
+    return Array.from({ length: 5 }, (_, i) => format(addDays(monday, i), "yyyy-MM-dd"));
+  }, [semaine]);
+
+  if (weekDates.length === 0) return null;
+
+  return (
+    <div className="flex gap-0.5">
+      {weekDates.map((date, i) => {
+        const active = jours.includes(date);
+        return (
+          <div
+            key={date}
+            className={`w-5 h-5 rounded text-[10px] font-medium flex items-center justify-center ${
+              active
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground/40"
+            }`}
+            title={date}
+          >
+            {DAY_LABELS[i]}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 interface ChantierBlockProps {
   block: FicheBlockDetail;
   semaine: string | null;
