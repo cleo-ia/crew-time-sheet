@@ -1,47 +1,39 @@
 
 
-## Améliorer le visuel du popup "absences non justifiées"
+## Corriger le badge "Sans chef" dans l'export paie
 
-### Problème
-Le toast d'erreur affiche un long texte brut avec les noms séparés par des virgules — difficile à lire quand il y a 10+ salariés.
+### Cause racine confirmée
 
-### Ce qui change
-On remplace le texte brut par un toast structuré avec :
-- **Titre** : "Impossible d'exporter"
-- **Description JSX** : nombre de salariés, puis liste à puces des noms (chacun sur sa propre ligne), puis message "Veuillez qualifier..."
-- Durée et comportement identiques
+Le badge "Sans chef" et le détail utilisent deux logiques **différentes** pour trouver le chef :
 
-Sonner supporte nativement le JSX dans `description`, donc pas besoin de composant custom.
+- **Badge** (`useExportPaieReadiness.ts`, lignes 176-187) : cherche l'employé dans `affectations_jours_chef.macon_id` — si aucune ligne trouvée → "Sans chef"
+- **Détail** (`useFicheBlockDetail.ts`, ligne 58) : cherche dans `affectations_jours_chef` puis **fallback sur `chantiers.chef_id`** — trouve toujours le chef
 
-### Fichier modifié
-`src/pages/ConsultationRH.tsx` — 2 endroits (export RH complet + export chefs)
+C'est un **bug d'affichage uniquement**. Les données (heures, signatures, fiches) sont correctes.
 
-### Détail des modifications
+### Pourquoi certains employés sont impactés et pas d'autres
 
-**Toast export complet (ligne ~129)** : remplacer le `toast.error(string)` par :
-```tsx
-toast.error("Impossible d'exporter", {
-  description: (
-    <div className="mt-1 text-sm">
-      <p>{nbEmployes} salarié(s) ont des absences non justifiées :</p>
-      <ul className="mt-2 list-disc pl-4 space-y-0.5 max-h-40 overflow-y-auto">
-        {employesAvecAbsencesNonQualifiees.map((e, i) => (
-          <li key={i}>{e.prenom} {e.nom}</li>
-        ))}
-      </ul>
-      <p className="mt-2 font-medium">Veuillez qualifier toutes les absences avant l'export.</p>
-    </div>
-  ),
-  duration: 8000,
-});
-```
+Les lignes dans `affectations_jours_chef` peuvent manquer pour certains employés si :
+- Le sync a eu une erreur partielle pour ces employés spécifiques
+- Le chantier n'avait pas de `chef_id` au moment du sync (routé vers `affectations_finisseurs_jours` à la place)
+- Un chef apparaît avec le badge car le code ne distingue pas les chefs (qui n'ont pas besoin de cette vérification)
 
-**Toast export chefs (ligne ~192)** : même transformation adaptée au message "Chefs concernés".
+### Correction prévue
 
-**Bonus** — `src/components/rh/InterimaireExportDialog.tsx` (ligne ~263) : même mise en forme pour la cohérence.
+**Fichier : `src/hooks/useExportPaieReadiness.ts`**
+
+Remplacer la logique actuelle (lignes 174-187) qui cherche dans `affectations_jours_chef` par une approche à 2 niveaux :
+
+1. **Exclure les chefs** : un employé avec `role_metier === "chef"` ne doit jamais avoir le badge "Sans chef"
+2. **Utiliser `chantiers.chef_id` comme source principale** : pour chaque fiche non validée, vérifier si le chantier associé a un `chef_id` non null (la donnée est déjà disponible dans la requête des fiches via un join sur `chantiers`)
+3. **Fallback sur `affectations_jours_chef`** comme vérification secondaire
+
+Concrètement :
+- Modifier la requête initiale des fiches (ligne ~65) pour joindre aussi `chantiers!inner(chef_id)` (ou ajouter `chef_id` au select existant via un second join)
+- Pour chaque employé non validé : `sansChef = roleMetier !== "chef" && !chantierHasChef && !inAffectationsJoursChef`
 
 ### Impact
-- Même contenu, meilleure lisibilité
-- Liste scrollable si beaucoup de noms
-- Aucun changement de logique métier
+- Cohérence entre le badge et le détail
+- Les chefs n'auront plus jamais le badge "Sans chef"
+- Aucun changement de logique métier, uniquement l'affichage
 
