@@ -7,6 +7,7 @@ export interface TeamMemberStatus {
   prenom: string;
   roleMetier: string | null;
   statut: string | null; // null = pas de fiche
+  jours: string[]; // dates d'affectation sur ce chantier
 }
 
 export interface FicheBlockDetail {
