@@ -315,6 +315,9 @@ export const useCreateAbsenceLongueDuree = () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
+      queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-jours-chef"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-finisseurs-jours"] });
       toast.success("Absence longue durée créée");
     },
     onError: (error: Error) => {
