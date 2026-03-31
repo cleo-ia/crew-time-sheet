@@ -1,37 +1,29 @@
 
 
-## Afficher tous les chantiers dans le détail des fiches en attente (multi-chantier)
+## Ajouter les indicateurs de jours d'affectation dans le détail des fiches en attente
 
 ### Probleme
-Quand on clique sur un badge semaine (ex: S14 pour BOUILLET), le hook `useFicheBlockDetail` fait `.limit(1).maybeSingle()` et ne retourne qu'un seul chantier. Pour un chef multi-chantier, on ne voit qu'un des deux.
+Dans la dialog de détail, chaque membre de l'équipe affiche un badge statut (Brouillon, Validé chef, etc.) mais on ne voit pas **quels jours** il est affecté sur ce chantier. Pour un employé multi-chantier (ex: CHATELIN L-M-M sur MAILLARD, J-V sur VILLENEUVE), c'est indispensable.
 
 ### Solution
 
 **Fichier 1 : `src/hooks/useFicheBlockDetail.ts`**
-- Changer le type de retour : `FicheBlockDetail | null` → `FicheBlockDetail[]`
-- Au lieu de `.limit(1).maybeSingle()`, récupérer **toutes** les fiches du salarié pour cette semaine
-- Grouper par `chantier_id` unique
-- Pour chaque chantier, exécuter la même logique existante (fetch chantier info, affectations, équipe, diagnostic)
-- Retourner un tableau de blocs
+- Ajouter `jour` au select de `affectations_jours_chef` (ligne 57) : `"chef_id, macon_id, chantier_id, jour"`
+- Ajouter un champ `jours: string[]` dans l'interface `TeamMemberStatus` (les dates d'affectation sur ce chantier)
+- Lors de la construction de chaque `TeamMemberStatus`, extraire les jours depuis les affectations filtrées par `chantier_id + macon_id`
 
 **Fichier 2 : `src/components/rh/FicheBlockDetailDialog.tsx`**
-- Adapter au nouveau type tableau : `data` est maintenant un `FicheBlockDetail[]`
-- Si un seul chantier → affichage identique à aujourd'hui (pas de changement visuel)
-- Si plusieurs chantiers → afficher chaque chantier dans une section séparée avec :
-  - Titre du chantier en sous-titre
-  - Son diagnostic propre
-  - Chef / Conducteur du chantier
-  - Bouton rappel propre au chantier
-  - Table équipe du chantier
-- Utiliser un `Accordion` ou des sections séparées avec un `Separator` entre chaque chantier
+- Dans la table équipe, ajouter à côté du badge statut les petits indicateurs de jours (L M M J V) — pastilles avec "1" si affecté, vides sinon
+- Style identique au `DayIndicator` du planning (carré 6x6, couleur primary si actif) mais en lecture seule (pas cliquable)
+- Utiliser les initiales des jours (L, M, M, J, V) au-dessus ou directement les carrés "1"
 
-### Fichiers modifies
+### Details techniques
 
 | Fichier | Changement |
 |---|---|
-| `src/hooks/useFicheBlockDetail.ts` | Fetch multi-fiches, retourner `FicheBlockDetail[]` |
-| `src/components/rh/FicheBlockDetailDialog.tsx` | Render multi-chantier avec sections par chantier |
+| `src/hooks/useFicheBlockDetail.ts` | Select `jour`, ajouter `jours: string[]` à `TeamMemberStatus` |
+| `src/components/rh/FicheBlockDetailDialog.tsx` | Afficher indicateurs jour L-V à côté du badge statut |
 
 ### Resultat attendu
-Pour BOUILLET S14 : au clic on voit MAILLARD et DAVOULT, chacun avec son équipe, son diagnostic et son bouton rappel.
+Pour CHATELIN sur VILLENEUVE : on voit les indicateurs J-V actifs. Sur MAILLARD : L-M-M actifs. Le tout à côté du badge "Brouillon".
 
