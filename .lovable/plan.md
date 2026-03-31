@@ -1,39 +1,37 @@
 
 
-## Corriger le badge "Sans chef" dans l'export paie
+## Afficher tous les chantiers dans le détail des fiches en attente (multi-chantier)
 
-### Cause racine confirmée
+### Probleme
+Quand on clique sur un badge semaine (ex: S14 pour BOUILLET), le hook `useFicheBlockDetail` fait `.limit(1).maybeSingle()` et ne retourne qu'un seul chantier. Pour un chef multi-chantier, on ne voit qu'un des deux.
 
-Le badge "Sans chef" et le détail utilisent deux logiques **différentes** pour trouver le chef :
+### Solution
 
-- **Badge** (`useExportPaieReadiness.ts`, lignes 176-187) : cherche l'employé dans `affectations_jours_chef.macon_id` — si aucune ligne trouvée → "Sans chef"
-- **Détail** (`useFicheBlockDetail.ts`, ligne 58) : cherche dans `affectations_jours_chef` puis **fallback sur `chantiers.chef_id`** — trouve toujours le chef
+**Fichier 1 : `src/hooks/useFicheBlockDetail.ts`**
+- Changer le type de retour : `FicheBlockDetail | null` → `FicheBlockDetail[]`
+- Au lieu de `.limit(1).maybeSingle()`, récupérer **toutes** les fiches du salarié pour cette semaine
+- Grouper par `chantier_id` unique
+- Pour chaque chantier, exécuter la même logique existante (fetch chantier info, affectations, équipe, diagnostic)
+- Retourner un tableau de blocs
 
-C'est un **bug d'affichage uniquement**. Les données (heures, signatures, fiches) sont correctes.
+**Fichier 2 : `src/components/rh/FicheBlockDetailDialog.tsx`**
+- Adapter au nouveau type tableau : `data` est maintenant un `FicheBlockDetail[]`
+- Si un seul chantier → affichage identique à aujourd'hui (pas de changement visuel)
+- Si plusieurs chantiers → afficher chaque chantier dans une section séparée avec :
+  - Titre du chantier en sous-titre
+  - Son diagnostic propre
+  - Chef / Conducteur du chantier
+  - Bouton rappel propre au chantier
+  - Table équipe du chantier
+- Utiliser un `Accordion` ou des sections séparées avec un `Separator` entre chaque chantier
 
-### Pourquoi certains employés sont impactés et pas d'autres
+### Fichiers modifies
 
-Les lignes dans `affectations_jours_chef` peuvent manquer pour certains employés si :
-- Le sync a eu une erreur partielle pour ces employés spécifiques
-- Le chantier n'avait pas de `chef_id` au moment du sync (routé vers `affectations_finisseurs_jours` à la place)
-- Un chef apparaît avec le badge car le code ne distingue pas les chefs (qui n'ont pas besoin de cette vérification)
+| Fichier | Changement |
+|---|---|
+| `src/hooks/useFicheBlockDetail.ts` | Fetch multi-fiches, retourner `FicheBlockDetail[]` |
+| `src/components/rh/FicheBlockDetailDialog.tsx` | Render multi-chantier avec sections par chantier |
 
-### Correction prévue
-
-**Fichier : `src/hooks/useExportPaieReadiness.ts`**
-
-Remplacer la logique actuelle (lignes 174-187) qui cherche dans `affectations_jours_chef` par une approche à 2 niveaux :
-
-1. **Exclure les chefs** : un employé avec `role_metier === "chef"` ne doit jamais avoir le badge "Sans chef"
-2. **Utiliser `chantiers.chef_id` comme source principale** : pour chaque fiche non validée, vérifier si le chantier associé a un `chef_id` non null (la donnée est déjà disponible dans la requête des fiches via un join sur `chantiers`)
-3. **Fallback sur `affectations_jours_chef`** comme vérification secondaire
-
-Concrètement :
-- Modifier la requête initiale des fiches (ligne ~65) pour joindre aussi `chantiers!inner(chef_id)` (ou ajouter `chef_id` au select existant via un second join)
-- Pour chaque employé non validé : `sansChef = roleMetier !== "chef" && !chantierHasChef && !inAffectationsJoursChef`
-
-### Impact
-- Cohérence entre le badge et le détail
-- Les chefs n'auront plus jamais le badge "Sans chef"
-- Aucun changement de logique métier, uniquement l'affichage
+### Resultat attendu
+Pour BOUILLET S14 : au clic on voit MAILLARD et DAVOULT, chacun avec son équipe, son diagnostic et son bouton rappel.
 
