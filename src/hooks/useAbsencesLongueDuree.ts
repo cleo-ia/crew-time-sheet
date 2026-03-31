@@ -384,6 +384,17 @@ export const useUpdateAbsenceLongueDuree = () => {
         }
       }
 
+      // Purger les affectations et fiches parasites sur la plage de l'ALD
+      if (data) {
+        const absData = data as any;
+        await purgeAffectationsForALD({
+          salarie_id: absData.salarie_id,
+          entreprise_id: absData.entreprise_id,
+          date_debut: absData.date_debut,
+          date_fin: absData.date_fin,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
