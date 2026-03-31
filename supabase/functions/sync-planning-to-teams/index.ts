@@ -776,6 +776,40 @@ async function syncEntreprise(
     }
   }
 
+  // ========================================================================
+  // PRÉ-FILTRE ALD: Construire un Map des jours bloqués par absence longue durée
+  // pour filtrer les affectations AVANT tout traitement (chefs, workers, etc.)
+  // ========================================================================
+  const { data: allAbsencesLD } = await supabase
+    .from('absences_longue_duree')
+    .select('salarie_id, date_debut, date_fin')
+    .eq('entreprise_id', entrepriseId)
+    .lte('date_debut', fridayStr || parseISOWeek(currentWeek).toISOString().split('T')[0])
+    .or(`date_fin.is.null,date_fin.gte.${mondayStr || parseISOWeek(currentWeek).toISOString().split('T')[0]}`)
+
+  // Construire le calendrier des jours bloqués par salarié
+  const aldBlockedDays = new Map<string, Set<string>>()
+  // deno-lint-ignore no-explicit-any
+  for (const ald of (allAbsencesLD || []) as any[]) {
+    const mondayDate = parseISOWeek(currentWeek)
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mondayDate)
+      d.setDate(mondayDate.getDate() + i)
+      const dateStr = d.toISOString().split('T')[0]
+      const aldStart = ald.date_debut
+      const aldEnd = ald.date_fin
+      if (dateStr >= aldStart && (aldEnd === null || dateStr <= aldEnd)) {
+        if (!aldBlockedDays.has(ald.salarie_id)) {
+          aldBlockedDays.set(ald.salarie_id, new Set())
+        }
+        aldBlockedDays.get(ald.salarie_id)!.add(dateStr)
+      }
+    }
+  }
+  if (aldBlockedDays.size > 0) {
+    console.log(`[sync-planning-to-teams] Pré-filtre ALD: ${aldBlockedDays.size} salarié(s) avec jours bloqués`)
+  }
+
   // 4. Traiter chaque employé du planning (chefs en premier pour garantir l'initialisation)
   const sortedEntries = [...planningByEmployeChantier.entries()].sort(([, a], [, b]) => {
     const aIsChef = a[0]?.employe?.role_metier === 'chef' ? 0 : 1
@@ -790,7 +824,23 @@ async function syncEntreprise(
     const employe = affectations[0]?.employe
     const employeNom = (employe?.prenom || '') + ' ' + (employe?.nom || '') || employeId
     // deno-lint-ignore no-explicit-any
-    const joursPlanning = affectations.map((a: any) => a.jour).sort()
+    let joursPlanning = affectations.map((a: any) => a.jour).sort()
+
+    // ✅ Pré-filtre ALD: exclure les jours bloqués par absence longue durée
+    const blockedForEmployee = aldBlockedDays.get(employeId)
+    if (blockedForEmployee && blockedForEmployee.size > 0) {
+      const beforeCount = joursPlanning.length
+      joursPlanning = joursPlanning.filter((j: string) => !blockedForEmployee.has(j))
+      if (joursPlanning.length < beforeCount) {
+        console.log(`[sync-planning-to-teams] Pré-filtre ALD: ${employeNom} - ${beforeCount - joursPlanning.length} jour(s) exclu(s) (ALD)`)
+      }
+      if (joursPlanning.length === 0) {
+        console.log(`[sync-planning-to-teams] Pré-filtre ALD: ${employeNom} - tous les jours bloqués, skip complet`)
+        results.push({ employe_id: employeId, employe_nom: employeNom, action: 'skipped', details: 'Tous les jours couverts par ALD' })
+        continue
+      }
+    }
+
     // deno-lint-ignore no-explicit-any
     const chantier = chantiersMap.get(chantierId) as any
 
