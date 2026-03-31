@@ -92,6 +92,7 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       const teamMemberIds = new Set<string>();
       chantierIds.forEach(cid => {
         allAffectations?.filter(a => a.chantier_id === cid).forEach(a => teamMemberIds.add(a.macon_id));
+        allAffectationsFinisseurs?.filter(a => a.chantier_id === cid).forEach(a => teamMemberIds.add(a.finisseur_id));
       });
       teamMemberIds.add(salarieId);
 
