@@ -179,8 +179,10 @@ const ChantierBlock = ({ block, semaine, showTitle }: ChantierBlockProps) => {
 };
 
 export const FicheBlockDetailDialog = ({ open, onOpenChange, salarieId, semaine, salarieName }: Props) => {
-  const { data, isLoading } = useFicheBlockDetail(salarieId, semaine);
+  const { data: rawData, isLoading } = useFicheBlockDetail(salarieId, semaine);
   const weekNum = semaine?.split("-S")[1] || semaine || "";
+  // Normalize: handle stale cache that might have old single-object format
+  const data = Array.isArray(rawData) ? rawData : rawData ? [rawData as FicheBlockDetail] : undefined;
   const isMulti = (data?.length || 0) > 1;
 
   return (
