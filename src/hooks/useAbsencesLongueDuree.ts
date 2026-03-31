@@ -301,6 +301,14 @@ export const useCreateAbsenceLongueDuree = () => {
         date_fin: params.date_fin,
       });
 
+      // Purger les affectations et fiches parasites existantes
+      await purgeAffectationsForALD({
+        salarie_id: params.salarie_id,
+        entreprise_id: params.entreprise_id,
+        date_debut: params.date_debut,
+        date_fin: params.date_fin,
+      });
+
       return data;
     },
     onSuccess: () => {
