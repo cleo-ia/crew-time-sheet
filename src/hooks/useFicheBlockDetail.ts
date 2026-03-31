@@ -55,7 +55,7 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       // 3. Get all affectations for these chantiers + semaine
       const { data: allAffectations } = await supabase
         .from("affectations_jours_chef")
-        .select("chef_id, macon_id, chantier_id")
+        .select("chef_id, macon_id, chantier_id, jour")
         .in("chantier_id", chantierIds)
         .eq("semaine", semaine);
 
