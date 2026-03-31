@@ -75,8 +75,8 @@ const ChantierBlock = ({ block, semaine, showTitle }: ChantierBlockProps) => {
   return (
     <div className="space-y-3">
       {showTitle && (
-        <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-muted-foreground" />
+        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5">
+          <Building2 className="h-4 w-4" />
           <span className="font-semibold text-sm">{block.chantierNom}</span>
         </div>
       )}
