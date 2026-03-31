@@ -204,9 +204,14 @@ const ChantierBlock = ({ block, semaine, showTitle }: ChantierBlockProps) => {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge variant="outline" className={`text-xs ${s.className}`}>
-                    {s.label}
-                  </Badge>
+                  <div className="flex items-center justify-end gap-2">
+                    {member.jours.length > 0 && (
+                      <DayIndicators jours={member.jours} semaine={semaine} />
+                    )}
+                    <Badge variant="outline" className={`text-xs ${s.className}`}>
+                      {s.label}
+                    </Badge>
+                  </div>
                 </TableCell>
               </TableRow>
             );

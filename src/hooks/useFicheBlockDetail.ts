@@ -118,12 +118,17 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
 
         const team: TeamMemberStatus[] = Array.from(chantierTeamIds).map(id => {
           const user = usersMap.get(id);
+          const memberJours = allAffectations
+            ?.filter(a => a.chantier_id === chantier.id && a.macon_id === id)
+            .map(a => a.jour) || [];
+          const uniqueJours = [...new Set(memberJours)].sort();
           return {
             salarieId: id,
             nom: user?.nom || "—",
             prenom: user?.prenom || "",
             roleMetier: user?.role_metier || null,
             statut: fichesByChantierMember.get(`${chantier.id}:${id}`) || null,
+            jours: uniqueJours,
           };
         });
 
