@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { Loader2, HardHat, UserCheck, Mail, Building2 } from "lucide-react";
+import { startOfISOWeek, addDays, format } from "date-fns";
 import { useFicheBlockDetail, FicheBlockDetail } from "@/hooks/useFicheBlockDetail";
 import { useSendUrgentRappel } from "@/hooks/useSendUrgentRappel";
 
@@ -38,6 +39,44 @@ const statutLabel = (statut: string | null): { label: string; className: string 
     default:
       return { label: statut || "—", className: "bg-muted text-muted-foreground border-border" };
   }
+};
+
+const DAY_LABELS = ["L", "M", "M", "J", "V"];
+
+const DayIndicators = ({ jours, semaine }: { jours: string[]; semaine: string | null }) => {
+  const weekDates = useMemo(() => {
+    if (!semaine) return [];
+    const [yearStr, weekStr] = semaine.split("-S");
+    const year = parseInt(yearStr);
+    const week = parseInt(weekStr);
+    const jan4 = new Date(year, 0, 4);
+    const startOfWeek1 = startOfISOWeek(jan4);
+    const monday = addDays(startOfWeek1, (week - 1) * 7);
+    return Array.from({ length: 5 }, (_, i) => format(addDays(monday, i), "yyyy-MM-dd"));
+  }, [semaine]);
+
+  if (weekDates.length === 0) return null;
+
+  return (
+    <div className="flex gap-0.5">
+      {weekDates.map((date, i) => {
+        const active = jours.includes(date);
+        return (
+          <div
+            key={date}
+            className={`w-5 h-5 rounded text-[10px] font-medium flex items-center justify-center ${
+              active
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground/40"
+            }`}
+            title={date}
+          >
+            {DAY_LABELS[i]}
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 interface ChantierBlockProps {
@@ -165,9 +204,14 @@ const ChantierBlock = ({ block, semaine, showTitle }: ChantierBlockProps) => {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge variant="outline" className={`text-xs ${s.className}`}>
-                    {s.label}
-                  </Badge>
+                  <div className="flex items-center justify-end gap-2">
+                    {member.jours.length > 0 && (
+                      <DayIndicators jours={member.jours} semaine={semaine} />
+                    )}
+                    <Badge variant="outline" className={`text-xs ${s.className}`}>
+                      {s.label}
+                    </Badge>
+                  </div>
                 </TableCell>
               </TableRow>
             );

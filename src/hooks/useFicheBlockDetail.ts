@@ -7,6 +7,7 @@ export interface TeamMemberStatus {
   prenom: string;
   roleMetier: string | null;
   statut: string | null; // null = pas de fiche
+  jours: string[]; // dates d'affectation sur ce chantier
 }
 
 export interface FicheBlockDetail {
@@ -54,7 +55,7 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       // 3. Get all affectations for these chantiers + semaine
       const { data: allAffectations } = await supabase
         .from("affectations_jours_chef")
-        .select("chef_id, macon_id, chantier_id")
+        .select("chef_id, macon_id, chantier_id, jour")
         .in("chantier_id", chantierIds)
         .eq("semaine", semaine);
 
@@ -117,12 +118,17 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
 
         const team: TeamMemberStatus[] = Array.from(chantierTeamIds).map(id => {
           const user = usersMap.get(id);
+          const memberJours = allAffectations
+            ?.filter(a => a.chantier_id === chantier.id && a.macon_id === id)
+            .map(a => a.jour) || [];
+          const uniqueJours = [...new Set(memberJours)].sort();
           return {
             salarieId: id,
             nom: user?.nom || "—",
             prenom: user?.prenom || "",
             roleMetier: user?.role_metier || null,
             statut: fichesByChantierMember.get(`${chantier.id}:${id}`) || null,
+            jours: uniqueJours,
           };
         });
 
