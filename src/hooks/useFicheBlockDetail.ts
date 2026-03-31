@@ -52,10 +52,16 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
 
       if (!chantiers) return [];
 
-      // 3. Get all affectations for these chantiers + semaine
+      // 3. Get all affectations for these chantiers + semaine (both sources)
       const { data: allAffectations } = await supabase
         .from("affectations_jours_chef")
         .select("chef_id, macon_id, chantier_id, jour")
+        .in("chantier_id", chantierIds)
+        .eq("semaine", semaine);
+
+      const { data: allAffectationsFinisseurs } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id, chantier_id, date")
         .in("chantier_id", chantierIds)
         .eq("semaine", semaine);
 
@@ -69,6 +75,9 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       allAffectations?.forEach(a => {
         allUserIds.add(a.macon_id);
         allUserIds.add(a.chef_id);
+      });
+      allAffectationsFinisseurs?.forEach(a => {
+        allUserIds.add(a.finisseur_id);
       });
 
       // 4. Batch fetch all users (names + roles)
