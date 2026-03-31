@@ -780,12 +780,18 @@ async function syncEntreprise(
   // PRÉ-FILTRE ALD: Construire un Map des jours bloqués par absence longue durée
   // pour filtrer les affectations AVANT tout traitement (chefs, workers, etc.)
   // ========================================================================
+  const aldMondayDate = parseISOWeek(currentWeek)
+  const aldFridayDate = new Date(aldMondayDate)
+  aldFridayDate.setDate(aldMondayDate.getDate() + 4)
+  const aldMondayStr = aldMondayDate.toISOString().split('T')[0]
+  const aldFridayStr = aldFridayDate.toISOString().split('T')[0]
+
   const { data: allAbsencesLD } = await supabase
     .from('absences_longue_duree')
     .select('salarie_id, date_debut, date_fin')
     .eq('entreprise_id', entrepriseId)
-    .lte('date_debut', fridayStr || parseISOWeek(currentWeek).toISOString().split('T')[0])
-    .or(`date_fin.is.null,date_fin.gte.${mondayStr || parseISOWeek(currentWeek).toISOString().split('T')[0]}`)
+    .lte('date_debut', aldFridayStr)
+    .or(`date_fin.is.null,date_fin.gte.${aldMondayStr}`)
 
   // Construire le calendrier des jours bloqués par salarié
   const aldBlockedDays = new Map<string, Set<string>>()
