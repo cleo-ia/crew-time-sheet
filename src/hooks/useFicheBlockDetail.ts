@@ -52,10 +52,16 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
 
       if (!chantiers) return [];
 
-      // 3. Get all affectations for these chantiers + semaine
+      // 3. Get all affectations for these chantiers + semaine (both sources)
       const { data: allAffectations } = await supabase
         .from("affectations_jours_chef")
         .select("chef_id, macon_id, chantier_id, jour")
+        .in("chantier_id", chantierIds)
+        .eq("semaine", semaine);
+
+      const { data: allAffectationsFinisseurs } = await supabase
+        .from("affectations_finisseurs_jours")
+        .select("finisseur_id, chantier_id, date")
         .in("chantier_id", chantierIds)
         .eq("semaine", semaine);
 
@@ -70,6 +76,9 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
         allUserIds.add(a.macon_id);
         allUserIds.add(a.chef_id);
       });
+      allAffectationsFinisseurs?.forEach(a => {
+        allUserIds.add(a.finisseur_id);
+      });
 
       // 4. Batch fetch all users (names + roles)
       const { data: users } = await supabase
@@ -83,6 +92,7 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
       const teamMemberIds = new Set<string>();
       chantierIds.forEach(cid => {
         allAffectations?.filter(a => a.chantier_id === cid).forEach(a => teamMemberIds.add(a.macon_id));
+        allAffectationsFinisseurs?.filter(a => a.chantier_id === cid).forEach(a => teamMemberIds.add(a.finisseur_id));
       });
       teamMemberIds.add(salarieId);
 
@@ -111,6 +121,7 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
         // Team for this chantier
         const chantierTeamIds = new Set<string>();
         allAffectations?.filter(a => a.chantier_id === chantier.id).forEach(a => chantierTeamIds.add(a.macon_id));
+        allAffectationsFinisseurs?.filter(a => a.chantier_id === chantier.id).forEach(a => chantierTeamIds.add(a.finisseur_id));
         // Include the salarié themselves if they have a fiche on this chantier
         if (fiches.some(f => f.chantier_id === chantier.id)) {
           chantierTeamIds.add(salarieId);
@@ -118,10 +129,13 @@ export const useFicheBlockDetail = (salarieId: string | null, semaine: string | 
 
         const team: TeamMemberStatus[] = Array.from(chantierTeamIds).map(id => {
           const user = usersMap.get(id);
-          const memberJours = allAffectations
+          const joursChef = allAffectations
             ?.filter(a => a.chantier_id === chantier.id && a.macon_id === id)
             .map(a => a.jour) || [];
-          const uniqueJours = [...new Set(memberJours)].sort();
+          const joursFinisseur = allAffectationsFinisseurs
+            ?.filter(a => a.chantier_id === chantier.id && a.finisseur_id === id)
+            .map(a => a.date) || [];
+          const uniqueJours = [...new Set([...joursChef, ...joursFinisseur])].sort();
           return {
             salarieId: id,
             nom: user?.nom || "—",
