@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { Loader2, HardHat, UserCheck, Mail, Building2 } from "lucide-react";
+import { startOfISOWeek, addDays, format } from "date-fns";
 import { useFicheBlockDetail, FicheBlockDetail } from "@/hooks/useFicheBlockDetail";
 import { useSendUrgentRappel } from "@/hooks/useSendUrgentRappel";
 
