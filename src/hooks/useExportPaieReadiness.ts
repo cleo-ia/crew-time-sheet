@@ -153,7 +153,7 @@ export const useExportPaieReadiness = (periode: string) => {
 
       // Build fichesNonValidees: group unvalidated fiches by salarie
       const ROLE_ORDER: Record<string, number> = { chef: 0, macon: 1, finisseur: 2, grutier: 3 };
-      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string>; roleMetier: string | null }>();
+      const nonValideesMap = new Map<string, { nom: string; prenom: string; semaines: Set<string>; roleMetier: string | null; chantierIds: Set<string> }>();
       for (const f of allFiches) {
         if (!STATUTS_VALIDES.includes(f.statut) && f.salarie_id) {
           const existing = nonValideesMap.get(f.salarie_id);
@@ -161,17 +161,29 @@ export const useExportPaieReadiness = (periode: string) => {
           if (utilisateur?.agence_interim) continue; // Exclure les intérimaires
           if (existing) {
             if (f.semaine) existing.semaines.add(f.semaine);
+            if (f.chantier_id) existing.chantierIds.add(f.chantier_id);
           } else {
             nonValideesMap.set(f.salarie_id, {
               nom: utilisateur?.nom || "—",
               prenom: utilisateur?.prenom || "",
               semaines: new Set(f.semaine ? [f.semaine] : []),
               roleMetier: utilisateur?.role_metier || null,
+              chantierIds: new Set(f.chantier_id ? [f.chantier_id] : []),
             });
           }
         }
       }
-      // Fetch affectations_jours_chef to determine sansChef status
+
+      // Build a map of chantier_id -> chef_id from fiches data
+      const chantierChefMap = new Map<string, string | null>();
+      for (const f of allFiches) {
+        if (f.chantier_id && !chantierChefMap.has(f.chantier_id)) {
+          const chantier = f.chantiers as unknown as { chef_id: string | null } | null;
+          chantierChefMap.set(f.chantier_id, chantier?.chef_id || null);
+        }
+      }
+
+      // Fetch affectations_jours_chef as secondary fallback
       const salarieIds = Array.from(nonValideesMap.keys());
       const affectationsChef = salarieIds.length > 0
         ? await batchQueryIn<{ macon_id: string }>(
@@ -187,14 +199,18 @@ export const useExportPaieReadiness = (periode: string) => {
       const salariesAvecChef = new Set(affectationsChef.map((a) => a.macon_id));
 
       const fichesNonValidees: FicheNonValidee[] = Array.from(nonValideesMap.entries())
-        .map(([salarieId, v]) => ({
-          salarieId,
-          nom: v.nom,
-          prenom: v.prenom,
-          semaines: Array.from(v.semaines).sort(),
-          roleMetier: v.roleMetier,
-          sansChef: !salariesAvecChef.has(salarieId),
-        }))
+        .map(([salarieId, v]) => {
+          // Un chef n'a jamais le badge "Sans chef"
+          if (v.roleMetier === "chef") {
+            return { salarieId, nom: v.nom, prenom: v.prenom, semaines: Array.from(v.semaines).sort(), roleMetier: v.roleMetier, sansChef: false };
+          }
+          // Vérifier si au moins un chantier de cet employé a un chef_id
+          const hasChefViaChantier = Array.from(v.chantierIds).some((cId) => !!chantierChefMap.get(cId));
+          // Fallback: vérifier dans affectations_jours_chef
+          const hasChefViaAffectation = salariesAvecChef.has(salarieId);
+          const sansChef = !hasChefViaChantier && !hasChefViaAffectation;
+          return { salarieId, nom: v.nom, prenom: v.prenom, semaines: Array.from(v.semaines).sort(), roleMetier: v.roleMetier, sansChef };
+        })
         .sort((a, b) => {
           const ra = ROLE_ORDER[a.roleMetier || ""] ?? 4;
           const rb = ROLE_ORDER[b.roleMetier || ""] ?? 4;
