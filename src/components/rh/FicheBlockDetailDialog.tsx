@@ -64,10 +64,10 @@ const DayIndicators = ({ jours, semaine }: { jours: string[]; semaine: string | 
         return (
           <div
             key={date}
-            className={`w-5 h-5 rounded text-[10px] font-medium flex items-center justify-center ${
+            className={`w-6 h-6 rounded border text-[11px] font-medium flex items-center justify-center ${
               active
-                ? "bg-blue-400/60 text-white"
-                : "bg-muted text-muted-foreground/40"
+                ? "bg-primary/15 text-primary border-primary/30"
+                : "bg-background text-muted-foreground/50 border-border"
             }`}
             title={date}
           >
