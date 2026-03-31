@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentWeek, parseISOWeek } from "@/lib/weekUtils";
-import { format, addDays } from "date-fns";
+import { format, addDays, eachDayOfInterval, isBefore, isAfter, addWeeks } from "date-fns";
 
 export type AbsenceLongueDuree = {
   id: string;
@@ -151,6 +151,126 @@ async function generateGhostFicheForCurrentWeek(params: {
   }
 }
 
+/**
+ * Purge les affectations planning et les fiches parasites pour un salarié
+ * sur les dates couvertes par un ALD. Cela empêche le badge "absence à qualifier"
+ * de s'afficher pour des fiches fantômes créées avant la déclaration de l'ALD.
+ */
+async function purgeAffectationsForALD(params: {
+  salarie_id: string;
+  entreprise_id: string;
+  date_debut: string;
+  date_fin?: string | null;
+}) {
+  try {
+    // Calculer la borne de fin : date_fin ou aujourd'hui + 2 semaines
+    const endDate = params.date_fin
+      ? new Date(params.date_fin)
+      : addWeeks(new Date(), 2);
+    const startDate = new Date(params.date_debut);
+
+    if (isAfter(startDate, endDate)) return;
+
+    // Générer toutes les dates couvertes (jours ouvrés uniquement : lun-ven)
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+    const weekdayDates = allDays
+      .filter(d => d.getDay() >= 1 && d.getDay() <= 5) // Lun-Ven
+      .map(d => format(d, "yyyy-MM-dd"));
+
+    if (weekdayDates.length === 0) return;
+
+    console.log(`[purgeALD] Purge pour ${params.salarie_id}: ${weekdayDates.length} jours du ${params.date_debut} au ${params.date_fin || 'indéfini'}`);
+
+    // 1. Supprimer les planning_affectations
+    const { error: paError } = await supabase
+      .from("planning_affectations")
+      .delete()
+      .eq("employe_id", params.salarie_id)
+      .eq("entreprise_id", params.entreprise_id)
+      .in("jour", weekdayDates);
+
+    if (paError) console.error("[purgeALD] Erreur suppression planning_affectations:", paError);
+
+    // 2. Supprimer les affectations_jours_chef (macon_id = salarie)
+    const { error: ajcError } = await supabase
+      .from("affectations_jours_chef")
+      .delete()
+      .eq("macon_id", params.salarie_id)
+      .eq("entreprise_id", params.entreprise_id)
+      .in("jour", weekdayDates);
+
+    if (ajcError) console.error("[purgeALD] Erreur suppression affectations_jours_chef:", ajcError);
+
+    // 3. Supprimer les affectations_finisseurs_jours (finisseur_id = salarie)
+    const { error: afjError } = await supabase
+      .from("affectations_finisseurs_jours")
+      .delete()
+      .eq("finisseur_id", params.salarie_id)
+      .eq("entreprise_id", params.entreprise_id)
+      .in("date", weekdayDates);
+
+    if (afjError) console.error("[purgeALD] Erreur suppression affectations_finisseurs_jours:", afjError);
+
+    // 4. Chercher et supprimer les fiches_jours parasites (0h, pas de type_absence)
+    //    sur des fiches avec chantier_id non null (pas les fiches ghost)
+    const { data: fichesChantier } = await supabase
+      .from("fiches")
+      .select("id")
+      .eq("salarie_id", params.salarie_id)
+      .eq("entreprise_id", params.entreprise_id)
+      .not("chantier_id", "is", null);
+
+    if (fichesChantier && fichesChantier.length > 0) {
+      const ficheIds = fichesChantier.map(f => f.id);
+
+      // Supprimer les fiches_jours parasites : heures = 0 ET type_absence IS NULL
+      const { data: deletedJours, error: fjError } = await supabase
+        .from("fiches_jours")
+        .delete()
+        .in("fiche_id", ficheIds)
+        .in("date", weekdayDates)
+        .eq("heures", 0)
+        .is("type_absence", null)
+        .select("fiche_id");
+
+      if (fjError) {
+        console.error("[purgeALD] Erreur suppression fiches_jours parasites:", fjError);
+      } else if (deletedJours && deletedJours.length > 0) {
+        console.log(`[purgeALD] ${deletedJours.length} fiches_jours parasites supprimées`);
+
+        // 5. Supprimer les fiches qui n'ont plus de fiches_jours
+        const affectedFicheIds = [...new Set(deletedJours.map(d => d.fiche_id))];
+        for (const ficheId of affectedFicheIds) {
+          const { data: remaining } = await supabase
+            .from("fiches_jours")
+            .select("id")
+            .eq("fiche_id", ficheId)
+            .limit(1);
+
+          if (!remaining || remaining.length === 0) {
+            // Supprimer la fiche vide (sauf si statut protégé)
+            const { data: ficheToDelete } = await supabase
+              .from("fiches")
+              .select("id, statut")
+              .eq("id", ficheId)
+              .single();
+
+            const STATUTS_PROTEGES = ['VALIDE_CHEF', 'VALIDE_CONDUCTEUR', 'ENVOYE_RH', 'AUTO_VALIDE', 'CLOTURE'];
+            if (ficheToDelete && !STATUTS_PROTEGES.includes(ficheToDelete.statut)) {
+              await supabase.from("fiches").delete().eq("id", ficheId);
+              console.log(`[purgeALD] Fiche ${ficheId} supprimée (0 jours restants)`);
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`[purgeALD] Purge terminée pour ${params.salarie_id}`);
+  } catch (err) {
+    console.error("[purgeALD] Erreur lors de la purge:", err);
+  }
+}
+
 export const useCreateAbsenceLongueDuree = () => {
   const queryClient = useQueryClient();
 
@@ -181,12 +301,23 @@ export const useCreateAbsenceLongueDuree = () => {
         date_fin: params.date_fin,
       });
 
+      // Purger les affectations et fiches parasites existantes
+      await purgeAffectationsForALD({
+        salarie_id: params.salarie_id,
+        entreprise_id: params.entreprise_id,
+        date_debut: params.date_debut,
+        date_fin: params.date_fin,
+      });
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
+      queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-jours-chef"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-finisseurs-jours"] });
       toast.success("Absence longue durée créée");
     },
     onError: (error: Error) => {
@@ -256,12 +387,26 @@ export const useUpdateAbsenceLongueDuree = () => {
         }
       }
 
+      // Purger les affectations et fiches parasites sur la plage de l'ALD
+      if (data) {
+        const absData = data as any;
+        await purgeAffectationsForALD({
+          salarie_id: absData.salarie_id,
+          entreprise_id: absData.entreprise_id,
+          date_debut: absData.date_debut,
+          date_fin: absData.date_fin,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences-longue-duree"] });
       queryClient.invalidateQueries({ queryKey: ["fiches"] });
       queryClient.invalidateQueries({ queryKey: ["absences-ld-planning"] });
+      queryClient.invalidateQueries({ queryKey: ["planning-affectations"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-jours-chef"] });
+      queryClient.invalidateQueries({ queryKey: ["affectations-finisseurs-jours"] });
       toast.success("Absence mise à jour");
     },
     onError: (error: Error) => {
