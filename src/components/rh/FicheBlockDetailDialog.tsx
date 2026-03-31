@@ -60,13 +60,13 @@ const DayIndicators = ({ jours, semaine }: { jours: string[]; semaine: string | 
   return (
     <div className="flex gap-0.5">
       {weekDates.map((date, i) => {
-        const active = jours.includes(date);
+        const active = jours?.includes(date);
         return (
           <div
             key={date}
             className={`w-5 h-5 rounded text-[10px] font-medium flex items-center justify-center ${
               active
-                ? "bg-primary text-primary-foreground"
+                ? "bg-blue-400/60 text-white"
                 : "bg-muted text-muted-foreground/40"
             }`}
             title={date}
