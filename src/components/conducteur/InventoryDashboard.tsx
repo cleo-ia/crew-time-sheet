@@ -41,14 +41,20 @@ export const InventoryDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Inventaires — {currentMois}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          État des inventaires mensuels par chantier actif.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Inventaires — {currentMois}
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            État des inventaires mensuels par chantier actif.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/inventaire-parametrage")}>
+          <Settings className="h-4 w-4 mr-2" />
+          Paramétrer
+        </Button>
       </div>
 
       <div className="grid gap-3">
