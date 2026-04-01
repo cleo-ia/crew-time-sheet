@@ -160,13 +160,10 @@ const InventaireRecap = () => {
       const headerY = 12;
 
       // Logo top-left — preserve aspect ratio
-      if (logoBase64) {
-        const logoImg = new Image();
-        logoImg.src = logoBase64;
-        const ratio = logoImg.naturalWidth / logoImg.naturalHeight;
+      if (logoData) {
         const logoH = 12;
-        const logoW = logoH * ratio;
-        doc.addImage(logoBase64, "PNG", marginLeft, headerY - 5, logoW, logoH);
+        const logoW = logoH * logoData.ratio;
+        doc.addImage(logoData.base64, "PNG", marginLeft, headerY - 5, logoW, logoH);
       }
 
       // Title
