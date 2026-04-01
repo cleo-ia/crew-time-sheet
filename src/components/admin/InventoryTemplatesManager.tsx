@@ -325,7 +325,18 @@ export const InventoryTemplatesManager = () => {
                     {items.map((t, idx) => (
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.designation}</TableCell>
-                        <TableCell className="w-20 text-muted-foreground">{t.unite}</TableCell>
+                        <TableCell className="w-28">
+                          <Select value={t.unite} onValueChange={(v) => updateTemplate.mutate({ id: t.id, unite: v })}>
+                            <SelectTrigger className="h-7 text-xs border-none shadow-none">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {UNIT_OPTIONS.map(u => (
+                                <SelectItem key={u} value={u}>{u}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell className="w-24 text-right">
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(t.id, "up")} disabled={idx === 0}>
