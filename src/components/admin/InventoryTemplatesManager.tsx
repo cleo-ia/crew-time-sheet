@@ -63,21 +63,22 @@ export const InventoryTemplatesManager = () => {
     return Array.from(merged).sort((a, b) => a.localeCompare(b, "fr"));
   }, [categories]);
 
-  const handleSelectCategory = (name: string) => {
-    setNewCategoryName(name);
+  const toggleCategory = (name: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    );
   };
 
   const handleCreateCategory = () => {
-    const name = newCategoryName.trim();
-    if (!name) return;
-    setAddDesignation(prev => ({ ...prev, [name]: "" }));
-    setAddUnite(prev => ({ ...prev, [name]: "U" }));
-    setNewCategoryName("");
+    if (selectedCategories.length === 0) return;
+    selectedCategories.forEach(name => {
+      if (!grouped[name]) {
+        setVirtualCategories(prev => [...prev.filter(c => c !== name), name]);
+      }
+    });
+    setSelectedCategories([]);
     setCatSearch("");
     setShowNewCatDialog(false);
-    if (!grouped[name]) {
-      setVirtualCategories(prev => [...prev.filter(c => c !== name), name]);
-    }
   };
 
   // Virtual categories (created but no items yet)
