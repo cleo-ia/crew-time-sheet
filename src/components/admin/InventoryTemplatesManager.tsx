@@ -35,6 +35,7 @@ export const InventoryTemplatesManager = () => {
   // New category dialog
   const [showNewCatDialog, setShowNewCatDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [catSearch, setCatSearch] = useState("");
 
   // Rename category dialog
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
