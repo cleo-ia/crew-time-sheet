@@ -24,6 +24,8 @@ import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
 import { DashboardManager } from "@/components/admin/DashboardManager";
 import { HistoriqueManager } from "@/components/admin/HistoriqueManager";
 import { ConversationButton } from "@/components/chat/ConversationButton";
+import { InventoryTemplatesManager } from "@/components/admin/InventoryTemplatesManager";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useAuth } from "@/contexts/AuthProvider";
