@@ -78,7 +78,7 @@ export function useUpdateInventoryTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; categorie?: string; designation?: string; unite?: string; ordre?: number }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; categorie?: string; designation?: string; unite?: string; ordre?: number; notes?: string }) => {
       const { error } = await supabase
         .from("inventory_templates")
         .update(updates)
