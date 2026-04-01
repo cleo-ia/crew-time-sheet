@@ -131,84 +131,164 @@ const InventaireRecap = () => {
     const marginLeft = 15;
     const marginRight = 15;
     const tableWidth = pageWidth - marginLeft - marginRight;
-    let y = 20;
+    const accentR = 37, accentG = 99, accentB = 235;
+    let y = 12;
 
-    // Title
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("Récap global inventaires", pageWidth / 2, y, { align: "center" });
-    y += 10;
+    // --- Helper: load logo as base64 ---
+    const loadLogoBase64 = (): Promise<string | null> => {
+      return new Promise((resolve) => {
+        if (!config.theme?.logo) { resolve(null); return; }
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => resolve(null);
+        img.src = config.theme.logo;
+      });
+    };
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, pageWidth / 2, y, { align: "center" });
-    y += 10;
+    const logoBase64 = await loadLogoBase64();
+
+    // --- Draw page header (logo + title + date + line) ---
+    const drawPageHeader = (isFirstPage: boolean) => {
+      const headerY = 12;
+
+      // Logo top-left
+      if (logoBase64) {
+        doc.addImage(logoBase64, "PNG", marginLeft, headerY - 5, 28, 12);
+      }
+
+      // Title
+      doc.setFontSize(isFirstPage ? 18 : 12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
+      doc.text("Récap global inventaires", pageWidth / 2, headerY + 2, { align: "center" });
+
+      // Date top-right
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Édité le ${new Date().toLocaleDateString("fr-FR")}`, pageWidth - marginRight, headerY + 2, { align: "right" });
+
+      // Enterprise name
+      if (isFirstPage) {
+        doc.setFontSize(10);
+        doc.setTextColor(80, 80, 80);
+        doc.text(config.nom, pageWidth / 2, headerY + 9, { align: "center" });
+      }
+
+      // Accent line
+      const lineY = isFirstPage ? headerY + 14 : headerY + 7;
+      doc.setDrawColor(accentR, accentG, accentB);
+      doc.setLineWidth(0.8);
+      doc.line(marginLeft, lineY, pageWidth - marginRight, lineY);
+
+      return lineY + 6;
+    };
+
+    y = drawPageHeader(true);
 
     // Column widths
-    const colDesignation = tableWidth * 0.50;
+    const colDesignation = tableWidth * 0.55;
     const colUnite = tableWidth * 0.20;
-    const colQte = tableWidth * 0.30;
+    const colQte = tableWidth * 0.25;
     const rowHeight = 7;
 
-    const drawHeader = () => {
-      doc.setFillColor(37, 99, 235);
-      doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
+    const drawTableHeader = () => {
+      // Header background
+      doc.setFillColor(accentR, accentG, accentB);
+      doc.rect(marginLeft, y, tableWidth, rowHeight + 1, "F");
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setFont("helvetica", "bold");
-      doc.text("Désignation", marginLeft + 2, y + 5);
-      doc.text("Unité", marginLeft + colDesignation + 2, y + 5);
-      doc.text("Quantité", marginLeft + colDesignation + colUnite + 2, y + 5);
+      doc.text("Désignation", marginLeft + 4, y + 5.5);
+      doc.text("Unité", marginLeft + colDesignation + colUnite / 2, y + 5.5, { align: "center" });
+      doc.text("Quantité", marginLeft + colDesignation + colUnite + colQte / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
-      y += rowHeight;
+      y += rowHeight + 1;
     };
 
     const checkPageBreak = (neededHeight: number) => {
-      if (y + neededHeight > pageHeight - 15) {
+      if (y + neededHeight > pageHeight - 20) {
+        // Footer on current page
+        drawFooter(doc.getNumberOfPages());
         doc.addPage();
-        y = 15;
-        drawHeader();
+        y = drawPageHeader(false);
+        drawTableHeader();
       }
     };
 
-    drawHeader();
+    const drawFooter = (pageNum: number) => {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: "center" });
+      doc.text(config.nom, marginLeft, pageHeight - 8);
+    };
+
+    drawTableHeader();
 
     categories.forEach(cat => {
       const catItems = consolidatedItems.filter(i => i.categorie === cat);
 
-      // Category row
+      // Category separator row
       checkPageBreak(rowHeight * 2);
-      doc.setFillColor(230, 230, 230);
-      doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
+      doc.setFillColor(235, 235, 240);
+      doc.rect(marginLeft, y, tableWidth, rowHeight + 0.5, "F");
+      // Left accent bar
+      doc.setFillColor(accentR, accentG, accentB);
+      doc.rect(marginLeft, y, 1.5, rowHeight + 0.5, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text(cat.toUpperCase(), marginLeft + 2, y + 5);
-      y += rowHeight;
+      doc.setFontSize(8.5);
+      doc.setTextColor(40, 40, 40);
+      doc.text(cat.toUpperCase(), marginLeft + 5, y + 5.2);
+      y += rowHeight + 0.5;
 
       // Items
       catItems.forEach((item, idx) => {
         checkPageBreak(rowHeight);
-        if (idx % 2 === 1) {
-          doc.setFillColor(245, 245, 245);
+
+        // Zebra
+        if (idx % 2 === 0) {
+          doc.setFillColor(250, 250, 252);
           doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
         }
 
-        // Grid lines
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(marginLeft, y, colDesignation, rowHeight);
-        doc.rect(marginLeft + colDesignation, y, colUnite, rowHeight);
-        doc.rect(marginLeft + colDesignation + colUnite, y, colQte, rowHeight);
+        // Borders
+        doc.setDrawColor(215, 215, 220);
+        doc.setLineWidth(0.2);
+        doc.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
+        // Column separators
+        doc.line(marginLeft + colDesignation, y, marginLeft + colDesignation, y + rowHeight);
+        doc.line(marginLeft + colDesignation + colUnite, y, marginLeft + colDesignation + colUnite, y + rowHeight);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
-        doc.text(item.designation, marginLeft + 2, y + 5);
-        doc.text(item.unite, marginLeft + colDesignation + 2, y + 5);
+        doc.setTextColor(50, 50, 50);
+        doc.text(item.designation, marginLeft + 4, y + 5);
+
+        doc.setTextColor(100, 100, 100);
+        doc.text(item.unite, marginLeft + colDesignation + colUnite / 2, y + 5, { align: "center" });
+
         doc.setFont("helvetica", "bold");
-        doc.text(String(item.total), marginLeft + colDesignation + colUnite + 2, y + 5);
+        doc.setTextColor(30, 30, 30);
+        doc.text(String(item.total), marginLeft + colDesignation + colUnite + colQte / 2, y + 5, { align: "center" });
 
         y += rowHeight;
       });
+
+      // Separator after category
+      y += 1;
     });
+
+    // Final footer
+    drawFooter(doc.getNumberOfPages());
 
     doc.save("recap-inventaires.pdf");
   };
