@@ -50,9 +50,31 @@ export const InventoryReportDetail = ({
                 <div className="space-y-2">
                   {catItems.map((item) => (
                     <div key={item.id} className="border rounded-md p-3 bg-muted/30">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="font-medium text-sm">{item.designation} {item.unite ? `(${item.unite})` : ""}</span>
-                        <span className="text-sm font-bold">Qté: {item.quantity_good}</span>
+                        <div className="flex gap-2 text-xs">
+                          {item.quantity_good > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              Bon: {item.quantity_good}
+                            </span>
+                          )}
+                          {item.quantity_repair > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-medium">
+                              <span className="w-2 h-2 rounded-full bg-orange-500" />
+                              Réparer: {item.quantity_repair}
+                            </span>
+                          )}
+                          {item.quantity_broken > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-medium">
+                              <span className="w-2 h-2 rounded-full bg-red-500" />
+                              Nettoyer: {item.quantity_broken}
+                            </span>
+                          )}
+                          {item.quantity_good === 0 && item.quantity_repair === 0 && item.quantity_broken === 0 && (
+                            <span className="text-muted-foreground">Qté: 0</span>
+                          )}
+                        </div>
                       </div>
                       {item.photos && item.photos.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">

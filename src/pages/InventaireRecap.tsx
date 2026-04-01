@@ -14,7 +14,12 @@ interface MatrixItem {
   categorie: string;
   designation: string;
   unite: string;
-  byChantier: Map<string, number>; // chantierId -> qty
+  byChantierGood: Map<string, number>;
+  byChantierRepair: Map<string, number>;
+  byChantierBroken: Map<string, number>;
+  totalGood: number;
+  totalRepair: number;
+  totalBroken: number;
   total: number;
   photos: string[];
 }
@@ -77,14 +82,24 @@ const InventaireRecap = () => {
           categorie: item.categorie,
           designation: item.designation,
           unite: item.unite,
-          byChantier: new Map(),
+          byChantierGood: new Map(),
+          byChantierRepair: new Map(),
+          byChantierBroken: new Map(),
+          totalGood: 0,
+          totalRepair: 0,
+          totalBroken: 0,
           total: 0,
           photos: [],
         });
       }
       const entry = map.get(key)!;
-      entry.byChantier.set(chantierId, (entry.byChantier.get(chantierId) || 0) + item.quantity_good);
-      entry.total += item.quantity_good;
+      entry.byChantierGood.set(chantierId, (entry.byChantierGood.get(chantierId) || 0) + item.quantity_good);
+      entry.byChantierRepair.set(chantierId, (entry.byChantierRepair.get(chantierId) || 0) + item.quantity_repair);
+      entry.byChantierBroken.set(chantierId, (entry.byChantierBroken.get(chantierId) || 0) + item.quantity_broken);
+      entry.totalGood += item.quantity_good;
+      entry.totalRepair += item.quantity_repair;
+      entry.totalBroken += item.quantity_broken;
+      entry.total += item.quantity_good + item.quantity_repair + item.quantity_broken;
       if (item.photos && item.photos.length > 0) {
         entry.photos.push(...item.photos);
       }
@@ -125,7 +140,7 @@ const InventaireRecap = () => {
     const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
-    const nbCols = 2 + chantierIds.length + 1; // designation, unite, chantiers..., total
+    const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
@@ -149,28 +164,83 @@ const InventaireRecap = () => {
     ws.getColumn(1).width = 35; // Désignation
     ws.getColumn(2).width = 12; // Unité
     chantierIds.forEach((_, i) => {
-      ws.getColumn(3 + i).width = 16;
+      ws.getColumn(3 + i * 3).width = 10;
+      ws.getColumn(3 + i * 3 + 1).width = 10;
+      ws.getColumn(3 + i * 3 + 2).width = 10;
     });
-    ws.getColumn(3 + chantierIds.length).width = 14; // Total
+    const totalStartCol = 3 + chantierIds.length * 3;
+    ws.getColumn(totalStartCol).width = 12;
+    ws.getColumn(totalStartCol + 1).width = 12;
+    ws.getColumn(totalStartCol + 2).width = 12;
 
-    // Header row (row 4)
-    const headerRowNum = 4;
-    const headers = ["Désignation", "Unité", ...chantierIds.map(id => getChantierLabel(id)), "TOTAL"];
-    const headerRow = ws.getRow(headerRowNum);
-    headers.forEach((h, i) => {
-      const cell = headerRow.getCell(i + 1);
-      cell.value = h;
+    // Chantier group header row (row 4)
+    const groupRowNum = 4;
+    const groupRow = ws.getRow(groupRowNum);
+    groupRow.getCell(1).value = "";
+    groupRow.getCell(2).value = "";
+    chantierIds.forEach((id, i) => {
+      const colStart = 3 + i * 3;
+      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 2);
+      const cell = groupRow.getCell(colStart);
+      cell.value = getChantierLabel(id);
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = borders;
     });
-    // Désignation left-aligned
-    headerRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-    headerRow.height = 28;
+    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
+    const totalGroupCell = groupRow.getCell(totalStartCol);
+    totalGroupCell.value = "TOTAUX";
+    totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    totalGroupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalGroupCell.alignment = { horizontal: "center", vertical: "middle" };
+    totalGroupCell.border = borders;
+    // Style empty cells in group row
+    for (let c = 1; c <= 2; c++) {
+      const cell = groupRow.getCell(c);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.border = borders;
+    }
+    groupRow.height = 22;
+
+    // Sub-header row (row 5)
+    const headerRowNum = 5;
+    const headerRow = ws.getRow(headerRowNum);
+    headerRow.getCell(1).value = "Désignation";
+    headerRow.getCell(2).value = "Unité";
+    const subHeaders = ["Bon", "Rép.", "Nett."];
+    const subColors = ["FF16A34A", "FFEA580C", "FFDC2626"]; // green, orange, red
+    chantierIds.forEach((_, i) => {
+      subHeaders.forEach((sh, si) => {
+        const cell = headerRow.getCell(3 + i * 3 + si);
+        cell.value = sh;
+        cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = borders;
+      });
+    });
+    subHeaders.forEach((sh, si) => {
+      const cell = headerRow.getCell(totalStartCol + si);
+      cell.value = sh;
+      cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = borders;
+    });
+    // Designation + Unite headers
+    for (let c = 1; c <= 2; c++) {
+      const cell = headerRow.getCell(c);
+      cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.alignment = { horizontal: c === 1 ? "left" : "center", vertical: "middle", wrapText: true };
+      cell.border = borders;
+    }
+    headerRow.height = 20;
 
     // Data rows
     let currentRow = headerRowNum + 1;
+    const totalStartColData = 3 + chantierIds.length * 3;
 
     categories.forEach(cat => {
       const catItems = matrixItems.filter(i => i.categorie === cat);
@@ -193,11 +263,16 @@ const InventaireRecap = () => {
         row.getCell(2).value = item.unite;
 
         chantierIds.forEach((cId, ci) => {
-          const qty = item.byChantier.get(cId) || 0;
-          row.getCell(3 + ci).value = qty || "";
+          const colBase = 3 + ci * 3;
+          row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
+          row.getCell(colBase + 1).value = item.byChantierRepair.get(cId) || "";
+          row.getCell(colBase + 2).value = item.byChantierBroken.get(cId) || "";
         });
 
-        row.getCell(nbCols).value = item.total;
+        // Total columns
+        row.getCell(totalStartColData).value = item.totalGood || "";
+        row.getCell(totalStartColData + 1).value = item.totalRepair || "";
+        row.getCell(totalStartColData + 2).value = item.totalBroken || "";
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
@@ -208,8 +283,6 @@ const InventaireRecap = () => {
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
         }
-        // Total col bold
-        row.getCell(nbCols).font = { size: 9, bold: true, color: { argb: "FF1A1A1A" } };
         row.height = 18;
         currentRow++;
       });
@@ -227,23 +300,32 @@ const InventaireRecap = () => {
 
     // Per-chantier totals
     chantierIds.forEach((cId, ci) => {
-      const colTotal = matrixItems.reduce((sum, item) => sum + (item.byChantier.get(cId) || 0), 0);
-      const cell = totalRow.getCell(3 + ci);
-      cell.value = colTotal;
-      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      const colBase = 3 + ci * 3;
+      const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
+      const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
+      const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
+      [goodTotal, repairTotal, brokenTotal].forEach((val, si) => {
+        const cell = totalRow.getCell(colBase + si);
+        cell.value = val;
+        cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = borders;
+      });
+    });
+
+    // Grand totals
+    const grandGood = matrixItems.reduce((sum, i) => sum + i.totalGood, 0);
+    const grandRepair = matrixItems.reduce((sum, i) => sum + i.totalRepair, 0);
+    const grandBroken = matrixItems.reduce((sum, i) => sum + i.totalBroken, 0);
+    [grandGood, grandRepair, grandBroken].forEach((val, si) => {
+      const cell = totalRow.getCell(totalStartColData + si);
+      cell.value = val;
+      cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = borders;
     });
-
-    // Grand total
-    const grandTotal = matrixItems.reduce((sum, i) => sum + i.total, 0);
-    const gtCell = totalRow.getCell(nbCols);
-    gtCell.value = grandTotal;
-    gtCell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    gtCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-    gtCell.alignment = { horizontal: "center", vertical: "middle" };
-    gtCell.border = borders;
 
     totalRow.height = 24;
 
@@ -322,20 +404,27 @@ const InventaireRecap = () => {
 
     y = drawPageHeader(true);
 
-    const colDesignation = tableWidth * 0.55;
-    const colUnite = tableWidth * 0.20;
-    const colQte = tableWidth * 0.25;
+    const colDesignation = tableWidth * 0.35;
+    const colUnite = tableWidth * 0.10;
+    const colBon = tableWidth * 0.15;
+    const colReparer = tableWidth * 0.15;
+    const colNettoyer = tableWidth * 0.15;
+    const colTotal = tableWidth * 0.10;
     const rowHeight = 7;
 
     const drawTableHeader = () => {
       doc.setFillColor(accentR, accentG, accentB);
       doc.rect(marginLeft, y, tableWidth, rowHeight + 1, "F");
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8.5);
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
-      doc.text("Désignation", marginLeft + 4, y + 5.5);
-      doc.text("Unité", marginLeft + colDesignation + colUnite / 2, y + 5.5, { align: "center" });
-      doc.text("Quantité", marginLeft + colDesignation + colUnite + colQte / 2, y + 5.5, { align: "center" });
+      let hx = marginLeft;
+      doc.text("Désignation", hx + 3, y + 5.5); hx += colDesignation;
+      doc.text("Unité", hx + colUnite / 2, y + 5.5, { align: "center" }); hx += colUnite;
+      doc.text("Bon état", hx + colBon / 2, y + 5.5, { align: "center" }); hx += colBon;
+      doc.text("À réparer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
+      doc.text("À nettoyer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
+      doc.text("Total", hx + colTotal / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
       y += rowHeight + 1;
     };
@@ -381,18 +470,30 @@ const InventaireRecap = () => {
         doc.setDrawColor(215, 215, 220);
         doc.setLineWidth(0.2);
         doc.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
-        doc.line(marginLeft + colDesignation, y, marginLeft + colDesignation, y + rowHeight);
-        doc.line(marginLeft + colDesignation + colUnite, y, marginLeft + colDesignation + colUnite, y + rowHeight);
+        // Vertical separators
+        let sepX = marginLeft + colDesignation;
+        [colUnite, colBon, colReparer, colNettoyer].forEach(w => {
+          doc.line(sepX, y, sepX, y + rowHeight);
+          sepX += w;
+        });
+        doc.line(sepX, y, sepX, y + rowHeight);
 
+        let rx = marginLeft;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(50, 50, 50);
-        doc.text(item.designation, marginLeft + 4, y + 5);
+        doc.text(item.designation, rx + 3, y + 5); rx += colDesignation;
         doc.setTextColor(100, 100, 100);
-        doc.text(item.unite, marginLeft + colDesignation + colUnite / 2, y + 5, { align: "center" });
+        doc.text(item.unite, rx + colUnite / 2, y + 5, { align: "center" }); rx += colUnite;
+        doc.setTextColor(22, 163, 74);
+        doc.text(String(item.totalGood), rx + colBon / 2, y + 5, { align: "center" }); rx += colBon;
+        doc.setTextColor(234, 88, 12);
+        doc.text(String(item.totalRepair), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
+        doc.setTextColor(220, 38, 38);
+        doc.text(String(item.totalBroken), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
-        doc.text(String(item.total), marginLeft + colDesignation + colUnite + colQte / 2, y + 5, { align: "center" });
+        doc.text(String(item.total), rx + colTotal / 2, y + 5, { align: "center" });
         y += rowHeight;
       });
       y += 1;
@@ -443,8 +544,17 @@ const InventaireRecap = () => {
                 <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Bon état</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À réparer</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> À nettoyer</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
                 </tr>
               </thead>
@@ -454,7 +564,7 @@ const InventaireRecap = () => {
                   return (
                     <React.Fragment key={cat}>
                       <tr className="bg-muted">
-                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                        <td colSpan={8} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
                           {cat}
                         </td>
                       </tr>
@@ -466,6 +576,9 @@ const InventaireRecap = () => {
                           <td className="border border-border px-3 py-1.5" />
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-emerald-600 dark:text-emerald-400 font-medium">{item.totalGood || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalRepair || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-red-600 dark:text-red-400 font-medium">{item.totalBroken || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
