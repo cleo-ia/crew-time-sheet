@@ -208,8 +208,8 @@ const InventaireRecap = () => {
     const headerRow = ws.getRow(headerRowNum);
     headerRow.getCell(1).value = "Désignation";
     headerRow.getCell(2).value = "Unité";
-    const subHeaders = ["Bon", "Rép.", "Nett."];
-    const subColors = ["FF16A34A", "FFEA580C", "FFDC2626"]; // green, orange, red
+    const subHeaders = ["Bon", "Nett.", "Rép."];
+    const subColors = ["FF16A34A", "FFD97706", "FFDC2626"]; // green, orange, red
     chantierIds.forEach((_, i) => {
       subHeaders.forEach((sh, si) => {
         const cell = headerRow.getCell(3 + i * 3 + si);
@@ -265,23 +265,20 @@ const InventaireRecap = () => {
         chantierIds.forEach((cId, ci) => {
           const colBase = 3 + ci * 3;
           row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
-          row.getCell(colBase + 1).value = item.byChantierRepair.get(cId) || "";
-          row.getCell(colBase + 2).value = item.byChantierBroken.get(cId) || "";
+          row.getCell(colBase + 1).value = item.byChantierBroken.get(cId) || "";
+          row.getCell(colBase + 2).value = item.byChantierRepair.get(cId) || "";
         });
 
         // Total columns
         row.getCell(totalStartColData).value = item.totalGood || "";
-        row.getCell(totalStartColData + 1).value = item.totalRepair || "";
-        row.getCell(totalStartColData + 2).value = item.totalBroken || "";
+        row.getCell(totalStartColData + 1).value = item.totalBroken || "";
+        row.getCell(totalStartColData + 2).value = item.totalRepair || "";
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
-        const pastelOrange = idx % 2 === 0 ? "FFFFF7ED" : "FFFEF3E2";
         for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
-          // Check if this column is a "Nett." column (every 3rd sub-column starting from position 2 within each chantier group, or the last total sub-col)
-          const isNettCol = chantierIds.some((_, ci) => c === 3 + ci * 3 + 2) || c === totalStartColData + 2;
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isNettCol ? pastelOrange : bgColor } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
           cell.border = borders;
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
@@ -307,7 +304,7 @@ const InventaireRecap = () => {
       const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
       const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
       const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
-      [goodTotal, repairTotal, brokenTotal].forEach((val, si) => {
+      [goodTotal, brokenTotal, repairTotal].forEach((val, si) => {
         const cell = totalRow.getCell(colBase + si);
         cell.value = val;
         cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
@@ -321,7 +318,7 @@ const InventaireRecap = () => {
     const grandGood = matrixItems.reduce((sum, i) => sum + i.totalGood, 0);
     const grandRepair = matrixItems.reduce((sum, i) => sum + i.totalRepair, 0);
     const grandBroken = matrixItems.reduce((sum, i) => sum + i.totalBroken, 0);
-    [grandGood, grandRepair, grandBroken].forEach((val, si) => {
+    [grandGood, grandBroken, grandRepair].forEach((val, si) => {
       const cell = totalRow.getCell(totalStartColData + si);
       cell.value = val;
       cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
@@ -425,8 +422,8 @@ const InventaireRecap = () => {
       doc.text("Désignation", hx + 3, y + 5.5); hx += colDesignation;
       doc.text("Unité", hx + colUnite / 2, y + 5.5, { align: "center" }); hx += colUnite;
       doc.text("Bon état", hx + colBon / 2, y + 5.5, { align: "center" }); hx += colBon;
-      doc.text("À réparer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
-      doc.text("À nettoyer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
+      doc.text("À nettoyer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
+      doc.text("À réparer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
       doc.text("Total", hx + colTotal / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
       y += rowHeight + 1;
@@ -490,10 +487,10 @@ const InventaireRecap = () => {
         doc.text(item.unite, rx + colUnite / 2, y + 5, { align: "center" }); rx += colUnite;
         doc.setTextColor(22, 163, 74);
         doc.text(String(item.totalGood), rx + colBon / 2, y + 5, { align: "center" }); rx += colBon;
-        doc.setTextColor(234, 88, 12);
-        doc.text(String(item.totalRepair), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
+        doc.setTextColor(217, 119, 6);
+        doc.text(String(item.totalBroken), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
         doc.setTextColor(220, 38, 38);
-        doc.text(String(item.totalBroken), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
+        doc.text(String(item.totalRepair), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
         doc.text(String(item.total), rx + colTotal / 2, y + 5, { align: "center" });
@@ -552,10 +549,10 @@ const InventaireRecap = () => {
                     <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Bon état</span>
                   </th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">
-                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À réparer</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À nettoyer</span>
                   </th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24" style={{ backgroundColor: "#c2410c" }}>
-                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-300" /> À nettoyer</span>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> À réparer</span>
                   </th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-20">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
@@ -580,8 +577,8 @@ const InventaireRecap = () => {
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-emerald-600 dark:text-emerald-400 font-medium">{item.totalGood || "—"}</td>
-                          <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalRepair || "—"}</td>
-                          <td className="border border-border px-3 py-1.5 text-center text-orange-700 dark:text-orange-300 font-medium" style={{ backgroundColor: "rgba(251, 191, 36, 0.08)" }}>{item.totalBroken || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalBroken || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-red-600 dark:text-red-400 font-medium">{item.totalRepair || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
