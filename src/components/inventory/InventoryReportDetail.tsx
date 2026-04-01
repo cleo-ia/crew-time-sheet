@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
 import { Skeleton } from "@/components/ui/skeleton";
