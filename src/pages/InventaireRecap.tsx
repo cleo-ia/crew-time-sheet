@@ -304,7 +304,7 @@ const InventaireRecap = () => {
       const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
       const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
       const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
-      [goodTotal, repairTotal, brokenTotal].forEach((val, si) => {
+      [goodTotal, brokenTotal, repairTotal].forEach((val, si) => {
         const cell = totalRow.getCell(colBase + si);
         cell.value = val;
         cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
