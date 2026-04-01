@@ -97,7 +97,7 @@ const InventaireRecap = () => {
     const orange = "FFEA580C";
     const orangeLight = "FFFEF3E2";
     const grayLight = "FFF5F5F5";
-    const borderThin: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFD4D4D8" } };
+    const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
     // --- Title block ---
