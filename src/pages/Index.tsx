@@ -89,6 +89,7 @@ const Index = () => {
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
+  const [showInventaire, setShowInventaire] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [weekInitialized, setWeekInitialized] = useState(false);
   const autoSaveFiche = useAutoSaveFiche();
