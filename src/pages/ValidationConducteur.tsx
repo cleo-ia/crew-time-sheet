@@ -1061,6 +1061,13 @@ const ValidationConducteur = () => {
                 <FicheDetail ficheId={selectedFiche} onBack={() => setSelectedFiche(null)} />
               )}
             </TabsContent>
+
+            {/* ONGLET 3: Inventaire */}
+            {inventaireEnabled && (
+              <TabsContent value="inventaire" className="space-y-6">
+                <InventoryDashboard />
+              </TabsContent>
+            )}
           </Tabs>
 
           {/* Bouton discret de purge cache */}
