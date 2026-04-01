@@ -131,7 +131,7 @@ const InventaireRecap = () => {
     const marginLeft = 15;
     const marginRight = 15;
     const tableWidth = pageWidth - marginLeft - marginRight;
-    const accentR = 37, accentG = 99, accentB = 235;
+    const accentR = 234, accentG = 88, accentB = 12; // orange #ea580c
     let y = 12;
 
     // --- Helper: load logo as base64 ---
