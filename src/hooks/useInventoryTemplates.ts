@@ -9,6 +9,7 @@ export interface InventoryTemplate {
   designation: string;
   unite: string;
   ordre: number;
+  notes: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
