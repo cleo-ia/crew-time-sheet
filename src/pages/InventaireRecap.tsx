@@ -141,11 +141,12 @@ const InventaireRecap = () => {
     const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
-    // Columns that get a thick left border (first col of each chantier group + totaux)
+    // Columns that get a thick left border (first col of each chantier group + totaux + grand total)
     const thickLeftCols = new Set<number>();
     chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
     const totalStartCol = 3 + chantierIds.length * 3;
     thickLeftCols.add(totalStartCol);
+    thickLeftCols.add(totalStartCol + 3);
 
     const getBorders = (col: number) => {
       if (thickLeftCols.has(col)) {
@@ -154,7 +155,7 @@ const InventaireRecap = () => {
       return borders;
     };
 
-    const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
+    const nbCols = 2 + chantierIds.length * 3 + 4; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken, grandTotal
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
@@ -186,6 +187,7 @@ const InventaireRecap = () => {
     ws.getColumn(totalStartCol).width = 12;
     ws.getColumn(totalStartCol + 1).width = 12;
     ws.getColumn(totalStartCol + 2).width = 12;
+    ws.getColumn(totalStartCol + 3).width = 12;
 
     // Chantier group header row (row 4)
     const groupRowNum = 4;
@@ -202,7 +204,7 @@ const InventaireRecap = () => {
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = getBorders(colStart);
     });
-    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
+    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 3);
     const totalGroupCell = groupRow.getCell(totalStartCol);
     totalGroupCell.value = "TOTAUX";
     totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
@@ -242,6 +244,13 @@ const InventaireRecap = () => {
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = getBorders(totalStartCol + si);
     });
+    // "Total" column header
+    const totalColCell = headerRow.getCell(totalStartCol + 3);
+    totalColCell.value = "Total";
+    totalColCell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+    totalColCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalColCell.alignment = { horizontal: "center", vertical: "middle" };
+    totalColCell.border = getBorders(totalStartCol + 3);
     // Designation + Unite headers
     for (let c = 1; c <= 2; c++) {
       const cell = headerRow.getCell(c);
@@ -287,6 +296,7 @@ const InventaireRecap = () => {
         row.getCell(totalStartColData).value = item.totalGood || "";
         row.getCell(totalStartColData + 1).value = item.totalBroken || "";
         row.getCell(totalStartColData + 2).value = item.totalRepair || "";
+        row.getCell(totalStartColData + 3).value = (item.totalGood || 0) + (item.totalRepair || 0) + (item.totalBroken || 0) || "";
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
@@ -301,47 +311,6 @@ const InventaireRecap = () => {
         currentRow++;
       });
     });
-
-    // Total row
-    currentRow++;
-    const totalRow = ws.getRow(currentRow);
-    ws.mergeCells(currentRow, 1, currentRow, 2);
-    totalRow.getCell(1).value = "TOTAL GÉNÉRAL";
-    totalRow.getCell(1).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    totalRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-    totalRow.getCell(1).alignment = { horizontal: "right", vertical: "middle" };
-    totalRow.getCell(1).border = borders;
-
-    // Per-chantier totals
-    chantierIds.forEach((cId, ci) => {
-      const colBase = 3 + ci * 3;
-      const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
-      const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
-      const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
-      [goodTotal, brokenTotal, repairTotal].forEach((val, si) => {
-        const cell = totalRow.getCell(colBase + si);
-        cell.value = val;
-        cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = borders;
-      });
-    });
-
-    // Grand totals
-    const grandGood = matrixItems.reduce((sum, i) => sum + i.totalGood, 0);
-    const grandRepair = matrixItems.reduce((sum, i) => sum + i.totalRepair, 0);
-    const grandBroken = matrixItems.reduce((sum, i) => sum + i.totalBroken, 0);
-    [grandGood, grandBroken, grandRepair].forEach((val, si) => {
-      const cell = totalRow.getCell(totalStartColData + si);
-      cell.value = val;
-      cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = borders;
-    });
-
-    totalRow.height = 24;
 
     // Auto-filter & freeze
     ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: nbCols } };
