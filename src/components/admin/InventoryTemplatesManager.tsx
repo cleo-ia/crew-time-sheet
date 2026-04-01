@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check, X } from "lucide-react";
 import { useInventoryTemplates, useCreateInventoryTemplate, useUpdateInventoryTemplate, useDeleteInventoryTemplate } from "@/hooks/useInventoryTemplates";
 
 const DEFAULT_CATEGORIES = [
@@ -34,7 +34,7 @@ export const InventoryTemplatesManager = () => {
 
   // New category dialog
   const [showNewCatDialog, setShowNewCatDialog] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [catSearch, setCatSearch] = useState("");
 
   // Rename category dialog
@@ -63,21 +63,22 @@ export const InventoryTemplatesManager = () => {
     return Array.from(merged).sort((a, b) => a.localeCompare(b, "fr"));
   }, [categories]);
 
-  const handleSelectCategory = (name: string) => {
-    setNewCategoryName(name);
+  const toggleCategory = (name: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    );
   };
 
   const handleCreateCategory = () => {
-    const name = newCategoryName.trim();
-    if (!name) return;
-    setAddDesignation(prev => ({ ...prev, [name]: "" }));
-    setAddUnite(prev => ({ ...prev, [name]: "U" }));
-    setNewCategoryName("");
+    if (selectedCategories.length === 0) return;
+    selectedCategories.forEach(name => {
+      if (!grouped[name]) {
+        setVirtualCategories(prev => [...prev.filter(c => c !== name), name]);
+      }
+    });
+    setSelectedCategories([]);
     setCatSearch("");
     setShowNewCatDialog(false);
-    if (!grouped[name]) {
-      setVirtualCategories(prev => [...prev.filter(c => c !== name), name]);
-    }
   };
 
   // Virtual categories (created but no items yet)
@@ -284,10 +285,10 @@ export const InventoryTemplatesManager = () => {
       )}
 
       {/* New category dialog with smart Combobox */}
-      <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setNewCategoryName(""); setCatSearch(""); } }}>
+      <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setSelectedCategories([]); setCatSearch(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nouvelle catégorie</DialogTitle>
+            <DialogTitle>Nouvelles catégories</DialogTitle>
           </DialogHeader>
           <Command className="border rounded-md" shouldFilter={true}>
             <CommandInput
@@ -300,7 +301,7 @@ export const InventoryTemplatesManager = () => {
                 {catSearch.trim() ? (
                   <button
                     className="w-full px-2 py-3 text-sm text-left cursor-pointer hover:bg-accent rounded-sm flex items-center gap-2"
-                    onClick={() => { handleSelectCategory(catSearch.trim()); }}
+                    onClick={() => { toggleCategory(catSearch.trim()); setCatSearch(""); }}
                   >
                     <Plus className="h-4 w-4 text-primary" />
                     Créer « <span className="font-medium">{catSearch.trim()}</span> »
@@ -312,31 +313,43 @@ export const InventoryTemplatesManager = () => {
               <CommandGroup heading="Suggestions">
                 {categorySuggestions.map(cat => {
                   const alreadyExists = allCategories.includes(cat);
+                  const isSelected = selectedCategories.includes(cat);
                   return (
                     <CommandItem
                       key={cat}
                       value={cat}
                       disabled={alreadyExists}
-                      onSelect={() => { if (!alreadyExists) handleSelectCategory(cat); }}
+                      onSelect={() => { if (!alreadyExists) toggleCategory(cat); }}
                       className={alreadyExists ? "opacity-50" : "cursor-pointer"}
                     >
+                      <div className={`h-4 w-4 rounded border mr-2 flex items-center justify-center ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
                       <span className="flex-1">{cat}</span>
                       {alreadyExists && <span className="text-xs text-muted-foreground ml-2">(déjà créée)</span>}
-                      {newCategoryName === cat && !alreadyExists && <Check className="h-4 w-4 text-primary ml-2" />}
                     </CommandItem>
                   );
                 })}
               </CommandGroup>
             </CommandList>
           </Command>
-          {newCategoryName && (
-            <p className="text-sm text-muted-foreground">
-              Sélection : <span className="font-medium text-foreground">{newCategoryName}</span>
-            </p>
+          {selectedCategories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedCategories.map(cat => (
+                <span key={cat} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                  {cat}
+                  <button onClick={() => toggleCategory(cat)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewCatDialog(false)}>Annuler</Button>
-            <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>Créer</Button>
+            <Button onClick={handleCreateCategory} disabled={selectedCategories.length === 0}>
+              Créer{selectedCategories.length > 0 ? ` (${selectedCategories.length})` : ""}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
