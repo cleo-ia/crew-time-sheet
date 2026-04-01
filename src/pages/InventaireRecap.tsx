@@ -208,8 +208,8 @@ const InventaireRecap = () => {
     const headerRow = ws.getRow(headerRowNum);
     headerRow.getCell(1).value = "Désignation";
     headerRow.getCell(2).value = "Unité";
-    const subHeaders = ["Bon", "Rép.", "Nett."];
-    const subColors = ["FF16A34A", "FFEA580C", "FFDC2626"]; // green, orange, red
+    const subHeaders = ["Bon", "Nett.", "Rép."];
+    const subColors = ["FF16A34A", "FFD97706", "FFDC2626"]; // green, orange, red
     chantierIds.forEach((_, i) => {
       subHeaders.forEach((sh, si) => {
         const cell = headerRow.getCell(3 + i * 3 + si);
