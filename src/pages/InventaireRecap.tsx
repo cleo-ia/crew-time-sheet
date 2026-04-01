@@ -143,8 +143,8 @@ const InventaireRecap = () => {
 
     // Columns that get a thick left border (first col of each chantier group + totaux + grand total)
     const thickLeftCols = new Set<number>();
-    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
-    const totalStartCol = 3 + chantierIds.length * 3;
+    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 4));
+    const totalStartCol = 3 + chantierIds.length * 4;
     thickLeftCols.add(totalStartCol);
     thickLeftCols.add(totalStartCol + 3);
 
@@ -155,7 +155,7 @@ const InventaireRecap = () => {
       return borders;
     };
 
-    const nbCols = 2 + chantierIds.length * 3 + 4; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken, grandTotal
+    const nbCols = 2 + chantierIds.length * 4 + 4; // designation, unite, 4 per chantier, totalGood, totalRepair, totalBroken, grandTotal
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
