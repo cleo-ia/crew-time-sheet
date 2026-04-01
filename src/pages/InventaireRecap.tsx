@@ -404,20 +404,27 @@ const InventaireRecap = () => {
 
     y = drawPageHeader(true);
 
-    const colDesignation = tableWidth * 0.55;
-    const colUnite = tableWidth * 0.20;
-    const colQte = tableWidth * 0.25;
+    const colDesignation = tableWidth * 0.35;
+    const colUnite = tableWidth * 0.10;
+    const colBon = tableWidth * 0.15;
+    const colReparer = tableWidth * 0.15;
+    const colNettoyer = tableWidth * 0.15;
+    const colTotal = tableWidth * 0.10;
     const rowHeight = 7;
 
     const drawTableHeader = () => {
       doc.setFillColor(accentR, accentG, accentB);
       doc.rect(marginLeft, y, tableWidth, rowHeight + 1, "F");
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8.5);
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
-      doc.text("Désignation", marginLeft + 4, y + 5.5);
-      doc.text("Unité", marginLeft + colDesignation + colUnite / 2, y + 5.5, { align: "center" });
-      doc.text("Quantité", marginLeft + colDesignation + colUnite + colQte / 2, y + 5.5, { align: "center" });
+      let hx = marginLeft;
+      doc.text("Désignation", hx + 3, y + 5.5); hx += colDesignation;
+      doc.text("Unité", hx + colUnite / 2, y + 5.5, { align: "center" }); hx += colUnite;
+      doc.text("Bon état", hx + colBon / 2, y + 5.5, { align: "center" }); hx += colBon;
+      doc.text("À réparer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
+      doc.text("À nettoyer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
+      doc.text("Total", hx + colTotal / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
       y += rowHeight + 1;
     };
@@ -463,18 +470,30 @@ const InventaireRecap = () => {
         doc.setDrawColor(215, 215, 220);
         doc.setLineWidth(0.2);
         doc.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
-        doc.line(marginLeft + colDesignation, y, marginLeft + colDesignation, y + rowHeight);
-        doc.line(marginLeft + colDesignation + colUnite, y, marginLeft + colDesignation + colUnite, y + rowHeight);
+        // Vertical separators
+        let sepX = marginLeft + colDesignation;
+        [colUnite, colBon, colReparer, colNettoyer].forEach(w => {
+          doc.line(sepX, y, sepX, y + rowHeight);
+          sepX += w;
+        });
+        doc.line(sepX, y, sepX, y + rowHeight);
 
+        let rx = marginLeft;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(50, 50, 50);
-        doc.text(item.designation, marginLeft + 4, y + 5);
+        doc.text(item.designation, rx + 3, y + 5); rx += colDesignation;
         doc.setTextColor(100, 100, 100);
-        doc.text(item.unite, marginLeft + colDesignation + colUnite / 2, y + 5, { align: "center" });
+        doc.text(item.unite, rx + colUnite / 2, y + 5, { align: "center" }); rx += colUnite;
+        doc.setTextColor(22, 163, 74);
+        doc.text(String(item.totalGood), rx + colBon / 2, y + 5, { align: "center" }); rx += colBon;
+        doc.setTextColor(234, 88, 12);
+        doc.text(String(item.totalRepair), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
+        doc.setTextColor(220, 38, 38);
+        doc.text(String(item.totalBroken), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
-        doc.text(String(item.total), marginLeft + colDesignation + colUnite + colQte / 2, y + 5, { align: "center" });
+        doc.text(String(item.total), rx + colTotal / 2, y + 5, { align: "center" });
         y += rowHeight;
       });
       y += 1;
