@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -7,8 +7,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ArrowUp, ArrowDown, Pencil } from "lucide-react";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check } from "lucide-react";
 import { useInventoryTemplates, useCreateInventoryTemplate, useUpdateInventoryTemplate, useDeleteInventoryTemplate } from "@/hooks/useInventoryTemplates";
+
+const DEFAULT_CATEGORIES = [
+  "Consommables",
+  "Electricité & Éclairage",
+  "Électroportatif",
+  "Engins & Gros Matériel",
+  "EPI & Sécurité",
+  "Gros Œuvre",
+  "Manutention & Levage",
+  "Petit Outillage",
+  "Signalisation & Balisage",
+  "Vêtements de travail",
+];
 
 const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L"];
 
