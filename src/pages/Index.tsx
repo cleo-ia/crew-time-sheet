@@ -515,6 +515,23 @@ const Index = () => {
           entrepriseId={localStorage.getItem("current_entreprise_id") || ""}
         />
       )}
+
+      {/* Inventaire Sheet */}
+      <Sheet open={showInventaire} onOpenChange={setShowInventaire}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-red-500" />
+              Inventaire — {chantierNom}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            {selectedChantier && (
+              <ChantierInventaireTab chantierId={selectedChantier} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
