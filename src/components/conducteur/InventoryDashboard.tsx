@@ -66,8 +66,8 @@ export const InventoryDashboard = () => {
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => navigate("/inventaire-parametrage")}>
-          <Settings className="h-4 w-4 mr-2" />
-          Paramétrer
+          <FilePlus className="h-4 w-4 mr-2" />
+          Créer le formulaire
         </Button>
       </div>
 
