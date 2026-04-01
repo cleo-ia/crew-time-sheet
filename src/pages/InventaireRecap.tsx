@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, BarChart3, Download, FileText } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
@@ -12,10 +10,11 @@ import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 
-interface ConsolidatedItem {
+interface MatrixItem {
   categorie: string;
   designation: string;
   unite: string;
+  byChantier: Map<string, number>; // chantierId -> qty
   total: number;
   photos: string[];
 }
@@ -42,56 +41,82 @@ const InventaireRecap = () => {
     return map;
   }, [reports]);
 
-  // Aggregate items by categorie + designation + unite
-  const consolidatedItems = useMemo(() => {
-    const map = new Map<string, ConsolidatedItem>();
+  // Get sorted list of chantier IDs that have inventory data
+  const chantierIds = useMemo(() => {
+    const ids = new Set<string>();
+    allItems.forEach(item => {
+      const chantierId = reportToChantier.get(item.report_id);
+      if (chantierId) ids.add(chantierId);
+    });
+    return Array.from(ids).sort((a, b) => {
+      const ca = chantierMap.get(a);
+      const cb = chantierMap.get(b);
+      const nameA = ca?.code_chantier || ca?.nom || "";
+      const nameB = cb?.code_chantier || cb?.nom || "";
+      return nameA.localeCompare(nameB);
+    });
+  }, [allItems, reportToChantier, chantierMap]);
+
+  const getChantierLabel = (id: string) => {
+    const c = chantierMap.get(id);
+    if (!c) return "—";
+    return c.code_chantier || c.nom;
+  };
+
+  // Build matrix: aggregate items by categorie + designation + unite, with per-chantier breakdown
+  const matrixItems = useMemo(() => {
+    const map = new Map<string, MatrixItem>();
 
     allItems.forEach(item => {
+      const chantierId = reportToChantier.get(item.report_id);
+      if (!chantierId) return;
+
       const key = `${item.categorie}|||${item.designation}|||${item.unite}`;
       if (!map.has(key)) {
         map.set(key, {
           categorie: item.categorie,
           designation: item.designation,
           unite: item.unite,
+          byChantier: new Map(),
           total: 0,
           photos: [],
         });
       }
       const entry = map.get(key)!;
+      entry.byChantier.set(chantierId, (entry.byChantier.get(chantierId) || 0) + item.quantity_good);
       entry.total += item.quantity_good;
       if (item.photos && item.photos.length > 0) {
         entry.photos.push(...item.photos);
       }
     });
 
-    // Sort by categorie then designation
     return Array.from(map.values()).sort((a, b) => {
       const catCmp = a.categorie.localeCompare(b.categorie);
       return catCmp !== 0 ? catCmp : a.designation.localeCompare(b.designation);
     });
-  }, [allItems]);
+  }, [allItems, reportToChantier]);
 
-  // Group for display with category headers
   const categories = useMemo(() => {
     const cats: string[] = [];
-    consolidatedItems.forEach(item => {
+    matrixItems.forEach(item => {
       if (!cats.includes(item.categorie)) cats.push(item.categorie);
     });
     return cats;
-  }, [consolidatedItems]);
+  }, [matrixItems]);
 
   const isLoading = isLoadingReports || isLoadingItems;
+  const totalColCount = 3 + chantierIds.length + 1 + 1; // designation + unite + chantiers + total + photos
 
+  // ───── Excel export ─────
   const handleExportExcel = async () => {
     const ExcelJS = await import("exceljs");
     const wb = new ExcelJS.Workbook();
     wb.creator = config.nom;
     wb.created = new Date();
+
     const ws = wb.addWorksheet("Récap Inventaires", {
-      pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1 },
-      headerFooter: {
-        oddFooter: `&L${config.nom}&CPage &P / &N&R&D`,
-      },
+      pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1 },
+      headerFooter: { oddFooter: `&L${config.nom}&CPage &P / &N&R&D` },
     });
 
     const orange = "FFEA580C";
@@ -100,55 +125,59 @@ const InventaireRecap = () => {
     const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
-    // --- Title block ---
-    ws.mergeCells("A1:D1");
+    const nbCols = 2 + chantierIds.length + 1; // designation, unite, chantiers..., total
+
+    // Title row
+    ws.mergeCells(1, 1, 1, nbCols);
     const titleCell = ws.getCell("A1");
     titleCell.value = "RÉCAP GLOBAL INVENTAIRES";
     titleCell.font = { bold: true, size: 16, color: { argb: "FF1A1A1A" } };
     titleCell.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 30;
 
-    ws.mergeCells("A2:D2");
+    // Subtitle row
+    ws.mergeCells(2, 1, 2, nbCols);
     const subtitleCell = ws.getCell("A2");
     subtitleCell.value = `${config.nom} — Édité le ${new Date().toLocaleDateString("fr-FR")}`;
     subtitleCell.font = { size: 10, color: { argb: "FF666666" }, italic: true };
     subtitleCell.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(2).height = 20;
 
-    // Empty row
     ws.getRow(3).height = 8;
 
-    // --- Column headers (row 4) ---
-    const headerRowNum = 4;
-    ws.columns = [
-      { key: "categorie", width: 30 },
-      { key: "designation", width: 40 },
-      { key: "unite", width: 14 },
-      { key: "total", width: 18 },
-    ];
+    // Column widths
+    ws.getColumn(1).width = 35; // Désignation
+    ws.getColumn(2).width = 12; // Unité
+    chantierIds.forEach((_, i) => {
+      ws.getColumn(3 + i).width = 16;
+    });
+    ws.getColumn(3 + chantierIds.length).width = 14; // Total
 
-    const headers = ["Catégorie", "Désignation", "Unité", "Quantité totale"];
+    // Header row (row 4)
+    const headerRowNum = 4;
+    const headers = ["Désignation", "Unité", ...chantierIds.map(id => getChantierLabel(id)), "TOTAL"];
     const headerRow = ws.getRow(headerRowNum);
     headers.forEach((h, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-      cell.alignment = { horizontal: i >= 2 ? "center" : "left", vertical: "middle" };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = borders;
     });
-    headerRow.height = 22;
+    // Désignation left-aligned
+    headerRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+    headerRow.height = 28;
 
-    // --- Data rows ---
+    // Data rows
     let currentRow = headerRowNum + 1;
-    let lastCat = "";
 
     categories.forEach(cat => {
-      const catItems = consolidatedItems.filter(i => i.categorie === cat);
+      const catItems = matrixItems.filter(i => i.categorie === cat);
 
-      // Category separator row
+      // Category separator
       const catRow = ws.getRow(currentRow);
-      ws.mergeCells(`A${currentRow}:D${currentRow}`);
+      ws.mergeCells(currentRow, 1, currentRow, nbCols);
       const catCell = catRow.getCell(1);
       catCell.value = cat.toUpperCase();
       catCell.font = { bold: true, size: 10, color: { argb: "FF333333" } };
@@ -158,49 +187,68 @@ const InventaireRecap = () => {
       catRow.height = 20;
       currentRow++;
 
-      // Items
       catItems.forEach((item, idx) => {
         const row = ws.getRow(currentRow);
-        row.getCell(1).value = ""; // empty category col
-        row.getCell(2).value = item.designation;
-        row.getCell(3).value = item.unite;
-        row.getCell(4).value = item.total;
+        row.getCell(1).value = item.designation;
+        row.getCell(2).value = item.unite;
 
-        // Zebra
+        chantierIds.forEach((cId, ci) => {
+          const qty = item.byChantier.get(cId) || 0;
+          row.getCell(3 + ci).value = qty || "";
+        });
+
+        row.getCell(nbCols).value = item.total;
+
+        // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
-        for (let c = 1; c <= 4; c++) {
+        for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
           cell.border = borders;
           cell.font = { size: 9, color: { argb: "FF333333" } };
-          if (c >= 3) cell.alignment = { horizontal: "center", vertical: "middle" };
-          if (c === 4) cell.font = { size: 9, bold: true, color: { argb: "FF1A1A1A" } };
+          cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
         }
+        // Total col bold
+        row.getCell(nbCols).font = { size: 9, bold: true, color: { argb: "FF1A1A1A" } };
         row.height = 18;
         currentRow++;
       });
     });
 
-    // --- Total row ---
+    // Total row
     currentRow++;
     const totalRow = ws.getRow(currentRow);
-    ws.mergeCells(`A${currentRow}:C${currentRow}`);
+    ws.mergeCells(currentRow, 1, currentRow, 2);
     totalRow.getCell(1).value = "TOTAL GÉNÉRAL";
     totalRow.getCell(1).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
     totalRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
     totalRow.getCell(1).alignment = { horizontal: "right", vertical: "middle" };
     totalRow.getCell(1).border = borders;
-    totalRow.getCell(4).value = consolidatedItems.reduce((sum, i) => sum + i.total, 0);
-    totalRow.getCell(4).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    totalRow.getCell(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-    totalRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
-    totalRow.getCell(4).border = borders;
+
+    // Per-chantier totals
+    chantierIds.forEach((cId, ci) => {
+      const colTotal = matrixItems.reduce((sum, item) => sum + (item.byChantier.get(cId) || 0), 0);
+      const cell = totalRow.getCell(3 + ci);
+      cell.value = colTotal;
+      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = borders;
+    });
+
+    // Grand total
+    const grandTotal = matrixItems.reduce((sum, i) => sum + i.total, 0);
+    const gtCell = totalRow.getCell(nbCols);
+    gtCell.value = grandTotal;
+    gtCell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+    gtCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    gtCell.alignment = { horizontal: "center", vertical: "middle" };
+    gtCell.border = borders;
+
     totalRow.height = 24;
 
-    // Auto-filter on header
-    ws.autoFilter = { from: `A${headerRowNum}`, to: `D${headerRowNum}` };
-
-    // Freeze panes below header
+    // Auto-filter & freeze
+    ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: nbCols } };
     ws.views = [{ state: "frozen", ySplit: headerRowNum }];
 
     const buffer = await wb.xlsx.writeBuffer();
@@ -213,18 +261,18 @@ const InventaireRecap = () => {
     URL.revokeObjectURL(url);
   };
 
+  // ───── PDF export ─────
   const handleExportPdf = async () => {
     const { default: jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const marginLeft = 15;
-    const marginRight = 15;
+    const marginLeft = 10;
+    const marginRight = 10;
     const tableWidth = pageWidth - marginLeft - marginRight;
-    const accentR = 234, accentG = 88, accentB = 12; // orange #ea580c
+    const accentR = 234, accentG = 88, accentB = 12;
     let y = 12;
 
-    // --- Helper: load logo as base64 + dimensions ---
     const loadLogo = (): Promise<{ base64: string; ratio: number } | null> => {
       return new Promise((resolve) => {
         if (!config.theme?.logo) { resolve(null); return; }
@@ -245,75 +293,69 @@ const InventaireRecap = () => {
 
     const logoData = await loadLogo();
 
-    // --- Draw page header (logo + title + date + line) ---
     const drawPageHeader = (isFirstPage: boolean) => {
       const headerY = 12;
-
-      // Logo top-left — preserve aspect ratio
       if (logoData) {
         const logoH = 12;
         const logoW = logoH * logoData.ratio;
         doc.addImage(logoData.base64, "PNG", marginLeft, headerY - 5, logoW, logoH);
       }
-
-      // Title
-      doc.setFontSize(isFirstPage ? 18 : 12);
+      doc.setFontSize(isFirstPage ? 16 : 11);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 30, 30);
       doc.text("Récap global inventaires", pageWidth / 2, headerY + 2, { align: "center" });
-
-      // Date top-right
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(120, 120, 120);
       doc.text(`Édité le ${new Date().toLocaleDateString("fr-FR")}`, pageWidth - marginRight, headerY + 2, { align: "right" });
-
-      // Enterprise name
       if (isFirstPage) {
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
         doc.text(config.nom, pageWidth / 2, headerY + 9, { align: "center" });
       }
-
-      // Accent line
       const lineY = isFirstPage ? headerY + 14 : headerY + 7;
       doc.setDrawColor(accentR, accentG, accentB);
       doc.setLineWidth(0.8);
       doc.line(marginLeft, lineY, pageWidth - marginRight, lineY);
-
       return lineY + 6;
     };
 
     y = drawPageHeader(true);
 
-    // Column widths
-    const colDesignation = tableWidth * 0.55;
-    const colUnite = tableWidth * 0.20;
-    const colQte = tableWidth * 0.25;
+    // Dynamic columns for PDF: Désignation, Unité, chantiers..., Total
+    const nbPdfCols = 2 + chantierIds.length + 1;
+    const colDesW = tableWidth * 0.25;
+    const colUniteW = tableWidth * 0.08;
+    const colTotalW = tableWidth * 0.08;
+    const remainingW = tableWidth - colDesW - colUniteW - colTotalW;
+    const colChantierW = chantierIds.length > 0 ? remainingW / chantierIds.length : 0;
     const rowHeight = 7;
 
-    const drawTableHeader = () => {
-      // Header background
-      doc.setFillColor(accentR, accentG, accentB);
-      doc.rect(marginLeft, y, tableWidth, rowHeight + 1, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.text("Désignation", marginLeft + 4, y + 5.5);
-      doc.text("Unité", marginLeft + colDesignation + colUnite / 2, y + 5.5, { align: "center" });
-      doc.text("Quantité", marginLeft + colDesignation + colUnite + colQte / 2, y + 5.5, { align: "center" });
-      doc.setTextColor(0, 0, 0);
-      y += rowHeight + 1;
-    };
+    const colXs = [marginLeft]; // designation
+    colXs.push(colXs[0] + colDesW); // unite
+    chantierIds.forEach((_, i) => {
+      colXs.push(colXs[1] + colUniteW + i * colChantierW);
+    });
+    colXs.push(marginLeft + tableWidth - colTotalW); // total
 
-    const checkPageBreak = (neededHeight: number) => {
-      if (y + neededHeight > pageHeight - 20) {
-        // Footer on current page
-        drawFooter(doc.getNumberOfPages());
-        doc.addPage();
-        y = drawPageHeader(false);
-        drawTableHeader();
-      }
+    const drawTableHeader = () => {
+      doc.setFillColor(accentR, accentG, accentB);
+      doc.rect(marginLeft, y, tableWidth, rowHeight + 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.text("Désignation", colXs[0] + 2, y + 5.5);
+      doc.text("Unité", colXs[1] + colUniteW / 2, y + 5.5, { align: "center" });
+      chantierIds.forEach((cId, i) => {
+        const label = getChantierLabel(cId);
+        const x = colXs[2 + i] + colChantierW / 2;
+        // Truncate if too long
+        const truncated = label.length > 12 ? label.slice(0, 11) + "…" : label;
+        doc.text(truncated, x, y + 5.5, { align: "center" });
+      });
+      doc.text("Total", colXs[colXs.length - 1] + colTotalW / 2, y + 5.5, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+      y += rowHeight + 2;
     };
 
     const drawFooter = (pageNum: number) => {
@@ -324,64 +366,66 @@ const InventaireRecap = () => {
       doc.text(config.nom, marginLeft, pageHeight - 8);
     };
 
+    const checkPageBreak = (neededHeight: number) => {
+      if (y + neededHeight > pageHeight - 20) {
+        drawFooter(doc.getNumberOfPages());
+        doc.addPage();
+        y = drawPageHeader(false);
+        drawTableHeader();
+      }
+    };
+
     drawTableHeader();
 
     categories.forEach(cat => {
-      const catItems = consolidatedItems.filter(i => i.categorie === cat);
-
-      // Category separator row
+      const catItems = matrixItems.filter(i => i.categorie === cat);
       checkPageBreak(rowHeight * 2);
+
+      // Category row
       doc.setFillColor(235, 235, 240);
       doc.rect(marginLeft, y, tableWidth, rowHeight + 0.5, "F");
-      // Left accent bar
       doc.setFillColor(accentR, accentG, accentB);
       doc.rect(marginLeft, y, 1.5, rowHeight + 0.5, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(40, 40, 40);
       doc.text(cat.toUpperCase(), marginLeft + 5, y + 5.2);
       y += rowHeight + 0.5;
 
-      // Items
       catItems.forEach((item, idx) => {
         checkPageBreak(rowHeight);
-
-        // Zebra
         if (idx % 2 === 0) {
           doc.setFillColor(250, 250, 252);
           doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
         }
-
-        // Borders
         doc.setDrawColor(215, 215, 220);
         doc.setLineWidth(0.2);
         doc.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
-        // Column separators
-        doc.line(marginLeft + colDesignation, y, marginLeft + colDesignation, y + rowHeight);
-        doc.line(marginLeft + colDesignation + colUnite, y, marginLeft + colDesignation + colUnite, y + rowHeight);
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(7.5);
         doc.setTextColor(50, 50, 50);
-        doc.text(item.designation, marginLeft + 4, y + 5);
-
+        doc.text(item.designation, colXs[0] + 2, y + 5);
         doc.setTextColor(100, 100, 100);
-        doc.text(item.unite, marginLeft + colDesignation + colUnite / 2, y + 5, { align: "center" });
+        doc.text(item.unite, colXs[1] + colUniteW / 2, y + 5, { align: "center" });
+
+        chantierIds.forEach((cId, i) => {
+          const qty = item.byChantier.get(cId) || 0;
+          if (qty > 0) {
+            doc.setTextColor(80, 80, 80);
+            doc.text(String(qty), colXs[2 + i] + colChantierW / 2, y + 5, { align: "center" });
+          }
+        });
 
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
-        doc.text(String(item.total), marginLeft + colDesignation + colUnite + colQte / 2, y + 5, { align: "center" });
-
+        doc.text(String(item.total), colXs[colXs.length - 1] + colTotalW / 2, y + 5, { align: "center" });
         y += rowHeight;
       });
-
-      // Separator after category
       y += 1;
     });
 
-    // Final footer
     drawFooter(doc.getNumberOfPages());
-
     doc.save("recap-inventaires.pdf");
   };
 
@@ -399,11 +443,11 @@ const InventaireRecap = () => {
             </h1>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportPdf} disabled={consolidatedItems.length === 0}>
+            <Button variant="outline" onClick={handleExportPdf} disabled={matrixItems.length === 0}>
               <FileText className="h-4 w-4 mr-2" />
               Export PDF
             </Button>
-            <Button onClick={handleExportExcel} disabled={consolidatedItems.length === 0}>
+            <Button onClick={handleExportExcel} disabled={matrixItems.length === 0} style={{ backgroundColor: "#ea580c" }} className="text-white hover:opacity-90">
               <Download className="h-4 w-4 mr-2" />
               Export Excel
             </Button>
@@ -417,27 +461,31 @@ const InventaireRecap = () => {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : consolidatedItems.length === 0 ? (
+        ) : matrixItems.length === 0 ? (
           <p className="text-muted-foreground text-center py-12">Aucun inventaire transmis.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
-                  <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
+                  {chantierIds.map(id => (
+                    <th key={id} className="border border-border px-2 py-2 text-center font-semibold text-xs whitespace-nowrap">
+                      {getChantierLabel(id)}
+                    </th>
+                  ))}
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
                 </tr>
               </thead>
               <tbody>
                 {categories.map(cat => {
-                  const catItems = consolidatedItems.filter(i => i.categorie === cat);
+                  const catItems = matrixItems.filter(i => i.categorie === cat);
                   return (
                     <React.Fragment key={cat}>
                       <tr className="bg-muted">
-                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                        <td colSpan={3 + chantierIds.length + 1 + 1} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
                           {cat}
                         </td>
                       </tr>
@@ -446,9 +494,16 @@ const InventaireRecap = () => {
                           key={`${cat}-${item.designation}-${item.unite}`}
                           className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
                         >
-                          <td className="border border-border px-3 py-1.5" />
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
+                          {chantierIds.map(cId => {
+                            const qty = item.byChantier.get(cId) || 0;
+                            return (
+                              <td key={cId} className="border border-border px-2 py-1.5 text-center text-muted-foreground">
+                                {qty > 0 ? qty : ""}
+                              </td>
+                            );
+                          })}
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
