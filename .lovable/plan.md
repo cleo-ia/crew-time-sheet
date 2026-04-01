@@ -1,39 +1,37 @@
 
 
-## Ajout de matériels supplémentaires au dictionnaire DEFAULT_MATERIALS
+## Rendre l'unité modifiable sur chaque ligne de matériel
 
 ### Objectif
 
-Ajouter les nouveaux matériels fournis dans chaque catégorie du dictionnaire `DEFAULT_MATERIALS`, et ajouter l'unité manquante `"Sac"` à `UNIT_OPTIONS`.
+Permettre au conducteur de modifier l'unité d'un matériel directement dans la liste, en remplaçant le texte statique par un `Select` cliquable.
 
 ### Fichier modifié
 
 `src/components/admin/InventoryTemplatesManager.tsx`
 
-### Changements
+### Changement
 
-**1. Ajouter `"Sac"` à `UNIT_OPTIONS` (ligne 27)**
+**Ligne 328** : Remplacer le `TableCell` affichant `{t.unite}` en texte brut par un composant `Select` inline utilisant `UNIT_OPTIONS`, qui appelle `updateTemplate.mutate({ id: t.id, unite: newValue })` au changement.
 
-```typescript
-const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L", "Boîte", "Lot", "Rouleau", "Sac"];
+```text
+Avant :  <TableCell className="w-20 text-muted-foreground">{t.unite}</TableCell>
+
+Après :  <TableCell className="w-28">
+           <Select value={t.unite} onValueChange={(v) => updateTemplate.mutate({ id: t.id, unite: v })}>
+             <SelectTrigger className="h-7 text-xs border-none shadow-none">
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               {UNIT_OPTIONS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+             </SelectContent>
+           </Select>
+         </TableCell>
 ```
 
-**2. Compléter chaque catégorie dans `DEFAULT_MATERIALS` (lignes 29-91)**
-
-Ajouter les entrées suivantes à la suite des matériels existants dans chaque catégorie :
-
-- **Consommables** : Sacs à gravats (Rouleau), Scellement chimique (U), Électrodes de soudage (Boîte), Gaz pour cloueur (U), Colle carrelage (Sac)
-- **Electricité & Éclairage** : Projecteur sur trépied (U), Bloc autonome d'éclairage de sécurité (U), Multiprise de chantier étanche (U), Lampe frontale rechargeable (U)
-- **Électroportatif** : Scie sabre (U), Rabot électrique (U), Boulonneuse à chocs (U), Rainureuse à béton (U)
-- **Engins & Gros Matériel** : Dumper (U), Nacelle élévatrice (U), Chariot télescopique (U), Groupe électrogène (U)
-- **EPI & Sécurité** : Harnais d'antichute (U), Masque respiratoire FFP3 (Boîte), Visière de protection (U), Trousse de secours (U)
-- **Gros Œuvre** : Serre-joint de maçon (U), Règle à lisser (U), Taloche de maçon (U), Bac à gâcher (U)
-- **Manutention & Levage** : Chariot de manutention (U), Élingue de levage (U), Ventouse de levage (U), Crics hydrauliques (U)
-- **Petit Outillage** : Cisaille à tôle (U), Clé à molette (U), Pince multiprise (U), Scie à main (U)
-- **Signalisation & Balisage** : Lampe de chantier Flash (U), Ruban de balisage jaune/noir (Rouleau), Grillage de chantier Orange (Rouleau), Socle de barrière Lest (U)
-- **Vêtements de travail** : Veste de pluie haute visibilité (U), Casquette de protection (U), Parka de travail Hiver (U), Bermuda de travail (U)
+Le hook `useUpdateInventoryTemplate` est déjà importé et utilisé dans le composant (pour le move/rename). Aucun nouveau hook nécessaire.
 
 ### Risque
 
-Aucun — ajout de données statiques uniquement, aucune logique modifiée.
+Aucun — remplacement d'un affichage texte par un Select, même mutation existante.
 
