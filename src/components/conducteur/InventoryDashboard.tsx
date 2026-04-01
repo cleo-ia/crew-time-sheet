@@ -102,6 +102,78 @@ export const InventoryDashboard = () => {
     );
   };
 
+  // ── Consolidated full-page view ──
+  if (showConsolide) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setShowConsolide(false)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Récap global inventaires
+          </h2>
+        </div>
+
+        {isLoadingItems ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : consolidatedData.size === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-8">Aucun inventaire transmis.</p>
+        ) : (
+          Array.from(consolidatedData.entries()).map(([categorie, items]) => (
+            <div key={categorie}>
+              <h3 className="font-semibold text-sm text-primary mb-2 uppercase tracking-wide">{categorie}</h3>
+              <div className="space-y-3">
+                {Array.from(items.entries()).map(([key, data]) => {
+                  const designation = key.split("|||")[0];
+                  return (
+                    <Card key={key} className="p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm">
+                          {designation} {data.unite ? `(${data.unite})` : ""}
+                        </span>
+                        <Badge variant="secondary" className="font-bold">
+                          Total: {data.total}
+                        </Badge>
+                      </div>
+                      {data.photos.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {data.photos.map((url, idx) => (
+                            <img
+                              key={idx}
+                              src={url}
+                              alt=""
+                              className="h-10 w-10 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setSelectedPhoto(url)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+
+        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
+            {selectedPhoto && (
+              <img src={selectedPhoto} alt="" className="w-full h-full max-h-[80vh] object-contain rounded-md" />
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // ── Default: chantier list view ──
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,7 +192,6 @@ export const InventoryDashboard = () => {
         </Button>
       </div>
 
-      {/* Big consolidated button */}
       <Button
         className="w-full h-14 text-base font-semibold gap-3"
         size="lg"
@@ -130,7 +201,6 @@ export const InventoryDashboard = () => {
         Récap global inventaires
       </Button>
 
-      {/* Chantier list */}
       <div className="grid gap-3">
         {activeChantiers.map(chantier => {
           const report = reportsByChantier.get(chantier.id);
@@ -166,73 +236,6 @@ export const InventoryDashboard = () => {
         )}
       </div>
 
-      {/* Consolidated Sheet */}
-      <Sheet open={showConsolide} onOpenChange={setShowConsolide}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Récap global inventaires
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="mt-6 space-y-6">
-            {isLoadingItems ? (
-              <div className="space-y-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : consolidatedData.size === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">Aucun inventaire transmis.</p>
-            ) : (
-              Array.from(consolidatedData.entries()).map(([categorie, items]) => (
-                <div key={categorie}>
-                  <h3 className="font-semibold text-sm text-primary mb-2 uppercase tracking-wide">{categorie}</h3>
-                  <div className="space-y-3">
-                    {Array.from(items.entries()).map(([key, data]) => {
-                      const designation = key.split("|||")[0];
-                      return (
-                        <Card key={key} className="p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-sm">
-                              {designation} {data.unite ? `(${data.unite})` : ""}
-                            </span>
-                            <Badge variant="secondary" className="font-bold">
-                              Total: {data.total}
-                            </Badge>
-                          </div>
-                          <div className="space-y-0.5 ml-2">
-                            {Array.from(data.perChantier.entries()).map(([chantierLabel, qty]) => (
-                              <div key={chantierLabel} className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span>• {chantierLabel}</span>
-                                <span className="font-medium">{qty}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {data.photos.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {data.photos.map((url, idx) => (
-                                <img
-                                  key={idx}
-                                  src={url}
-                                  alt=""
-                                  className="h-10 w-10 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => setSelectedPhoto(url)}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
       <InventoryReportDetail
         open={!!selectedReport}
         onOpenChange={() => setSelectedReport(null)}
@@ -243,11 +246,7 @@ export const InventoryDashboard = () => {
       <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
           {selectedPhoto && (
-            <img
-              src={selectedPhoto}
-              alt=""
-              className="w-full h-full max-h-[80vh] object-contain rounded-md"
-            />
+            <img src={selectedPhoto} alt="" className="w-full h-full max-h-[80vh] object-contain rounded-md" />
           )}
         </DialogContent>
       </Dialog>
