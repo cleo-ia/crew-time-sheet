@@ -12,6 +12,7 @@ import { InventoryReportDetail } from "@/components/inventory/InventoryReportDet
 import { format } from "date-fns";
 
 export const InventoryDashboard = () => {
+  const navigate = useNavigate();
   const currentMois = format(new Date(), "yyyy-MM");
   const { data: reports = [], isLoading: isLoadingReports } = useInventoryReportsAll();
   const { data: chantiers = [], isLoading: isLoadingChantiers } = useChantiers();
