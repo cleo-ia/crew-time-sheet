@@ -229,13 +229,20 @@ const InventaireRecap = () => {
     const subColors = ["FF16A34A", "FFD97706", "FFDC2626"]; // green, orange, red
     chantierIds.forEach((_, i) => {
       subHeaders.forEach((sh, si) => {
-        const cell = headerRow.getCell(3 + i * 3 + si);
+        const cell = headerRow.getCell(3 + i * 4 + si);
         cell.value = sh;
         cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = getBorders(3 + i * 3 + si);
+        cell.border = getBorders(3 + i * 4 + si);
       });
+      // Total per chantier sub-header
+      const totalPerChantierCell = headerRow.getCell(3 + i * 4 + 3);
+      totalPerChantierCell.value = "Total";
+      totalPerChantierCell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+      totalPerChantierCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      totalPerChantierCell.alignment = { horizontal: "center", vertical: "middle" };
+      totalPerChantierCell.border = getBorders(3 + i * 4 + 3);
     });
     subHeaders.forEach((sh, si) => {
       const cell = headerRow.getCell(totalStartCol + si);
