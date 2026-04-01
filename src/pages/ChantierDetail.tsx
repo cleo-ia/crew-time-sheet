@@ -28,7 +28,7 @@ const ChantierDetail = () => {
   // Mode lecture seule si vient de la page chef OU si le rôle est chef
   const fromChef = searchParams.get("from") === "chef";
   const isReadOnly = fromChef || userRole === "chef" || userRole === "gestionnaire";
-  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
+  
 
   // Mark planning as seen when chef opens the page
   useEffect(() => {
