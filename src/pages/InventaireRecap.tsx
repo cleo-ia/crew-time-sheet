@@ -224,10 +224,16 @@ const InventaireRecap = () => {
               Récap global inventaires
             </h1>
           </div>
-          <Button onClick={handleExportExcel} disabled={consolidatedItems.length === 0}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportPdf} disabled={consolidatedItems.length === 0}>
+              <FileText className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button onClick={handleExportExcel} disabled={consolidatedItems.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
