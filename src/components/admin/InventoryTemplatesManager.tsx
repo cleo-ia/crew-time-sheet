@@ -149,23 +149,42 @@ export const InventoryTemplatesManager = () => {
   const [virtualCategories, setVirtualCategories] = useState<string[]>([]);
   const allCategories = [...new Set([...categories, ...virtualCategories])].sort();
 
-  const handleAddItem = (cat: string) => {
-    const designation = (addDesignation[cat] || "").trim();
-    if (!designation) return;
+  const toggleMaterial = (mat: { designation: string; unite: string }) => {
+    setSelectedMaterials(prev =>
+      prev.some(m => m.designation === mat.designation)
+        ? prev.filter(m => m.designation !== mat.designation)
+        : [...prev, mat]
+    );
+  };
+
+  const materialSuggestions = useMemo(() => {
+    if (!showAddMaterialDialog) return [];
+    return DEFAULT_MATERIALS[showAddMaterialDialog] || [];
+  }, [showAddMaterialDialog]);
+
+  const handleAddMaterials = () => {
+    if (!showAddMaterialDialog || selectedMaterials.length === 0) return;
+    const cat = showAddMaterialDialog;
     const highestOrder = (grouped[cat] || []).reduce((max, t) => Math.max(max, t.ordre), -1);
-    createTemplate.mutate({
-      categorie: cat,
-      designation,
-      unite: addUnite[cat] || "U",
-      ordre: highestOrder + 1,
-    }, {
-      onSuccess: () => {
-        setAddDesignation(prev => ({ ...prev, [cat]: "" }));
-        setAddUnite(prev => ({ ...prev, [cat]: "U" }));
-        setOpenAddForm(null);
-        setVirtualCategories(prev => prev.filter(c => c !== cat));
-      }
+    let addedCount = 0;
+    selectedMaterials.forEach((mat, i) => {
+      createTemplate.mutate({
+        categorie: cat,
+        designation: mat.designation,
+        unite: mat.unite,
+        ordre: highestOrder + 1 + i,
+      }, {
+        onSuccess: () => {
+          addedCount++;
+          if (addedCount === selectedMaterials.length) {
+            setVirtualCategories(prev => prev.filter(c => c !== cat));
+          }
+        }
+      });
     });
+    setSelectedMaterials([]);
+    setMaterialSearch("");
+    setShowAddMaterialDialog(null);
   };
 
   const handleMove = (id: string, direction: "up" | "down") => {
