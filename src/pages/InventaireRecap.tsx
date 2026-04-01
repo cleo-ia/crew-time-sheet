@@ -179,9 +179,10 @@ const InventaireRecap = () => {
     ws.getColumn(1).width = 35; // Désignation
     ws.getColumn(2).width = 12; // Unité
     chantierIds.forEach((_, i) => {
-      ws.getColumn(3 + i * 3).width = 10;
-      ws.getColumn(3 + i * 3 + 1).width = 10;
-      ws.getColumn(3 + i * 3 + 2).width = 10;
+      ws.getColumn(3 + i * 4).width = 10;
+      ws.getColumn(3 + i * 4 + 1).width = 10;
+      ws.getColumn(3 + i * 4 + 2).width = 10;
+      ws.getColumn(3 + i * 4 + 3).width = 10;
     });
     // totalStartCol already defined above
     ws.getColumn(totalStartCol).width = 12;
