@@ -255,19 +255,57 @@ export const InventoryTemplatesManager = () => {
         })
       )}
 
-      {/* New category dialog */}
-      <Dialog open={showNewCatDialog} onOpenChange={setShowNewCatDialog}>
-        <DialogContent>
+      {/* New category dialog with smart Combobox */}
+      <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setNewCategoryName(""); setCatSearch(""); } }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nouvelle catégorie</DialogTitle>
           </DialogHeader>
-          <Input
-            placeholder="Ex: EPI, Électroportatif, Gros Œuvre..."
-            value={newCategoryName}
-            onChange={e => setNewCategoryName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleCreateCategory(); }}
-            autoFocus
-          />
+          <Command className="border rounded-md" shouldFilter={true}>
+            <CommandInput
+              placeholder="Rechercher ou créer une catégorie..."
+              value={catSearch}
+              onValueChange={setCatSearch}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {catSearch.trim() ? (
+                  <button
+                    className="w-full px-2 py-3 text-sm text-left cursor-pointer hover:bg-accent rounded-sm flex items-center gap-2"
+                    onClick={() => { handleSelectCategory(catSearch.trim()); }}
+                  >
+                    <Plus className="h-4 w-4 text-primary" />
+                    Créer « <span className="font-medium">{catSearch.trim()}</span> »
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground">Tapez un nom de catégorie</span>
+                )}
+              </CommandEmpty>
+              <CommandGroup heading="Suggestions">
+                {categorySuggestions.map(cat => {
+                  const alreadyExists = allCategories.includes(cat);
+                  return (
+                    <CommandItem
+                      key={cat}
+                      value={cat}
+                      disabled={alreadyExists}
+                      onSelect={() => { if (!alreadyExists) handleSelectCategory(cat); }}
+                      className={alreadyExists ? "opacity-50" : "cursor-pointer"}
+                    >
+                      <span className="flex-1">{cat}</span>
+                      {alreadyExists && <span className="text-xs text-muted-foreground ml-2">(déjà créée)</span>}
+                      {newCategoryName === cat && !alreadyExists && <Check className="h-4 w-4 text-primary ml-2" />}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          {newCategoryName && (
+            <p className="text-sm text-muted-foreground">
+              Sélection : <span className="font-medium text-foreground">{newCategoryName}</span>
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewCatDialog(false)}>Annuler</Button>
             <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>Créer</Button>
