@@ -311,47 +311,6 @@ const InventaireRecap = () => {
       });
     });
 
-    // Total row
-    currentRow++;
-    const totalRow = ws.getRow(currentRow);
-    ws.mergeCells(currentRow, 1, currentRow, 2);
-    totalRow.getCell(1).value = "TOTAL GÉNÉRAL";
-    totalRow.getCell(1).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    totalRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-    totalRow.getCell(1).alignment = { horizontal: "right", vertical: "middle" };
-    totalRow.getCell(1).border = borders;
-
-    // Per-chantier totals
-    chantierIds.forEach((cId, ci) => {
-      const colBase = 3 + ci * 3;
-      const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
-      const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
-      const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
-      [goodTotal, brokenTotal, repairTotal].forEach((val, si) => {
-        const cell = totalRow.getCell(colBase + si);
-        cell.value = val;
-        cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = borders;
-      });
-    });
-
-    // Grand totals
-    const grandGood = matrixItems.reduce((sum, i) => sum + i.totalGood, 0);
-    const grandRepair = matrixItems.reduce((sum, i) => sum + i.totalRepair, 0);
-    const grandBroken = matrixItems.reduce((sum, i) => sum + i.totalBroken, 0);
-    [grandGood, grandBroken, grandRepair].forEach((val, si) => {
-      const cell = totalRow.getCell(totalStartColData + si);
-      cell.value = val;
-      cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = borders;
-    });
-
-    totalRow.height = 24;
-
     // Auto-filter & freeze
     ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: nbCols } };
     ws.views = [{ state: "frozen", ySplit: headerRowNum }];
