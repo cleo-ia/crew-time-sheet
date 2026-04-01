@@ -65,7 +65,7 @@ const InventaireRecap = () => {
   const getChantierLabel = (id: string) => {
     const c = chantierMap.get(id);
     if (!c) return "—";
-    return c.code_chantier || c.nom;
+    return c.nom || c.code_chantier || "—";
   };
 
   // Build matrix: aggregate items by categorie + designation + unite, with per-chantier breakdown
@@ -138,7 +138,21 @@ const InventaireRecap = () => {
     const orangeLight = "FFFEF3E2";
     const grayLight = "FFF5F5F5";
     const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
+    const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
+
+    // Columns that get a thick left border (first col of each chantier group + totaux)
+    const thickLeftCols = new Set<number>();
+    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
+    const totalStartCol = 3 + chantierIds.length * 3;
+    thickLeftCols.add(totalStartCol);
+
+    const getBorders = (col: number) => {
+      if (thickLeftCols.has(col)) {
+        return { ...borders, left: borderThick };
+      }
+      return borders;
+    };
 
     const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
 
@@ -168,7 +182,7 @@ const InventaireRecap = () => {
       ws.getColumn(3 + i * 3 + 1).width = 10;
       ws.getColumn(3 + i * 3 + 2).width = 10;
     });
-    const totalStartCol = 3 + chantierIds.length * 3;
+    // totalStartCol already defined above
     ws.getColumn(totalStartCol).width = 12;
     ws.getColumn(totalStartCol + 1).width = 12;
     ws.getColumn(totalStartCol + 2).width = 12;
@@ -186,7 +200,7 @@ const InventaireRecap = () => {
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = borders;
+      cell.border = getBorders(colStart);
     });
     ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
     const totalGroupCell = groupRow.getCell(totalStartCol);
@@ -194,7 +208,7 @@ const InventaireRecap = () => {
     totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
     totalGroupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
     totalGroupCell.alignment = { horizontal: "center", vertical: "middle" };
-    totalGroupCell.border = borders;
+    totalGroupCell.border = getBorders(totalStartCol);
     // Style empty cells in group row
     for (let c = 1; c <= 2; c++) {
       const cell = groupRow.getCell(c);
@@ -217,7 +231,7 @@ const InventaireRecap = () => {
         cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = borders;
+        cell.border = getBorders(3 + i * 3 + si);
       });
     });
     subHeaders.forEach((sh, si) => {
@@ -226,7 +240,7 @@ const InventaireRecap = () => {
       cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = borders;
+      cell.border = getBorders(totalStartCol + si);
     });
     // Designation + Unite headers
     for (let c = 1; c <= 2; c++) {
@@ -279,7 +293,7 @@ const InventaireRecap = () => {
         for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
-          cell.border = borders;
+          cell.border = getBorders(c);
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
         }
