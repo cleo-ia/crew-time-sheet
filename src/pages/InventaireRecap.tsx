@@ -422,8 +422,8 @@ const InventaireRecap = () => {
       doc.text("Désignation", hx + 3, y + 5.5); hx += colDesignation;
       doc.text("Unité", hx + colUnite / 2, y + 5.5, { align: "center" }); hx += colUnite;
       doc.text("Bon état", hx + colBon / 2, y + 5.5, { align: "center" }); hx += colBon;
-      doc.text("À réparer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
-      doc.text("À nettoyer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
+      doc.text("À nettoyer", hx + colReparer / 2, y + 5.5, { align: "center" }); hx += colReparer;
+      doc.text("À réparer", hx + colNettoyer / 2, y + 5.5, { align: "center" }); hx += colNettoyer;
       doc.text("Total", hx + colTotal / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
       y += rowHeight + 1;
