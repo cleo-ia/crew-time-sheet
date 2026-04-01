@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Send, Copy, Package, Loader2 } from "lucide-react";
-import { format, subMonths } from "date-fns";
+import { Save, Send, Package, Loader2 } from "lucide-react";
+import { format } from "date-fns";
 import { useInventoryTemplates } from "@/hooks/useInventoryTemplates";
-import { useInventoryReport, useInventoryReportPreviousMonth, useCreateInventoryReport, useTransmitInventoryReport } from "@/hooks/useInventoryReports";
-import { useInventoryItems, useUpsertInventoryItems, type InventoryItem } from "@/hooks/useInventoryItems";
+import { useInventoryReport, useCreateInventoryReport, useTransmitInventoryReport } from "@/hooks/useInventoryReports";
+import { useInventoryItems, useUpsertInventoryItems } from "@/hooks/useInventoryItems";
 import { useUploadInventoryPhoto, useDeleteInventoryPhoto } from "@/hooks/useInventoryPhotos";
 import { InventoryItemRow } from "@/components/inventory/InventoryItemRow";
 import { SignaturePad } from "@/components/signature/SignaturePad";
@@ -21,7 +21,6 @@ interface LocalItem {
   quantity_good: number;
   quantity_repair: number;
   quantity_broken: number;
-  previous_total: number | null;
   photos: string[];
 }
 
@@ -32,14 +31,10 @@ interface ChantierInventaireTabProps {
 
 export const ChantierInventaireTab = ({ chantierId, readOnly = false }: ChantierInventaireTabProps) => {
   const { user } = useAuth();
-  const currentMois = format(new Date(), "yyyy-MM");
-  const previousMois = format(subMonths(new Date(), 1), "yyyy-MM");
 
   const { data: templates = [], isLoading: isLoadingTemplates } = useInventoryTemplates();
-  const { data: currentReport, isLoading: isLoadingReport } = useInventoryReport(chantierId, currentMois);
-  const { data: previousReport } = useInventoryReportPreviousMonth(chantierId, previousMois);
+  const { data: currentReport, isLoading: isLoadingReport } = useInventoryReport(chantierId);
   const { data: currentItems = [], isLoading: isLoadingItems } = useInventoryItems(currentReport?.id);
-  const { data: previousItems = [] } = useInventoryItems(previousReport?.id);
 
   const createReport = useCreateInventoryReport();
   const upsertItems = useUpsertInventoryItems();
@@ -54,22 +49,12 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
   const isTransmitted = currentReport?.statut === "TRANSMIS";
   const isEditable = !readOnly && !isTransmitted;
 
-  // Build previous totals map
-  const previousTotalsMap = useMemo(() => {
-    const map = new Map<string, number>();
-    previousItems.forEach(item => {
-      map.set(`${item.categorie}|${item.designation}`, item.total);
-    });
-    return map;
-  }, [previousItems]);
-
   // Initialize local items
   useEffect(() => {
     if (initialized) return;
     if (isLoadingReport || isLoadingTemplates || isLoadingItems) return;
 
     if (currentItems.length > 0) {
-      // Load existing items
       setLocalItems(currentItems.map(item => ({
         template_id: item.template_id,
         categorie: item.categorie,
@@ -78,12 +63,10 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
         quantity_good: item.quantity_good,
         quantity_repair: item.quantity_repair,
         quantity_broken: item.quantity_broken,
-        previous_total: item.previous_total,
         photos: item.photos || [],
       })));
       setInitialized(true);
     } else if (templates.length > 0) {
-      // Initialize from templates
       setLocalItems(templates.map(t => ({
         template_id: t.id,
         categorie: t.categorie,
@@ -92,12 +75,11 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
         quantity_good: 0,
         quantity_repair: 0,
         quantity_broken: 0,
-        previous_total: previousTotalsMap.get(`${t.categorie}|${t.designation}`) ?? null,
         photos: [],
       })));
       setInitialized(true);
     }
-  }, [currentItems, templates, previousTotalsMap, isLoadingReport, isLoadingTemplates, isLoadingItems, initialized]);
+  }, [currentItems, templates, isLoadingReport, isLoadingTemplates, isLoadingItems, initialized]);
 
   // Group items by category
   const grouped = useMemo(() => {
@@ -128,27 +110,20 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
     ));
   }, [deletePhoto]);
 
-  const handleCopyPreviousMonth = () => {
-    setLocalItems(prev => prev.map(item => ({
-      ...item,
-      quantity_good: item.previous_total ?? 0,
-      quantity_repair: 0,
-      quantity_broken: 0,
-    })));
-  };
-
   const handleSave = async () => {
     let reportId = currentReport?.id;
 
-    // Create report if it doesn't exist
     if (!reportId) {
-      const report = await createReport.mutateAsync({ chantierId, mois: currentMois });
+      const report = await createReport.mutateAsync({ chantierId });
       reportId = report.id;
     }
 
     await upsertItems.mutateAsync({
       reportId,
-      items: localItems,
+      items: localItems.map(item => ({
+        ...item,
+        previous_total: null,
+      })),
     });
   };
 
@@ -157,7 +132,6 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
   };
 
   const handleSignatureSave = async (signatureData: string) => {
-    // Save first
     await handleSave();
     
     if (!currentReport?.id) return;
@@ -211,7 +185,7 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Inventaire — {currentMois}
+            Inventaire
           </h2>
           {isTransmitted && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium mt-1">
@@ -219,16 +193,6 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
             </p>
           )}
         </div>
-        {isEditable && (
-          <div className="flex gap-2">
-            {previousItems.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleCopyPreviousMonth}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copier mois-1
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Items by category */}
@@ -248,7 +212,6 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
                   quantityGood={item.quantity_good}
                   quantityRepair={item.quantity_repair}
                   quantityBroken={item.quantity_broken}
-                  previousTotal={item.previous_total}
                   photos={item.photos}
                   readOnly={!isEditable}
                   onQuantityChange={(field, value) => handleQuantityChange(item._idx, field, value)}

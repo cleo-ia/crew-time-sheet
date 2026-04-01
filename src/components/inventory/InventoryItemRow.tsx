@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Camera, X, AlertTriangle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Minus, Plus, Camera, X } from "lucide-react";
 import { useRef } from "react";
 
 interface InventoryItemRowProps {
@@ -9,7 +8,6 @@ interface InventoryItemRowProps {
   quantityGood: number;
   quantityRepair: number;
   quantityBroken: number;
-  previousTotal: number | null;
   photos: string[];
   readOnly: boolean;
   onQuantityChange: (field: "quantity_good" | "quantity_repair" | "quantity_broken", value: number) => void;
@@ -23,7 +21,6 @@ export const InventoryItemRow = ({
   quantityGood,
   quantityRepair,
   quantityBroken,
-  previousTotal,
   photos,
   readOnly,
   onQuantityChange,
@@ -32,13 +29,6 @@ export const InventoryItemRow = ({
 }: InventoryItemRowProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const total = quantityGood + quantityRepair + quantityBroken;
-  
-  // Calculate deviation
-  const hasDeviation = previousTotal !== null && total !== previousTotal;
-  const deviationPercent = previousTotal && previousTotal > 0
-    ? ((total - previousTotal) / previousTotal) * 100
-    : 0;
-  const isCriticalDrop = previousTotal !== null && previousTotal > 0 && deviationPercent < -10;
   const showPhotoButton = !readOnly && (quantityRepair > 0 || quantityBroken > 0);
 
   const Stepper = ({ label, value, field, colorClass }: { 
@@ -75,36 +65,13 @@ export const InventoryItemRow = ({
 
   return (
     <div className="border rounded-lg p-3 bg-card space-y-3">
-      {/* Header: designation + total + deviation */}
+      {/* Header: designation + total */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1">
           <span className="font-medium text-sm">{designation}</span>
           <span className="text-xs text-muted-foreground ml-1">({unite})</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold">Total: {total}</span>
-          {previousTotal !== null && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  {isCriticalDrop ? (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive text-xs font-medium">
-                      <AlertTriangle className="h-3 w-3" />
-                      {deviationPercent.toFixed(0)}%
-                    </span>
-                  ) : hasDeviation ? (
-                    <span className="inline-flex px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-xs font-medium">
-                      {total > previousTotal ? "+" : ""}{total - previousTotal}
-                    </span>
-                  ) : null}
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Mois précédent : {previousTotal}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
+        <span className="text-sm font-bold">Total: {total}</span>
       </div>
 
       {/* Steppers */}
