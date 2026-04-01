@@ -138,6 +138,7 @@ const ValidationConducteur = () => {
   // Détection Super Admin
   const { data: userRole } = useCurrentUserRole();
   const isSuperAdmin = userRole === "super_admin";
+  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
   
   // Liste des conducteurs (pour super admin)
   const { data: conducteursList = [] } = useUtilisateursByRole(isSuperAdmin ? "conducteur" : undefined);
