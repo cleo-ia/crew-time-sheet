@@ -44,6 +44,8 @@ import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
 import { useFicheId } from "@/hooks/useFicheId";
+import { InventoryDashboard } from "@/components/conducteur/InventoryDashboard";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 
 // Wrapper pour appeler useFicheId dans une boucle (règle des hooks React)
 const TransportSheetWithFicheInner = ({ 
