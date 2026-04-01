@@ -17,6 +17,7 @@ export const InventoryReportDetail = ({
   chantierNom,
 }: InventoryReportDetailProps) => {
   const { data: items = [], isLoading } = useInventoryItems(reportId ?? undefined);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Group by category
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
