@@ -45,6 +45,8 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesSheet } from "@/components/conges/CongesSheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ChantierInventaireTab } from "@/components/chantier/tabs/ChantierInventaireTab";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useNewPlanningItemsCount } from "@/hooks/useNewPlanningItemsCount";
