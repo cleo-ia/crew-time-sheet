@@ -1,22 +1,25 @@
 
 
-## Ajouter une colonne "Total" par chantier dans l'export Excel
+## Purge des 2 inventaires transmis
 
-### Problème
-Actuellement chaque chantier a 3 colonnes (Bon, Nett., Rép.) mais pas de total par chantier. Le user veut une 4e colonne "Total" pour chaque chantier.
+Pas de changement de code nécessaire. Exécution d'une migration SQL pour supprimer :
 
-### Changements dans `src/pages/InventaireRecap.tsx`
+1. **16 `inventory_items`** liés aux 2 rapports
+2. **2 `inventory_reports`** (CI000 test et CI002 test 2)
 
-**1. Passer de 3 à 4 colonnes par chantier** — partout où on calcule `i * 3`, passer à `i * 4` :
-- `nbCols` : `2 + chantierIds.length * 4 + 4`
-- `totalStartCol` : `3 + chantierIds.length * 4`
-- `thickLeftCols` : `3 + i * 4` au lieu de `3 + i * 3`
-- Column widths : ajouter la 4e colonne par chantier
-- Group header merge : `colStart` à `colStart + 3` (4 colonnes)
-- Sub-headers : ajouter "Total" en 4e position avec couleur orange
-- Data : colonne `colBase + 3` = good + broken + repair pour ce chantier
+### SQL
 
-**2. Ajustements visuels** :
-- Le "Total" par chantier aura le fond orange (comme l'en-tête général)
-- Les bordures épaisses restent à la première colonne de chaque groupe
+```sql
+DELETE FROM public.inventory_items 
+WHERE report_id IN (
+  '814c2cab-e1ce-46a2-ad76-29402fffe3c8',
+  '5f2cacc0-502f-4abb-acea-c5645bbadeba'
+);
+
+DELETE FROM public.inventory_reports 
+WHERE id IN (
+  '814c2cab-e1ce-46a2-ad76-29402fffe3c8',
+  '5f2cacc0-502f-4abb-acea-c5645bbadeba'
+);
+```
 
