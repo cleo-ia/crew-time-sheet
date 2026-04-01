@@ -276,9 +276,12 @@ const InventaireRecap = () => {
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
+        const pastelOrange = idx % 2 === 0 ? "FFFFF7ED" : "FFFEF3E2";
         for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+          // Check if this column is a "Nett." column (every 3rd sub-column starting from position 2 within each chantier group, or the last total sub-col)
+          const isNettCol = chantierIds.some((_, ci) => c === 3 + ci * 3 + 2) || c === totalStartColData + 2;
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isNettCol ? pastelOrange : bgColor } };
           cell.border = borders;
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
@@ -551,8 +554,8 @@ const InventaireRecap = () => {
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">
                     <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À réparer</span>
                   </th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
-                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> À nettoyer</span>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24" style={{ backgroundColor: "#c2410c" }}>
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-300" /> À nettoyer</span>
                   </th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-20">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
@@ -578,7 +581,7 @@ const InventaireRecap = () => {
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-emerald-600 dark:text-emerald-400 font-medium">{item.totalGood || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalRepair || "—"}</td>
-                          <td className="border border-border px-3 py-1.5 text-center text-red-600 dark:text-red-400 font-medium">{item.totalBroken || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-orange-700 dark:text-orange-300 font-medium" style={{ backgroundColor: "rgba(251, 191, 36, 0.08)" }}>{item.totalBroken || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
