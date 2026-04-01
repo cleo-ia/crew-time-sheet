@@ -103,6 +103,12 @@ const ChantierDetail = () => {
               <TrendingUp className="h-4 w-4" />
               Rentabilité
             </TabsTrigger>
+            {inventaireEnabled && (
+              <TabsTrigger value="inventaire" className="gap-2">
+                <Package className="h-4 w-4" />
+                Inventaire
+              </TabsTrigger>
+            )}
             <TabsTrigger value="infos" className="gap-2">
               <Info className="h-4 w-4" />
               Informations
