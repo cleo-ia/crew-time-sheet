@@ -62,13 +62,13 @@ export const InventoryReportDetail = ({
                           {item.quantity_repair > 0 && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-medium">
                               <span className="w-2 h-2 rounded-full bg-orange-500" />
-                              Réparer: {item.quantity_repair}
+                              Nettoyer: {item.quantity_repair}
                             </span>
                           )}
                           {item.quantity_broken > 0 && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-medium">
                               <span className="w-2 h-2 rounded-full bg-red-500" />
-                              Nettoyer: {item.quantity_broken}
+                              Réparer: {item.quantity_broken}
                             </span>
                           )}
                           {item.quantity_good === 0 && item.quantity_repair === 0 && item.quantity_broken === 0 && (
