@@ -1,87 +1,38 @@
 
-Objectif
 
-Reprendre `InventoryTemplatesManager` pour qu’une catégorie nouvellement créée soit d’abord un grand conteneur vide, puis permette d’ajouter les matériels un par un via un bouton `+`, exactement comme tu le décris.
+## Multi-selection de categories dans la modale de creation
 
-Constat sur le code actuel
+### Objectif
 
-- Le composant affiche déjà les catégories en cartes.
-- Le problème vient de l’UX d’ajout :
-  - le formulaire `Input + unité + Ajouter` est toujours visible en bas de chaque carte
-  - il n’y a pas de mode “catégorie vide puis ajout progressif”
-- Donc le correctif doit être centré sur `src/components/admin/InventoryTemplatesManager.tsx`.
+Permettre de cocher plusieurs categories dans la modale "Nouvelle categorie" et de toutes les creer d'un coup au clic sur "Creer".
 
-Ce que je vais faire
+### Fichier modifie
 
-1. Garder la création de catégorie telle qu’elle est
-- Quand on crée une catégorie, elle apparaît bien comme une grande card avec son bandeau.
-- Si elle n’a encore aucun matériel, elle reste vide de lignes.
+`src/components/admin/InventoryTemplatesManager.tsx`
 
-2. Remplacer le formulaire toujours visible par un vrai flux “bouton +”
-- Sous le bandeau de chaque catégorie, afficher seulement un bouton `+ Ajouter un matériel`.
-- Au clic :
-  - ouvrir une ligne de saisie inline dans cette catégorie uniquement
-  - champs : désignation + unité
-- Tant que rien n’a été ajouté, on ne voit pas de liste de matériels.
+### Changements
 
-3. Afficher les matériels seulement après ajout
-- Une fois un matériel créé :
-  - il apparaît dans la carte comme une vraie ligne
-  - en dessous, on retrouve à nouveau un bouton `+ Ajouter un matériel`
-- Résultat :
-  - catégorie vide au départ
-  - puis accumulation progressive des lignes ajoutées
+1. **Remplacer `newCategoryName: string` par `selectedCategories: string[]`** — un tableau pour stocker les selections multiples.
 
-4. Gérer l’état d’édition par catégorie
-- Ajouter un état du type `openAddFormByCategory`
-- Une seule catégorie peut ouvrir son formulaire d’ajout à la fois, ou bien une gestion simple par catégorie selon la structure actuelle
-- Après ajout réussi :
-  - vider les champs
-  - refermer le formulaire
-  - laisser le bouton `+` réapparaître sous la liste
+2. **Modifier les `CommandItem`** — au clic, toggle la categorie dans le tableau `selectedCategories` (ajouter si absente, retirer si presente). Afficher une checkbox (icone `Check`) a gauche de chaque item selectionne.
 
-5. Conserver les actions utiles déjà en place
-- Garder :
-  - renommage de catégorie
-  - suppression de catégorie
-  - suppression d’un matériel
-  - ordre des matériels dans une catégorie
-  - unité via `Select`
-- Ne pas toucher aux hooks Supabase sauf si besoin de raccord mineur.
+3. **Permettre aussi la saisie libre en multi** — le bouton "Creer « xxx »" dans `CommandEmpty` ajoute la categorie custom au tableau `selectedCategories` au lieu de remplacer la selection.
 
-6. Ajuster le rendu visuel
-- Garder le style actuel propre et léger
-- Faire en sorte que la card grandisse naturellement avec la liste
-- Prévoir un état vide lisible dans la carte, par exemple :
-  - “Aucun matériel pour le moment”
-  - puis le bouton `+` juste en dessous
+4. **Afficher un resume des selections** — remplacer le `<p>` "Selection : X" par une liste de badges/chips montrant toutes les categories selectionnees, avec possibilite de retirer individuellement (petite croix sur chaque chip).
 
-Fichiers concernés
+5. **Modifier `handleCreateCategory`** — boucler sur `selectedCategories` pour creer chaque categorie virtuelle d'un coup, puis vider le tableau et fermer la modale.
 
-- `src/components/admin/InventoryTemplatesManager.tsx` : refonte ciblée de l’UX des cards
-- `src/hooks/useInventoryTemplates.ts` : probablement inchangé
+6. **Bouton "Creer"** — desactive si `selectedCategories.length === 0`. Le label peut indiquer le nombre : "Creer (3)".
 
-Comportement attendu après correction
+### Comportement attendu
 
-- Je crée `EPI & Sécurité`
-- La card s’affiche avec seulement le header + un bouton `+ Ajouter un matériel`
-- Je clique sur `+`
-- Une ligne de saisie apparaît
-- Je crée `Gants`
-- La ligne `Gants - Paire` apparaît
-- Le formulaire disparaît
-- Un nouveau bouton `+ Ajouter un matériel` reste disponible en dessous pour enchaîner
+- Ouvrir la modale → voir la liste de suggestions
+- Cliquer sur "EPI & Securite" → checkbox apparait, item selectionne
+- Cliquer sur "Petit Outillage" → 2 items selectionnes
+- Taper "Mon truc custom" → cliquer "Creer « Mon truc custom »" → 3 items selectionnes
+- Cliquer "Creer (3)" → 3 cards apparaissent, modale se ferme
 
-Détails techniques
+### Risque
 
-- Remplacer le bloc actuel “Inline add form” par un rendu conditionnel :
-  - si formulaire fermé : bouton `+`
-  - si formulaire ouvert : `Input + Select + boutons Valider/Annuler`
-- Continuer d’utiliser `virtualCategories` pour afficher immédiatement les catégories vides avant leur premier matériel
-- Lister les `items` au-dessus de la zone d’ajout, avec croissance verticale naturelle de la `Card`
+Aucun — modification limitee a la logique de la modale dans un seul fichier. Les hooks restent inchanges.
 
-Risque de régression
-
-- Faible
-- Le changement est localisé à l’interface de `InventoryTemplatesManager`
-- Les hooks CRUD existants restent compatibles
