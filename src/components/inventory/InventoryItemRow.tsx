@@ -82,50 +82,23 @@ export const InventoryItemRow = ({
       </div>
 
       {/* Photos */}
-      {(!readOnly || photos.length > 0) && (
-        <div className="mt-2 space-y-2">
-          {photos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {photos.map((url, idx) => (
-                <div key={idx} className="relative group">
-                  <img src={url} alt="" className="h-16 w-16 object-cover rounded-md border" />
-                  {!readOnly && (
-                    <button
-                      onClick={() => onPhotoRemove(url)}
-                      className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {!readOnly && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onPhotoAdd(file);
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full"
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                Photo
-              </Button>
-            </>
-          )}
+      {photos.length > 0 && (
+        <div className="mt-2">
+          <div className="flex flex-wrap gap-2">
+            {photos.map((url, idx) => (
+              <div key={idx} className="relative group">
+                <img src={url} alt="" className="h-16 w-16 object-cover rounded-md border" />
+                {!readOnly && (
+                  <button
+                    onClick={() => onPhotoRemove(url)}
+                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
