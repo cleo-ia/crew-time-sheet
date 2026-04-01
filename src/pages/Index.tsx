@@ -467,6 +467,17 @@ const Index = () => {
           <>
             <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowInventaire(true)}
+                className="border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-950"
+              >
+                <Package className="h-4 w-4 text-red-500 mr-2" />
+                <span className="text-red-600 dark:text-red-400 font-medium">Inventaire</span>
+              </Button>
+            )}
+            {selectedChantier && (
               <PlanningTachesButton
                 chantierId={selectedChantier}
                 userId={authUserId}
