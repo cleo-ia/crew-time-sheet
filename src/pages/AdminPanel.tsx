@@ -168,6 +168,12 @@ const AdminPanel = () => {
                 <Truck className="h-4 w-4" />
                 <span className="hidden sm:inline">Véhicules</span>
               </TabsTrigger>
+              {!isGestionnaire && inventaireEnabled && (
+                <TabsTrigger value="inventaire" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Package className="h-4 w-4" />
+                  <span className="hidden sm:inline">Inventaire</span>
+                </TabsTrigger>
+              )}
               {!isGestionnaire && !isRH && (
                 <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Bell className="h-4 w-4" />
