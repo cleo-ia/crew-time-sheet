@@ -207,6 +207,10 @@ const ValidationConducteur = () => {
   // Synchroniser l'URL avec la semaine et l'onglet actif
   useEffect(() => {
     if (!selectedWeek) return;
+    const currentTab = searchParams.get("tab");
+    const currentSemaine = searchParams.get("semaine");
+    // Ne naviguer que si l'URL est réellement désynchronisée
+    if (currentTab === activeMainTab && currentSemaine === selectedWeek) return;
     const params = new URLSearchParams(searchParams);
     params.set("tab", activeMainTab);
     params.set("semaine", selectedWeek);
