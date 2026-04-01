@@ -185,7 +185,7 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
   }
 
   return (
-    <div className={`space-y-4 ${isEditable ? "pb-20" : ""}`}>
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
