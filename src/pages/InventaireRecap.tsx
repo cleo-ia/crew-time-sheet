@@ -295,6 +295,7 @@ const InventaireRecap = () => {
         row.getCell(totalStartColData).value = item.totalGood || "";
         row.getCell(totalStartColData + 1).value = item.totalBroken || "";
         row.getCell(totalStartColData + 2).value = item.totalRepair || "";
+        row.getCell(totalStartColData + 3).value = (item.totalGood || 0) + (item.totalRepair || 0) + (item.totalBroken || 0) || "";
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
