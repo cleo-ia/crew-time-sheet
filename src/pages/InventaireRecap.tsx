@@ -549,10 +549,10 @@ const InventaireRecap = () => {
                     <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Bon état</span>
                   </th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">
-                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À réparer</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À nettoyer</span>
                   </th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24" style={{ backgroundColor: "#c2410c" }}>
-                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-300" /> À nettoyer</span>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> À réparer</span>
                   </th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-20">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
