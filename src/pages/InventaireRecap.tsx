@@ -208,8 +208,10 @@ const InventaireRecap = () => {
         row.getCell(2).value = item.unite;
 
         chantierIds.forEach((cId, ci) => {
-          const qty = item.byChantier.get(cId) || 0;
-          row.getCell(3 + ci).value = qty || "";
+          const colBase = 3 + ci * 3;
+          row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
+          row.getCell(colBase + 1).value = item.byChantierRepair.get(cId) || "";
+          row.getCell(colBase + 2).value = item.byChantierBroken.get(cId) || "";
         });
 
         row.getCell(nbCols).value = item.total;
