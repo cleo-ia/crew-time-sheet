@@ -294,10 +294,14 @@ const InventaireRecap = () => {
         row.getCell(2).value = item.unite;
 
         chantierIds.forEach((cId, ci) => {
-          const colBase = 3 + ci * 3;
-          row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
-          row.getCell(colBase + 1).value = item.byChantierBroken.get(cId) || "";
-          row.getCell(colBase + 2).value = item.byChantierRepair.get(cId) || "";
+          const colBase = 3 + ci * 4;
+          const good = item.byChantierGood.get(cId) || 0;
+          const broken = item.byChantierBroken.get(cId) || 0;
+          const repair = item.byChantierRepair.get(cId) || 0;
+          row.getCell(colBase).value = good || "";
+          row.getCell(colBase + 1).value = broken || "";
+          row.getCell(colBase + 2).value = repair || "";
+          row.getCell(colBase + 3).value = (good + broken + repair) || "";
         });
 
         // Total columns
