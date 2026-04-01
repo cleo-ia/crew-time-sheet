@@ -525,8 +525,17 @@ const InventaireRecap = () => {
                 <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Bon état</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400" /> À réparer</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">
+                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> À nettoyer</span>
+                  </th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Total</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
                 </tr>
               </thead>
@@ -536,7 +545,7 @@ const InventaireRecap = () => {
                   return (
                     <React.Fragment key={cat}>
                       <tr className="bg-muted">
-                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                        <td colSpan={8} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
                           {cat}
                         </td>
                       </tr>
@@ -548,6 +557,9 @@ const InventaireRecap = () => {
                           <td className="border border-border px-3 py-1.5" />
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-emerald-600 dark:text-emerald-400 font-medium">{item.totalGood || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalRepair || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-red-600 dark:text-red-400 font-medium">{item.totalBroken || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
