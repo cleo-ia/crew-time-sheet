@@ -1,10 +1,10 @@
 
 
-## Ajout de matériels par multi-sélection avec suggestions par catégorie
+## Ajout de matériels supplémentaires au dictionnaire DEFAULT_MATERIALS
 
 ### Objectif
 
-Remplacer le formulaire inline (Input + Select) par une **Dialog avec Combobox multi-sélection** (même pattern que la création de catégories), avec des **suggestions pré-remplies par catégorie**.
+Ajouter les nouveaux matériels fournis dans chaque catégorie du dictionnaire `DEFAULT_MATERIALS`, et ajouter l'unité manquante `"Sac"` à `UNIT_OPTIONS`.
 
 ### Fichier modifié
 
@@ -12,64 +12,28 @@ Remplacer le formulaire inline (Input + Select) par une **Dialog avec Combobox m
 
 ### Changements
 
-**1. Ajouter un dictionnaire de suggestions par catégorie**
+**1. Ajouter `"Sac"` à `UNIT_OPTIONS` (ligne 27)**
 
 ```typescript
-const DEFAULT_MATERIALS: Record<string, { designation: string; unite: string }[]> = {
-  "Consommables": [
-    { designation: "Disques à tronçonner (Acier/Inox)", unite: "Boîte" },
-    { designation: "Mastic silicone (Cartouche)", unite: "U" },
-    { designation: "Vis bois (Boîte)", unite: "Boîte" },
-    { designation: "Forets béton SDS", unite: "Lot" },
-    { designation: "Ruban de masquage", unite: "Rouleau" },
-  ],
-  "Electricité & Éclairage": [...],
-  // ... les 10 catégories complètes
-};
+const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L", "Boîte", "Lot", "Rouleau", "Sac"];
 ```
 
-Les unités custom (Boîte, Lot, Rouleau) seront ajoutées à `UNIT_OPTIONS`.
+**2. Compléter chaque catégorie dans `DEFAULT_MATERIALS` (lignes 29-91)**
 
-**2. Remplacer le bouton "+" par l'ouverture d'une Dialog**
+Ajouter les entrées suivantes à la suite des matériels existants dans chaque catégorie :
 
-Au clic sur "Ajouter un matériel", ouvrir une Dialog dédiée (pas un formulaire inline) contenant :
-- Un `Command` avec recherche
-- Les suggestions par défaut pour cette catégorie, fusionnées avec les matériels déjà en base dans d'autres entreprises (ici juste les defaults)
-- Les matériels déjà ajoutés dans cette catégorie sont grisés ("déjà ajouté")
-- Multi-sélection avec checkboxes (même pattern que les catégories)
-- Saisie libre : si le texte tapé ne correspond à aucune suggestion, proposer "Créer « xxx »"
-- Chips de sélection en bas
-- Bouton "Ajouter (N)"
-
-**3. Nouveau state**
-
-- `showAddMaterialDialog: string | null` — catégorie pour laquelle la dialog est ouverte
-- `selectedMaterials: { designation: string; unite: string }[]` — matériels sélectionnés
-- `materialSearch: string` — recherche dans la combobox
-
-**4. Handler `handleAddMaterials`**
-
-Boucle sur `selectedMaterials`, crée chaque template avec `createTemplate.mutate()` en série avec des ordres incrémentaux. Ferme la dialog et reset l'état après le dernier.
-
-**5. Garder la saisie libre**
-
-Dans `CommandEmpty`, permettre de taper un nom custom. Quand on l'ajoute, utiliser l'unité "U" par défaut (modifiable ensuite).
-
-### Unités supplémentaires
-
-Ajouter à `UNIT_OPTIONS` : `"Boîte"`, `"Lot"`, `"Rouleau"` pour couvrir les suggestions fournies.
-
-### Comportement attendu
-
-1. Clic "+" sur "EPI & Sécurité"
-2. Dialog s'ouvre avec 4 suggestions (Casque, Gants, Lunettes, Bouchons)
-3. Je coche Casque + Gants + Lunettes
-4. Chips apparaissent en bas
-5. Clic "Ajouter (3)"
-6. 3 lignes créées dans la card, dialog se ferme
-7. Le bouton "+" est toujours disponible pour en ajouter d'autres
+- **Consommables** : Sacs à gravats (Rouleau), Scellement chimique (U), Électrodes de soudage (Boîte), Gaz pour cloueur (U), Colle carrelage (Sac)
+- **Electricité & Éclairage** : Projecteur sur trépied (U), Bloc autonome d'éclairage de sécurité (U), Multiprise de chantier étanche (U), Lampe frontale rechargeable (U)
+- **Électroportatif** : Scie sabre (U), Rabot électrique (U), Boulonneuse à chocs (U), Rainureuse à béton (U)
+- **Engins & Gros Matériel** : Dumper (U), Nacelle élévatrice (U), Chariot télescopique (U), Groupe électrogène (U)
+- **EPI & Sécurité** : Harnais d'antichute (U), Masque respiratoire FFP3 (Boîte), Visière de protection (U), Trousse de secours (U)
+- **Gros Œuvre** : Serre-joint de maçon (U), Règle à lisser (U), Taloche de maçon (U), Bac à gâcher (U)
+- **Manutention & Levage** : Chariot de manutention (U), Élingue de levage (U), Ventouse de levage (U), Crics hydrauliques (U)
+- **Petit Outillage** : Cisaille à tôle (U), Clé à molette (U), Pince multiprise (U), Scie à main (U)
+- **Signalisation & Balisage** : Lampe de chantier Flash (U), Ruban de balisage jaune/noir (Rouleau), Grillage de chantier Orange (Rouleau), Socle de barrière Lest (U)
+- **Vêtements de travail** : Veste de pluie haute visibilité (U), Casquette de protection (U), Parka de travail Hiver (U), Bermuda de travail (U)
 
 ### Risque
 
-Faible — même pattern éprouvé que la multi-sélection de catégories. Un seul fichier modifié, hooks inchangés.
+Aucun — ajout de données statiques uniquement, aucune logique modifiée.
 
