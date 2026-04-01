@@ -232,7 +232,7 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
 
       {/* Action buttons */}
       {isEditable && (
-        <div className="flex gap-3 sticky bottom-4">
+        <div className="flex gap-3">
           <Button
             variant="outline"
             className="flex-1"
