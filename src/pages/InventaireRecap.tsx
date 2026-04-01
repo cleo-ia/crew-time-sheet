@@ -14,7 +14,12 @@ interface MatrixItem {
   categorie: string;
   designation: string;
   unite: string;
-  byChantier: Map<string, number>; // chantierId -> qty
+  byChantierGood: Map<string, number>;
+  byChantierRepair: Map<string, number>;
+  byChantierBroken: Map<string, number>;
+  totalGood: number;
+  totalRepair: number;
+  totalBroken: number;
   total: number;
   photos: string[];
 }
