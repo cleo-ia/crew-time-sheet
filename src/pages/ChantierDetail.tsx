@@ -12,7 +12,9 @@ import { ChantierFichiersTab } from "@/components/chantier/tabs/ChantierFichiers
 import { ChantierTodoTab } from "@/components/chantier/tabs/ChantierTodoTab";
 import { ChantierRentabiliteTab } from "@/components/chantier/tabs/ChantierRentabiliteTab";
 import { ChantierInfosTab } from "@/components/chantier/tabs/ChantierInfosTab";
-import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp } from "lucide-react";
+import { ChantierInventaireTab } from "@/components/chantier/tabs/ChantierInventaireTab";
+import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp, Package } from "lucide-react";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 import { useMarkPlanningAsSeen } from "@/hooks/useMarkPlanningAsSeen";
 import { useAuth } from "@/contexts/AuthProvider";
 
