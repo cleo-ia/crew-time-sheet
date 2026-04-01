@@ -265,8 +265,8 @@ const InventaireRecap = () => {
         chantierIds.forEach((cId, ci) => {
           const colBase = 3 + ci * 3;
           row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
-          row.getCell(colBase + 1).value = item.byChantierRepair.get(cId) || "";
-          row.getCell(colBase + 2).value = item.byChantierBroken.get(cId) || "";
+          row.getCell(colBase + 1).value = item.byChantierBroken.get(cId) || "";
+          row.getCell(colBase + 2).value = item.byChantierRepair.get(cId) || "";
         });
 
         // Total columns
