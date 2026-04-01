@@ -465,7 +465,6 @@ const Index = () => {
         showNetworkBadge={true}
         actions={
           <>
-            <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
               <Button
                 variant="outline"
@@ -477,6 +476,7 @@ const Index = () => {
                 <span className="text-red-600 dark:text-red-400 font-medium">Inventaire</span>
               </Button>
             )}
+            <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
               <PlanningTachesButton
                 chantierId={selectedChantier}
