@@ -140,7 +140,7 @@ const InventaireRecap = () => {
     const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
-    const nbCols = 2 + chantierIds.length + 1; // designation, unite, chantiers..., total
+    const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
@@ -164,25 +164,79 @@ const InventaireRecap = () => {
     ws.getColumn(1).width = 35; // Désignation
     ws.getColumn(2).width = 12; // Unité
     chantierIds.forEach((_, i) => {
-      ws.getColumn(3 + i).width = 16;
+      ws.getColumn(3 + i * 3).width = 10;
+      ws.getColumn(3 + i * 3 + 1).width = 10;
+      ws.getColumn(3 + i * 3 + 2).width = 10;
     });
-    ws.getColumn(3 + chantierIds.length).width = 14; // Total
+    const totalStartCol = 3 + chantierIds.length * 3;
+    ws.getColumn(totalStartCol).width = 12;
+    ws.getColumn(totalStartCol + 1).width = 12;
+    ws.getColumn(totalStartCol + 2).width = 12;
 
-    // Header row (row 4)
-    const headerRowNum = 4;
-    const headers = ["Désignation", "Unité", ...chantierIds.map(id => getChantierLabel(id)), "TOTAL"];
-    const headerRow = ws.getRow(headerRowNum);
-    headers.forEach((h, i) => {
-      const cell = headerRow.getCell(i + 1);
-      cell.value = h;
+    // Chantier group header row (row 4)
+    const groupRowNum = 4;
+    const groupRow = ws.getRow(groupRowNum);
+    groupRow.getCell(1).value = "";
+    groupRow.getCell(2).value = "";
+    chantierIds.forEach((id, i) => {
+      const colStart = 3 + i * 3;
+      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 2);
+      const cell = groupRow.getCell(colStart);
+      cell.value = getChantierLabel(id);
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = borders;
     });
-    // Désignation left-aligned
-    headerRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-    headerRow.height = 28;
+    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
+    const totalGroupCell = groupRow.getCell(totalStartCol);
+    totalGroupCell.value = "TOTAUX";
+    totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    totalGroupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalGroupCell.alignment = { horizontal: "center", vertical: "middle" };
+    totalGroupCell.border = borders;
+    // Style empty cells in group row
+    for (let c = 1; c <= 2; c++) {
+      const cell = groupRow.getCell(c);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.border = borders;
+    }
+    groupRow.height = 22;
+
+    // Sub-header row (row 5)
+    const headerRowNum = 5;
+    const headerRow = ws.getRow(headerRowNum);
+    headerRow.getCell(1).value = "Désignation";
+    headerRow.getCell(2).value = "Unité";
+    const subHeaders = ["Bon", "Rép.", "Nett."];
+    const subColors = ["FF16A34A", "FFEA580C", "FFDC2626"]; // green, orange, red
+    chantierIds.forEach((_, i) => {
+      subHeaders.forEach((sh, si) => {
+        const cell = headerRow.getCell(3 + i * 3 + si);
+        cell.value = sh;
+        cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = borders;
+      });
+    });
+    subHeaders.forEach((sh, si) => {
+      const cell = headerRow.getCell(totalStartCol + si);
+      cell.value = sh;
+      cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = borders;
+    });
+    // Designation + Unite headers
+    for (let c = 1; c <= 2; c++) {
+      const cell = headerRow.getCell(c);
+      cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.alignment = { horizontal: c === 1 ? "left" : "center", vertical: "middle", wrapText: true };
+      cell.border = borders;
+    }
+    headerRow.height = 20;
 
     // Data rows
     let currentRow = headerRowNum + 1;
