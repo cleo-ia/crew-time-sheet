@@ -379,10 +379,10 @@ export const InventoryTemplatesManager = () => {
                                 </div>
                               ) : (
                                 <div
-                                  className="text-xs text-muted-foreground italic cursor-pointer hover:text-primary mt-0.5"
+                                  className="text-xs text-muted-foreground italic cursor-pointer hover:text-primary mt-0.5 min-h-[1rem]"
                                   onClick={() => setEditingItem({ id: t.id, field: "notes", value: t.notes ?? "" })}
                                 >
-                                  {t.notes || ""}
+                                  {t.notes || <span className="opacity-30 hover:opacity-60 transition-opacity"><Pencil className="h-3 w-3 inline" /></span>}
                                 </div>
                               )}
                             </div>
