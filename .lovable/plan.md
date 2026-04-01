@@ -1,44 +1,40 @@
 
 
-## Passer l'inventaire en "one-shot" (un seul par chantier)
+## Déplacer l'inventaire du ChantierDetail vers un bouton dans le header chef
 
-### Contexte
+### Objectif
 
-Actuellement le système crée un rapport par chantier **par mois** (`mois` = "yyyy-MM"). L'utilisateur veut un seul inventaire par chantier, sans notion mensuelle.
+Retirer l'onglet "Inventaire" de la page chantier (planning/kanban/todo...) et le rendre accessible via un bouton bien visible dans le header de la page chef (`Index.tsx`), avec une icône rouge pour attirer l'attention.
 
-### Changements
+### Fichiers modifiés
 
-**1. Hook `useInventoryReports.ts`**
-- `useInventoryReport(chantierId)` : retirer le filtre `.eq("mois", mois)`, chercher simplement le rapport du chantier (le dernier ou unique)
-- Supprimer `useInventoryReportPreviousMonth` (plus de mois-1)
-- `useCreateInventoryReport` : passer un mois fixe genre `"UNIQUE"` ou la date du jour (peu importe, le champ existe en base)
-- `useInventoryReportsAll` : inchangé
+**1. `src/pages/ChantierDetail.tsx`**
+- Retirer l'import de `ChantierInventaireTab` et `Package`
+- Retirer le `TabsTrigger` "Inventaire" (lignes 106-111)
+- Retirer le `TabsContent` "Inventaire" (lignes 134-138)
+- Retirer `useFeatureEnabled("inventaireChantier")` si plus utilisé ailleurs
 
-**2. Composant `ChantierInventaireTab.tsx`**
-- Retirer `currentMois`, `previousMois`, `subMonths`, `previousReport`, `previousItems`, `previousTotalsMap`
-- Retirer le bouton "Copier mois-1"
-- Retirer `previous_total` du `LocalItem`
-- Simplifier l'en-tête : "Inventaire" au lieu de "Inventaire — 2026-04"
-- Le query `useInventoryReport(chantierId)` sans mois
+**2. `src/pages/Index.tsx`**
+- Importer `Package` (lucide), `ChantierInventaireTab`, et `Dialog`/`Sheet`
+- Ajouter un state `showInventaire` 
+- Ajouter un bouton dans les `actions` du `PageHeader` (à côté de Congés, Planning tâches, Conversation, Météo) :
+  ```
+  <Button onClick={() => setShowInventaire(true)}>
+    <Package className="h-4 w-4 text-red-500" />
+    Inventaire
+  </Button>
+  ```
+  Le bouton aura l'icône `Package` en rouge et sera visible uniquement quand un chantier est sélectionné
+- Ajouter un `Sheet` (panneau latéral) ou `Dialog` plein écran qui affiche `<ChantierInventaireTab chantierId={selectedChantier} />` quand `showInventaire` est true
 
-**3. Composant `InventoryDashboard.tsx`**
-- Retirer le filtre `currentMois` sur les rapports
-- Afficher simplement le statut du rapport unique de chaque chantier
-- En-tête : "Inventaires" au lieu de "Inventaires — 2026-04"
+### Comportement
 
-**4. Composant `InventoryReportDetail.tsx`**
-- Retirer la référence au mois dans l'affichage si elle existe
-
-**5. Hook `useInventoryItems.ts`** et `InventoryItemRow.tsx`
-- Retirer `previous_total` / `previousTotal` des props si utilisé
-
-### Ce qui ne change PAS
-- La table `inventory_reports` en base (la colonne `mois` reste, on mettra une valeur fixe)
-- Pas de migration SQL nécessaire
-- Le flux saisie → brouillon → signature → transmis reste identique
-- Les photos, templates, le paramétrage : inchangés
+- Le bouton n'apparaît que si `selectedChantier` existe
+- Clic → ouvre un Sheet/Dialog contenant le formulaire inventaire pour le chantier sélectionné
+- L'icône Package est en rouge (`text-red-500`) pour être bien visible
+- Le chef remplit l'inventaire une seule fois, puis le bouton pourra être retiré plus tard
 
 ### Risque
 
-Faible — on simplifie en retirant de la logique. Si plus tard on veut revenir au mensuel, on réactivera le filtre `mois`.
+Faible — déplacement d'un composant existant d'un endroit à un autre.
 
