@@ -320,6 +320,82 @@ export const InventoryTemplatesManager = () => {
                   Ajouter un matériel
                 </Button>
               </div>
+            </Card>
+          );
+        })
+      )}
+
+      {/* Add material dialog */}
+      <Dialog open={!!showAddMaterialDialog} onOpenChange={(open) => { if (!open) { setShowAddMaterialDialog(null); setSelectedMaterials([]); setMaterialSearch(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter des matériels — {showAddMaterialDialog}</DialogTitle>
+          </DialogHeader>
+          <Command className="border rounded-md" shouldFilter={true}>
+            <CommandInput
+              placeholder="Rechercher ou créer un matériel..."
+              value={materialSearch}
+              onValueChange={setMaterialSearch}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {materialSearch.trim() ? (
+                  <button
+                    className="w-full px-2 py-3 text-sm text-left cursor-pointer hover:bg-accent rounded-sm flex items-center gap-2"
+                    onClick={() => { toggleMaterial({ designation: materialSearch.trim(), unite: "U" }); setMaterialSearch(""); }}
+                  >
+                    <Plus className="h-4 w-4 text-primary" />
+                    Créer « <span className="font-medium">{materialSearch.trim()}</span> »
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground">Tapez un nom de matériel</span>
+                )}
+              </CommandEmpty>
+              <CommandGroup heading="Suggestions">
+                {materialSuggestions.map(mat => {
+                  const alreadyExists = (grouped[showAddMaterialDialog || ""] || []).some(t => t.designation === mat.designation);
+                  const isSelected = selectedMaterials.some(m => m.designation === mat.designation);
+                  return (
+                    <CommandItem
+                      key={mat.designation}
+                      value={mat.designation}
+                      disabled={alreadyExists}
+                      onSelect={() => { if (!alreadyExists) toggleMaterial(mat); }}
+                      className={alreadyExists ? "opacity-50" : "cursor-pointer"}
+                    >
+                      <div className={`h-4 w-4 rounded border mr-2 flex items-center justify-center ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="flex-1">{mat.designation}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{mat.unite}</span>
+                      {alreadyExists && <span className="text-xs text-muted-foreground ml-1">(déjà ajouté)</span>}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          {selectedMaterials.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedMaterials.map(mat => (
+                <span key={mat.designation} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                  {mat.designation} ({mat.unite})
+                  <button onClick={() => toggleMaterial(mat)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMaterialDialog(null)}>Annuler</Button>
+            <Button onClick={handleAddMaterials} disabled={selectedMaterials.length === 0}>
+              Ajouter{selectedMaterials.length > 0 ? ` (${selectedMaterials.length})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* New category dialog with smart Combobox */}
       <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setSelectedCategories([]); setCatSearch(""); } }}>
         <DialogContent className="sm:max-w-md">
