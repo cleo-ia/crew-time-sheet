@@ -82,14 +82,24 @@ const InventaireRecap = () => {
           categorie: item.categorie,
           designation: item.designation,
           unite: item.unite,
-          byChantier: new Map(),
+          byChantierGood: new Map(),
+          byChantierRepair: new Map(),
+          byChantierBroken: new Map(),
+          totalGood: 0,
+          totalRepair: 0,
+          totalBroken: 0,
           total: 0,
           photos: [],
         });
       }
       const entry = map.get(key)!;
-      entry.byChantier.set(chantierId, (entry.byChantier.get(chantierId) || 0) + item.quantity_good);
-      entry.total += item.quantity_good;
+      entry.byChantierGood.set(chantierId, (entry.byChantierGood.get(chantierId) || 0) + item.quantity_good);
+      entry.byChantierRepair.set(chantierId, (entry.byChantierRepair.get(chantierId) || 0) + item.quantity_repair);
+      entry.byChantierBroken.set(chantierId, (entry.byChantierBroken.get(chantierId) || 0) + item.quantity_broken);
+      entry.totalGood += item.quantity_good;
+      entry.totalRepair += item.quantity_repair;
+      entry.totalBroken += item.quantity_broken;
+      entry.total += item.quantity_good + item.quantity_repair + item.quantity_broken;
       if (item.photos && item.photos.length > 0) {
         entry.photos.push(...item.photos);
       }
