@@ -269,7 +269,10 @@ const InventaireRecap = () => {
           row.getCell(colBase + 2).value = item.byChantierBroken.get(cId) || "";
         });
 
-        row.getCell(nbCols).value = item.total;
+        // Total columns
+        row.getCell(totalStartColData).value = item.totalGood || "";
+        row.getCell(totalStartColData + 1).value = item.totalRepair || "";
+        row.getCell(totalStartColData + 2).value = item.totalBroken || "";
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
@@ -280,8 +283,6 @@ const InventaireRecap = () => {
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
         }
-        // Total col bold
-        row.getCell(nbCols).font = { size: 9, bold: true, color: { argb: "FF1A1A1A" } };
         row.height = 18;
         currentRow++;
       });
