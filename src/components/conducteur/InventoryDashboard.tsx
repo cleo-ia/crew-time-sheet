@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { CheckCircle2, FileText, Package, Settings, BarChart3 } from "lucide-react";
+import { CheckCircle2, FileText, Package, FilePlus, BarChart3 } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { InventoryReportDetail } from "@/components/inventory/InventoryReportDetail";
@@ -66,8 +66,8 @@ export const InventoryDashboard = () => {
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => navigate("/inventaire-parametrage")}>
-          <Settings className="h-4 w-4 mr-2" />
-          Paramétrer
+          <FilePlus className="h-4 w-4 mr-2" />
+          Créer le formulaire
         </Button>
       </div>
 
