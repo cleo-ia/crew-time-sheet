@@ -1,44 +1,21 @@
 
 
-## Combobox intelligente pour la creation de categorie
+## Sécurisation du filtrage entreprise_id dans useInventoryTemplates
 
-### Objectif
-
-Remplacer le champ `Input` dans la modale "Nouvelle categorie" par une Combobox (Popover + Command) permettant :
-- Suggestions par defaut (10 categories BTP standards)
-- Fusion dynamique avec les categories existantes en base
-- Saisie libre pour creer des categories personnalisees
-
-### Fichier modifie
-
-`src/components/admin/InventoryTemplatesManager.tsx`
+### Problème
+La requête `useInventoryTemplates` fait un `select("*")` sans filtre explicite par `entreprise_id`. Bien que la RLS filtre deja cote serveur, ajouter un filtre explicite cote client est une bonne pratique defensive et aide au debug.
 
 ### Changements
 
-1. **Liste de suggestions par defaut** (constante) :
-   - EPI & Securite, Electroportatif, Petit Outillage, Consommables, Signalisation & Balisage, Engins & Gros Materiel, Gros OEuvre, Electricite & Eclairage, Manutention & Levage, Vetements de travail
+**Fichier : `src/hooks/useInventoryTemplates.ts`**
 
-2. **Fusion dynamique** : combiner cette liste avec `categories` (extraites des templates existants), dedoublonner, trier alphabetiquement. Les categories deja creees sont marquees comme "existantes" et non selectionnables (ou grisees).
+1. Recuperer `current_entreprise_id` depuis localStorage dans la queryFn
+2. Ajouter `.eq("entreprise_id", entrepriseId)` a la requete SELECT
+3. Ajouter un `console.log("Templates charges :", data)` apres la requete pour debug
+4. Ajouter `entrepriseId` dans la `queryKey` pour invalider le cache si l'entreprise change
 
-3. **Remplacement du Dialog** (lignes 239-256) :
-   - Remplacer le `<Input>` par un `Popover` + `Command` (composants deja presents dans le projet via `cmdk`)
-   - `CommandInput` pour la saisie libre avec filtrage
-   - `CommandGroup` listant les suggestions fusionnees
-   - `CommandEmpty` affichant "Creer « {saisie} »" quand aucun match — permet la saisie libre
-   - Quand l'utilisateur selectionne une suggestion ou valide sa saisie libre, on appelle `handleCreateCategory` avec cette valeur
+Aucune modification de schema ni de RLS necessaire — les policies sont deja correctes.
 
-4. **Filtrage intelligent** : les categories deja presentes dans `allCategories` (existantes + virtuelles) sont filtrees ou affichees en grise avec un label "(deja creee)" pour eviter les doublons.
-
-### Imports a ajouter
-
-- `Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem` depuis `@/components/ui/command`
-- `Popover, PopoverContent, PopoverTrigger` depuis `@/components/ui/popover` (optionnel — on peut rester dans le Dialog existant et juste y mettre le Command)
-
-### Approche retenue
-
-Garder le `Dialog` existant mais remplacer l'`Input` interne par le composant `Command` (sans Popover, directement dans le Dialog). Plus simple et coherent avec le pattern existant.
-
-### Risque de regression
-
-Aucun — modification limitee a la modale de creation dans un seul fichier. Memes hooks, meme logique de creation.
+### Risque
+Aucun — filtre additif sur une requete deja protegee par RLS.
 
