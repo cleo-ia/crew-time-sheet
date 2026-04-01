@@ -1,42 +1,24 @@
 
 
-## Simplifier l'affichage inventaire côté conducteur
+## Ajouter la consultation plein écran des photos inventaire (côté conducteur)
 
-### Problème
+### Constat
 
-Le `InventoryReportDetail` (vue conducteur) affiche encore "Bon: X / À réparer: X / Cassé: X" alors que le chef ne saisit plus qu'une seule quantité. Résultat : le conducteur voit "Bon: 14, À réparer: 0, Cassé: 0" — inutile et confus.
+Les miniatures photos sont déjà affichées dans `InventoryReportDetail.tsx` (lignes 55-61), mais elles font 64x64px et ne sont pas cliquables. Le conducteur ne peut pas les agrandir.
 
 ### Solution
 
-Dans `src/components/inventory/InventoryReportDetail.tsx`, remplacer les 3 lignes colorées par un simple affichage de la quantité totale, aligné avec ce que le chef saisit.
+Ajouter un état local pour stocker l'URL de la photo sélectionnée, et afficher un Dialog/overlay plein écran quand on clique sur une miniature.
 
 ### Changement (1 fichier)
 
-**`src/components/inventory/InventoryReportDetail.tsx`** — lignes 55-59
+**`src/components/inventory/InventoryReportDetail.tsx`**
 
-Remplacer :
-```
-Bon: X | À réparer: X | Cassé: X
-```
+1. Ajouter `useState<string | null>(null)` pour `selectedPhoto`
+2. Rendre chaque `<img>` cliquable (`onClick` + `cursor-pointer`)
+3. Ajouter un `<Dialog>` secondaire qui affiche la photo en grand (`max-w-[90vw] max-h-[80vh] object-contain`) avec un bouton fermer
 
-Par :
-```
-Quantité: {item.quantity_good}
-```
+### Résultat
 
-Afficher aussi l'unité si disponible. Conserver l'affichage des photos en dessous.
-
-### Résultat visuel
-
-```text
-Avant :
-  botte                        Total: 14
-  Bon: 14   À réparer: 0   Cassé: 0
-
-Après :
-  botte (U)                    Qté: 14
-```
-
-### Risque
-Aucun — changement purement cosmétique.
+Le conducteur clique sur une miniature → la photo s'ouvre en grand dans un overlay. Il ferme et revient à la liste.
 
