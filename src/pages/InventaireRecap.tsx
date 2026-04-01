@@ -293,7 +293,7 @@ const InventaireRecap = () => {
         for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
-          cell.border = borders;
+          cell.border = getBorders(c);
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
         }
