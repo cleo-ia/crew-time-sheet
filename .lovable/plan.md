@@ -1,19 +1,23 @@
 
 
-## Appliquer un orange pastel léger sur le bandeau d'en-tête du tableau récap inventaire
+## Purge du formulaire d'inventaire transmis pour le chantier "test"
 
-### Ce qui change
+### Données à supprimer
 
-Le bandeau d'en-tête du tableau (ligne 544) passe de :
-- **Avant** : fond orange vif `#ea580c` + texte blanc
-- **Après** : fond orange pastel très léger (ex: `#FFF3E8` ou `#FDEAD7`) + texte foncé (noir/gris)
+Le rapport transmis identifié :
+- **Report ID** : `45bc1c2f-480e-4edd-8582-690a70306fdb`
+- **Chantier** : test (CI000)
+- **Items** : 8 lignes dans `inventory_items`
 
-### Fichier modifié
+### Actions (via migration SQL)
 
-**`src/pages/InventaireRecap.tsx`** — ligne 544 :
-- Changer `backgroundColor: "#ea580c"` → `backgroundColor: "#FFF3E8"` (orange pastel très léger)
-- Changer `color: "#ffffff"` → `color: "#1a1a1a"` (texte foncé pour lisibilité)
-- Les pastilles colorées (vert, orange, rouge) restent inchangées
+1. Supprimer les 8 lignes de `inventory_items` liées au report
+2. Supprimer le `inventory_report` lui-même
 
-Un seul changement de style sur une seule ligne.
+```sql
+DELETE FROM inventory_items WHERE report_id = '45bc1c2f-480e-4edd-8582-690a70306fdb';
+DELETE FROM inventory_reports WHERE id = '45bc1c2f-480e-4edd-8582-690a70306fdb';
+```
+
+Cela permettra de recréer un nouveau rapport depuis zéro pour tester.
 
