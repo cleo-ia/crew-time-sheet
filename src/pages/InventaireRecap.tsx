@@ -203,7 +203,7 @@ const InventaireRecap = () => {
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = getBorders(colStart);
     });
-    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
+    ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 3);
     const totalGroupCell = groupRow.getCell(totalStartCol);
     totalGroupCell.value = "TOTAUX";
     totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
