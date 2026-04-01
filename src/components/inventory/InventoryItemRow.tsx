@@ -68,7 +68,17 @@ export const InventoryItemRow = ({
           >
             <Minus className="h-3 w-3" />
           </Button>
-          <span className="w-10 text-center font-semibold text-sm">{quantityGood}</span>
+          <input
+            type="number"
+            min={0}
+            value={quantityGood}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              onQuantityChange("quantity_good", isNaN(val) ? 0 : Math.max(0, val));
+            }}
+            disabled={readOnly}
+            className="w-12 text-center font-semibold text-sm border rounded h-8 bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
           <Button
             variant="outline"
             size="icon"
