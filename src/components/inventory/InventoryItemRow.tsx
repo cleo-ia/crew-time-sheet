@@ -30,11 +30,35 @@ export const InventoryItemRow = ({
   return (
     <div className="border rounded-lg p-3 bg-card">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <span className="font-medium text-sm">{designation}</span>
           <span className="text-xs text-muted-foreground ml-1">({unite})</span>
         </div>
         <div className="flex items-center gap-1">
+          {!readOnly && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onPhotoAdd(file);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="icon"
