@@ -1,28 +1,19 @@
 
 
-## Changements sur l'export Excel du récap inventaire
+## Modifications de l'export Excel
 
 ### Fichier : `src/pages/InventaireRecap.tsx`
 
-**1. Afficher le nom du chantier au lieu du code**
+**1. Supprimer la ligne "TOTAL GÉNÉRAL"** (lignes 305-344) — cette ligne additionne des matériels différents et n'a pas de sens.
 
-Ligne 68 — modifier `getChantierLabel` pour retourner `c.nom` en priorité :
-```ts
-return c.nom || c.code_chantier || "—";
-```
+**2. Ajouter une colonne "Total" à droite des colonnes TOTAUX** — elle affichera `totalGood + totalRepair + totalBroken` pour chaque article (la somme des 3 colonnes Bon/Nett/Rép de TOTAUX).
 
-**2. Bordures verticales épaisses entre les groupes de chantiers**
-
-Lignes 140-141 — ajouter une bordure épaisse :
-```ts
-const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
-```
-
-Puis, dans les sections d'en-tête (lignes 213-230) et de données (après ligne 250), appliquer `borderThick` sur le bord gauche de la première colonne de chaque groupe chantier (colonne `3 + i * 3`) et sur le bord gauche de la colonne TOTAUX (`totalStartCol`). Cela concerne :
-- La ligne groupe (row 4)
-- La ligne sous-en-tête (row 5)
-- Chaque ligne de données
-- Les lignes séparateurs de catégorie
-
-Concrètement, pour chaque cellule à la position `colStart = 3 + i * 3` (et `totalStartCol`), on remplace `border.left` par `borderThick`.
+Changements concrets :
+- `nbCols` passe de `2 + chantierIds.length * 3 + 3` à `2 + chantierIds.length * 3 + 4` (ajout d'une colonne).
+- Ajouter largeur pour la nouvelle colonne (`totalStartCol + 3`, width 12).
+- En-tête groupe (row 4) : le merge TOTAUX passe de 3 à 4 colonnes, ou bien la 4e colonne a son propre en-tête.
+- En-tête sous (row 5) : ajouter "Total" dans la colonne `totalStartCol + 3`.
+- Données : ajouter `item.total` (ou `item.totalGood + item.totalBroken + item.totalRepair`) dans la nouvelle colonne.
+- Supprimer le bloc lignes 305-344 (total général en bas).
+- Ajouter le thick border sur la nouvelle colonne total.
 
