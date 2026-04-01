@@ -250,6 +250,12 @@ const AdminPanel = () => {
               <VehiculesManager />
             </TabsContent>
 
+            {!isGestionnaire && inventaireEnabled && (
+              <TabsContent value="inventaire" className="p-6">
+                <InventoryTemplatesManager />
+              </TabsContent>
+            )}
+
             {!isGestionnaire && !isRH && (
               <TabsContent value="rappels" className="p-6">
                 <RappelsManager />
