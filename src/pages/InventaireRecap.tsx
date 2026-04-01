@@ -154,7 +154,7 @@ const InventaireRecap = () => {
       return borders;
     };
 
-    const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
+    const nbCols = 2 + chantierIds.length * 3 + 4; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken, grandTotal
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
