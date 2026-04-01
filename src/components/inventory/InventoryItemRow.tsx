@@ -114,8 +114,8 @@ export const InventoryItemRow = ({
 
       <div className="flex items-start justify-around gap-2">
         <Counter label="Bon état" color="bg-emerald-500" value={quantityGood} field="quantity_good" readOnly={readOnly} onQuantityChange={onQuantityChange} />
-        <Counter label="À nettoyer" color="bg-red-500" value={quantityBroken} field="quantity_broken" readOnly={readOnly} onQuantityChange={onQuantityChange} />
-        <Counter label="À réparer" color="bg-orange-500" value={quantityRepair} field="quantity_repair" readOnly={readOnly} onQuantityChange={onQuantityChange} />
+        <Counter label="À nettoyer" color="bg-orange-500" value={quantityBroken} field="quantity_broken" readOnly={readOnly} onQuantityChange={onQuantityChange} />
+        <Counter label="À réparer" color="bg-red-500" value={quantityRepair} field="quantity_repair" readOnly={readOnly} onQuantityChange={onQuantityChange} />
       </div>
 
       {/* Photos */}
