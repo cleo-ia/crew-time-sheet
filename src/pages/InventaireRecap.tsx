@@ -134,8 +134,8 @@ const InventaireRecap = () => {
     const accentR = 234, accentG = 88, accentB = 12; // orange #ea580c
     let y = 12;
 
-    // --- Helper: load logo as base64 ---
-    const loadLogoBase64 = (): Promise<string | null> => {
+    // --- Helper: load logo as base64 + dimensions ---
+    const loadLogo = (): Promise<{ base64: string; ratio: number } | null> => {
       return new Promise((resolve) => {
         if (!config.theme?.logo) { resolve(null); return; }
         const img = new Image();
@@ -146,27 +146,24 @@ const InventaireRecap = () => {
           canvas.height = img.naturalHeight;
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL("image/png"));
+          resolve({ base64: canvas.toDataURL("image/png"), ratio: img.naturalWidth / img.naturalHeight });
         };
         img.onerror = () => resolve(null);
         img.src = config.theme.logo;
       });
     };
 
-    const logoBase64 = await loadLogoBase64();
+    const logoData = await loadLogo();
 
     // --- Draw page header (logo + title + date + line) ---
     const drawPageHeader = (isFirstPage: boolean) => {
       const headerY = 12;
 
       // Logo top-left — preserve aspect ratio
-      if (logoBase64) {
-        const logoImg = new Image();
-        logoImg.src = logoBase64;
-        const ratio = logoImg.naturalWidth / logoImg.naturalHeight;
+      if (logoData) {
         const logoH = 12;
-        const logoW = logoH * ratio;
-        doc.addImage(logoBase64, "PNG", marginLeft, headerY - 5, logoW, logoH);
+        const logoW = logoH * logoData.ratio;
+        doc.addImage(logoData.base64, "PNG", marginLeft, headerY - 5, logoW, logoH);
       }
 
       // Title

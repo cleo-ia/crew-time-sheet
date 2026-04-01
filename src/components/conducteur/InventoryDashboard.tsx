@@ -72,7 +72,7 @@ export const InventoryDashboard = () => {
       </div>
 
       <Button
-        className="w-full h-14 text-base font-semibold gap-3"
+        className="w-full h-14 text-base font-semibold gap-3 bg-orange-600 hover:bg-orange-700 text-white"
         size="lg"
         onClick={() => navigate("/inventaire-recap")}
       >
