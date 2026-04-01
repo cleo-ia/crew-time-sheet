@@ -300,23 +300,32 @@ const InventaireRecap = () => {
 
     // Per-chantier totals
     chantierIds.forEach((cId, ci) => {
-      const colTotal = matrixItems.reduce((sum, item) => sum + (item.byChantier.get(cId) || 0), 0);
-      const cell = totalRow.getCell(3 + ci);
-      cell.value = colTotal;
-      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      const colBase = 3 + ci * 3;
+      const goodTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierGood.get(cId) || 0), 0);
+      const repairTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierRepair.get(cId) || 0), 0);
+      const brokenTotal = matrixItems.reduce((sum, item) => sum + (item.byChantierBroken.get(cId) || 0), 0);
+      [goodTotal, repairTotal, brokenTotal].forEach((val, si) => {
+        const cell = totalRow.getCell(colBase + si);
+        cell.value = val;
+        cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = borders;
+      });
+    });
+
+    // Grand totals
+    const grandGood = matrixItems.reduce((sum, i) => sum + i.totalGood, 0);
+    const grandRepair = matrixItems.reduce((sum, i) => sum + i.totalRepair, 0);
+    const grandBroken = matrixItems.reduce((sum, i) => sum + i.totalBroken, 0);
+    [grandGood, grandRepair, grandBroken].forEach((val, si) => {
+      const cell = totalRow.getCell(totalStartColData + si);
+      cell.value = val;
+      cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = borders;
     });
-
-    // Grand total
-    const grandTotal = matrixItems.reduce((sum, i) => sum + i.total, 0);
-    const gtCell = totalRow.getCell(nbCols);
-    gtCell.value = grandTotal;
-    gtCell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    gtCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
-    gtCell.alignment = { horizontal: "center", vertical: "middle" };
-    gtCell.border = borders;
 
     totalRow.height = 24;
 
