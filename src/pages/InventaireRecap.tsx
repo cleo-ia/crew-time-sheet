@@ -182,7 +182,7 @@ const InventaireRecap = () => {
       ws.getColumn(3 + i * 3 + 1).width = 10;
       ws.getColumn(3 + i * 3 + 2).width = 10;
     });
-    const totalStartCol = 3 + chantierIds.length * 3;
+    // totalStartCol already defined above
     ws.getColumn(totalStartCol).width = 12;
     ws.getColumn(totalStartCol + 1).width = 12;
     ws.getColumn(totalStartCol + 2).width = 12;
