@@ -48,14 +48,9 @@ export const InventoryReportDetail = ({
                 <div className="space-y-2">
                   {catItems.map((item) => (
                     <div key={item.id} className="border rounded-md p-3 bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">{item.designation}</span>
-                        <span className="text-sm font-bold">Total: {item.total}</span>
-                      </div>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="text-emerald-600">Bon: {item.quantity_good}</span>
-                        <span className="text-orange-600">À réparer: {item.quantity_repair}</span>
-                        <span className="text-destructive">Cassé: {item.quantity_broken}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{item.designation} {item.unite ? `(${item.unite})` : ""}</span>
+                        <span className="text-sm font-bold">Qté: {item.quantity_good}</span>
                       </div>
                       {item.photos && item.photos.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
