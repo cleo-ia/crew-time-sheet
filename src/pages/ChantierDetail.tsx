@@ -131,6 +131,11 @@ const ChantierDetail = () => {
             <TabsContent value="rentabilite">
               <ChantierRentabiliteTab chantierId={chantier.id} montantVendu={chantier.montant_vendu ?? 0} />
             </TabsContent>
+            {inventaireEnabled && (
+              <TabsContent value="inventaire">
+                <ChantierInventaireTab chantierId={chantier.id} readOnly={isReadOnly} />
+              </TabsContent>
+            )}
             <TabsContent value="infos">
               <ChantierInfosTab />
             </TabsContent>

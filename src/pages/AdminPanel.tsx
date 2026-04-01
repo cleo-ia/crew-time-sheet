@@ -48,6 +48,7 @@ const AdminPanel = () => {
 
   const isGestionnaire = userRole === "gestionnaire";
   const isRH = userRole === "rh";
+  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
 
   // Sync tab with URL parameter
   useEffect(() => {
