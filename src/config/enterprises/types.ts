@@ -56,6 +56,9 @@ export interface EnterpriseFeatures {
   
   // Demande de transport matériaux vers le dépôt
   transportMateriaux: boolean;
+  
+  // Inventaire mensuel de matériel par chantier
+  inventaireChantier: boolean;
 }
 
 export interface EnterpriseRoutes {
@@ -133,6 +136,7 @@ export const defaultFeatures: EnterpriseFeatures = {
   ratioGlobal: false, // Désactivé par défaut, activé uniquement pour Limoge Revillon
   pointsMeteo: false, // Désactivé par défaut
   transportMateriaux: true, // Demandes de transport matériaux vers le dépôt
+  inventaireChantier: true, // Inventaire mensuel de matériel par chantier
 };
 
 export const defaultRoutes: EnterpriseRoutes = {

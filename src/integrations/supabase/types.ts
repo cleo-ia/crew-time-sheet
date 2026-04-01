@@ -1579,6 +1579,180 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          categorie: string
+          created_at: string
+          designation: string
+          entreprise_id: string | null
+          id: string
+          photos: string[] | null
+          previous_total: number | null
+          quantity_broken: number
+          quantity_good: number
+          quantity_repair: number
+          report_id: string
+          template_id: string | null
+          total: number | null
+          unite: string
+          updated_at: string
+        }
+        Insert: {
+          categorie: string
+          created_at?: string
+          designation: string
+          entreprise_id?: string | null
+          id?: string
+          photos?: string[] | null
+          previous_total?: number | null
+          quantity_broken?: number
+          quantity_good?: number
+          quantity_repair?: number
+          report_id: string
+          template_id?: string | null
+          total?: number | null
+          unite?: string
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string
+          created_at?: string
+          designation?: string
+          entreprise_id?: string | null
+          id?: string
+          photos?: string[] | null
+          previous_total?: number | null
+          quantity_broken?: number
+          quantity_good?: number
+          quantity_repair?: number
+          report_id?: string
+          template_id?: string | null
+          total?: number | null
+          unite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_reports: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          created_by: string | null
+          entreprise_id: string | null
+          id: string
+          mois: string
+          signature_data: string | null
+          statut: string
+          transmitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          created_by?: string | null
+          entreprise_id?: string | null
+          id?: string
+          mois: string
+          signature_data?: string | null
+          statut?: string
+          transmitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          created_by?: string | null
+          entreprise_id?: string | null
+          id?: string
+          mois?: string
+          signature_data?: string | null
+          statut?: string
+          transmitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_reports_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reports_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_templates: {
+        Row: {
+          categorie: string
+          created_at: string
+          created_by: string | null
+          designation: string
+          entreprise_id: string
+          id: string
+          ordre: number
+          unite: string
+          updated_at: string
+        }
+        Insert: {
+          categorie: string
+          created_at?: string
+          created_by?: string | null
+          designation: string
+          entreprise_id: string
+          id?: string
+          ordre?: number
+          unite?: string
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string
+          created_at?: string
+          created_by?: string | null
+          designation?: string
+          entreprise_id?: string
+          id?: string
+          ordre?: number
+          unite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_templates_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null

@@ -44,6 +44,8 @@ import { useUtilisateursByRole } from "@/hooks/useUtilisateurs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransportMateriauxButton } from "@/components/conducteur/TransportMateriauxButton";
 import { useFicheId } from "@/hooks/useFicheId";
+import { InventoryDashboard } from "@/components/conducteur/InventoryDashboard";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 
 // Wrapper pour appeler useFicheId dans une boucle (règle des hooks React)
 const TransportSheetWithFicheInner = ({ 
@@ -136,6 +138,7 @@ const ValidationConducteur = () => {
   // Détection Super Admin
   const { data: userRole } = useCurrentUserRole();
   const isSuperAdmin = userRole === "super_admin";
+  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
   
   // Liste des conducteurs (pour super admin)
   const { data: conducteursList = [] } = useUtilisateursByRole(isSuperAdmin ? "conducteur" : undefined);
@@ -775,7 +778,7 @@ const ValidationConducteur = () => {
               navigate(`/validation-conducteur?${params.toString()}`, { replace: true });
             }}
           >
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-16 bg-muted/30 p-2 gap-2">
+            <TabsList className={`grid w-full mb-6 h-16 bg-muted/30 p-2 gap-2 ${inventaireEnabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <TabsTrigger 
                 value="mes-heures"
                 className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200"
@@ -788,13 +791,22 @@ const ValidationConducteur = () => {
                 className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200 relative"
               >
                 <FileCheck className="h-5 w-5 mr-2" />
-                Validation des fiches
+                Validation
                 {nbFichesEnAttente > 0 && (
                   <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1 shadow-md">
                     {nbFichesEnAttente > 99 ? "99+" : nbFichesEnAttente}
                   </span>
                 )}
               </TabsTrigger>
+              {inventaireEnabled && (
+                <TabsTrigger 
+                  value="inventaire"
+                  className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200"
+                >
+                  <Package className="h-5 w-5 mr-2" />
+                  Inventaire
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ONGLET 1: Mes heures avec sous-onglets */}
@@ -1049,6 +1061,13 @@ const ValidationConducteur = () => {
                 <FicheDetail ficheId={selectedFiche} onBack={() => setSelectedFiche(null)} />
               )}
             </TabsContent>
+
+            {/* ONGLET 3: Inventaire */}
+            {inventaireEnabled && (
+              <TabsContent value="inventaire" className="space-y-6">
+                <InventoryDashboard />
+              </TabsContent>
+            )}
           </Tabs>
 
           {/* Bouton discret de purge cache */}

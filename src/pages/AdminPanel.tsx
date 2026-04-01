@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard, History, RefreshCw } from "lucide-react";
+import { Settings, Building2, Briefcase, UserCog, HardHat, UserCheck, Truck, Users, Bell, User, FileUser, BarChart3, LayoutDashboard, History, RefreshCw, Package } from "lucide-react";
 import { clearCacheAndReload } from "@/hooks/useClearCache";
 import { AppNav } from "@/components/navigation/AppNav";
 import { ChantiersManager } from "@/components/admin/ChantiersManager";
@@ -24,6 +24,8 @@ import { AnalyticsManager } from "@/components/admin/AnalyticsManager";
 import { DashboardManager } from "@/components/admin/DashboardManager";
 import { HistoriqueManager } from "@/components/admin/HistoriqueManager";
 import { ConversationButton } from "@/components/chat/ConversationButton";
+import { InventoryTemplatesManager } from "@/components/admin/InventoryTemplatesManager";
+import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
 import { ConversationListSheet } from "@/components/chat/ConversationListSheet";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -46,6 +48,7 @@ const AdminPanel = () => {
 
   const isGestionnaire = userRole === "gestionnaire";
   const isRH = userRole === "rh";
+  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
 
   // Sync tab with URL parameter
   useEffect(() => {
@@ -165,6 +168,12 @@ const AdminPanel = () => {
                 <Truck className="h-4 w-4" />
                 <span className="hidden sm:inline">Véhicules</span>
               </TabsTrigger>
+              {!isGestionnaire && inventaireEnabled && (
+                <TabsTrigger value="inventaire" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Package className="h-4 w-4" />
+                  <span className="hidden sm:inline">Inventaire</span>
+                </TabsTrigger>
+              )}
               {!isGestionnaire && !isRH && (
                 <TabsTrigger value="rappels" className="rounded-md gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Bell className="h-4 w-4" />
@@ -240,6 +249,12 @@ const AdminPanel = () => {
             <TabsContent value="vehicules" className="p-6">
               <VehiculesManager />
             </TabsContent>
+
+            {!isGestionnaire && inventaireEnabled && (
+              <TabsContent value="inventaire" className="p-6">
+                <InventoryTemplatesManager />
+              </TabsContent>
+            )}
 
             {!isGestionnaire && !isRH && (
               <TabsContent value="rappels" className="p-6">
