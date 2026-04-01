@@ -1,27 +1,19 @@
 
 
-## Corrections sur le récap inventaires (web + Excel)
+## Appliquer un orange pastel léger sur le bandeau d'en-tête du tableau récap inventaire
 
-### Problèmes identifiés
-1. **Ordre incorrect** : le tableau web et l'Excel affichent "Bon état → À réparer → À nettoyer", alors que le formulaire montre "Bon état → À nettoyer → À réparer"
-2. **Fond orange pastel** indésirable sur la colonne "À nettoyer" (web + Excel)
-3. **Pastilles de couleur** à corriger : orange pour "À nettoyer", rouge pour "À réparer" (conformément au formulaire)
+### Ce qui change
 
-### Modifications dans `src/pages/InventaireRecap.tsx`
+Le bandeau d'en-tête du tableau (ligne 544) passe de :
+- **Avant** : fond orange vif `#ea580c` + texte blanc
+- **Après** : fond orange pastel très léger (ex: `#FFF3E8` ou `#FDEAD7`) + texte foncé (noir/gris)
 
-**Tableau web (lignes 551-584)** :
-- Inverser les colonnes : Bon état → À nettoyer (pastille orange) → À réparer (pastille rouge)
-- Supprimer le `style={{ backgroundColor: "#c2410c" }}` du header "À nettoyer"
-- Supprimer le `style={{ backgroundColor: "rgba(251, 191, 36, 0.08)" }}` des cellules "À nettoyer"
-- Ajuster les couleurs de texte : orange pour "À nettoyer", rouge pour "À réparer"
+### Fichier modifié
 
-**Export Excel (lignes 211-284)** :
-- Inverser l'ordre des sub-headers : `["Bon", "Nett.", "Rép."]` avec couleurs `[vert, orange, rouge]`
-- Inverser les données par chantier : écrire broken avant repair
-- Inverser les totaux
-- Supprimer le fond pastel orange (lignes 279-284) : utiliser `bgColor` uniforme pour toutes les colonnes
+**`src/pages/InventaireRecap.tsx`** — ligne 544 :
+- Changer `backgroundColor: "#ea580c"` → `backgroundColor: "#FFF3E8"` (orange pastel très léger)
+- Changer `color: "#ffffff"` → `color: "#1a1a1a"` (texte foncé pour lisibilité)
+- Les pastilles colorées (vert, orange, rouge) restent inchangées
 
-**Export PDF (lignes 410-500)** :
-- Inverser l'ordre des colonnes : Bon état → À nettoyer → À réparer
-- Inverser les couleurs de texte correspondantes
+Un seul changement de style sur une seule ligne.
 
