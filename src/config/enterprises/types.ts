@@ -56,6 +56,9 @@ export interface EnterpriseFeatures {
   
   // Demande de transport matériaux vers le dépôt
   transportMateriaux: boolean;
+  
+  // Inventaire mensuel de matériel par chantier
+  inventaireChantier: boolean;
 }
 
 export interface EnterpriseRoutes {
