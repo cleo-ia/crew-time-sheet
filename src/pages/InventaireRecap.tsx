@@ -541,7 +541,7 @@ const InventaireRecap = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
+                <tr style={{ backgroundColor: "#FFF3E8", color: "#1a1a1a" }}>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
