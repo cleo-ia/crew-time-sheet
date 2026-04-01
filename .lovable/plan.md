@@ -1,56 +1,28 @@
 
 
-## Ajout du renommage inline et du champ notes/commentaire
+## Retirer le placeholder "à vérifier"
 
 ### Objectif
 
-1. Permettre de **renommer une désignation de matériel** directement dans la ligne (clic sur le nom → input inline → valider/annuler)
-2. Ajouter un **champ notes** par matériel, affiché sous la désignation, avec "à vérifier" comme placeholder par défaut quand on ne sait pas
+Ne rien afficher quand il n'y a pas de note, au lieu d'afficher "à vérifier" par défaut. Le champ reste cliquable pour ajouter une note si besoin.
 
 ### Fichier modifié
 
 `src/components/admin/InventoryTemplatesManager.tsx`
 
-### Changements
+### Changement
 
-**1. État local pour l'édition inline**
+**Ligne 380-386** : Afficher la note seulement si elle existe, sinon afficher un petit lien discret "Ajouter une note" (ou juste une zone cliquable vide avec une icône crayon au hover) :
 
-Ajouter un state `editingItem: { id: string; field: "designation" | "notes"; value: string } | null` pour tracker quel item est en cours d'édition.
+```text
+Avant :  {t.notes || "à vérifier"}
 
-**2. Désignation cliquable (ligne 328)**
-
-Remplacer le `TableCell` statique `{t.designation}` par :
-- En mode lecture : texte cliquable avec icône crayon au hover
-- En mode édition : `Input` + boutons Valider/Annuler
-- Au clic sur Valider : `updateTemplate.mutate({ id: t.id, designation: newValue })`
-
-**3. Champ notes sous la désignation**
-
-Sous le nom du matériel, afficher une ligne secondaire cliquable :
-- Si `notes` existe : affiche le texte en `text-xs text-muted-foreground`
-- Si pas de notes : affiche "à vérifier" en italique grisé
-- Au clic : passe en mode édition inline (petit Input)
-- Sauvegarde via `updateTemplate.mutate({ id: t.id, notes: value })`
-
-**4. Migration Supabase**
-
-Ajouter une colonne `notes` à la table `inventory_templates` :
-
-```sql
-ALTER TABLE inventory_templates ADD COLUMN notes text DEFAULT NULL;
+Après :  {t.notes || ""}
 ```
 
-**5. Mise à jour du type TypeScript**
-
-Dans `useInventoryTemplates.ts`, ajouter `notes: string | null` à l'interface `InventoryTemplate`.
-
-### Comportement attendu
-
-- Clic sur "Gants" → input apparaît avec "Gants" → modifier → valider → sauvé
-- Sous chaque matériel, texte gris "à vérifier" cliquable → clic → input → taper "Modèle Hilti TE 60" → valider
-- Si le conducteur ne sait pas quoi mettre, il laisse "à vérifier" (c'est juste le placeholder, rien n'est sauvé)
+Le `div` reste cliquable pour permettre l'ajout d'une note, mais n'affiche plus de texte par défaut. On garde le style `cursor-pointer hover:text-primary` pour que l'utilisateur puisse cliquer dessus si besoin.
 
 ### Risque
 
-Faible — ajout d'une colonne nullable sans impact sur l'existant, et logique d'édition inline localisée dans un seul composant.
+Aucun — changement cosmétique d'une seule ligne.
 
