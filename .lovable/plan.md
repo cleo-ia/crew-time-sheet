@@ -1,37 +1,56 @@
 
 
-## Rendre l'unité modifiable sur chaque ligne de matériel
+## Ajout du renommage inline et du champ notes/commentaire
 
 ### Objectif
 
-Permettre au conducteur de modifier l'unité d'un matériel directement dans la liste, en remplaçant le texte statique par un `Select` cliquable.
+1. Permettre de **renommer une désignation de matériel** directement dans la ligne (clic sur le nom → input inline → valider/annuler)
+2. Ajouter un **champ notes** par matériel, affiché sous la désignation, avec "à vérifier" comme placeholder par défaut quand on ne sait pas
 
 ### Fichier modifié
 
 `src/components/admin/InventoryTemplatesManager.tsx`
 
-### Changement
+### Changements
 
-**Ligne 328** : Remplacer le `TableCell` affichant `{t.unite}` en texte brut par un composant `Select` inline utilisant `UNIT_OPTIONS`, qui appelle `updateTemplate.mutate({ id: t.id, unite: newValue })` au changement.
+**1. État local pour l'édition inline**
 
-```text
-Avant :  <TableCell className="w-20 text-muted-foreground">{t.unite}</TableCell>
+Ajouter un state `editingItem: { id: string; field: "designation" | "notes"; value: string } | null` pour tracker quel item est en cours d'édition.
 
-Après :  <TableCell className="w-28">
-           <Select value={t.unite} onValueChange={(v) => updateTemplate.mutate({ id: t.id, unite: v })}>
-             <SelectTrigger className="h-7 text-xs border-none shadow-none">
-               <SelectValue />
-             </SelectTrigger>
-             <SelectContent>
-               {UNIT_OPTIONS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-             </SelectContent>
-           </Select>
-         </TableCell>
+**2. Désignation cliquable (ligne 328)**
+
+Remplacer le `TableCell` statique `{t.designation}` par :
+- En mode lecture : texte cliquable avec icône crayon au hover
+- En mode édition : `Input` + boutons Valider/Annuler
+- Au clic sur Valider : `updateTemplate.mutate({ id: t.id, designation: newValue })`
+
+**3. Champ notes sous la désignation**
+
+Sous le nom du matériel, afficher une ligne secondaire cliquable :
+- Si `notes` existe : affiche le texte en `text-xs text-muted-foreground`
+- Si pas de notes : affiche "à vérifier" en italique grisé
+- Au clic : passe en mode édition inline (petit Input)
+- Sauvegarde via `updateTemplate.mutate({ id: t.id, notes: value })`
+
+**4. Migration Supabase**
+
+Ajouter une colonne `notes` à la table `inventory_templates` :
+
+```sql
+ALTER TABLE inventory_templates ADD COLUMN notes text DEFAULT NULL;
 ```
 
-Le hook `useUpdateInventoryTemplate` est déjà importé et utilisé dans le composant (pour le move/rename). Aucun nouveau hook nécessaire.
+**5. Mise à jour du type TypeScript**
+
+Dans `useInventoryTemplates.ts`, ajouter `notes: string | null` à l'interface `InventoryTemplate`.
+
+### Comportement attendu
+
+- Clic sur "Gants" → input apparaît avec "Gants" → modifier → valider → sauvé
+- Sous chaque matériel, texte gris "à vérifier" cliquable → clic → input → taper "Modèle Hilti TE 60" → valider
+- Si le conducteur ne sait pas quoi mettre, il laisse "à vérifier" (c'est juste le placeholder, rien n'est sauvé)
 
 ### Risque
 
-Aucun — remplacement d'un affichage texte par un Select, même mutation existante.
+Faible — ajout d'une colonne nullable sans impact sur l'existant, et logique d'édition inline localisée dans un seul composant.
 
