@@ -338,18 +338,10 @@ export const InventoryTemplatesManager = () => {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="w-24 text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(t.id, "up")} disabled={idx === 0}>
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(t.id, "down")} disabled={idx === items.length - 1}>
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTemplate.mutate(t.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                        <TableCell className="w-12 text-right">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTemplate.mutate(t.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
