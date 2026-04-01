@@ -22,6 +22,7 @@ interface ConsolidatedItem {
 
 const InventaireRecap = () => {
   const navigate = useNavigate();
+  const config = useEnterpriseConfig();
   const { data: reports = [], isLoading: isLoadingReports } = useInventoryReportsAll();
   const { data: chantiers = [] } = useChantiers();
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
