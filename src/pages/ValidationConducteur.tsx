@@ -126,7 +126,7 @@ const ValidationConducteur = () => {
   // Initialiser l'onglet selon le paramètre "tab" dans l'URL
   const initialTabFromUrl = (() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "mes-heures" || tabParam === "validation") return tabParam;
+    if (tabParam === "mes-heures" || tabParam === "validation" || tabParam === "inventaire") return tabParam;
     
     // Si pas de "tab" mais qu'il y a des deep links (chantier/semaine), ouvrir validation
     const hasDeepLink = !!(searchParams.get("chantier") || searchParams.get("semaine"));
