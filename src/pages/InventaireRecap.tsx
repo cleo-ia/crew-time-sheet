@@ -261,14 +261,14 @@ const InventaireRecap = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ───── PDF export ─────
+  // ───── PDF export (simple: Désignation, Unité, Quantité) ─────
   const handleExportPdf = async () => {
     const { default: jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const marginLeft = 10;
-    const marginRight = 10;
+    const marginLeft = 15;
+    const marginRight = 15;
     const tableWidth = pageWidth - marginLeft - marginRight;
     const accentR = 234, accentG = 88, accentB = 12;
     let y = 12;
@@ -300,7 +300,7 @@ const InventaireRecap = () => {
         const logoW = logoH * logoData.ratio;
         doc.addImage(logoData.base64, "PNG", marginLeft, headerY - 5, logoW, logoH);
       }
-      doc.setFontSize(isFirstPage ? 16 : 11);
+      doc.setFontSize(isFirstPage ? 18 : 12);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 30, 30);
       doc.text("Récap global inventaires", pageWidth / 2, headerY + 2, { align: "center" });
@@ -322,48 +322,22 @@ const InventaireRecap = () => {
 
     y = drawPageHeader(true);
 
-    // Dynamic columns for PDF: Désignation, Unité, chantiers..., Total
-    const nbPdfCols = 2 + chantierIds.length + 1;
-    const colDesW = tableWidth * 0.25;
-    const colUniteW = tableWidth * 0.08;
-    const colTotalW = tableWidth * 0.08;
-    const remainingW = tableWidth - colDesW - colUniteW - colTotalW;
-    const colChantierW = chantierIds.length > 0 ? remainingW / chantierIds.length : 0;
+    const colDesignation = tableWidth * 0.55;
+    const colUnite = tableWidth * 0.20;
+    const colQte = tableWidth * 0.25;
     const rowHeight = 7;
-
-    const colXs = [marginLeft]; // designation
-    colXs.push(colXs[0] + colDesW); // unite
-    chantierIds.forEach((_, i) => {
-      colXs.push(colXs[1] + colUniteW + i * colChantierW);
-    });
-    colXs.push(marginLeft + tableWidth - colTotalW); // total
 
     const drawTableHeader = () => {
       doc.setFillColor(accentR, accentG, accentB);
-      doc.rect(marginLeft, y, tableWidth, rowHeight + 2, "F");
+      doc.rect(marginLeft, y, tableWidth, rowHeight + 1, "F");
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7);
+      doc.setFontSize(8.5);
       doc.setFont("helvetica", "bold");
-      doc.text("Désignation", colXs[0] + 2, y + 5.5);
-      doc.text("Unité", colXs[1] + colUniteW / 2, y + 5.5, { align: "center" });
-      chantierIds.forEach((cId, i) => {
-        const label = getChantierLabel(cId);
-        const x = colXs[2 + i] + colChantierW / 2;
-        // Truncate if too long
-        const truncated = label.length > 12 ? label.slice(0, 11) + "…" : label;
-        doc.text(truncated, x, y + 5.5, { align: "center" });
-      });
-      doc.text("Total", colXs[colXs.length - 1] + colTotalW / 2, y + 5.5, { align: "center" });
+      doc.text("Désignation", marginLeft + 4, y + 5.5);
+      doc.text("Unité", marginLeft + colDesignation + colUnite / 2, y + 5.5, { align: "center" });
+      doc.text("Quantité", marginLeft + colDesignation + colUnite + colQte / 2, y + 5.5, { align: "center" });
       doc.setTextColor(0, 0, 0);
-      y += rowHeight + 2;
-    };
-
-    const drawFooter = (pageNum: number) => {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(160, 160, 160);
-      doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: "center" });
-      doc.text(config.nom, marginLeft, pageHeight - 8);
+      y += rowHeight + 1;
     };
 
     const checkPageBreak = (neededHeight: number) => {
@@ -375,19 +349,25 @@ const InventaireRecap = () => {
       }
     };
 
+    const drawFooter = (pageNum: number) => {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: "center" });
+      doc.text(config.nom, marginLeft, pageHeight - 8);
+    };
+
     drawTableHeader();
 
     categories.forEach(cat => {
       const catItems = matrixItems.filter(i => i.categorie === cat);
       checkPageBreak(rowHeight * 2);
-
-      // Category row
       doc.setFillColor(235, 235, 240);
       doc.rect(marginLeft, y, tableWidth, rowHeight + 0.5, "F");
       doc.setFillColor(accentR, accentG, accentB);
       doc.rect(marginLeft, y, 1.5, rowHeight + 0.5, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
+      doc.setFontSize(8.5);
       doc.setTextColor(40, 40, 40);
       doc.text(cat.toUpperCase(), marginLeft + 5, y + 5.2);
       y += rowHeight + 0.5;
@@ -401,25 +381,18 @@ const InventaireRecap = () => {
         doc.setDrawColor(215, 215, 220);
         doc.setLineWidth(0.2);
         doc.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
+        doc.line(marginLeft + colDesignation, y, marginLeft + colDesignation, y + rowHeight);
+        doc.line(marginLeft + colDesignation + colUnite, y, marginLeft + colDesignation + colUnite, y + rowHeight);
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(50, 50, 50);
-        doc.text(item.designation, colXs[0] + 2, y + 5);
+        doc.text(item.designation, marginLeft + 4, y + 5);
         doc.setTextColor(100, 100, 100);
-        doc.text(item.unite, colXs[1] + colUniteW / 2, y + 5, { align: "center" });
-
-        chantierIds.forEach((cId, i) => {
-          const qty = item.byChantier.get(cId) || 0;
-          if (qty > 0) {
-            doc.setTextColor(80, 80, 80);
-            doc.text(String(qty), colXs[2 + i] + colChantierW / 2, y + 5, { align: "center" });
-          }
-        });
-
+        doc.text(item.unite, marginLeft + colDesignation + colUnite / 2, y + 5, { align: "center" });
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
-        doc.text(String(item.total), colXs[colXs.length - 1] + colTotalW / 2, y + 5, { align: "center" });
+        doc.text(String(item.total), marginLeft + colDesignation + colUnite + colQte / 2, y + 5, { align: "center" });
         y += rowHeight;
       });
       y += 1;
@@ -468,14 +441,10 @@ const InventaireRecap = () => {
             <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
+                  <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
-                  {chantierIds.map(id => (
-                    <th key={id} className="border border-border px-2 py-2 text-center font-semibold text-xs whitespace-nowrap">
-                      {getChantierLabel(id)}
-                    </th>
-                  ))}
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Total</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
                 </tr>
               </thead>
@@ -485,7 +454,7 @@ const InventaireRecap = () => {
                   return (
                     <React.Fragment key={cat}>
                       <tr className="bg-muted">
-                        <td colSpan={3 + chantierIds.length + 1 + 1} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
                           {cat}
                         </td>
                       </tr>
@@ -494,16 +463,9 @@ const InventaireRecap = () => {
                           key={`${cat}-${item.designation}-${item.unite}`}
                           className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
                         >
+                          <td className="border border-border px-3 py-1.5" />
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
-                          {chantierIds.map(cId => {
-                            const qty = item.byChantier.get(cId) || 0;
-                            return (
-                              <td key={cId} className="border border-border px-2 py-1.5 text-center text-muted-foreground">
-                                {qty > 0 ? qty : ""}
-                              </td>
-                            );
-                          })}
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
