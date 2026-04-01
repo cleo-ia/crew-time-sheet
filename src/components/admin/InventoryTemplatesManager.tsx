@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -24,7 +24,71 @@ const DEFAULT_CATEGORIES = [
   "Vêtements de travail",
 ];
 
-const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L"];
+const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L", "Boîte", "Lot", "Rouleau"];
+
+const DEFAULT_MATERIALS: Record<string, { designation: string; unite: string }[]> = {
+  "Consommables": [
+    { designation: "Disques à tronçonner (Acier/Inox)", unite: "Boîte" },
+    { designation: "Mastic silicone (Cartouche)", unite: "U" },
+    { designation: "Vis bois (Boîte)", unite: "Boîte" },
+    { designation: "Forets béton SDS", unite: "Lot" },
+    { designation: "Ruban de masquage", unite: "Rouleau" },
+  ],
+  "Electricité & Éclairage": [
+    { designation: "Projecteur LED de chantier", unite: "U" },
+    { designation: "Enrouleur électrique", unite: "U" },
+    { designation: "Câble électrique (Couronne)", unite: "Rouleau" },
+    { designation: "Coffret électrique de chantier", unite: "U" },
+  ],
+  "Électroportatif": [
+    { designation: "Perceuse à percussion sans fil", unite: "U" },
+    { designation: "Meuleuse d'angle", unite: "U" },
+    { designation: "Perforateur Burineur SDS", unite: "U" },
+    { designation: "Scie circulaire", unite: "U" },
+  ],
+  "Engins & Gros Matériel": [
+    { designation: "Mini-pelle", unite: "U" },
+    { designation: "Plaque vibrante", unite: "U" },
+    { designation: "Bétonnière", unite: "U" },
+    { designation: "Compresseur d'air", unite: "U" },
+  ],
+  "EPI & Sécurité": [
+    { designation: "Casque de chantier", unite: "U" },
+    { designation: "Gants de manutention", unite: "Paire" },
+    { designation: "Lunettes de protection", unite: "U" },
+    { designation: "Bouchons d'oreilles", unite: "Boîte" },
+  ],
+  "Gros Œuvre": [
+    { designation: "Étais de maçon", unite: "U" },
+    { designation: "Brouette de chantier", unite: "U" },
+    { designation: "Treillis soudé (Panneau)", unite: "U" },
+    { designation: "Bastaing bois", unite: "U" },
+  ],
+  "Manutention & Levage": [
+    { designation: "Transpalette manuel", unite: "U" },
+    { designation: "Sangle de levage", unite: "U" },
+    { designation: "Palan à chaîne", unite: "U" },
+    { designation: "Diable de manutention", unite: "U" },
+  ],
+  "Petit Outillage": [
+    { designation: "Niveau à bulle", unite: "U" },
+    { designation: "Marteau de coffreur", unite: "U" },
+    { designation: "Jeu de tournevis", unite: "Lot" },
+    { designation: "Mètre ruban", unite: "U" },
+  ],
+  "Signalisation & Balisage": [
+    { designation: "Cône de signalisation", unite: "U" },
+    { designation: "Ruban de signalisation", unite: "Rouleau" },
+    { designation: "Panneau de chantier", unite: "U" },
+    { designation: "Barrière de chantier", unite: "U" },
+  ],
+  "Vêtements de travail": [
+    { designation: "Pantalon de travail", unite: "U" },
+    { designation: "Gilet haute visibilité", unite: "U" },
+    { designation: "Chaussures de sécurité", unite: "Paire" },
+    { designation: "Veste de travail", unite: "U" },
+  ],
+};
 
 export const InventoryTemplatesManager = () => {
   const { data: templates = [], isLoading } = useInventoryTemplates();
@@ -44,10 +108,10 @@ export const InventoryTemplatesManager = () => {
   // Delete category confirm
   const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
 
-  // Per-category inline add state
-  const [addDesignation, setAddDesignation] = useState<Record<string, string>>({});
-  const [addUnite, setAddUnite] = useState<Record<string, string>>({});
-  const [openAddForm, setOpenAddForm] = useState<string | null>(null);
+  // Material add dialog state
+  const [showAddMaterialDialog, setShowAddMaterialDialog] = useState<string | null>(null);
+  const [selectedMaterials, setSelectedMaterials] = useState<{ designation: string; unite: string }[]>([]);
+  const [materialSearch, setMaterialSearch] = useState("");
 
   // Group by category
   const grouped = templates.reduce<Record<string, typeof templates>>((acc, t) => {
@@ -85,23 +149,42 @@ export const InventoryTemplatesManager = () => {
   const [virtualCategories, setVirtualCategories] = useState<string[]>([]);
   const allCategories = [...new Set([...categories, ...virtualCategories])].sort();
 
-  const handleAddItem = (cat: string) => {
-    const designation = (addDesignation[cat] || "").trim();
-    if (!designation) return;
+  const toggleMaterial = (mat: { designation: string; unite: string }) => {
+    setSelectedMaterials(prev =>
+      prev.some(m => m.designation === mat.designation)
+        ? prev.filter(m => m.designation !== mat.designation)
+        : [...prev, mat]
+    );
+  };
+
+  const materialSuggestions = useMemo(() => {
+    if (!showAddMaterialDialog) return [];
+    return DEFAULT_MATERIALS[showAddMaterialDialog] || [];
+  }, [showAddMaterialDialog]);
+
+  const handleAddMaterials = () => {
+    if (!showAddMaterialDialog || selectedMaterials.length === 0) return;
+    const cat = showAddMaterialDialog;
     const highestOrder = (grouped[cat] || []).reduce((max, t) => Math.max(max, t.ordre), -1);
-    createTemplate.mutate({
-      categorie: cat,
-      designation,
-      unite: addUnite[cat] || "U",
-      ordre: highestOrder + 1,
-    }, {
-      onSuccess: () => {
-        setAddDesignation(prev => ({ ...prev, [cat]: "" }));
-        setAddUnite(prev => ({ ...prev, [cat]: "U" }));
-        setOpenAddForm(null);
-        setVirtualCategories(prev => prev.filter(c => c !== cat));
-      }
+    let addedCount = 0;
+    selectedMaterials.forEach((mat, i) => {
+      createTemplate.mutate({
+        categorie: cat,
+        designation: mat.designation,
+        unite: mat.unite,
+        ordre: highestOrder + 1 + i,
+      }, {
+        onSuccess: () => {
+          addedCount++;
+          if (addedCount === selectedMaterials.length) {
+            setVirtualCategories(prev => prev.filter(c => c !== cat));
+          }
+        }
+      });
     });
+    setSelectedMaterials([]);
+    setMaterialSearch("");
+    setShowAddMaterialDialog(null);
   };
 
   const handleMove = (id: string, direction: "up" | "down") => {
@@ -225,64 +308,93 @@ export const InventoryTemplatesManager = () => {
                 </div>
               )}
 
-              {/* Add material: toggle between button and inline form */}
-              {openAddForm === cat ? (
-                <div className="px-4 py-3 border-t bg-muted/30 flex flex-wrap gap-2 items-end">
-                  <Input
-                    placeholder="Ex: Perceuse 18V"
-                    value={addDesignation[cat] || ""}
-                    onChange={e => setAddDesignation(prev => ({ ...prev, [cat]: e.target.value }))}
-                    className="w-48 h-9"
-                    onKeyDown={e => { if (e.key === "Enter") handleAddItem(cat); }}
-                    autoFocus
-                  />
-                  <Select
-                    value={addUnite[cat] || "U"}
-                    onValueChange={v => setAddUnite(prev => ({ ...prev, [cat]: v }))}
-                  >
-                    <SelectTrigger className="w-24 h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNIT_OPTIONS.map(u => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleAddItem(cat)}
-                    disabled={createTemplate.isPending || !(addDesignation[cat] || "").trim()}
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1" />
-                    Valider
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => { setOpenAddForm(null); setAddDesignation(prev => ({ ...prev, [cat]: "" })); }}
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              ) : (
-                <div className="px-4 py-3 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary"
-                    onClick={() => setOpenAddForm(cat)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Ajouter un matériel
-                  </Button>
-                </div>
-              )}
+              {/* Add material button */}
+              <div className="px-4 py-3 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => { setShowAddMaterialDialog(cat); setSelectedMaterials([]); setMaterialSearch(""); }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un matériel
+                </Button>
+              </div>
             </Card>
           );
         })
       )}
+
+      {/* Add material dialog */}
+      <Dialog open={!!showAddMaterialDialog} onOpenChange={(open) => { if (!open) { setShowAddMaterialDialog(null); setSelectedMaterials([]); setMaterialSearch(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter des matériels — {showAddMaterialDialog}</DialogTitle>
+          </DialogHeader>
+          <Command className="border rounded-md" shouldFilter={true}>
+            <CommandInput
+              placeholder="Rechercher ou créer un matériel..."
+              value={materialSearch}
+              onValueChange={setMaterialSearch}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {materialSearch.trim() ? (
+                  <button
+                    className="w-full px-2 py-3 text-sm text-left cursor-pointer hover:bg-accent rounded-sm flex items-center gap-2"
+                    onClick={() => { toggleMaterial({ designation: materialSearch.trim(), unite: "U" }); setMaterialSearch(""); }}
+                  >
+                    <Plus className="h-4 w-4 text-primary" />
+                    Créer « <span className="font-medium">{materialSearch.trim()}</span> »
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground">Tapez un nom de matériel</span>
+                )}
+              </CommandEmpty>
+              <CommandGroup heading="Suggestions">
+                {materialSuggestions.map(mat => {
+                  const alreadyExists = (grouped[showAddMaterialDialog || ""] || []).some(t => t.designation === mat.designation);
+                  const isSelected = selectedMaterials.some(m => m.designation === mat.designation);
+                  return (
+                    <CommandItem
+                      key={mat.designation}
+                      value={mat.designation}
+                      disabled={alreadyExists}
+                      onSelect={() => { if (!alreadyExists) toggleMaterial(mat); }}
+                      className={alreadyExists ? "opacity-50" : "cursor-pointer"}
+                    >
+                      <div className={`h-4 w-4 rounded border mr-2 flex items-center justify-center ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="flex-1">{mat.designation}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{mat.unite}</span>
+                      {alreadyExists && <span className="text-xs text-muted-foreground ml-1">(déjà ajouté)</span>}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          {selectedMaterials.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedMaterials.map(mat => (
+                <span key={mat.designation} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                  {mat.designation} ({mat.unite})
+                  <button onClick={() => toggleMaterial(mat)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMaterialDialog(null)}>Annuler</Button>
+            <Button onClick={handleAddMaterials} disabled={selectedMaterials.length === 0}>
+              Ajouter{selectedMaterials.length > 0 ? ` (${selectedMaterials.length})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New category dialog with smart Combobox */}
       <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setSelectedCategories([]); setCatSearch(""); } }}>
