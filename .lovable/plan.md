@@ -1,35 +1,146 @@
 
 
-## Nettoyage de la fiche parasite GUNDUZ Erdal - OLYMPIA S13
+## Module Inventaire Chantier Mensuel — Plan d'implémentation
 
-### Ce qui sera supprimé (vérifié en base)
+### Phase 1 — Migration SQL (3 tables + bucket + trigger)
 
-| Table | Nb lignes | Critère |
-|---|---|---|
-| `fiches_jours` | 5 | `fiche_id = '22d502ce-...'` (toutes à 0h, type_absence NULL) |
-| `signatures` | 1 | `fiche_id = '22d502ce-...'` |
-| `fiches` | 1 | `id = '22d502ce-...'` (OLYMPIA, S13, 0h, ENVOYE_RH) |
-| `affectations_jours_chef` | 5 | `macon_id = '2030aa2b-...'` + `chantier_id = '121fe254-...'` + `semaine = '2026-S13'` |
+**Fichier** : `supabase/migrations/20260401_inventory_tables.sql`
 
-### Ce qui ne sera PAS touché
-- Les fiches ghost d'arrêt de travail (chantier_id = null) restent intactes
-- Aucune autre fiche de GUNDUZ n'est affectée
-- Aucune donnée d'un autre employé n'est touchée
+```text
+inventory_templates
+├── id, entreprise_id, categorie, designation, unite ('U'), ordre, created_by, created_at, updated_at
+├── RLS: entreprise_id = get_selected_entreprise_id()
+├── Trigger: set_entreprise_id (copie du pattern existant)
 
-### Migration SQL
+inventory_reports  
+├── id, entreprise_id, chantier_id, mois ('2026-04'), statut ('BROUILLON'|'TRANSMIS')
+├── created_by, signature_data, transmitted_at, created_at, updated_at
+├── UNIQUE(chantier_id, mois) — 1 inventaire/chantier/mois
+├── RLS: entreprise_id = get_selected_entreprise_id()
+├── Trigger: set_entreprise_from_chantier (pattern existant réutilisé)
 
-Ordre de suppression respectant les dépendances :
-1. DELETE `fiches_jours` WHERE `fiche_id = '22d502ce-a472-4eda-be0b-d553221801f9'`
-2. DELETE `signatures` WHERE `fiche_id = '22d502ce-a472-4eda-be0b-d553221801f9'`
-3. DELETE `fiches` WHERE `id = '22d502ce-a472-4eda-be0b-d553221801f9'`
-4. DELETE `affectations_jours_chef` WHERE `macon_id = '2030aa2b-e7ce-48dc-b5cc-5fc68f6bf494'` AND `chantier_id = '121fe254-c301-40b4-88eb-85c858d4265a'` AND `semaine = '2026-S13'`
+inventory_items
+├── id, entreprise_id, report_id, template_id (nullable), categorie, designation, unite
+├── quantity_good (0), quantity_repair (0), quantity_broken (0)
+├── total (generated always as quantity_good + quantity_repair + quantity_broken)
+├── previous_total (nullable), photos (text[] default '{}')
+├── created_at, updated_at
+├── RLS: entreprise_id = get_selected_entreprise_id()
+```
 
-### Fichier modifié
+Storage : bucket `inventory-photos` (public, RLS authenticated).
+
+---
+
+### Phase 2 — Feature flag
+
+**`src/config/enterprises/types.ts`** : Ajouter `inventaireChantier: boolean` dans `EnterpriseFeatures`. Default `true` dans `defaultFeatures`.
+
+**3 configs entreprise** : Activé par spread de `defaultFeatures` (rien à changer).
+
+---
+
+### Phase 3 — Hooks React Query (4 fichiers)
+
+| Fichier | Contenu |
+|---|---|
+| `src/hooks/useInventoryTemplates.ts` | Query + mutations CRUD (insert/update/delete) par entreprise. Pattern identique à `useTodosChantier` + `useCreateTodo`. |
+| `src/hooks/useInventoryReports.ts` | Query par chantier ou tous chantiers. Mutations create/update statut. Fetch du rapport mois-1 pour `previous_total`. |
+| `src/hooks/useInventoryItems.ts` | Query par `report_id`. Mutation upsert batch (sauvegarde toutes les lignes d'un coup). |
+| `src/hooks/useInventoryPhotos.ts` | Upload vers `inventory-photos/{reportId}/{itemId}/`, delete, list. Pattern identique à `useChantierDocuments` pour le storage. |
+
+---
+
+### Phase 4 — Interface Admin/Conducteur : Templates
+
+**`src/components/admin/InventoryTemplatesManager.tsx`**
+
+- Tableau des articles groupés par catégorie
+- Ajout/suppression inline (désignation, unité, catégorie)
+- Réordonnancement par boutons haut/bas
+
+**`src/pages/AdminPanel.tsx`** : Ajout onglet "Inventaire" (icône `Package`) dans le TabsList, visible pour admin/conducteur (pas gestionnaire).
+
+---
+
+### Phase 5 — Interface Conducteur : Dashboard consolidation
+
+**`src/components/conducteur/InventoryDashboard.tsx`**
+
+- Liste des chantiers actifs avec badge statut (Aucun / Brouillon / Transmis)
+- Pastille orange si total ≠ previous_total, rouge si baisse > 10%
+- Click → dialog `InventoryReportDetail` avec lignes + photos inline
+
+**`src/components/inventory/InventoryReportDetail.tsx`** : Dialog détail d'un rapport (lecture seule pour conducteur).
+
+**`src/pages/ValidationConducteur.tsx`** : Ajout onglet "Inventaire" conditionnel.
+
+---
+
+### Phase 6 — Interface Chef : Saisie mobile-first
+
+**`src/components/chantier/tabs/ChantierInventaireTab.tsx`**
+
+- Logique d'initialisation :
+  1. Rapport du mois courant existe → charger
+  2. Sinon rapport mois-1 → pré-remplir `previous_total` avec `total` du mois-1
+  3. Sinon → charger templates vides
+- Bouton **"Copier les quantités du mois dernier"** : remplit `quantity_good` avec `previous_total` pour chaque ligne
+- Accordéon par catégorie
+- Pour chaque article : `InventoryItemRow`
+
+**`src/components/inventory/InventoryItemRow.tsx`**
+
+- 3 champs stepper (Bon / À réparer / Cassé) avec gros boutons +/- mobile-first
+- Total auto-calculé affiché
+- Indicateurs d'écart vs `previous_total` :
+  - Pastille **orange** si total ≠ previous_total
+  - Pastille **rouge** si baisse > 10%
+  - Tooltip affichant "Mois précédent : X"
+- Bouton "Photo" visible si `quantity_repair > 0 || quantity_broken > 0`
+- Upload photo (caméra/fichier) via `useInventoryPhotos`
+- Miniatures des photos existantes avec suppression
+
+**Signature & envoi** :
+- Bouton "Sauvegarder brouillon" (sauvegarde les items sans changer le statut)
+- Bouton "Transmettre" → ouvre `SignaturePad` (composant existant réutilisé) → signature_data + statut TRANSMIS + transmitted_at
+- Après transmission : formulaire passe en lecture seule pour le chef
+
+**`src/pages/ChantierDetail.tsx`** : Ajout onglet "Inventaire" (icône `Package`), visible si feature `inventaireChantier` activée. readOnly pour conducteurs (consultation), éditable pour chefs.
+
+---
+
+### Fichiers créés (10)
+
+| Fichier | Description |
+|---|---|
+| `supabase/migrations/20260401_inventory_tables.sql` | Tables, RLS, bucket, triggers |
+| `src/hooks/useInventoryTemplates.ts` | CRUD templates |
+| `src/hooks/useInventoryReports.ts` | CRUD rapports + fetch mois-1 |
+| `src/hooks/useInventoryItems.ts` | CRUD lignes inventaire |
+| `src/hooks/useInventoryPhotos.ts` | Upload/delete photos storage |
+| `src/components/admin/InventoryTemplatesManager.tsx` | Paramétrage templates |
+| `src/components/conducteur/InventoryDashboard.tsx` | Dashboard consolidation |
+| `src/components/inventory/InventoryReportDetail.tsx` | Dialog détail rapport |
+| `src/components/inventory/InventoryItemRow.tsx` | Ligne stepper mobile-first |
+| `src/components/chantier/tabs/ChantierInventaireTab.tsx` | Tab saisie chef |
+
+### Fichiers modifiés (4)
 
 | Fichier | Changement |
 |---|---|
-| Nouvelle migration SQL | Suppression ciblée des 12 lignes parasites par IDs exacts |
+| `src/config/enterprises/types.ts` | Ajout `inventaireChantier` dans features + default |
+| `src/pages/ChantierDetail.tsx` | Ajout onglet Inventaire conditionnel |
+| `src/pages/AdminPanel.tsx` | Ajout onglet Inventaire templates |
+| `src/pages/ValidationConducteur.tsx` | Ajout onglet dashboard inventaire |
 
-### Résultat
-Le badge "absence à qualifier" disparaîtra pour GUNDUZ Erdal.
+### Risque de régression
+
+| Risque | Mitigation |
+|---|---|
+| ChantierDetail | Ajout conditionnel d'un onglet, zéro modification du code existant |
+| AdminPanel / ValidationConducteur | Même pattern que tous les onglets existants |
+| Tables existantes | Aucune modification, 3 nouvelles tables isolées |
+| RLS | Copie exacte du pattern `get_selected_entreprise_id()` |
+| Storage | Nouveau bucket isolé, aucun impact sur `chantier-documents` |
 
