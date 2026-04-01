@@ -271,7 +271,7 @@ const InventaireRecap = () => {
 
     // Data rows
     let currentRow = headerRowNum + 1;
-    const totalStartColData = 3 + chantierIds.length * 3;
+    const totalStartColData = 3 + chantierIds.length * 4;
 
     categories.forEach(cat => {
       const catItems = matrixItems.filter(i => i.categorie === cat);
