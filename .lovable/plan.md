@@ -1,28 +1,39 @@
 
 
-## Retirer le placeholder "à vérifier"
+## Rendre le champ notes visible quand il est vide
 
-### Objectif
+### Probleme
 
-Ne rien afficher quand il n'y a pas de note, au lieu d'afficher "à vérifier" par défaut. Le champ reste cliquable pour ajouter une note si besoin.
+Le champ notes affiche `""` quand il n'y a rien, ce qui rend le `div` invisible et donc impossible a cliquer.
 
-### Fichier modifié
+### Solution
+
+Quand `t.notes` est vide, afficher un petit texte discret comme une icone crayon ou "+" pour indiquer qu'on peut ajouter une note, sans ecrire "a verifier". Par exemple : une petite icone `Pencil` de 3x3 qui apparait au hover de la ligne, ou un texte minimal `"+ note"` en gris clair.
+
+### Fichier modifie
 
 `src/components/admin/InventoryTemplatesManager.tsx`
 
-### Changement
+### Changement (ligne 385)
 
-**Ligne 380-386** : Afficher la note seulement si elle existe, sinon afficher un petit lien discret "Ajouter une note" (ou juste une zone cliquable vide avec une icône crayon au hover) :
-
-```text
-Avant :  {t.notes || "à vérifier"}
-
-Après :  {t.notes || ""}
+Remplacer :
+```tsx
+{t.notes || ""}
 ```
 
-Le `div` reste cliquable pour permettre l'ajout d'une note, mais n'affiche plus de texte par défaut. On garde le style `cursor-pointer hover:text-primary` pour que l'utilisateur puisse cliquer dessus si besoin.
+Par :
+```tsx
+{t.notes || <span className="opacity-0 group-hover/row:opacity-50 transition-opacity">+ note</span>}
+```
+
+Et ajouter `group/row` sur le `TableRow` parent (ligne ~342) pour que le texte "+ note" n'apparaisse qu'au survol de la ligne.
+
+Alternativement, si on veut quelque chose de toujours visible mais discret, on peut utiliser une petite icone `Pencil` en `opacity-30` :
+```tsx
+{t.notes || <Pencil className="h-3 w-3 opacity-30" />}
+```
 
 ### Risque
 
-Aucun — changement cosmétique d'une seule ligne.
+Aucun — changement cosmétique d'une ligne.
 
