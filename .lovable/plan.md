@@ -1,13 +1,22 @@
 
+## Correction demandée (comprise)
 
-## Fixer les boutons "Sauvegarder brouillon" et "Transmettre" en bas de l'écran
+Tu veux que les 2 boutons **ne soient plus sticky/fixed** et qu’ils soient **collés à la fin du formulaire** (juste après la dernière section), sans superposition sur le contenu.
 
-### Changement
+## Plan de modification
 
-**`src/components/chantier/tabs/ChantierInventaireTab.tsx`** — ligne 235 :
+1. **`src/components/chantier/tabs/ChantierInventaireTab.tsx`**
+   - Remplacer la classe du conteneur boutons :
+   - **Avant** : `flex gap-3 sticky bottom-4`
+   - **Après** : `flex gap-3` (éventuellement `mt-2` si besoin d’un léger espace)
+2. **Conserver** les styles actuels des 2 boutons (taille, couleurs, disabled, actions) sans autre changement.
+3. **Vérification UI**
+   - Dans la sheet inventaire, en scroll milieu de formulaire : les boutons ne doivent plus rester collés à l’écran.
+   - En bas du formulaire : les boutons doivent apparaître immédiatement après le dernier bloc, sans chevaucher le contenu.
 
-Remplacer `sticky bottom-4` par `fixed bottom-0 left-0 right-0` avec un padding et un fond pour que les boutons restent toujours visibles en bas de l'écran, même en scrollant. Ajouter un `pb-20` sur le conteneur parent pour éviter que le contenu soit masqué par les boutons.
+## Détails techniques
 
-- Le `div` des boutons : `fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t`
-- Le conteneur parent (`div.space-y-4`) : ajouter `pb-20` quand `isEditable` pour compenser la hauteur fixe
+- Le problème vient uniquement de `sticky bottom-4` qui ancre visuellement le bandeau pendant le scroll.
+- Le comportement attendu est un flux normal du DOM (position statique), donc suppression de `sticky`.
+- Aucun impact logique (save/transmit) : uniquement un ajustement de positionnement CSS.
 
