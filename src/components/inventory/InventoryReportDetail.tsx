@@ -83,7 +83,7 @@ export const InventoryReportDetail = ({
                               key={idx}
                               src={url}
                               alt=""
-                              className="h-16 w-16 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                              className="h-10 w-10 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => setSelectedPhoto(url)}
                             />
                           ))}
