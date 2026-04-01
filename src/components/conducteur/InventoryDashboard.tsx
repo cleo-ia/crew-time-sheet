@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { CheckCircle2, FileText, Package, Settings, BarChart3 } from "lucide-react";
+import { CheckCircle2, FileText, Package, FilePlus, BarChart3 } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { InventoryReportDetail } from "@/components/inventory/InventoryReportDetail";
