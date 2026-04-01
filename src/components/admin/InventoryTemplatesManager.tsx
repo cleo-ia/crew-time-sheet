@@ -155,6 +155,9 @@ export const InventoryTemplatesManager = () => {
   const [selectedMaterials, setSelectedMaterials] = useState<{ designation: string; unite: string }[]>([]);
   const [materialSearch, setMaterialSearch] = useState("");
 
+  // Inline editing state
+  const [editingItem, setEditingItem] = useState<{ id: string; field: "designation" | "notes"; value: string } | null>(null);
+
   // Group by category
   const grouped = templates.reduce<Record<string, typeof templates>>((acc, t) => {
     if (!acc[t.categorie]) acc[t.categorie] = [];
