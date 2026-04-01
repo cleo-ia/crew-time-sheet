@@ -243,6 +243,13 @@ const InventaireRecap = () => {
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = getBorders(totalStartCol + si);
     });
+    // "Total" column header
+    const totalColCell = headerRow.getCell(totalStartCol + 3);
+    totalColCell.value = "Total";
+    totalColCell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+    totalColCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalColCell.alignment = { horizontal: "center", vertical: "middle" };
+    totalColCell.border = getBorders(totalStartCol + 3);
     // Designation + Unite headers
     for (let c = 1; c <= 2; c++) {
       const cell = headerRow.getCell(c);
