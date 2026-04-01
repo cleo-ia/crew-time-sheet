@@ -1,28 +1,16 @@
 
 
-## Rendre le bouton Photo plus discret dans InventoryItemRow
+## Auto-sélection du champ quantité au focus
 
-### Changement
+### Problème
 
-Dans `src/components/inventory/InventoryItemRow.tsx` : remplacer le bouton "Photo" pleine largeur par une petite icône caméra discrète, alignée à droite ou à côté du stepper, sans texte "Photo" ni largeur `w-full`.
+Quand le chef tape sur le champ "0", le curseur se place après le 0 — il doit d'abord effacer manuellement avant de saisir sa valeur.
 
-### Détail technique
+### Solution
 
-- Remplacer `<Button variant="outline" size="sm" className="w-full">` par un petit bouton icône (`size="icon"`, `variant="ghost"`) avec juste l'icône Camera
-- Placer ce bouton sur la même ligne que le nom du matériel et le stepper, à droite
-- Les photos uploadées restent affichées en miniatures en dessous
+Ajouter `onFocus={(e) => e.target.select()}` sur l'input quantité dans `src/components/inventory/InventoryItemRow.tsx`. Cela sélectionne automatiquement le contenu au tap, donc la saisie remplace directement le "0".
 
-### Résultat visuel
+### Fichier modifié
 
-```text
-Avant :
-  Masque respiratoire (FFP3)  (Boîte)    — 0 +
-  [        📷 Photo (pleine largeur)        ]
-
-Après :
-  Masque respiratoire (FFP3)  (Boîte)    📷  — 0 +
-```
-
-### Risque
-Aucun — changement purement visuel.
+**`src/components/inventory/InventoryItemRow.tsx`** — ajouter `onFocus` sur l'input number existant.
 
