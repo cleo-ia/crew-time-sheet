@@ -208,7 +208,7 @@ const InventaireRecap = () => {
     totalGroupCell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
     totalGroupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
     totalGroupCell.alignment = { horizontal: "center", vertical: "middle" };
-    totalGroupCell.border = borders;
+    totalGroupCell.border = getBorders(totalStartCol);
     // Style empty cells in group row
     for (let c = 1; c <= 2; c++) {
       const cell = groupRow.getCell(c);
