@@ -1,39 +1,44 @@
 
 
-## Rendre le champ notes visible quand il est vide
+## Passer l'inventaire en "one-shot" (un seul par chantier)
 
-### Probleme
+### Contexte
 
-Le champ notes affiche `""` quand il n'y a rien, ce qui rend le `div` invisible et donc impossible a cliquer.
+Actuellement le système crée un rapport par chantier **par mois** (`mois` = "yyyy-MM"). L'utilisateur veut un seul inventaire par chantier, sans notion mensuelle.
 
-### Solution
+### Changements
 
-Quand `t.notes` est vide, afficher un petit texte discret comme une icone crayon ou "+" pour indiquer qu'on peut ajouter une note, sans ecrire "a verifier". Par exemple : une petite icone `Pencil` de 3x3 qui apparait au hover de la ligne, ou un texte minimal `"+ note"` en gris clair.
+**1. Hook `useInventoryReports.ts`**
+- `useInventoryReport(chantierId)` : retirer le filtre `.eq("mois", mois)`, chercher simplement le rapport du chantier (le dernier ou unique)
+- Supprimer `useInventoryReportPreviousMonth` (plus de mois-1)
+- `useCreateInventoryReport` : passer un mois fixe genre `"UNIQUE"` ou la date du jour (peu importe, le champ existe en base)
+- `useInventoryReportsAll` : inchangé
 
-### Fichier modifie
+**2. Composant `ChantierInventaireTab.tsx`**
+- Retirer `currentMois`, `previousMois`, `subMonths`, `previousReport`, `previousItems`, `previousTotalsMap`
+- Retirer le bouton "Copier mois-1"
+- Retirer `previous_total` du `LocalItem`
+- Simplifier l'en-tête : "Inventaire" au lieu de "Inventaire — 2026-04"
+- Le query `useInventoryReport(chantierId)` sans mois
 
-`src/components/admin/InventoryTemplatesManager.tsx`
+**3. Composant `InventoryDashboard.tsx`**
+- Retirer le filtre `currentMois` sur les rapports
+- Afficher simplement le statut du rapport unique de chaque chantier
+- En-tête : "Inventaires" au lieu de "Inventaires — 2026-04"
 
-### Changement (ligne 385)
+**4. Composant `InventoryReportDetail.tsx`**
+- Retirer la référence au mois dans l'affichage si elle existe
 
-Remplacer :
-```tsx
-{t.notes || ""}
-```
+**5. Hook `useInventoryItems.ts`** et `InventoryItemRow.tsx`
+- Retirer `previous_total` / `previousTotal` des props si utilisé
 
-Par :
-```tsx
-{t.notes || <span className="opacity-0 group-hover/row:opacity-50 transition-opacity">+ note</span>}
-```
-
-Et ajouter `group/row` sur le `TableRow` parent (ligne ~342) pour que le texte "+ note" n'apparaisse qu'au survol de la ligne.
-
-Alternativement, si on veut quelque chose de toujours visible mais discret, on peut utiliser une petite icone `Pencil` en `opacity-30` :
-```tsx
-{t.notes || <Pencil className="h-3 w-3 opacity-30" />}
-```
+### Ce qui ne change PAS
+- La table `inventory_reports` en base (la colonne `mois` reste, on mettra une valeur fixe)
+- Pas de migration SQL nécessaire
+- Le flux saisie → brouillon → signature → transmis reste identique
+- Les photos, templates, le paramétrage : inchangés
 
 ### Risque
 
-Aucun — changement cosmétique d'une ligne.
+Faible — on simplifie en retirant de la logique. Si plus tard on veut revenir au mensuel, on réactivera le filtre `mois`.
 
