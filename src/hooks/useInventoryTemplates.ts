@@ -15,16 +15,22 @@ export interface InventoryTemplate {
 }
 
 export function useInventoryTemplates() {
+  const entrepriseId = localStorage.getItem("current_entreprise_id");
+
   return useQuery({
-    queryKey: ["inventory-templates"],
+    queryKey: ["inventory-templates", entrepriseId],
     queryFn: async () => {
+      if (!entrepriseId) return [] as InventoryTemplate[];
+
       const { data, error } = await supabase
         .from("inventory_templates")
         .select("*")
+        .eq("entreprise_id", entrepriseId)
         .order("categorie", { ascending: true })
         .order("ordre", { ascending: true });
 
       if (error) throw error;
+      console.log("Templates chargés :", data);
       return data as InventoryTemplate[];
     },
   });
