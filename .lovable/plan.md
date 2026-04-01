@@ -1,29 +1,28 @@
 
 
-## Simplifier le formulaire inventaire chef : une seule quantité
+## Rendre le bouton Photo plus discret dans InventoryItemRow
 
-### Objectif
+### Changement
 
-Remplacer les 3 steppers (Bon, À réparer, Cassé) par un unique stepper de quantité par article.
+Dans `src/components/inventory/InventoryItemRow.tsx` : remplacer le bouton "Photo" pleine largeur par une petite icône caméra discrète, alignée à droite ou à côté du stepper, sans texte "Photo" ni largeur `w-full`.
 
-### Fichier modifié
+### Détail technique
 
-**`src/components/inventory/InventoryItemRow.tsx`**
-- Retirer les 3 `Stepper` (Bon, À réparer, Cassé)
-- Afficher un seul stepper "Quantité" au centre
-- L'interface `onQuantityChange` enverra la valeur dans `quantity_good` (on garde le même champ DB, les deux autres restent à 0)
-- Retirer la logique `showPhotoButton` liée à `quantityRepair > 0 || quantityBroken > 0` — les photos restent optionnelles indépendamment
+- Remplacer `<Button variant="outline" size="sm" className="w-full">` par un petit bouton icône (`size="icon"`, `variant="ghost"`) avec juste l'icône Camera
+- Placer ce bouton sur la même ligne que le nom du matériel et le stepper, à droite
+- Les photos uploadées restent affichées en miniatures en dessous
 
-**`src/components/chantier/tabs/ChantierInventaireTab.tsx`**
-- Le `handleQuantityChange` continuera de fonctionner, le chef ne touchera que `quantity_good`
-- Les champs `quantity_repair` et `quantity_broken` resteront à 0 par défaut
+### Résultat visuel
 
-### Ce qui ne change PAS
-- La base de données (les colonnes restent)
-- Le hook `useInventoryItems` / `useUpsertInventoryItems`
-- La vue côté conducteur (`InventoryReportDetail`) qui affiche le résultat
+```text
+Avant :
+  Masque respiratoire (FFP3)  (Boîte)    — 0 +
+  [        📷 Photo (pleine largeur)        ]
+
+Après :
+  Masque respiratoire (FFP3)  (Boîte)    📷  — 0 +
+```
 
 ### Risque
-
-Aucun — simplification UI uniquement.
+Aucun — changement purement visuel.
 
