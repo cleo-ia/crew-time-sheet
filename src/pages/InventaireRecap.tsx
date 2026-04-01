@@ -138,7 +138,21 @@ const InventaireRecap = () => {
     const orangeLight = "FFFEF3E2";
     const grayLight = "FFF5F5F5";
     const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
+    const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
+
+    // Columns that get a thick left border (first col of each chantier group + totaux)
+    const thickLeftCols = new Set<number>();
+    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
+    const totalStartCol = 3 + chantierIds.length * 3;
+    thickLeftCols.add(totalStartCol);
+
+    const getBorders = (col: number) => {
+      if (thickLeftCols.has(col)) {
+        return { ...borders, left: borderThick };
+      }
+      return borders;
+    };
 
     const nbCols = 2 + chantierIds.length * 3 + 3; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken
 
