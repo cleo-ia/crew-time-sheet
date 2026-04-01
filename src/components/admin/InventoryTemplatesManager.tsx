@@ -308,65 +308,18 @@ export const InventoryTemplatesManager = () => {
                 </div>
               )}
 
-              {/* Add material: toggle between button and inline form */}
-              {openAddForm === cat ? (
-                <div className="px-4 py-3 border-t bg-muted/30 flex flex-wrap gap-2 items-end">
-                  <Input
-                    placeholder="Ex: Perceuse 18V"
-                    value={addDesignation[cat] || ""}
-                    onChange={e => setAddDesignation(prev => ({ ...prev, [cat]: e.target.value }))}
-                    className="w-48 h-9"
-                    onKeyDown={e => { if (e.key === "Enter") handleAddItem(cat); }}
-                    autoFocus
-                  />
-                  <Select
-                    value={addUnite[cat] || "U"}
-                    onValueChange={v => setAddUnite(prev => ({ ...prev, [cat]: v }))}
-                  >
-                    <SelectTrigger className="w-24 h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNIT_OPTIONS.map(u => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleAddItem(cat)}
-                    disabled={createTemplate.isPending || !(addDesignation[cat] || "").trim()}
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1" />
-                    Valider
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => { setOpenAddForm(null); setAddDesignation(prev => ({ ...prev, [cat]: "" })); }}
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              ) : (
-                <div className="px-4 py-3 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary"
-                    onClick={() => setOpenAddForm(cat)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Ajouter un matériel
-                  </Button>
-                </div>
-              )}
-            </Card>
-          );
-        })
-      )}
-
+              {/* Add material button */}
+              <div className="px-4 py-3 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => { setShowAddMaterialDialog(cat); setSelectedMaterials([]); setMaterialSearch(""); }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un matériel
+                </Button>
+              </div>
       {/* New category dialog with smart Combobox */}
       <Dialog open={showNewCatDialog} onOpenChange={(open) => { setShowNewCatDialog(open); if (!open) { setSelectedCategories([]); setCatSearch(""); } }}>
         <DialogContent className="sm:max-w-md">
