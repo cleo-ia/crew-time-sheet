@@ -10,6 +10,7 @@ import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { useEnterpriseConfig } from "@/hooks/useEnterpriseConfig";
 
 interface ConsolidatedItem {
   categorie: string;
