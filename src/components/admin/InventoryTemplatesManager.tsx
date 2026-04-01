@@ -24,7 +24,71 @@ const DEFAULT_CATEGORIES = [
   "Vêtements de travail",
 ];
 
-const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L"];
+const UNIT_OPTIONS = ["U", "Paire", "Ens", "m", "m²", "Kg", "L", "Boîte", "Lot", "Rouleau"];
+
+const DEFAULT_MATERIALS: Record<string, { designation: string; unite: string }[]> = {
+  "Consommables": [
+    { designation: "Disques à tronçonner (Acier/Inox)", unite: "Boîte" },
+    { designation: "Mastic silicone (Cartouche)", unite: "U" },
+    { designation: "Vis bois (Boîte)", unite: "Boîte" },
+    { designation: "Forets béton SDS", unite: "Lot" },
+    { designation: "Ruban de masquage", unite: "Rouleau" },
+  ],
+  "Electricité & Éclairage": [
+    { designation: "Projecteur LED de chantier", unite: "U" },
+    { designation: "Enrouleur électrique", unite: "U" },
+    { designation: "Câble électrique (Couronne)", unite: "Rouleau" },
+    { designation: "Coffret électrique de chantier", unite: "U" },
+  ],
+  "Électroportatif": [
+    { designation: "Perceuse à percussion sans fil", unite: "U" },
+    { designation: "Meuleuse d'angle", unite: "U" },
+    { designation: "Perforateur Burineur SDS", unite: "U" },
+    { designation: "Scie circulaire", unite: "U" },
+  ],
+  "Engins & Gros Matériel": [
+    { designation: "Mini-pelle", unite: "U" },
+    { designation: "Plaque vibrante", unite: "U" },
+    { designation: "Bétonnière", unite: "U" },
+    { designation: "Compresseur d'air", unite: "U" },
+  ],
+  "EPI & Sécurité": [
+    { designation: "Casque de chantier", unite: "U" },
+    { designation: "Gants de manutention", unite: "Paire" },
+    { designation: "Lunettes de protection", unite: "U" },
+    { designation: "Bouchons d'oreilles", unite: "Boîte" },
+  ],
+  "Gros Œuvre": [
+    { designation: "Étais de maçon", unite: "U" },
+    { designation: "Brouette de chantier", unite: "U" },
+    { designation: "Treillis soudé (Panneau)", unite: "U" },
+    { designation: "Bastaing bois", unite: "U" },
+  ],
+  "Manutention & Levage": [
+    { designation: "Transpalette manuel", unite: "U" },
+    { designation: "Sangle de levage", unite: "U" },
+    { designation: "Palan à chaîne", unite: "U" },
+    { designation: "Diable de manutention", unite: "U" },
+  ],
+  "Petit Outillage": [
+    { designation: "Niveau à bulle", unite: "U" },
+    { designation: "Marteau de coffreur", unite: "U" },
+    { designation: "Jeu de tournevis", unite: "Lot" },
+    { designation: "Mètre ruban", unite: "U" },
+  ],
+  "Signalisation & Balisage": [
+    { designation: "Cône de signalisation", unite: "U" },
+    { designation: "Ruban de signalisation", unite: "Rouleau" },
+    { designation: "Panneau de chantier", unite: "U" },
+    { designation: "Barrière de chantier", unite: "U" },
+  ],
+  "Vêtements de travail": [
+    { designation: "Pantalon de travail", unite: "U" },
+    { designation: "Gilet haute visibilité", unite: "U" },
+    { designation: "Chaussures de sécurité", unite: "Paire" },
+    { designation: "Veste de travail", unite: "U" },
+  ],
+};
 
 export const InventoryTemplatesManager = () => {
   const { data: templates = [], isLoading } = useInventoryTemplates();
