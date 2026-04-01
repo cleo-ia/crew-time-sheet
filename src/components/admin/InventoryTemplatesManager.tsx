@@ -96,7 +96,8 @@ export const InventoryTemplatesManager = () => {
     }, {
       onSuccess: () => {
         setAddDesignation(prev => ({ ...prev, [cat]: "" }));
-        // Remove from virtual if it was there
+        setAddUnite(prev => ({ ...prev, [cat]: "U" }));
+        setOpenAddForm(null);
         setVirtualCategories(prev => prev.filter(c => c !== cat));
       }
     });
