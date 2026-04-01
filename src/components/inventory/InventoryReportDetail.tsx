@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +17,7 @@ export const InventoryReportDetail = ({
   chantierNom,
 }: InventoryReportDetailProps) => {
   const { data: items = [], isLoading } = useInventoryItems(reportId ?? undefined);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Group by category
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
@@ -55,7 +57,13 @@ export const InventoryReportDetail = ({
                       {item.photos && item.photos.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {item.photos.map((url, idx) => (
-                            <img key={idx} src={url} alt="" className="h-16 w-16 object-cover rounded-md border" />
+                            <img
+                              key={idx}
+                              src={url}
+                              alt=""
+                              className="h-16 w-16 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setSelectedPhoto(url)}
+                            />
                           ))}
                         </div>
                       )}
@@ -67,6 +75,18 @@ export const InventoryReportDetail = ({
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
+          {selectedPhoto && (
+            <img
+              src={selectedPhoto}
+              alt=""
+              className="w-full h-full max-h-[80vh] object-contain rounded-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
