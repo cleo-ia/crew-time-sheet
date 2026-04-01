@@ -185,7 +185,7 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${isEditable ? "pb-20" : ""}`}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -232,7 +232,7 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
 
       {/* Action buttons */}
       {isEditable && (
-        <div className="flex gap-3 sticky bottom-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t flex gap-3">
           <Button
             variant="outline"
             className="flex-1"
