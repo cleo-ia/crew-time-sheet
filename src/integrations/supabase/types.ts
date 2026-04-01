@@ -1717,6 +1717,7 @@ export type Database = {
           designation: string
           entreprise_id: string
           id: string
+          notes: string | null
           ordre: number
           unite: string
           updated_at: string
@@ -1728,6 +1729,7 @@ export type Database = {
           designation: string
           entreprise_id: string
           id?: string
+          notes?: string | null
           ordre?: number
           unite?: string
           updated_at?: string
@@ -1739,6 +1741,7 @@ export type Database = {
           designation?: string
           entreprise_id?: string
           id?: string
+          notes?: string | null
           ordre?: number
           unite?: string
           updated_at?: string

@@ -9,6 +9,7 @@ export interface InventoryTemplate {
   designation: string;
   unite: string;
   ordre: number;
+  notes: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -77,7 +78,7 @@ export function useUpdateInventoryTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; categorie?: string; designation?: string; unite?: string; ordre?: number }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; categorie?: string; designation?: string; unite?: string; ordre?: number; notes?: string }) => {
       const { error } = await supabase
         .from("inventory_templates")
         .update(updates)

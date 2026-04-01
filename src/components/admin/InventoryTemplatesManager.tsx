@@ -155,6 +155,9 @@ export const InventoryTemplatesManager = () => {
   const [selectedMaterials, setSelectedMaterials] = useState<{ designation: string; unite: string }[]>([]);
   const [materialSearch, setMaterialSearch] = useState("");
 
+  // Inline editing state
+  const [editingItem, setEditingItem] = useState<{ id: string; field: "designation" | "notes"; value: string } | null>(null);
+
   // Group by category
   const grouped = templates.reduce<Record<string, typeof templates>>((acc, t) => {
     if (!acc[t.categorie]) acc[t.categorie] = [];
@@ -325,7 +328,66 @@ export const InventoryTemplatesManager = () => {
                   <TableBody>
                     {items.map((t, idx) => (
                       <TableRow key={t.id}>
-                        <TableCell className="font-medium">{t.designation}</TableCell>
+                        <TableCell className="font-medium">
+                          {editingItem?.id === t.id && editingItem.field === "designation" ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                className="h-7 text-sm"
+                                value={editingItem.value}
+                                onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { updateTemplate.mutate({ id: t.id, designation: editingItem.value }); setEditingItem(null); }
+                                  if (e.key === "Escape") setEditingItem(null);
+                                }}
+                                autoFocus
+                              />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => { updateTemplate.mutate({ id: t.id, designation: editingItem.value }); setEditingItem(null); }}>
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingItem(null)}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div>
+                              <div
+                                className="cursor-pointer hover:text-primary group flex items-center gap-1"
+                                onClick={() => setEditingItem({ id: t.id, field: "designation", value: t.designation })}
+                              >
+                                {t.designation}
+                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                              </div>
+                              {editingItem?.id === t.id && editingItem.field === "notes" ? (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Input
+                                    className="h-6 text-xs"
+                                    value={editingItem.value}
+                                    onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") { updateTemplate.mutate({ id: t.id, notes: editingItem.value || undefined }); setEditingItem(null); }
+                                      if (e.key === "Escape") setEditingItem(null);
+                                    }}
+                                    placeholder="Précision, modèle…"
+                                    autoFocus
+                                  />
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => { updateTemplate.mutate({ id: t.id, notes: editingItem.value || undefined }); setEditingItem(null); }}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingItem(null)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div
+                                  className="text-xs text-muted-foreground italic cursor-pointer hover:text-primary mt-0.5"
+                                  onClick={() => setEditingItem({ id: t.id, field: "notes", value: t.notes ?? "" })}
+                                >
+                                  {t.notes || "à vérifier"}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="w-28">
                           <Select value={t.unite} onValueChange={(v) => updateTemplate.mutate({ id: t.id, unite: v })}>
                             <SelectTrigger className="h-7 text-xs border-none shadow-none">
