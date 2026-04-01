@@ -578,7 +578,7 @@ const InventaireRecap = () => {
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-emerald-600 dark:text-emerald-400 font-medium">{item.totalGood || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-orange-600 dark:text-orange-400 font-medium">{item.totalRepair || "—"}</td>
-                          <td className="border border-border px-3 py-1.5 text-center text-red-600 dark:text-red-400 font-medium">{item.totalBroken || "—"}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-orange-700 dark:text-orange-300 font-medium" style={{ backgroundColor: "rgba(251, 191, 36, 0.08)" }}>{item.totalBroken || "—"}</td>
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
