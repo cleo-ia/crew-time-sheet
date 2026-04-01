@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CheckCircle2, FileText, Package } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Package, Settings } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
 import { useChantiers } from "@/hooks/useChantiers";
@@ -10,6 +12,7 @@ import { InventoryReportDetail } from "@/components/inventory/InventoryReportDet
 import { format } from "date-fns";
 
 export const InventoryDashboard = () => {
+  const navigate = useNavigate();
   const currentMois = format(new Date(), "yyyy-MM");
   const { data: reports = [], isLoading: isLoadingReports } = useInventoryReportsAll();
   const { data: chantiers = [], isLoading: isLoadingChantiers } = useChantiers();
@@ -38,14 +41,20 @@ export const InventoryDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Inventaires — {currentMois}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          État des inventaires mensuels par chantier actif.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Inventaires — {currentMois}
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            État des inventaires mensuels par chantier actif.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/inventaire-parametrage")}>
+          <Settings className="h-4 w-4 mr-2" />
+          Paramétrer
+        </Button>
       </div>
 
       <div className="grid gap-3">
