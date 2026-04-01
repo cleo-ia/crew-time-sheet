@@ -1,50 +1,54 @@
 
 
-## Ajouter un onglet "Consolidé" au dashboard inventaire conducteur
+## Retirer l'onglet Consolidé et ajouter un bouton "Récap global"
 
 ### Objectif
 
-Ajouter un système d'onglets en haut de la vue inventaire conducteur : "Par chantier" (vue actuelle) et "Consolidé" (nouvelle vue qui agrège tous les articles de tous les chantiers transmis en une seule liste).
+Retirer les onglets "Par chantier / Consolidé" du dashboard inventaire. Ajouter un gros bouton bien visible entre le header "Inventaires" et la liste des chantiers. Ce bouton ouvre un Sheet/Dialog avec une vue consolidée : totaux de quantité par matériel, agrégés tous chantiers confondus.
 
-### Changements
+### Changements (1 fichier)
 
 **`src/components/conducteur/InventoryDashboard.tsx`**
-- Ajouter un état `activeTab` ("chantiers" | "consolide")
-- Envelopper le contenu dans un composant `Tabs` (shadcn)
-- Onglet "Par chantier" : contenu actuel inchangé
-- Onglet "Consolidé" : nouveau composant inline ou extrait
 
-**Nouveau composant ou section "Consolidé"**
-- Charger tous les reports transmis via `useInventoryReportsAll()`
-- Pour chaque report transmis, charger les items → nécessite un nouveau hook `useInventoryItemsAll` qui récupère tous les `inventory_items` des reports transmis en une seule requête
-- Afficher groupé par chantier (nom + code), puis par catégorie, avec chaque article et sa quantité
-- Inclure les photos cliquables (réutiliser la même logique que `InventoryReportDetail`)
-- Badge "Transmis" / "Brouillon" / "Aucun" visible par chantier
-
-**`src/hooks/useInventoryItems.ts`**
-- Ajouter `useInventoryItemsByReportIds(reportIds: string[])` : une requête `inventory_items` filtrée par `.in("report_id", reportIds)` pour charger tous les items en une seule requête
+1. **Retirer le système `Tabs`** — supprimer `TabsList`, `TabsTrigger`, `TabsContent`, revenir à la liste de chantiers directement
+2. **Ajouter un gros bouton** entre le header et la liste, style `bg-primary text-white` pleine largeur avec icône Package, texte "Récap global inventaires"
+3. **Ajouter un état `showConsolide`** (`useState<boolean>(false)`)
+4. **Ajouter un Sheet** qui s'ouvre au clic sur le bouton, contenant la vue consolidée :
+   - Agréger tous les `inventory_items` de tous les reports transmis
+   - Grouper par **catégorie** puis par **désignation + unité**
+   - Pour chaque matériel : afficher le **total cumulé** de `quantity_good` tous chantiers confondus
+   - Afficher aussi le détail par chantier en sous-ligne (quel chantier a quelle quantité)
+   - Photos cliquables en plein écran (réutiliser la logique existante)
 
 ### Résultat visuel
 
 ```text
-[ Par chantier ]  [ Consolidé ]
+  Inventaires                      [Paramétrer]
 
-── Vue Consolidé ──
+  ┌──────────────────────────────────────────┐
+  │  📦  Récap global inventaires            │
+  └──────────────────────────────────────────┘
 
-▸ CX2CB 2CB-Atelier                    ✅ Transmis
+  [ Liste des chantiers actifs ... ]
+```
+
+Au clic sur le bouton → Sheet latéral :
+
+```text
+  Récap global inventaires
+  ─────────────────────────
   ── EPI ──
-    Masque FFP3 (Boîte)                Qté: 14
-    Gants nitrile (Boîte)              Qté: 8
+    Masque FFP3 (Boîte)          Total: 47
+      • 2CB-Atelier: 14
+      • BECHEVELIN: 33
+    Gants nitrile (Boîte)        Total: 22
+      • 2CB-Atelier: 8
+      • AMBERIEU: 14
   ── Outillage ──
-    Marteau (U)                        Qté: 3
-
-▸ CU847 AMBERIEU                       ⚪ Aucun
-
-▸ CI875 BECHEVELIN                     ✅ Transmis
-  ── EPI ──
-    ...
+    Marteau (U)                  Total: 7
+      ...
 ```
 
 ### Risque
-Aucun — ajout d'une vue lecture seule, pas de modification de données.
+Aucun — vue lecture seule, données déjà chargées via le hook existant `useInventoryItemsByReportIds`.
 
