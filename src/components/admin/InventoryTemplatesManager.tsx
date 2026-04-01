@@ -47,6 +47,7 @@ export const InventoryTemplatesManager = () => {
   // Per-category inline add state
   const [addDesignation, setAddDesignation] = useState<Record<string, string>>({});
   const [addUnite, setAddUnite] = useState<Record<string, string>>({});
+  const [openAddForm, setOpenAddForm] = useState<string | null>(null);
 
   // Group by category
   const grouped = templates.reduce<Record<string, typeof templates>>((acc, t) => {
