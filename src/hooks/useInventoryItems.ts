@@ -79,34 +79,21 @@ export function useUpsertInventoryItems() {
         photos: string[];
       }>;
     }) => {
-      // Delete existing items for this report then reinsert
-      const { error: deleteError } = await supabase
-        .from("inventory_items")
-        .delete()
-        .eq("report_id", reportId);
-
-      if (deleteError) throw deleteError;
-
-      if (items.length === 0) return;
-
-      const rows = items.map(item => ({
-        report_id: reportId,
-        template_id: item.template_id || null,
-        categorie: item.categorie,
-        designation: item.designation,
-        unite: item.unite,
-        quantity_good: item.quantity_good,
-        quantity_repair: item.quantity_repair,
-        quantity_broken: item.quantity_broken,
-        previous_total: item.previous_total,
-        photos: item.photos,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("inventory_items")
-        .insert(rows);
-
-      if (insertError) throw insertError;
+      const { error } = await supabase.rpc("upsert_inventory_items", {
+        p_report_id: reportId,
+        p_items: items.map(item => ({
+          template_id: item.template_id || null,
+          categorie: item.categorie,
+          designation: item.designation,
+          unite: item.unite,
+          quantity_good: item.quantity_good,
+          quantity_repair: item.quantity_repair,
+          quantity_broken: item.quantity_broken,
+          previous_total: item.previous_total,
+          photos: item.photos,
+        })),
+      });
+      if (error) throw error;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["inventory-items", variables.reportId] });
