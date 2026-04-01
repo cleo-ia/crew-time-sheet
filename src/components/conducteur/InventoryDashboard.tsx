@@ -4,14 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { CheckCircle2, FileText, Package, Settings } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CheckCircle2, FileText, Package, Settings, BarChart3 } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
 import { InventoryReportDetail } from "@/components/inventory/InventoryReportDetail";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const InventoryDashboard = () => {
   const navigate = useNavigate();
@@ -19,6 +18,7 @@ export const InventoryDashboard = () => {
   const { data: chantiers = [], isLoading: isLoadingChantiers } = useChantiers();
   const [selectedReport, setSelectedReport] = useState<{ id: string; chantierNom: string } | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [showConsolide, setShowConsolide] = useState(false);
 
   const activeChantiers = useMemo(() => chantiers.filter(c => c.actif), [chantiers]);
 
@@ -28,20 +28,9 @@ export const InventoryDashboard = () => {
     return map;
   }, [reports]);
 
-  // For consolidated view: get all report IDs
+  // Load all items for consolidation
   const allReportIds = useMemo(() => reports.map(r => r.id), [reports]);
   const { data: allItems = [], isLoading: isLoadingItems } = useInventoryItemsByReportIds(allReportIds);
-
-  // Group items by report_id
-  const itemsByReport = useMemo(() => {
-    const map = new Map<string, typeof allItems>();
-    allItems.forEach(item => {
-      const list = map.get(item.report_id) || [];
-      list.push(item);
-      map.set(item.report_id, list);
-    });
-    return map;
-  }, [allItems]);
 
   // Chantier name map
   const chantierMap = useMemo(() => {
@@ -49,6 +38,42 @@ export const InventoryDashboard = () => {
     chantiers.forEach(c => map.set(c.id, { nom: c.nom, code_chantier: c.code_chantier }));
     return map;
   }, [chantiers]);
+
+  // Consolidated data: group by categorie → designation+unite, aggregate totals, track per-chantier
+  const consolidatedData = useMemo(() => {
+    // Map report_id → chantier_id
+    const reportToChantier = new Map<string, string>();
+    reports.forEach(r => reportToChantier.set(r.id, r.chantier_id));
+
+    const grouped = new Map<string, Map<string, { total: number; unite: string; perChantier: Map<string, number>; photos: string[] }>>();
+
+    allItems.forEach(item => {
+      const chantierId = reportToChantier.get(item.report_id);
+      if (!chantierId) return;
+
+      if (!grouped.has(item.categorie)) grouped.set(item.categorie, new Map());
+      const catMap = grouped.get(item.categorie)!;
+
+      const key = `${item.designation}|||${item.unite}`;
+      if (!catMap.has(key)) {
+        catMap.set(key, { total: 0, unite: item.unite, perChantier: new Map(), photos: [] });
+      }
+      const entry = catMap.get(key)!;
+      entry.total += item.quantity_good;
+
+      const chantierInfo = chantierMap.get(chantierId);
+      const chantierLabel = chantierInfo
+        ? `${chantierInfo.code_chantier ? chantierInfo.code_chantier + " " : ""}${chantierInfo.nom}`
+        : chantierId;
+      entry.perChantier.set(chantierLabel, (entry.perChantier.get(chantierLabel) || 0) + item.quantity_good);
+
+      if (item.photos && item.photos.length > 0) {
+        entry.photos.push(...item.photos);
+      }
+    });
+
+    return grouped;
+  }, [allItems, reports, chantierMap]);
 
   if (isLoadingReports || isLoadingChantiers) {
     return (
@@ -96,126 +121,118 @@ export const InventoryDashboard = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="chantiers">
-        <TabsList>
-          <TabsTrigger value="chantiers">Par chantier</TabsTrigger>
-          <TabsTrigger value="consolide">Consolidé</TabsTrigger>
-        </TabsList>
+      {/* Big consolidated button */}
+      <Button
+        className="w-full h-14 text-base font-semibold gap-3"
+        size="lg"
+        onClick={() => setShowConsolide(true)}
+      >
+        <BarChart3 className="h-5 w-5" />
+        Récap global inventaires
+      </Button>
 
-        <TabsContent value="chantiers">
-          <div className="grid gap-3">
-            {activeChantiers.map(chantier => {
-              const report = reportsByChantier.get(chantier.id);
-              return (
-                <Card
-                  key={chantier.id}
-                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!report ? "opacity-70" : ""}`}
-                  onClick={() => {
-                    if (report) {
-                      setSelectedReport({ id: report.id, chantierNom: chantier.nom });
-                    }
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Package className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-medium">
-                        {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
-                        {chantier.nom}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {renderStatusBadge(report)}
-                    </div>
+      {/* Chantier list */}
+      <div className="grid gap-3">
+        {activeChantiers.map(chantier => {
+          const report = reportsByChantier.get(chantier.id);
+          return (
+            <Card
+              key={chantier.id}
+              className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!report ? "opacity-70" : ""}`}
+              onClick={() => {
+                if (report) {
+                  setSelectedReport({ id: report.id, chantierNom: chantier.nom });
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">
+                    {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
+                    {chantier.nom}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {renderStatusBadge(report)}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+        {activeChantiers.length === 0 && (
+          <Card className="p-8 text-center text-muted-foreground">
+            Aucun chantier actif.
+          </Card>
+        )}
+      </div>
+
+      {/* Consolidated Sheet */}
+      <Sheet open={showConsolide} onOpenChange={setShowConsolide}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Récap global inventaires
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {isLoadingItems ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : consolidatedData.size === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">Aucun inventaire transmis.</p>
+            ) : (
+              Array.from(consolidatedData.entries()).map(([categorie, items]) => (
+                <div key={categorie}>
+                  <h3 className="font-semibold text-sm text-primary mb-2 uppercase tracking-wide">{categorie}</h3>
+                  <div className="space-y-3">
+                    {Array.from(items.entries()).map(([key, data]) => {
+                      const designation = key.split("|||")[0];
+                      return (
+                        <Card key={key} className="p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm">
+                              {designation} {data.unite ? `(${data.unite})` : ""}
+                            </span>
+                            <Badge variant="secondary" className="font-bold">
+                              Total: {data.total}
+                            </Badge>
+                          </div>
+                          <div className="space-y-0.5 ml-2">
+                            {Array.from(data.perChantier.entries()).map(([chantierLabel, qty]) => (
+                              <div key={chantierLabel} className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>• {chantierLabel}</span>
+                                <span className="font-medium">{qty}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {data.photos.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {data.photos.map((url, idx) => (
+                                <img
+                                  key={idx}
+                                  src={url}
+                                  alt=""
+                                  className="h-10 w-10 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setSelectedPhoto(url)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
                   </div>
-                </Card>
-              );
-            })}
-            {activeChantiers.length === 0 && (
-              <Card className="p-8 text-center text-muted-foreground">
-                Aucun chantier actif.
-              </Card>
+                </div>
+              ))
             )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="consolide">
-          {isLoadingItems ? (
-            <div className="space-y-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : (
-            <Accordion type="multiple" className="space-y-2">
-              {activeChantiers.map(chantier => {
-                const report = reportsByChantier.get(chantier.id);
-                const items = report ? (itemsByReport.get(report.id) || []) : [];
-
-                // Group by category
-                const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
-                  if (!acc[item.categorie]) acc[item.categorie] = [];
-                  acc[item.categorie].push(item);
-                  return acc;
-                }, {});
-
-                return (
-                  <AccordionItem key={chantier.id} value={chantier.id} className="border rounded-lg px-4">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-3 flex-1 mr-2">
-                        <span className="font-medium text-left">
-                          {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
-                          {chantier.nom}
-                        </span>
-                        <div className="ml-auto">
-                          {renderStatusBadge(report)}
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      {items.length === 0 ? (
-                        <p className="text-muted-foreground text-sm py-2">Aucun article.</p>
-                      ) : (
-                        <div className="space-y-4 pb-2">
-                          {Object.entries(grouped).map(([categorie, catItems]) => (
-                            <div key={categorie}>
-                              <h4 className="font-semibold text-xs text-primary mb-1.5">{categorie}</h4>
-                              <div className="space-y-1.5">
-                                {catItems.map(item => (
-                                  <div key={item.id} className="flex items-start justify-between border rounded-md p-2 bg-muted/30">
-                                    <div className="flex-1">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-sm">{item.designation} {item.unite ? `(${item.unite})` : ""}</span>
-                                        <span className="text-sm font-bold ml-2">Qté: {item.quantity_good}</span>
-                                      </div>
-                                      {item.photos && item.photos.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                          {item.photos.map((url, idx) => (
-                                            <img
-                                              key={idx}
-                                              src={url}
-                                              alt=""
-                                              className="h-12 w-12 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                                              onClick={() => setSelectedPhoto(url)}
-                                            />
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          )}
-        </TabsContent>
-      </Tabs>
+        </SheetContent>
+      </Sheet>
 
       <InventoryReportDetail
         open={!!selectedReport}
