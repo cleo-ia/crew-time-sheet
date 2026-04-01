@@ -75,6 +75,18 @@ export const InventoryReportDetail = ({
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
+          {selectedPhoto && (
+            <img
+              src={selectedPhoto}
+              alt=""
+              className="w-full h-full max-h-[80vh] object-contain rounded-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
