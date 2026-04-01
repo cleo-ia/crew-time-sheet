@@ -131,7 +131,7 @@ const InventaireRecap = () => {
     const marginLeft = 15;
     const marginRight = 15;
     const tableWidth = pageWidth - marginLeft - marginRight;
-    const accentR = 37, accentG = 99, accentB = 235;
+    const accentR = 234, accentG = 88, accentB = 12; // orange #ea580c
     let y = 12;
 
     // --- Helper: load logo as base64 ---
@@ -159,9 +159,14 @@ const InventaireRecap = () => {
     const drawPageHeader = (isFirstPage: boolean) => {
       const headerY = 12;
 
-      // Logo top-left
+      // Logo top-left — preserve aspect ratio
       if (logoBase64) {
-        doc.addImage(logoBase64, "PNG", marginLeft, headerY - 5, 28, 12);
+        const logoImg = new Image();
+        logoImg.src = logoBase64;
+        const ratio = logoImg.naturalWidth / logoImg.naturalHeight;
+        const logoH = 12;
+        const logoW = logoH * ratio;
+        doc.addImage(logoBase64, "PNG", marginLeft, headerY - 5, logoW, logoH);
       }
 
       // Title
