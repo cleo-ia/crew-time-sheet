@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CheckCircle2, FileText, Package } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Package, Settings } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
 import { useChantiers } from "@/hooks/useChantiers";
