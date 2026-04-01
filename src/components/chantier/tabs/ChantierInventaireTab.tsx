@@ -96,12 +96,18 @@ export const ChantierInventaireTab = ({ chantierId, readOnly = false }: Chantier
   }, []);
 
   const handlePhotoAdd = useCallback(async (idx: number, file: File) => {
-    if (!currentReport) return;
-    const url = await uploadPhoto.mutateAsync({ reportId: currentReport.id, file });
+    let reportId = currentReport?.id;
+
+    if (!reportId) {
+      const report = await createReport.mutateAsync({ chantierId });
+      reportId = report.id;
+    }
+
+    const url = await uploadPhoto.mutateAsync({ reportId, file });
     setLocalItems(prev => prev.map((item, i) => 
       i === idx ? { ...item, photos: [...item.photos, url] } : item
     ));
-  }, [currentReport, uploadPhoto]);
+  }, [currentReport, uploadPhoto, createReport, chantierId]);
 
   const handlePhotoRemove = useCallback(async (idx: number, url: string) => {
     await deletePhoto.mutateAsync(url);
