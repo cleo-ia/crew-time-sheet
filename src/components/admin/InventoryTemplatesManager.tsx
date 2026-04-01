@@ -382,7 +382,7 @@ export const InventoryTemplatesManager = () => {
                                   className="text-xs text-muted-foreground italic cursor-pointer hover:text-primary mt-0.5"
                                   onClick={() => setEditingItem({ id: t.id, field: "notes", value: t.notes ?? "" })}
                                 >
-                                  {t.notes || "à vérifier"}
+                                  {t.notes || ""}
                                 </div>
                               )}
                             </div>
