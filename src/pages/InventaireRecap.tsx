@@ -141,11 +141,12 @@ const InventaireRecap = () => {
     const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
     const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
 
-    // Columns that get a thick left border (first col of each chantier group + totaux)
+    // Columns that get a thick left border (first col of each chantier group + totaux + grand total)
     const thickLeftCols = new Set<number>();
     chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
     const totalStartCol = 3 + chantierIds.length * 3;
     thickLeftCols.add(totalStartCol);
+    thickLeftCols.add(totalStartCol + 3);
 
     const getBorders = (col: number) => {
       if (thickLeftCols.has(col)) {
