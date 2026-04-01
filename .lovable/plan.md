@@ -1,40 +1,13 @@
 
 
-## Problème : les photos uploadées ne s'affichent pas
+## Fixer les boutons "Sauvegarder brouillon" et "Transmettre" en bas de l'écran
 
-### Cause racine
+### Changement
 
-Dans `handlePhotoAdd` (ligne 98-104 de `ChantierInventaireTab.tsx`), la première ligne fait :
-```ts
-if (!currentReport) return;
-```
+**`src/components/chantier/tabs/ChantierInventaireTab.tsx`** — ligne 235 :
 
-Quand le chef commence un inventaire pour la première fois, aucun rapport n'existe encore en base (`currentReport` est `null`). L'upload est donc silencieusement ignoré — pas d'erreur, pas de feedback, la photo disparaît dans le vide.
+Remplacer `sticky bottom-4` par `fixed bottom-0 left-0 right-0` avec un padding et un fond pour que les boutons restent toujours visibles en bas de l'écran, même en scrollant. Ajouter un `pb-20` sur le conteneur parent pour éviter que le contenu soit masqué par les boutons.
 
-### Solution
-
-Modifier `handlePhotoAdd` pour **créer automatiquement le rapport** s'il n'existe pas encore (comme le fait déjà `handleSave`), puis uploader la photo avec le `reportId` obtenu.
-
-### Fichier modifié
-
-**`src/components/chantier/tabs/ChantierInventaireTab.tsx`** — `handlePhotoAdd` (lignes 98-104) :
-
-```ts
-const handlePhotoAdd = useCallback(async (idx: number, file: File) => {
-  let reportId = currentReport?.id;
-
-  // Créer le rapport automatiquement s'il n'existe pas
-  if (!reportId) {
-    const report = await createReport.mutateAsync({ chantierId });
-    reportId = report.id;
-  }
-
-  const url = await uploadPhoto.mutateAsync({ reportId, file });
-  setLocalItems(prev => prev.map((item, i) => 
-    i === idx ? { ...item, photos: [...item.photos, url] } : item
-  ));
-}, [currentReport, uploadPhoto, createReport, chantierId]);
-```
-
-Un seul changement dans un seul fichier. Les photos apparaîtront immédiatement dans la liste sous l'article après upload.
+- Le `div` des boutons : `fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t`
+- Le conteneur parent (`div.space-y-4`) : ajouter `pb-20` quand `isEditable` pour compenser la hauteur fixe
 
