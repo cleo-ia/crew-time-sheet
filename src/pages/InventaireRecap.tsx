@@ -196,8 +196,8 @@ const InventaireRecap = () => {
     groupRow.getCell(1).value = "";
     groupRow.getCell(2).value = "";
     chantierIds.forEach((id, i) => {
-      const colStart = 3 + i * 3;
-      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 2);
+      const colStart = 3 + i * 4;
+      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 3);
       const cell = groupRow.getCell(colStart);
       cell.value = getChantierLabel(id);
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
