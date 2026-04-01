@@ -377,22 +377,23 @@ const ValidationConducteur = () => {
   
   const affectationsJours = affectationsLocal ?? affectationsFromHook;
 
-  // Lecture des query params pour lien profond (emails n8n) et gestion des redirections
+  // Lecture des query params pour lien profond (emails n8n) — exécuté uniquement au montage
+  // L'effet de sync URL (ci-dessus) gère la synchronisation continue
   useEffect(() => {
     const chantierQP = searchParams.get("chantier");
     const semaineQP = searchParams.get("semaine");
     const tabQP = searchParams.get("tab");
 
-    if (tabQP === "validation") {
-      // Redirection explicite vers l'onglet validation (depuis validation des fiches)
-      setActiveMainTab("validation");
-      setFilters(prev => ({
-        ...prev,
-        ...(chantierQP && { chantier: chantierQP.trim() }),
-        ...(semaineQP && { semaine: decodeURIComponent(semaineQP).trim() })
-      }));
+    if (tabQP === "validation" || tabQP === "inventaire") {
+      setActiveMainTab(tabQP);
+      if (tabQP === "validation") {
+        setFilters(prev => ({
+          ...prev,
+          ...(chantierQP && { chantier: chantierQP.trim() }),
+          ...(semaineQP && { semaine: decodeURIComponent(semaineQP).trim() })
+        }));
+      }
     } else if (tabQP === "mes-heures") {
-      // Redirection explicite vers l'onglet mes heures (depuis signature finisseurs)
       setActiveMainTab("mes-heures");
       if (semaineQP) {
         setSelectedWeek(decodeURIComponent(semaineQP).trim());
@@ -406,7 +407,8 @@ const ValidationConducteur = () => {
         ...(semaineQP && { semaine: decodeURIComponent(semaineQP).trim() })
       }));
     }
-  }, [searchParams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Basculer automatiquement sur la semaine suivante au retour de la signature
   useEffect(() => {
