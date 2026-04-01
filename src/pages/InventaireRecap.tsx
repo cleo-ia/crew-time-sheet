@@ -200,7 +200,7 @@ const InventaireRecap = () => {
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = borders;
+      cell.border = getBorders(colStart);
     });
     ws.mergeCells(groupRowNum, totalStartCol, groupRowNum, totalStartCol + 2);
     const totalGroupCell = groupRow.getCell(totalStartCol);
