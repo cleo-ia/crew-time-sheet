@@ -276,12 +276,9 @@ const InventaireRecap = () => {
 
         // Zebra + styling
         const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
-        const pastelOrange = idx % 2 === 0 ? "FFFFF7ED" : "FFFEF3E2";
         for (let c = 1; c <= nbCols; c++) {
           const cell = row.getCell(c);
-          // Check if this column is a "Nett." column (every 3rd sub-column starting from position 2 within each chantier group, or the last total sub-col)
-          const isNettCol = chantierIds.some((_, ci) => c === 3 + ci * 3 + 2) || c === totalStartColData + 2;
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isNettCol ? pastelOrange : bgColor } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
           cell.border = borders;
           cell.font = { size: 9, color: { argb: "FF333333" } };
           cell.alignment = { horizontal: c >= 2 ? "center" : "left", vertical: "middle" };
