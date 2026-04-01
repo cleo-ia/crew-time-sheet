@@ -9,7 +9,7 @@ import { ArrowLeft, BarChart3, Download } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
-import PageLayout from "@/components/layout/PageLayout";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 interface ConsolidatedItem {
   categorie: string;
