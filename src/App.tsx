@@ -25,6 +25,7 @@ import Documentation from "./pages/Documentation";
 import ExportPaie from "./pages/ExportPaie";
 import CodesTrajet from "./pages/CodesTrajet";
 import InventaireParametrage from "./pages/InventaireParametrage";
+import InventaireRecap from "./pages/InventaireRecap";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
