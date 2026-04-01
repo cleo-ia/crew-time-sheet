@@ -231,7 +231,7 @@ const InventaireRecap = () => {
         cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = borders;
+        cell.border = getBorders(3 + i * 3 + si);
       });
     });
     subHeaders.forEach((sh, si) => {
