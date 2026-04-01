@@ -143,8 +143,8 @@ const InventaireRecap = () => {
 
     // Columns that get a thick left border (first col of each chantier group + totaux + grand total)
     const thickLeftCols = new Set<number>();
-    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 3));
-    const totalStartCol = 3 + chantierIds.length * 3;
+    chantierIds.forEach((_, i) => thickLeftCols.add(3 + i * 4));
+    const totalStartCol = 3 + chantierIds.length * 4;
     thickLeftCols.add(totalStartCol);
     thickLeftCols.add(totalStartCol + 3);
 
@@ -155,7 +155,7 @@ const InventaireRecap = () => {
       return borders;
     };
 
-    const nbCols = 2 + chantierIds.length * 3 + 4; // designation, unite, 3 per chantier, totalGood, totalRepair, totalBroken, grandTotal
+    const nbCols = 2 + chantierIds.length * 4 + 4; // designation, unite, 4 per chantier, totalGood, totalRepair, totalBroken, grandTotal
 
     // Title row
     ws.mergeCells(1, 1, 1, nbCols);
@@ -179,9 +179,10 @@ const InventaireRecap = () => {
     ws.getColumn(1).width = 35; // Désignation
     ws.getColumn(2).width = 12; // Unité
     chantierIds.forEach((_, i) => {
-      ws.getColumn(3 + i * 3).width = 10;
-      ws.getColumn(3 + i * 3 + 1).width = 10;
-      ws.getColumn(3 + i * 3 + 2).width = 10;
+      ws.getColumn(3 + i * 4).width = 10;
+      ws.getColumn(3 + i * 4 + 1).width = 10;
+      ws.getColumn(3 + i * 4 + 2).width = 10;
+      ws.getColumn(3 + i * 4 + 3).width = 10;
     });
     // totalStartCol already defined above
     ws.getColumn(totalStartCol).width = 12;
@@ -195,8 +196,8 @@ const InventaireRecap = () => {
     groupRow.getCell(1).value = "";
     groupRow.getCell(2).value = "";
     chantierIds.forEach((id, i) => {
-      const colStart = 3 + i * 3;
-      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 2);
+      const colStart = 3 + i * 4;
+      ws.mergeCells(groupRowNum, colStart, groupRowNum, colStart + 3);
       const cell = groupRow.getCell(colStart);
       cell.value = getChantierLabel(id);
       cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
@@ -228,13 +229,20 @@ const InventaireRecap = () => {
     const subColors = ["FF16A34A", "FFD97706", "FFDC2626"]; // green, orange, red
     chantierIds.forEach((_, i) => {
       subHeaders.forEach((sh, si) => {
-        const cell = headerRow.getCell(3 + i * 3 + si);
+        const cell = headerRow.getCell(3 + i * 4 + si);
         cell.value = sh;
         cell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: subColors[si] } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = getBorders(3 + i * 3 + si);
+        cell.border = getBorders(3 + i * 4 + si);
       });
+      // Total per chantier sub-header
+      const totalPerChantierCell = headerRow.getCell(3 + i * 4 + 3);
+      totalPerChantierCell.value = "Total";
+      totalPerChantierCell.font = { bold: true, size: 8, color: { argb: "FFFFFFFF" } };
+      totalPerChantierCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      totalPerChantierCell.alignment = { horizontal: "center", vertical: "middle" };
+      totalPerChantierCell.border = getBorders(3 + i * 4 + 3);
     });
     subHeaders.forEach((sh, si) => {
       const cell = headerRow.getCell(totalStartCol + si);
@@ -263,7 +271,7 @@ const InventaireRecap = () => {
 
     // Data rows
     let currentRow = headerRowNum + 1;
-    const totalStartColData = 3 + chantierIds.length * 3;
+    const totalStartColData = 3 + chantierIds.length * 4;
 
     categories.forEach(cat => {
       const catItems = matrixItems.filter(i => i.categorie === cat);
@@ -286,10 +294,14 @@ const InventaireRecap = () => {
         row.getCell(2).value = item.unite;
 
         chantierIds.forEach((cId, ci) => {
-          const colBase = 3 + ci * 3;
-          row.getCell(colBase).value = item.byChantierGood.get(cId) || "";
-          row.getCell(colBase + 1).value = item.byChantierBroken.get(cId) || "";
-          row.getCell(colBase + 2).value = item.byChantierRepair.get(cId) || "";
+          const colBase = 3 + ci * 4;
+          const good = item.byChantierGood.get(cId) || 0;
+          const broken = item.byChantierBroken.get(cId) || 0;
+          const repair = item.byChantierRepair.get(cId) || 0;
+          row.getCell(colBase).value = good || "";
+          row.getCell(colBase + 1).value = broken || "";
+          row.getCell(colBase + 2).value = repair || "";
+          row.getCell(colBase + 3).value = (good + broken + repair) || "";
         });
 
         // Total columns
