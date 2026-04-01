@@ -68,10 +68,11 @@ export const InventoryItemRow = ({
           >
             <Minus className="h-3 w-3" />
           </Button>
-          <input
+           <input
             type="number"
             min={0}
             value={quantityGood}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
               onQuantityChange("quantity_good", isNaN(val) ? 0 : Math.max(0, val));
