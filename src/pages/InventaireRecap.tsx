@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -164,37 +164,44 @@ const InventaireRecap = () => {
               <tbody>
                 {categories.map(cat => {
                   const catItems = consolidatedItems.filter(i => i.categorie === cat);
-                  return catItems.map((item, idx) => (
-                    <tr
-                      key={`${cat}-${item.designation}-${item.unite}`}
-                      className={idx % 2 === 0 ? "bg-muted/30" : "bg-background"}
-                    >
-                      <td className="border border-border px-3 py-1.5 font-semibold text-primary">
-                        {idx === 0 ? item.categorie : ""}
-                      </td>
-                      <td className="border border-border px-3 py-1.5">{item.designation}</td>
-                      <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
-                      <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
-                      <td className="border border-border px-3 py-1.5 text-center">
-                        {item.photos.length > 0 && (
-                          <div className="flex gap-1 justify-center">
-                            {item.photos.slice(0, 3).map((url, i) => (
-                              <img
-                                key={i}
-                                src={url}
-                                alt=""
-                                className="h-7 w-7 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => setSelectedPhoto(url)}
-                              />
-                            ))}
-                            {item.photos.length > 3 && (
-                              <span className="text-xs text-muted-foreground self-center">+{item.photos.length - 3}</span>
+                  return (
+                    <React.Fragment key={cat}>
+                      <tr className="bg-muted">
+                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                          {cat}
+                        </td>
+                      </tr>
+                      {catItems.map((item, idx) => (
+                        <tr
+                          key={`${cat}-${item.designation}-${item.unite}`}
+                          className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
+                        >
+                          <td className="border border-border px-3 py-1.5" />
+                          <td className="border border-border px-3 py-1.5">{item.designation}</td>
+                          <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
+                          <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
+                          <td className="border border-border px-3 py-1.5 text-center">
+                            {item.photos.length > 0 && (
+                              <div className="flex gap-1 justify-center">
+                                {item.photos.slice(0, 3).map((url, i) => (
+                                  <img
+                                    key={i}
+                                    src={url}
+                                    alt=""
+                                    className="h-7 w-7 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setSelectedPhoto(url)}
+                                  />
+                                ))}
+                                {item.photos.length > 3 && (
+                                  <span className="text-xs text-muted-foreground self-center">+{item.photos.length - 3}</span>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ));
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
                 })}
               </tbody>
             </table>
