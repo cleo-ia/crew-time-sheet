@@ -186,6 +186,7 @@ const InventaireRecap = () => {
     ws.getColumn(totalStartCol).width = 12;
     ws.getColumn(totalStartCol + 1).width = 12;
     ws.getColumn(totalStartCol + 2).width = 12;
+    ws.getColumn(totalStartCol + 3).width = 12;
 
     // Chantier group header row (row 4)
     const groupRowNum = 4;
