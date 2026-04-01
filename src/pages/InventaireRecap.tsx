@@ -441,14 +441,10 @@ const InventaireRecap = () => {
             <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#ea580c", color: "#ffffff" }}>
+                  <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
                   <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-20">Unité</th>
-                  {chantierIds.map(id => (
-                    <th key={id} className="border border-border px-2 py-2 text-center font-semibold text-xs whitespace-nowrap">
-                      {getChantierLabel(id)}
-                    </th>
-                  ))}
-                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Total</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
                   <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
                 </tr>
               </thead>
@@ -458,7 +454,7 @@ const InventaireRecap = () => {
                   return (
                     <React.Fragment key={cat}>
                       <tr className="bg-muted">
-                        <td colSpan={3 + chantierIds.length + 1 + 1} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
+                        <td colSpan={5} className="border border-border px-3 py-2 font-bold text-primary uppercase tracking-wide text-sm">
                           {cat}
                         </td>
                       </tr>
@@ -467,16 +463,9 @@ const InventaireRecap = () => {
                           key={`${cat}-${item.designation}-${item.unite}`}
                           className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
                         >
+                          <td className="border border-border px-3 py-1.5" />
                           <td className="border border-border px-3 py-1.5">{item.designation}</td>
                           <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
-                          {chantierIds.map(cId => {
-                            const qty = item.byChantier.get(cId) || 0;
-                            return (
-                              <td key={cId} className="border border-border px-2 py-1.5 text-center text-muted-foreground">
-                                {qty > 0 ? qty : ""}
-                              </td>
-                            );
-                          })}
                           <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
                           <td className="border border-border px-3 py-1.5 text-center">
                             {item.photos.length > 0 && (
