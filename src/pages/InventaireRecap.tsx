@@ -487,10 +487,10 @@ const InventaireRecap = () => {
         doc.text(item.unite, rx + colUnite / 2, y + 5, { align: "center" }); rx += colUnite;
         doc.setTextColor(22, 163, 74);
         doc.text(String(item.totalGood), rx + colBon / 2, y + 5, { align: "center" }); rx += colBon;
-        doc.setTextColor(234, 88, 12);
-        doc.text(String(item.totalRepair), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
+        doc.setTextColor(217, 119, 6);
+        doc.text(String(item.totalBroken), rx + colReparer / 2, y + 5, { align: "center" }); rx += colReparer;
         doc.setTextColor(220, 38, 38);
-        doc.text(String(item.totalBroken), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
+        doc.text(String(item.totalRepair), rx + colNettoyer / 2, y + 5, { align: "center" }); rx += colNettoyer;
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 30, 30);
         doc.text(String(item.total), rx + colTotal / 2, y + 5, { align: "center" });
