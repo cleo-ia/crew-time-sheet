@@ -56,20 +56,24 @@ export const InventoryTemplatesManager = () => {
   }, {});
   const categories = Object.keys(grouped).sort();
 
+  // Merged suggestions: defaults + existing DB categories, deduplicated, sorted
+  const categorySuggestions = useMemo(() => {
+    const merged = new Set([...DEFAULT_CATEGORIES, ...categories]);
+    return Array.from(merged).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [categories]);
+
+  const handleSelectCategory = (name: string) => {
+    setNewCategoryName(name);
+  };
+
   const handleCreateCategory = () => {
     const name = newCategoryName.trim();
     if (!name) return;
-    // Focus the inline form once category card appears — just close dialog
-    // The category will appear once a first item is added, so we pre-create a state entry
     setAddDesignation(prev => ({ ...prev, [name]: "" }));
     setAddUnite(prev => ({ ...prev, [name]: "U" }));
-    // If category doesn't exist yet, we need at least one template to show it
-    // We'll create a "virtual" empty category by just setting state — user will add first item inline
-    // Actually, to persist we must insert at least one row. Let's just show the card with empty items.
-    // We use a trick: add category to a local state list
     setNewCategoryName("");
+    setCatSearch("");
     setShowNewCatDialog(false);
-    // If category already has items, do nothing special
     if (!grouped[name]) {
       setVirtualCategories(prev => [...prev.filter(c => c !== name), name]);
     }
