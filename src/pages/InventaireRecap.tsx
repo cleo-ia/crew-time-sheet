@@ -65,7 +65,7 @@ const InventaireRecap = () => {
   const getChantierLabel = (id: string) => {
     const c = chantierMap.get(id);
     if (!c) return "—";
-    return c.code_chantier || c.nom;
+    return c.nom || c.code_chantier || "—";
   };
 
   // Build matrix: aggregate items by categorie + designation + unite, with per-chantier breakdown
