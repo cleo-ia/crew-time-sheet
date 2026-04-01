@@ -150,29 +150,32 @@ const InventaireRecap = () => {
         ) : consolidatedItems.length === 0 ? (
           <p className="text-muted-foreground text-center py-12">Aucun inventaire transmis.</p>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Catégorie</TableHead>
-                  <TableHead className="font-semibold">Désignation</TableHead>
-                  <TableHead className="font-semibold text-center">Unité</TableHead>
-                  <TableHead className="font-semibold text-right">Quantité</TableHead>
-                  <TableHead className="font-semibold text-center w-20">Photos</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                  <th className="border border-border px-3 py-2 text-left font-semibold">Catégorie</th>
+                  <th className="border border-border px-3 py-2 text-left font-semibold">Désignation</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Unité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-28">Quantité</th>
+                  <th className="border border-border px-3 py-2 text-center font-semibold w-24">Photos</th>
+                </tr>
+              </thead>
+              <tbody>
                 {categories.map(cat => {
                   const catItems = consolidatedItems.filter(i => i.categorie === cat);
                   return catItems.map((item, idx) => (
-                    <TableRow key={`${cat}-${item.designation}-${item.unite}`} className="hover:bg-muted/30">
-                      <TableCell className={idx === 0 ? "font-semibold text-primary" : "text-transparent select-none"}>
-                        {item.categorie}
-                      </TableCell>
-                      <TableCell>{item.designation}</TableCell>
-                      <TableCell className="text-center text-muted-foreground">{item.unite}</TableCell>
-                      <TableCell className="text-right font-bold text-lg">{item.total}</TableCell>
-                      <TableCell className="text-center">
+                    <tr
+                      key={`${cat}-${item.designation}-${item.unite}`}
+                      className={idx % 2 === 0 ? "bg-muted/30" : "bg-background"}
+                    >
+                      <td className="border border-border px-3 py-1.5 font-semibold text-primary">
+                        {idx === 0 ? item.categorie : ""}
+                      </td>
+                      <td className="border border-border px-3 py-1.5">{item.designation}</td>
+                      <td className="border border-border px-3 py-1.5 text-center text-muted-foreground">{item.unite}</td>
+                      <td className="border border-border px-3 py-1.5 text-center font-bold">{item.total}</td>
+                      <td className="border border-border px-3 py-1.5 text-center">
                         {item.photos.length > 0 && (
                           <div className="flex gap-1 justify-center">
                             {item.photos.slice(0, 3).map((url, i) => (
@@ -180,21 +183,21 @@ const InventaireRecap = () => {
                                 key={i}
                                 src={url}
                                 alt=""
-                                className="h-8 w-8 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                className="h-7 w-7 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setSelectedPhoto(url)}
                               />
                             ))}
                             {item.photos.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">+{item.photos.length - 3}</Badge>
+                              <span className="text-xs text-muted-foreground self-center">+{item.photos.length - 3}</span>
                             )}
                           </div>
                         )}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ));
                 })}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         )}
       </div>
