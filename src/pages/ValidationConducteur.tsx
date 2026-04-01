@@ -778,7 +778,7 @@ const ValidationConducteur = () => {
               navigate(`/validation-conducteur?${params.toString()}`, { replace: true });
             }}
           >
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-16 bg-muted/30 p-2 gap-2">
+            <TabsList className={`grid w-full mb-6 h-16 bg-muted/30 p-2 gap-2 ${inventaireEnabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <TabsTrigger 
                 value="mes-heures"
                 className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200"
@@ -791,13 +791,22 @@ const ValidationConducteur = () => {
                 className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200 relative"
               >
                 <FileCheck className="h-5 w-5 mr-2" />
-                Validation des fiches
+                Validation
                 {nbFichesEnAttente > 0 && (
                   <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1 shadow-md">
                     {nbFichesEnAttente > 99 ? "99+" : nbFichesEnAttente}
                   </span>
                 )}
               </TabsTrigger>
+              {inventaireEnabled && (
+                <TabsTrigger 
+                  value="inventaire"
+                  className="h-full text-lg font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground transition-all duration-200"
+                >
+                  <Package className="h-5 w-5 mr-2" />
+                  Inventaire
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ONGLET 1: Mes heures avec sous-onglets */}
