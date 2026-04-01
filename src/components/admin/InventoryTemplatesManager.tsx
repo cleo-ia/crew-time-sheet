@@ -194,7 +194,7 @@ export const InventoryTemplatesManager = () => {
               </div>
 
               {/* Items */}
-              {items.length > 0 && (
+              {items.length > 0 ? (
                 <Table>
                   <TableBody>
                     {items.map((t, idx) => (
@@ -218,40 +218,66 @@ export const InventoryTemplatesManager = () => {
                     ))}
                   </TableBody>
                 </Table>
+              ) : (
+                <div className="px-4 py-4 text-sm text-muted-foreground text-center">
+                  Aucun matériel pour le moment
+                </div>
               )}
 
-              {/* Inline add form */}
-              <div className="px-4 py-3 border-t bg-muted/30 flex flex-wrap gap-2 items-end">
-                <Input
-                  placeholder="Ex: Perceuse 18V"
-                  value={addDesignation[cat] || ""}
-                  onChange={e => setAddDesignation(prev => ({ ...prev, [cat]: e.target.value }))}
-                  className="w-48 h-9"
-                  onKeyDown={e => { if (e.key === "Enter") handleAddItem(cat); }}
-                />
-                <Select
-                  value={addUnite[cat] || "U"}
-                  onValueChange={v => setAddUnite(prev => ({ ...prev, [cat]: v }))}
-                >
-                  <SelectTrigger className="w-24 h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map(u => (
-                      <SelectItem key={u} value={u}>{u}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => handleAddItem(cat)}
-                  disabled={createTemplate.isPending || !(addDesignation[cat] || "").trim()}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Ajouter
-                </Button>
-              </div>
+              {/* Add material: toggle between button and inline form */}
+              {openAddForm === cat ? (
+                <div className="px-4 py-3 border-t bg-muted/30 flex flex-wrap gap-2 items-end">
+                  <Input
+                    placeholder="Ex: Perceuse 18V"
+                    value={addDesignation[cat] || ""}
+                    onChange={e => setAddDesignation(prev => ({ ...prev, [cat]: e.target.value }))}
+                    className="w-48 h-9"
+                    onKeyDown={e => { if (e.key === "Enter") handleAddItem(cat); }}
+                    autoFocus
+                  />
+                  <Select
+                    value={addUnite[cat] || "U"}
+                    onValueChange={v => setAddUnite(prev => ({ ...prev, [cat]: v }))}
+                  >
+                    <SelectTrigger className="w-24 h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIT_OPTIONS.map(u => (
+                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleAddItem(cat)}
+                    disabled={createTemplate.isPending || !(addDesignation[cat] || "").trim()}
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Valider
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setOpenAddForm(null); setAddDesignation(prev => ({ ...prev, [cat]: "" })); }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              ) : (
+                <div className="px-4 py-3 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary"
+                    onClick={() => setOpenAddForm(cat)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter un matériel
+                  </Button>
+                </div>
+              )}
             </Card>
           );
         })
