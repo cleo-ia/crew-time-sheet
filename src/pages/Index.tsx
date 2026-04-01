@@ -4,7 +4,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw, CalendarDays, Info } from "lucide-react";
+import { Calendar, Users, FileText, CheckCircle2, AlertTriangle, Truck, ChevronDown, Loader2, BarChart3, RefreshCw, CalendarDays, Info, Package } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RatioGlobalSheet } from "@/components/ratio/RatioGlobalSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +45,8 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { OfflineOverlay } from "@/components/ui/OfflineOverlay";
 import { CongesButton } from "@/components/conges/CongesButton";
 import { CongesSheet } from "@/components/conges/CongesSheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ChantierInventaireTab } from "@/components/chantier/tabs/ChantierInventaireTab";
 import { useDemandesTraiteesNonLues } from "@/hooks/useDemandesTraiteesNonLues";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useNewPlanningItemsCount } from "@/hooks/useNewPlanningItemsCount";
@@ -87,6 +89,7 @@ const Index = () => {
   const [selectedFicheId, setSelectedFicheId] = useState<string | null>(null);
   const [showConversation, setShowConversation] = useState(false);
   const [showConges, setShowConges] = useState(false);
+  const [showInventaire, setShowInventaire] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [weekInitialized, setWeekInitialized] = useState(false);
   const autoSaveFiche = useAutoSaveFiche();
@@ -464,6 +467,17 @@ const Index = () => {
           <>
             <CongesButton onClick={() => setShowConges(true)} pendingCount={nbDemandesTraitees} />
             {selectedChantier && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowInventaire(true)}
+                className="border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-950"
+              >
+                <Package className="h-4 w-4 text-red-500 mr-2" />
+                <span className="text-red-600 dark:text-red-400 font-medium">Inventaire</span>
+              </Button>
+            )}
+            {selectedChantier && (
               <PlanningTachesButton
                 chantierId={selectedChantier}
                 userId={authUserId}
@@ -501,6 +515,23 @@ const Index = () => {
           entrepriseId={localStorage.getItem("current_entreprise_id") || ""}
         />
       )}
+
+      {/* Inventaire Sheet */}
+      <Sheet open={showInventaire} onOpenChange={setShowInventaire}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-red-500" />
+              Inventaire — {chantierNom}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            {selectedChantier && (
+              <ChantierInventaireTab chantierId={selectedChantier} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

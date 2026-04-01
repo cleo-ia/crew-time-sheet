@@ -12,9 +12,7 @@ import { ChantierFichiersTab } from "@/components/chantier/tabs/ChantierFichiers
 import { ChantierTodoTab } from "@/components/chantier/tabs/ChantierTodoTab";
 import { ChantierRentabiliteTab } from "@/components/chantier/tabs/ChantierRentabiliteTab";
 import { ChantierInfosTab } from "@/components/chantier/tabs/ChantierInfosTab";
-import { ChantierInventaireTab } from "@/components/chantier/tabs/ChantierInventaireTab";
-import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp, Package } from "lucide-react";
-import { useFeatureEnabled } from "@/hooks/useEnterpriseConfig";
+import { CalendarDays, FileText, Info, LayoutList, ListTodo, TrendingUp } from "lucide-react";
 import { useMarkPlanningAsSeen } from "@/hooks/useMarkPlanningAsSeen";
 import { useAuth } from "@/contexts/AuthProvider";
 
@@ -30,7 +28,7 @@ const ChantierDetail = () => {
   // Mode lecture seule si vient de la page chef OU si le rôle est chef
   const fromChef = searchParams.get("from") === "chef";
   const isReadOnly = fromChef || userRole === "chef" || userRole === "gestionnaire";
-  const inventaireEnabled = useFeatureEnabled("inventaireChantier");
+  
 
   // Mark planning as seen when chef opens the page
   useEffect(() => {
@@ -103,12 +101,6 @@ const ChantierDetail = () => {
               <TrendingUp className="h-4 w-4" />
               Rentabilité
             </TabsTrigger>
-            {inventaireEnabled && (
-              <TabsTrigger value="inventaire" className="gap-2">
-                <Package className="h-4 w-4" />
-                Inventaire
-              </TabsTrigger>
-            )}
             <TabsTrigger value="infos" className="gap-2">
               <Info className="h-4 w-4" />
               Informations
@@ -131,11 +123,6 @@ const ChantierDetail = () => {
             <TabsContent value="rentabilite">
               <ChantierRentabiliteTab chantierId={chantier.id} montantVendu={chantier.montant_vendu ?? 0} />
             </TabsContent>
-            {inventaireEnabled && (
-              <TabsContent value="inventaire">
-                <ChantierInventaireTab chantierId={chantier.id} readOnly={isReadOnly} />
-              </TabsContent>
-            )}
             <TabsContent value="infos">
               <ChantierInfosTab />
             </TabsContent>
