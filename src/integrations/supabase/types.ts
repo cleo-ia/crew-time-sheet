@@ -3077,6 +3077,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      upsert_inventory_items: {
+        Args: { p_items: Json; p_report_id: string }
+        Returns: undefined
+      }
       user_has_access_to_entreprise: {
         Args: { _entreprise_id: string }
         Returns: boolean
