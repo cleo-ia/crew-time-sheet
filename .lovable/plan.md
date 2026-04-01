@@ -1,62 +1,87 @@
 
-Objectif: corriger le clignotement de l’onglet "Inventaire" côté conducteur sans toucher au module inventaire lui-même.
 
-Constat
-- Le problème vient très probablement de `src/pages/ValidationConducteur.tsx`, pas de `InventoryDashboard`.
-- Cette page a aujourd’hui plusieurs sources de vérité concurrentes pour l’onglet actif :
-  1. l’état local `activeMainTab`
-  2. le `tab` dans l’URL
-  3. l’effet de deep-link qui force parfois `"validation"` ou `"mes-heures"`
-  4. le `navigate(...)` dans `onValueChange`
-  5. le `navigate(...)` dans l’effet de sync URL
-- Le replay montre des re-renders complets à chaque clic, ce qui correspond bien à une compétition entre effets/navigation.
-- Le point fragile visible dans le code: l’effet qui lit `searchParams` gère explicitement `validation` et `mes-heures`, mais pas `inventaire`. Donc dès qu’un autre cycle relit les params, l’onglet peut repartir sur une logique par défaut.
+## Refonte UX de InventoryTemplatesManager — Approche "Top-Down" par catégories
 
-Approche de correction
-1. Unifier la logique d’onglet dans `ValidationConducteur.tsx`
-- Créer une seule fonction de normalisation du tab URL:
-  - valeurs autorisées: `mes-heures`, `validation`, `inventaire`
-  - fallback:
-    - si deep-link ancien format (`chantier` / `semaine`) sans tab: `validation`
-    - sinon: `mes-heures`
+### Objectif
 
-2. Supprimer la double navigation
-- Garder une seule mécanique de synchronisation URL.
-- Soit via `setSearchParams`, soit via un seul `navigate`, mais pas dans `onValueChange` et dans un `useEffect` en même temps.
-- Le plus sûr: au clic, mettre seulement l’état + écrire les params une fois; retirer l’effet qui renavigue dès que `activeMainTab` change.
+Remplacer le formulaire global unique par une interface structurée en blocs/cartes par catégorie, avec ajout d'articles localisé dans chaque carte.
 
-3. Corriger l’effet de lecture des query params
-- Ajouter le cas `tab=inventaire` si l’effet est conservé.
-- Idéalement, remplacer cet effet par une sync plus simple: si l’URL change, `activeMainTab` suit la valeur normalisée, point final.
+### Fichier modifie
 
-4. Préserver les autres params sans régression
-- En changeant d’onglet, conserver `semaine`.
-- Ne pas casser les liens profonds existants vers `validation`.
-- Vérifier que le comportement Super Admin reste identique, même sans conducteur sélectionné.
+`src/components/admin/InventoryTemplatesManager.tsx` (remplacement complet)
 
-Fichiers à ajuster
-- `src/pages/ValidationConducteur.tsx` : correction principale
-- Aucun changement nécessaire a priori dans :
-  - `src/components/conducteur/InventoryDashboard.tsx`
-  - `src/components/ui/tabs.tsx`
+### Nouvelle structure UI
 
-Détails techniques
-- Remplacer la logique actuelle par un schéma simple :
 ```text
-URL tab normalisé -> state activeMainTab
-clic onglet -> update state + update URL une seule fois
-changement semaine -> update URL sans réécrire un tab obsolète
+┌─────────────────────────────────────────────┐
+│  Catalogue de matériel                      │
+│  [+ Créer une nouvelle catégorie]           │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─ Card "EPI" ──────── [✏️] [🗑️] [↑] [↓]─┐
+│  │  Casques ............ U    [↑][↓][🗑️]  │
+│  │  Gants .............. Paire [↑][↓][🗑️] │
+│  │  ─────────────────────────────────────── │
+│  │  [Désignation] [Unité ▾]  [+ Ajouter]   │
+│  └──────────────────────────────────────────┘
+│                                             │
+│  ┌─ Card "Électroportatif" ── [✏️][🗑️]───┐
+│  │  Perceuse 18V ....... U   [↑][↓][🗑️]  │
+│  │  ─────────────────────────────────────── │
+│  │  [Désignation] [Unité ▾]  [+ Ajouter]   │
+│  └──────────────────────────────────────────┘
+└─────────────────────────────────────────────┘
 ```
-- Éviter toute logique qui “force” `validation` tant que `tab=inventaire` est déjà présent.
-- Utiliser de préférence `setSearchParams` pour rester cohérent avec les autres pages comme `AdminPanel`.
 
-Vérifications à faire après correction
-- Clic simple sur "Inventaire" depuis `/validation-conducteur?tab=validation&semaine=2026-S14`
-- Reload direct sur `/validation-conducteur?tab=inventaire&semaine=2026-S14`
-- Aller/retour entre `Mes heures`, `Validation`, `Inventaire`
-- Cas Super Admin avec et sans conducteur sélectionné
-- Vérifier qu’aucun clic répété n’est nécessaire et que l’onglet reste stable
+### Changements concrets
 
-Risque de régression
-- Faible si on limite le correctif à la gestion URL/onglets de `ValidationConducteur`.
-- Le risque principal est de casser les anciens deep-links; il sera réduit en gardant la normalisation avec fallback vers `validation`.
+1. **Bouton principal "Créer une catégorie"** en haut
+   - Ouvre un AlertDialog avec un champ texte pour le nom de la catégorie
+   - A la validation, crée un premier template "placeholder" ou simplement enregistre la catégorie en créant un article vide (on demandera la designation juste après)
+   - Alternative plus propre : crée la catégorie en ajoutant directement le premier article via un formulaire inline qui apparait
+
+2. **Header de chaque carte catégorie** avec :
+   - Nom de la catégorie (texte gras)
+   - Icone crayon (Pencil) : ouvre un dialog pour renommer — fait un `updateTemplate` sur tous les templates de cette catégorie
+   - Icone poubelle (Trash2) : AlertDialog de confirmation ("Supprimer la catégorie X et ses N articles ?"), puis `deleteTemplate` sur chaque article
+   - Fleches haut/bas pour réordonner les catégories entre elles (optionnel, via un champ `ordre` sur les catégories — on peut simuler en triant alphabétiquement ou en prefixant)
+
+3. **Formulaire d'ajout inline dans chaque carte**
+   - Champ "Désignation" (Input, placeholder "Ex: Perceuse 18V")
+   - Champ "Unité" : `Select` dropdown avec options fixes : `U`, `Paire`, `Ens`, `m`, `m²`, `Kg`, `L`
+   - Bouton "+ Ajouter à {catégorie}"
+   - La catégorie est héritée automatiquement du bloc parent
+
+4. **Lignes articles existants** (inchangé globalement)
+   - Désignation, Unité, fleches haut/bas, poubelle
+   - Conserve la logique `handleMove` existante
+
+5. **Suppression du formulaire global** en haut (Card avec les 3 champs + datalist)
+
+### Etat local a ajouter
+
+- `newCategoryName: string` + `showNewCategoryDialog: boolean` pour la creation de categorie
+- `renamingCategory: string | null` + `renameValue: string` pour le renommage
+- `addDesignation: Record<string, string>` et `addUnite: Record<string, string>` : un etat par categorie pour les formulaires inline
+
+### Gestion du renommage de categorie
+
+Quand on renomme une categorie, on fait un batch `updateTemplate({ id, categorie: newName })` sur tous les templates de l'ancienne categorie. Le hook `useUpdateInventoryTemplate` existe deja.
+
+### Gestion de la suppression de categorie
+
+AlertDialog de confirmation, puis boucle sur `deleteTemplate.mutate(id)` pour chaque article de la categorie.
+
+### Composants UI utilises
+
+- `AlertDialog` (confirmation suppression categorie)
+- `Dialog` (creation/renommage categorie)
+- `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` (unite dropdown)
+- `Card, Table, TableBody, TableRow, TableCell` (existants)
+- `Button, Input` (existants)
+- Icons : `Plus, Trash2, ArrowUp, ArrowDown, Pencil` de lucide-react
+
+### Risque de regression
+
+Aucun — seul `InventoryTemplatesManager.tsx` est modifie. Les hooks restent identiques. Le composant est utilise dans `AdminPanel` et `InventaireParametrage`, les deux continueront de fonctionner.
+
