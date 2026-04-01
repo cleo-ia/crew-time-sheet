@@ -15,9 +15,9 @@ export interface InventoryReport {
   updated_at: string;
 }
 
-export function useInventoryReport(chantierId: string | undefined, mois: string) {
+export function useInventoryReport(chantierId: string | undefined) {
   return useQuery({
-    queryKey: ["inventory-report", chantierId, mois],
+    queryKey: ["inventory-report", chantierId],
     queryFn: async () => {
       if (!chantierId) return null;
 
@@ -25,33 +25,12 @@ export function useInventoryReport(chantierId: string | undefined, mois: string)
         .from("inventory_reports")
         .select("*")
         .eq("chantier_id", chantierId)
-        .eq("mois", mois)
         .maybeSingle();
 
       if (error) throw error;
       return data as InventoryReport | null;
     },
-    enabled: !!chantierId && !!mois,
-  });
-}
-
-export function useInventoryReportPreviousMonth(chantierId: string | undefined, previousMois: string) {
-  return useQuery({
-    queryKey: ["inventory-report", chantierId, previousMois],
-    queryFn: async () => {
-      if (!chantierId) return null;
-
-      const { data, error } = await supabase
-        .from("inventory_reports")
-        .select("*")
-        .eq("chantier_id", chantierId)
-        .eq("mois", previousMois)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data as InventoryReport | null;
-    },
-    enabled: !!chantierId && !!previousMois,
+    enabled: !!chantierId,
   });
 }
 
@@ -62,7 +41,7 @@ export function useInventoryReportsAll() {
       const { data, error } = await supabase
         .from("inventory_reports")
         .select("*")
-        .order("mois", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data as InventoryReport[];
@@ -74,14 +53,14 @@ export function useCreateInventoryReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ chantierId, mois }: { chantierId: string; mois: string }) => {
+    mutationFn: async ({ chantierId }: { chantierId: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
       const { data, error } = await supabase
         .from("inventory_reports")
         .insert({
           chantier_id: chantierId,
-          mois,
+          mois: "UNIQUE",
           created_by: user?.id || null,
         })
         .select()
@@ -91,7 +70,7 @@ export function useCreateInventoryReport() {
       return data as InventoryReport;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["inventory-report", data.chantier_id, data.mois] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-report", data.chantier_id] });
       queryClient.invalidateQueries({ queryKey: ["inventory-reports-all"] });
     },
     onError: (error) => {
