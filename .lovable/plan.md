@@ -1,10 +1,28 @@
 
 
-## Réduire la taille des miniatures photos dans le détail inventaire
+## Changements sur l'export Excel du récap inventaire
 
-### Changement
+### Fichier : `src/pages/InventaireRecap.tsx`
 
-**`src/components/inventory/InventoryReportDetail.tsx`** — ligne 86 :
+**1. Afficher le nom du chantier au lieu du code**
 
-Réduire les miniatures de `h-16 w-16` (64px) à `h-10 w-10` (40px). Le clic pour ouvrir en grand reste inchangé.
+Ligne 68 — modifier `getChantierLabel` pour retourner `c.nom` en priorité :
+```ts
+return c.nom || c.code_chantier || "—";
+```
+
+**2. Bordures verticales épaisses entre les groupes de chantiers**
+
+Lignes 140-141 — ajouter une bordure épaisse :
+```ts
+const borderThick = { style: "medium" as const, color: { argb: "FF1A1A1A" } };
+```
+
+Puis, dans les sections d'en-tête (lignes 213-230) et de données (après ligne 250), appliquer `borderThick` sur le bord gauche de la première colonne de chaque groupe chantier (colonne `3 + i * 3`) et sur le bord gauche de la colonne TOTAUX (`totalStartCol`). Cela concerne :
+- La ligne groupe (row 4)
+- La ligne sous-en-tête (row 5)
+- Chaque ligne de données
+- Les lignes séparateurs de catégorie
+
+Concrètement, pour chaque cellule à la position `colStart = 3 + i * 3` (et `totalStartCol`), on remplace `border.left` par `borderThick`.
 
