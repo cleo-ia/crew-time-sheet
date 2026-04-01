@@ -1,25 +1,10 @@
 
 
-## Purge des 2 inventaires transmis
+## Harmoniser la couleur du bouton "Récap global inventaires"
 
-Pas de changement de code nécessaire. Exécution d'une migration SQL pour supprimer :
+### Changement
 
-1. **16 `inventory_items`** liés aux 2 rapports
-2. **2 `inventory_reports`** (CI000 test et CI002 test 2)
+**`src/components/conducteur/InventoryDashboard.tsx`** — ligne 75 :
 
-### SQL
-
-```sql
-DELETE FROM public.inventory_items 
-WHERE report_id IN (
-  '814c2cab-e1ce-46a2-ad76-29402fffe3c8',
-  '5f2cacc0-502f-4abb-acea-c5645bbadeba'
-);
-
-DELETE FROM public.inventory_reports 
-WHERE id IN (
-  '814c2cab-e1ce-46a2-ad76-29402fffe3c8',
-  '5f2cacc0-502f-4abb-acea-c5645bbadeba'
-);
-```
+Remplacer `bg-orange-600 hover:bg-orange-700` par `bg-orange-500 hover:bg-orange-600` pour correspondre à l'onglet "Inventaire" qui utilise `bg-orange-500`.
 
