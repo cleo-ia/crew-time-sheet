@@ -40,6 +40,26 @@ export function useInventoryItems(reportId: string | undefined) {
   });
 }
 
+export function useInventoryItemsByReportIds(reportIds: string[]) {
+  return useQuery({
+    queryKey: ["inventory-items-batch", reportIds],
+    queryFn: async () => {
+      if (reportIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .in("report_id", reportIds)
+        .order("categorie", { ascending: true })
+        .order("designation", { ascending: true });
+
+      if (error) throw error;
+      return data as InventoryItem[];
+    },
+    enabled: reportIds.length > 0,
+  });
+}
+
 export function useUpsertInventoryItems() {
   const queryClient = useQueryClient();
 

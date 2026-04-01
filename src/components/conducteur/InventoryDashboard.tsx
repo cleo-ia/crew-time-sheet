@@ -4,25 +4,51 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CheckCircle2, FileText, Package, Settings } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
+import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
 import { InventoryReportDetail } from "@/components/inventory/InventoryReportDetail";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const InventoryDashboard = () => {
   const navigate = useNavigate();
   const { data: reports = [], isLoading: isLoadingReports } = useInventoryReportsAll();
   const { data: chantiers = [], isLoading: isLoadingChantiers } = useChantiers();
   const [selectedReport, setSelectedReport] = useState<{ id: string; chantierNom: string } | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const activeChantiers = useMemo(() => chantiers.filter(c => c.actif), [chantiers]);
 
-  // Map reports by chantier (one per chantier)
   const reportsByChantier = useMemo(() => {
     const map = new Map<string, typeof reports[0]>();
     reports.forEach(r => map.set(r.chantier_id, r));
     return map;
   }, [reports]);
+
+  // For consolidated view: get all report IDs
+  const allReportIds = useMemo(() => reports.map(r => r.id), [reports]);
+  const { data: allItems = [], isLoading: isLoadingItems } = useInventoryItemsByReportIds(allReportIds);
+
+  // Group items by report_id
+  const itemsByReport = useMemo(() => {
+    const map = new Map<string, typeof allItems>();
+    allItems.forEach(item => {
+      const list = map.get(item.report_id) || [];
+      list.push(item);
+      map.set(item.report_id, list);
+    });
+    return map;
+  }, [allItems]);
+
+  // Chantier name map
+  const chantierMap = useMemo(() => {
+    const map = new Map<string, { nom: string; code_chantier: string | null }>();
+    chantiers.forEach(c => map.set(c.id, { nom: c.nom, code_chantier: c.code_chantier }));
+    return map;
+  }, [chantiers]);
 
   if (isLoadingReports || isLoadingChantiers) {
     return (
@@ -33,6 +59,24 @@ export const InventoryDashboard = () => {
       </div>
     );
   }
+
+  const renderStatusBadge = (report: typeof reports[0] | undefined) => {
+    if (!report) return <Badge variant="outline" className="text-muted-foreground">Aucun</Badge>;
+    if (report.statut === "TRANSMIS") {
+      return (
+        <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          Transmis
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="gap-1">
+        <FileText className="h-3 w-3" />
+        Brouillon
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -52,55 +96,126 @@ export const InventoryDashboard = () => {
         </Button>
       </div>
 
-      <div className="grid gap-3">
-        {activeChantiers.map(chantier => {
-          const report = reportsByChantier.get(chantier.id);
-          return (
-            <Card
-              key={chantier.id}
-              className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!report ? "opacity-70" : ""}`}
-              onClick={() => {
-                if (report) {
-                  setSelectedReport({
-                    id: report.id,
-                    chantierNom: chantier.nom,
-                  });
-                }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">
-                    {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
-                    {chantier.nom}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!report ? (
-                    <Badge variant="outline" className="text-muted-foreground">Aucun</Badge>
-                  ) : report.statut === "TRANSMIS" ? (
-                    <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Transmis
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1">
-                      <FileText className="h-3 w-3" />
-                      Brouillon
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-        {activeChantiers.length === 0 && (
-          <Card className="p-8 text-center text-muted-foreground">
-            Aucun chantier actif.
-          </Card>
-        )}
-      </div>
+      <Tabs defaultValue="chantiers">
+        <TabsList>
+          <TabsTrigger value="chantiers">Par chantier</TabsTrigger>
+          <TabsTrigger value="consolide">Consolidé</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chantiers">
+          <div className="grid gap-3">
+            {activeChantiers.map(chantier => {
+              const report = reportsByChantier.get(chantier.id);
+              return (
+                <Card
+                  key={chantier.id}
+                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!report ? "opacity-70" : ""}`}
+                  onClick={() => {
+                    if (report) {
+                      setSelectedReport({ id: report.id, chantierNom: chantier.nom });
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">
+                        {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
+                        {chantier.nom}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {renderStatusBadge(report)}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+            {activeChantiers.length === 0 && (
+              <Card className="p-8 text-center text-muted-foreground">
+                Aucun chantier actif.
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="consolide">
+          {isLoadingItems ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : (
+            <Accordion type="multiple" className="space-y-2">
+              {activeChantiers.map(chantier => {
+                const report = reportsByChantier.get(chantier.id);
+                const items = report ? (itemsByReport.get(report.id) || []) : [];
+
+                // Group by category
+                const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+                  if (!acc[item.categorie]) acc[item.categorie] = [];
+                  acc[item.categorie].push(item);
+                  return acc;
+                }, {});
+
+                return (
+                  <AccordionItem key={chantier.id} value={chantier.id} className="border rounded-lg px-4">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3 flex-1 mr-2">
+                        <span className="font-medium text-left">
+                          {chantier.code_chantier && <span className="text-muted-foreground mr-1">{chantier.code_chantier}</span>}
+                          {chantier.nom}
+                        </span>
+                        <div className="ml-auto">
+                          {renderStatusBadge(report)}
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {items.length === 0 ? (
+                        <p className="text-muted-foreground text-sm py-2">Aucun article.</p>
+                      ) : (
+                        <div className="space-y-4 pb-2">
+                          {Object.entries(grouped).map(([categorie, catItems]) => (
+                            <div key={categorie}>
+                              <h4 className="font-semibold text-xs text-primary mb-1.5">{categorie}</h4>
+                              <div className="space-y-1.5">
+                                {catItems.map(item => (
+                                  <div key={item.id} className="flex items-start justify-between border rounded-md p-2 bg-muted/30">
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm">{item.designation} {item.unite ? `(${item.unite})` : ""}</span>
+                                        <span className="text-sm font-bold ml-2">Qté: {item.quantity_good}</span>
+                                      </div>
+                                      {item.photos && item.photos.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                          {item.photos.map((url, idx) => (
+                                            <img
+                                              key={idx}
+                                              src={url}
+                                              alt=""
+                                              className="h-12 w-12 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                              onClick={() => setSelectedPhoto(url)}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <InventoryReportDetail
         open={!!selectedReport}
@@ -108,6 +223,18 @@ export const InventoryDashboard = () => {
         reportId={selectedReport?.id ?? null}
         chantierNom={selectedReport?.chantierNom ?? ""}
       />
+
+      <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
+          {selectedPhoto && (
+            <img
+              src={selectedPhoto}
+              alt=""
+              className="w-full h-full max-h-[80vh] object-contain rounded-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
