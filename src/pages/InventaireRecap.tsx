@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, BarChart3, Download } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, FileText } from "lucide-react";
 import { useInventoryReportsAll } from "@/hooks/useInventoryReports";
 import { useChantiers } from "@/hooks/useChantiers";
 import { useInventoryItemsByReportIds } from "@/hooks/useInventoryItems";
@@ -121,6 +121,96 @@ const InventaireRecap = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPdf = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginLeft = 15;
+    const marginRight = 15;
+    const tableWidth = pageWidth - marginLeft - marginRight;
+    let y = 20;
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Récap global inventaires", pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    // Column widths
+    const colDesignation = tableWidth * 0.50;
+    const colUnite = tableWidth * 0.20;
+    const colQte = tableWidth * 0.30;
+    const rowHeight = 7;
+
+    const drawHeader = () => {
+      doc.setFillColor(37, 99, 235);
+      doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Désignation", marginLeft + 2, y + 5);
+      doc.text("Unité", marginLeft + colDesignation + 2, y + 5);
+      doc.text("Quantité", marginLeft + colDesignation + colUnite + 2, y + 5);
+      doc.setTextColor(0, 0, 0);
+      y += rowHeight;
+    };
+
+    const checkPageBreak = (neededHeight: number) => {
+      if (y + neededHeight > pageHeight - 15) {
+        doc.addPage();
+        y = 15;
+        drawHeader();
+      }
+    };
+
+    drawHeader();
+
+    categories.forEach(cat => {
+      const catItems = consolidatedItems.filter(i => i.categorie === cat);
+
+      // Category row
+      checkPageBreak(rowHeight * 2);
+      doc.setFillColor(230, 230, 230);
+      doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text(cat.toUpperCase(), marginLeft + 2, y + 5);
+      y += rowHeight;
+
+      // Items
+      catItems.forEach((item, idx) => {
+        checkPageBreak(rowHeight);
+        if (idx % 2 === 1) {
+          doc.setFillColor(245, 245, 245);
+          doc.rect(marginLeft, y, tableWidth, rowHeight, "F");
+        }
+
+        // Grid lines
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(marginLeft, y, colDesignation, rowHeight);
+        doc.rect(marginLeft + colDesignation, y, colUnite, rowHeight);
+        doc.rect(marginLeft + colDesignation + colUnite, y, colQte, rowHeight);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(item.designation, marginLeft + 2, y + 5);
+        doc.text(item.unite, marginLeft + colDesignation + 2, y + 5);
+        doc.setFont("helvetica", "bold");
+        doc.text(String(item.total), marginLeft + colDesignation + colUnite + 2, y + 5);
+
+        y += rowHeight;
+      });
+    });
+
+    doc.save("recap-inventaires.pdf");
+  };
+
   return (
     <PageLayout>
       <div className="space-y-6">
@@ -134,10 +224,16 @@ const InventaireRecap = () => {
               Récap global inventaires
             </h1>
           </div>
-          <Button onClick={handleExportExcel} disabled={consolidatedItems.length === 0}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportPdf} disabled={consolidatedItems.length === 0}>
+              <FileText className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button onClick={handleExportExcel} disabled={consolidatedItems.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
