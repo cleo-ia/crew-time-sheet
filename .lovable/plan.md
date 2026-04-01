@@ -1,10 +1,10 @@
 
 
-## Harmoniser la couleur du bouton "Récap global inventaires"
+## Renommer le bouton "Paramétrer" en "Créer le formulaire"
 
-### Changement
+### Fichier : `src/components/conducteur/InventoryDashboard.tsx`
 
-**`src/components/conducteur/InventoryDashboard.tsx`** — ligne 75 :
-
-Remplacer `bg-orange-600 hover:bg-orange-700` par `bg-orange-500 hover:bg-orange-600` pour correspondre à l'onglet "Inventaire" qui utilise `bg-orange-500`.
+Ligne ~68 — remplacer le texte et l'icône du bouton :
+- Texte : `Paramétrer` → `Créer le formulaire`
+- Icône : `Settings` → `FilePlus` (ou garder `Settings`, au choix — `FilePlus` semble plus cohérent avec "créer")
 
