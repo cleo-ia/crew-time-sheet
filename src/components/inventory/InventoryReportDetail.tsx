@@ -57,7 +57,13 @@ export const InventoryReportDetail = ({
                       {item.photos && item.photos.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {item.photos.map((url, idx) => (
-                            <img key={idx} src={url} alt="" className="h-16 w-16 object-cover rounded-md border" />
+                            <img
+                              key={idx}
+                              src={url}
+                              alt=""
+                              className="h-16 w-16 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setSelectedPhoto(url)}
+                            />
                           ))}
                         </div>
                       )}
