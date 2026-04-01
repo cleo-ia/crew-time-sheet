@@ -1,23 +1,40 @@
 
 
-## Purge du formulaire d'inventaire transmis pour le chantier "test"
+## Problème : les photos uploadées ne s'affichent pas
 
-### Données à supprimer
+### Cause racine
 
-Le rapport transmis identifié :
-- **Report ID** : `45bc1c2f-480e-4edd-8582-690a70306fdb`
-- **Chantier** : test (CI000)
-- **Items** : 8 lignes dans `inventory_items`
-
-### Actions (via migration SQL)
-
-1. Supprimer les 8 lignes de `inventory_items` liées au report
-2. Supprimer le `inventory_report` lui-même
-
-```sql
-DELETE FROM inventory_items WHERE report_id = '45bc1c2f-480e-4edd-8582-690a70306fdb';
-DELETE FROM inventory_reports WHERE id = '45bc1c2f-480e-4edd-8582-690a70306fdb';
+Dans `handlePhotoAdd` (ligne 98-104 de `ChantierInventaireTab.tsx`), la première ligne fait :
+```ts
+if (!currentReport) return;
 ```
 
-Cela permettra de recréer un nouveau rapport depuis zéro pour tester.
+Quand le chef commence un inventaire pour la première fois, aucun rapport n'existe encore en base (`currentReport` est `null`). L'upload est donc silencieusement ignoré — pas d'erreur, pas de feedback, la photo disparaît dans le vide.
+
+### Solution
+
+Modifier `handlePhotoAdd` pour **créer automatiquement le rapport** s'il n'existe pas encore (comme le fait déjà `handleSave`), puis uploader la photo avec le `reportId` obtenu.
+
+### Fichier modifié
+
+**`src/components/chantier/tabs/ChantierInventaireTab.tsx`** — `handlePhotoAdd` (lignes 98-104) :
+
+```ts
+const handlePhotoAdd = useCallback(async (idx: number, file: File) => {
+  let reportId = currentReport?.id;
+
+  // Créer le rapport automatiquement s'il n'existe pas
+  if (!reportId) {
+    const report = await createReport.mutateAsync({ chantierId });
+    reportId = report.id;
+  }
+
+  const url = await uploadPhoto.mutateAsync({ reportId, file });
+  setLocalItems(prev => prev.map((item, i) => 
+    i === idx ? { ...item, photos: [...item.photos, url] } : item
+  ));
+}, [currentReport, uploadPhoto, createReport, chantierId]);
+```
+
+Un seul changement dans un seul fichier. Les photos apparaîtront immédiatement dans la liste sous l'article après upload.
 
