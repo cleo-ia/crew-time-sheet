@@ -1,24 +1,50 @@
 
 
-## Ajouter la consultation plein écran des photos inventaire (côté conducteur)
+## Ajouter un onglet "Consolidé" au dashboard inventaire conducteur
 
-### Constat
+### Objectif
 
-Les miniatures photos sont déjà affichées dans `InventoryReportDetail.tsx` (lignes 55-61), mais elles font 64x64px et ne sont pas cliquables. Le conducteur ne peut pas les agrandir.
+Ajouter un système d'onglets en haut de la vue inventaire conducteur : "Par chantier" (vue actuelle) et "Consolidé" (nouvelle vue qui agrège tous les articles de tous les chantiers transmis en une seule liste).
 
-### Solution
+### Changements
 
-Ajouter un état local pour stocker l'URL de la photo sélectionnée, et afficher un Dialog/overlay plein écran quand on clique sur une miniature.
+**`src/components/conducteur/InventoryDashboard.tsx`**
+- Ajouter un état `activeTab` ("chantiers" | "consolide")
+- Envelopper le contenu dans un composant `Tabs` (shadcn)
+- Onglet "Par chantier" : contenu actuel inchangé
+- Onglet "Consolidé" : nouveau composant inline ou extrait
 
-### Changement (1 fichier)
+**Nouveau composant ou section "Consolidé"**
+- Charger tous les reports transmis via `useInventoryReportsAll()`
+- Pour chaque report transmis, charger les items → nécessite un nouveau hook `useInventoryItemsAll` qui récupère tous les `inventory_items` des reports transmis en une seule requête
+- Afficher groupé par chantier (nom + code), puis par catégorie, avec chaque article et sa quantité
+- Inclure les photos cliquables (réutiliser la même logique que `InventoryReportDetail`)
+- Badge "Transmis" / "Brouillon" / "Aucun" visible par chantier
 
-**`src/components/inventory/InventoryReportDetail.tsx`**
+**`src/hooks/useInventoryItems.ts`**
+- Ajouter `useInventoryItemsByReportIds(reportIds: string[])` : une requête `inventory_items` filtrée par `.in("report_id", reportIds)` pour charger tous les items en une seule requête
 
-1. Ajouter `useState<string | null>(null)` pour `selectedPhoto`
-2. Rendre chaque `<img>` cliquable (`onClick` + `cursor-pointer`)
-3. Ajouter un `<Dialog>` secondaire qui affiche la photo en grand (`max-w-[90vw] max-h-[80vh] object-contain`) avec un bouton fermer
+### Résultat visuel
 
-### Résultat
+```text
+[ Par chantier ]  [ Consolidé ]
 
-Le conducteur clique sur une miniature → la photo s'ouvre en grand dans un overlay. Il ferme et revient à la liste.
+── Vue Consolidé ──
+
+▸ CX2CB 2CB-Atelier                    ✅ Transmis
+  ── EPI ──
+    Masque FFP3 (Boîte)                Qté: 14
+    Gants nitrile (Boîte)              Qté: 8
+  ── Outillage ──
+    Marteau (U)                        Qté: 3
+
+▸ CU847 AMBERIEU                       ⚪ Aucun
+
+▸ CI875 BECHEVELIN                     ✅ Transmis
+  ── EPI ──
+    ...
+```
+
+### Risque
+Aucun — ajout d'une vue lecture seule, pas de modification de données.
 
