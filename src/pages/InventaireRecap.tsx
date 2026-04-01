@@ -85,40 +85,130 @@ const InventaireRecap = () => {
   const handleExportExcel = async () => {
     const ExcelJS = await import("exceljs");
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Récap Inventaires");
+    wb.creator = config.nom;
+    wb.created = new Date();
+    const ws = wb.addWorksheet("Récap Inventaires", {
+      pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1 },
+      headerFooter: {
+        oddFooter: `&L${config.nom}&CPage &P / &N&R&D`,
+      },
+    });
 
-    // Header row
+    const orange = "FFEA580C";
+    const orangeLight = "FFFEF3E2";
+    const grayLight = "FFF5F5F5";
+    const borderThin = { style: "thin" as const, color: { argb: "FFD4D4D8" } };
+    const borders = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
+
+    // --- Title block ---
+    ws.mergeCells("A1:D1");
+    const titleCell = ws.getCell("A1");
+    titleCell.value = "RÉCAP GLOBAL INVENTAIRES";
+    titleCell.font = { bold: true, size: 16, color: { argb: "FF1A1A1A" } };
+    titleCell.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 30;
+
+    ws.mergeCells("A2:D2");
+    const subtitleCell = ws.getCell("A2");
+    subtitleCell.value = `${config.nom} — Édité le ${new Date().toLocaleDateString("fr-FR")}`;
+    subtitleCell.font = { size: 10, color: { argb: "FF666666" }, italic: true };
+    subtitleCell.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(2).height = 20;
+
+    // Empty row
+    ws.getRow(3).height = 8;
+
+    // --- Column headers (row 4) ---
+    const headerRowNum = 4;
     ws.columns = [
-      { header: "Catégorie", key: "categorie", width: 25 },
-      { header: "Désignation", key: "designation", width: 35 },
-      { header: "Unité", key: "unite", width: 12 },
-      { header: "Quantité totale", key: "total", width: 18 },
+      { key: "categorie", width: 30 },
+      { key: "designation", width: 40 },
+      { key: "unite", width: 14 },
+      { key: "total", width: 18 },
     ];
 
-    // Style header
-    const headerRow = ws.getRow(1);
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
-    headerRow.alignment = { horizontal: "center" };
+    const headers = ["Catégorie", "Désignation", "Unité", "Quantité totale"];
+    const headerRow = ws.getRow(headerRowNum);
+    headers.forEach((h, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+      cell.alignment = { horizontal: i >= 2 ? "center" : "left", vertical: "middle" };
+      cell.border = borders;
+    });
+    headerRow.height = 22;
 
-    consolidatedItems.forEach(item => {
-      ws.addRow({
-        categorie: item.categorie,
-        designation: item.designation,
-        unite: item.unite,
-        total: item.total,
+    // --- Data rows ---
+    let currentRow = headerRowNum + 1;
+    let lastCat = "";
+
+    categories.forEach(cat => {
+      const catItems = consolidatedItems.filter(i => i.categorie === cat);
+
+      // Category separator row
+      const catRow = ws.getRow(currentRow);
+      ws.mergeCells(`A${currentRow}:D${currentRow}`);
+      const catCell = catRow.getCell(1);
+      catCell.value = cat.toUpperCase();
+      catCell.font = { bold: true, size: 10, color: { argb: "FF333333" } };
+      catCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E5EA" } };
+      catCell.alignment = { vertical: "middle" };
+      catCell.border = borders;
+      catRow.height = 20;
+      currentRow++;
+
+      // Items
+      catItems.forEach((item, idx) => {
+        const row = ws.getRow(currentRow);
+        row.getCell(1).value = ""; // empty category col
+        row.getCell(2).value = item.designation;
+        row.getCell(3).value = item.unite;
+        row.getCell(4).value = item.total;
+
+        // Zebra
+        const bgColor = idx % 2 === 0 ? "FFFFFFFF" : grayLight;
+        for (let c = 1; c <= 4; c++) {
+          const cell = row.getCell(c);
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+          cell.border = borders;
+          cell.font = { size: 9, color: { argb: "FF333333" } };
+          if (c >= 3) cell.alignment = { horizontal: "center", vertical: "middle" };
+          if (c === 4) cell.font = { size: 9, bold: true, color: { argb: "FF1A1A1A" } };
+        }
+        row.height = 18;
+        currentRow++;
       });
     });
 
-    // Auto-filter
-    ws.autoFilter = { from: "A1", to: "D1" };
+    // --- Total row ---
+    currentRow++;
+    const totalRow = ws.getRow(currentRow);
+    ws.mergeCells(`A${currentRow}:C${currentRow}`);
+    totalRow.getCell(1).value = "TOTAL GÉNÉRAL";
+    totalRow.getCell(1).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+    totalRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalRow.getCell(1).alignment = { horizontal: "right", vertical: "middle" };
+    totalRow.getCell(1).border = borders;
+    totalRow.getCell(4).value = consolidatedItems.reduce((sum, i) => sum + i.total, 0);
+    totalRow.getCell(4).font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+    totalRow.getCell(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: orange } };
+    totalRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+    totalRow.getCell(4).border = borders;
+    totalRow.height = 24;
+
+    // Auto-filter on header
+    ws.autoFilter = { from: `A${headerRowNum}`, to: `D${headerRowNum}` };
+
+    // Freeze panes below header
+    ws.views = [{ state: "frozen", ySplit: headerRowNum }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "recap-inventaires.xlsx";
+    a.download = `recap-inventaires-${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
